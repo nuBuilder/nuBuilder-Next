@@ -9,7 +9,7 @@ defined('NU_ROOT') || exit;
  */
 final class NuSchema
 {
-	public const VERSION = 34;
+	public const VERSION = 35;
 
 	private const TABLES = [
 		'zzzzsys_nunext_log' => [
@@ -47,7 +47,8 @@ final class NuSchema
 		'zzzzsys_nunext_session' => [
 			'pk' => 'zzzzsys_nunext_session_id',               // sha256 of the PHP session id
 			'cols' => [['user_id', 'text', '25'], ['login', 'text', '50'], ['display', 'text', '100'], ['via', 'text', '20'], ['ip', 'text', '45'],
-				['user_agent', 'text', '255'], ['login_at', 'datetime'], ['last_seen', 'datetime']],
+				['user_agent', 'text', '255'], ['login_at', 'datetime'], ['last_seen', 'datetime'],
+				['seen_ts', 'int']],                               // 0.8.1273: last_seen as Unix time – read by nuexternal.php (no time zone needed)
 			'index' => ['last_seen', 'user_id'],                 // user_id: "online" of the users list (review B1)
 		],
 		'zzzzsys_nunext_token' => [

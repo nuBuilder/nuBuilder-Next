@@ -232,7 +232,7 @@ final class NuSecurity
 			. "# nginx (server block)\n"
 			. "add_header X-Content-Type-Options nosniff always;\n"
 			. "location ~ ^$b/(core|pages|lang|install|docs|dev|_backup|_install|_update|_libsrc|temp|custom|lib|apps)/ { deny all; }\n"
-			. "location ~ ^$b/(README\\.md|CHANGELOG\\.md|LICENSE|TODO\\.md|CLAUDE\\.md|nunext-manifest\\.json|nuconfig.*\\.php|nucron\\.php)$ { deny all; }\n"
+			. "location ~ ^$b/(README\\.md|CHANGELOG\\.md|LICENSE|TODO\\.md|CLAUDE\\.md|nunext-manifest\\.json|nuconfig.*\\.php|nucron\\.php|nuexternal\\.php)$ { deny all; }\n"
 			. "location ~ /NUNEXT-VERSION\\.txt$ { deny all; }\n"
 			. "location ^~ /nu_uploads/ { deny all; }\n"
 			. "location ~ ^$b/vendor/(nuconfig\\.php|packs/(nunext-libs\\.php|index\\.html|[^/]+/nunext-lib\\.json))$ { deny all; }\n"

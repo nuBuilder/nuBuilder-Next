@@ -4765,8 +4765,8 @@ T.user_home_ensure = async (s) => {
 		expect(+sql("SELECT COUNT(*) FROM zzzzsys_nunext_log WHERE event = 'userhome_created'") >= 1, 'logged');
 		const p = s.ga;
 		await open(p, 'index.php?p=home');
-		expect(await p.locator('.nuHomeTools > #nuHomeUserHome').count() === 1, 'User Home button next to Customise (back in 0.8.1220)');
-		expect(await p.locator('#nuMenuUserHome').count() === 1, 'User Home in the user menu');
+		expect(await p.locator('#nuHomeUserHome').count() === 0, 'User Home button in the search row (removed in 0.8.1281)');
+		expect(await p.locator('#nuMenuUserHome').count() === 0 && await p.locator('#nuHfToggle').count() === 1, 'User Home in the globeadmin\'s user menu (in the Start pages panel since 0.8.1283)');
 		await open(p, 'index.php?p=form&f=nuuserhome');
 		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
 	} finally {
@@ -4789,7 +4789,6 @@ T.start_page_form = async (s) => {
 		// default: the tile page, no Tile page entry in the user menu
 		await open(anna, 'index.php?p=home');
 		expect(/p=home/.test(anna.url()) && await anna.locator('#nuMenuTiles').count() === 0, 'default is not the tile page: ' + anna.url());
-		// access level form: Start page = Home form without a form → error
 		// the tab Start page: the choice, the Home form and a read-only preview of the level's tile page with a link to its editor
 		await open(p, 'index.php?p=accesslevel&id=sample_viewer');
 		expect(await p.locator('#accessTabGeneral #accStartPage').count() === 0 && await p.locator('#accessTabStart #accStartPage').count() === 1 && await p.locator('#accessTabStart #sal_zzzzsys_form_id').count() === 1, 'choice and Home form on the Start page tab');
@@ -4797,12 +4796,18 @@ T.start_page_form = async (s) => {
 		const pv = await p.evaluate(() => ({ src: document.getElementById('accStartPreview').getAttribute('data-source'), tiles: document.querySelectorAll('#accStartPreview .accPvTile').length, edit: (document.getElementById('accStartEdit') || {}).href || '', note: document.getElementById('accStartFormNote').hidden }));
 		expect(['auto', 'default', 'level'].includes(pv.src) && pv.tiles >= 1 && /p=home&for=sample_viewer/.test(pv.edit) && pv.note, 'preview: ' + JSON.stringify(pv));
 		expect(await p.isChecked('#accStartTiles'), 'Tile page not chosen by default');
+		// 0.8.1269 (a tester): Home form chosen as start page but no Home form = the tile page, no error (it left no way back to the tiles)
 		await p.evaluate(() => { const e = document.getElementById('sal_zzzzsys_form_id'); if (e.tomselect) e.tomselect.clear(); else e.value = ''; });
 		await p.click('label[for=accStartForm]');
-		// waitForLoadState('load') right after the click resolved on the page still shown (gate 0.8.1221): wait for the answer of the POST
 		await Promise.all([p.waitForNavigation(), p.click('[data-nu-save]')]);
-		await p.waitForSelector('#sal_zzzzsys_form_id.is-invalid, .ts-wrapper.is-invalid', {state: 'attached', timeout: 5000}).catch(() => {});
-		expect(await p.locator('#sal_zzzzsys_form_id.is-invalid, .ts-wrapper.is-invalid').count() >= 1, 'no error without a Home form');
+		expect(await p.locator('#sal_zzzzsys_form_id.is-invalid, .ts-wrapper.is-invalid').count() === 0, 'error without a Home form');
+		await open(p, 'index.php?p=accesslevel&id=sample_viewer&tab=start');
+		expect(await p.isChecked('#accStartTiles'), 'no Home form did not save as the tile page');
+		// clearing the Home form switches the choice back to Tile page
+		await p.evaluate((f) => { const e = document.getElementById('sal_zzzzsys_form_id'); if (e.tomselect) e.tomselect.setValue(f); else e.value = f; }, form);
+		await p.click('label[for=accStartForm]');
+		await p.evaluate(() => { const e = document.getElementById('sal_zzzzsys_form_id'); if (e.tomselect) e.tomselect.clear(); else { e.value = ''; e.dispatchEvent(new Event('change', {bubbles: true})); } });
+		expect(await p.isChecked('#accStartTiles'), 'clearing the Home form left Home form chosen');
 		// with a Home form
 		expect(await p.locator('#accessTabStart.active').count() === 1, 'the error opens the Start page tab');
 		await open(p, 'index.php?p=accesslevel&id=sample_viewer&tab=start');
@@ -4886,7 +4891,7 @@ T.user_home = async (s) => {
 		// admin start page: tile User Home
 		await open(p, 'index.php?p=home&tiles=1');
 		expect(await p.locator('[data-nu-tile="userhome"]').count() === 1, 'no User Home tile');
-		expect(await p.locator('#nuMenuUserHome').count() === 1, 'no user menu entry (0.8.603)');
+		expect(await p.locator('#nuMenuUserHome').count() === 0, 'user menu entry for the globeadmin (Start pages panel since 0.8.1283)');
 		await open(anna, 'index.php?p=home');
 		expect(await anna.locator('#nuHomeUserHome, #nuMenuUserHome').count() === 0, 'house icon for a user without User Home');
 		// home form nuuserhome: the user may open it and finds it on the automatic start page
@@ -5043,6 +5048,7 @@ T.notifications = async (s) => {
 	const p = s.ga;
 	await open(p, 'index.php?p=notifications&id=new');
 	await p.fill('#ntf_title', 'E2E notification');
+	await p.click('.ntfAddRule[data-rule=users]');
 	await p.locator('#aud_users').locator('xpath=..').locator('.ts-control input').fill('sample_anna');
 	await p.locator('.ts-dropdown .option[data-value="sample_anna"]').click(); await p.keyboard.press('Escape');
 	await p.waitForTimeout(600);
@@ -5076,6 +5082,7 @@ T.notify_exclude = async (s) => {
 		await p.fill('#ntf_title', 'E2E exclude');
 		await p.locator('label[for=ntf_all]').click(); await p.waitForTimeout(600);
 		const total = +(await p.textContent('#ntfCount')).replace(/\D+/g, '');
+		await p.click('.ntfAddRule[data-rule=exclude]');
 		const exWrap = p.locator('#aud_exclude').locator('xpath=..');
 		expect(!(await exWrap.locator('.ts-wrapper').getAttribute('class')).includes('disabled'), 'Exclude users locked by Everybody');
 		await exWrap.locator('.ts-control input').fill('sample_anna');
@@ -5807,6 +5814,7 @@ T.notify_format = async (s) => {                        // 0.8.400: "Formatted t
 	await open(p, 'index.php?p=notifications&id=new');
 	await p.fill('#ntf_title', 'E2E formatted');
 	await p.fill('#ntf_body', 'Line one\nLine <two>');
+	await p.click('.ntfAddRule[data-rule=users]');
 	await p.locator('#aud_users').locator('xpath=..').locator('.ts-control input').fill('sample_anna');
 	await p.locator('.ts-dropdown .option[data-value="sample_anna"]').click(); await p.keyboard.press('Escape');
 	await p.check('#ntf_format');
@@ -14218,9 +14226,9 @@ T.seg_control = async (s) => {
 		const cs = getComputedStyle(el), m = cs.backgroundColor.match(/\d+(\.\d+)?/g).map(Number);
 		return { lum: (0.2126 * m[0] + 0.7152 * m[1] + 0.0722 * m[2]) / 255, line: /inset/.test(cs.boxShadow) && /-2px/.test(cs.boxShadow) };
 	}, sel);
-	await open(p, 'index.php?p=notifications&id=new');
-	let r = await look('.nuNtfLevels .btn-check:checked + .btn');
-	expect(r && r.lum > 0.9 && r.line, 'notification level: ' + JSON.stringify(r));
+	await open(p, 'index.php?p=notifications&id=new');            // 0.8.1271: the notification level is a row of tiles now, not a segmented control
+	let r = await look('.nuNtfLevels .btn-check:checked + .ntfLv');
+	expect(r && r.lum > 0.75, 'notification level tile: ' + JSON.stringify(r));
 	await open(p, 'index.php?p=help');
 	r = await look('.btn-group.nuSeg > .btn.active');
 	expect(r && r.lum > 0.9 && r.line, 'help view: ' + JSON.stringify(r));
@@ -18966,6 +18974,418 @@ T.globalcode_full_hides_hint = async (s) => {
 	await p.click('#scodePane-gjs .nuCtFull'); await p.waitForTimeout(300);
 	const c = await vis();
 	expect(!c.full && c.hint && c.scope, 'after: ' + JSON.stringify(c));
+};
+
+T.home_forms_panel = async (s) => {
+	// 0.8.1264 (the owner picked B + A's gestures): ▾ next to Home (globeadmin) lists every Home form of the access levels with its
+	// levels (dashed chip = the level starts on the tile page), Open / Design, search; right-click on the Home button opens it too
+	const p = s.ga;
+	const db = (sql) => execSync('mysql ' + DB + ' -N -B', { input: sql }).toString().trim();
+	// 0.8.1268: nuBuilder Forte's empty form nublank is no Home form of the list, and is named "Blank page (system)" elsewhere
+	db("INSERT INTO zzzzsys_access (zzzzsys_access_id, sal_code, sal_description, sal_zzzzsys_form_id) VALUES ('e2e_hf_blank', 'e2e_hf_blank', 'Blank level', 'nublank')");
+	// 0.8.1270: a Home form that no longer exists is not listed either
+	db("INSERT INTO zzzzsys_access (zzzzsys_access_id, sal_code, sal_description, sal_zzzzsys_form_id) VALUES ('e2e_hf_gone', 'e2e_hf_gone', 'Gone level', 'e2e_no_such_form')");
+	try {
+		await open(p, 'index.php?p=access&q=e2e_hf_blank');
+		expect(/Blank page \(system\)/.test(await p.locator('.nuAccHomeLink').first().innerText()), 'access list label');
+	} catch (e) { db("DELETE FROM zzzzsys_access WHERE zzzzsys_access_id IN ('e2e_hf_blank', 'e2e_hf_gone')"); throw e; }
+	await open(p, 'index.php?p=users');
+	await p.evaluate(() => { try { localStorage.removeItem('nunext-hf-tab'); } catch (e) { /* none */ } });
+	await p.click('#nuHfToggle');
+	await p.waitForSelector('#nuHfPanel.show .nuHfRow');
+	const want = db("SELECT COUNT(DISTINCT sal_zzzzsys_form_id) FROM zzzzsys_access WHERE COALESCE(sal_zzzzsys_form_id, '') NOT IN ('', 'nuhome', 'nublank', 'nuuserhome') AND sal_zzzzsys_form_id IN (SELECT zzzzsys_form_id FROM zzzzsys_form)");
+	// 0.8.1282 (the owner picked H): User Home is the button in the panel head, not a row of the list
+	expect(/f=nuuserhome/.test(await p.getAttribute('#nuHfPanel .nuHfHead #nuHfUserHome', 'href') || '') && /design=1/.test(await p.getAttribute('#nuHfUserHomeDesign', 'href') || '')
+		&& await p.locator('#nuHfPanel .nuHfRow[data-nu-hf="nuuserhome"]').count() === 0, 'User Home in the head');
+	const r = await p.evaluate(() => {
+		const rows = [...document.querySelectorAll('#nuHfList_forms .nuHfRow')];
+		const row = rows.find(x => x.getAttribute('data-nu-hf') === 'samplehome');
+		return { tab: document.querySelector('.nuHfTab.active') && document.querySelector('.nuHfTab.active').getAttribute('data-tab'), tilesHidden: document.getElementById('nuHfList_tiles').hidden, n: rows.length, blank: rows.some(x => x.getAttribute('data-nu-hf') === 'nublank'), gone: rows.some(x => x.getAttribute('data-nu-hf') === 'e2e_no_such_form'), focus: document.activeElement && document.activeElement.id,
+			chips: row ? [...row.querySelectorAll('.nuHfChip')].map(c => c.textContent + (c.classList.contains('nuHfChipTiles') ? '~' : '')) : null,
+			hidden: row ? row.querySelector('.nuHfDetail').hidden : null,
+			open: row ? row.querySelector('.nuHfOpen').getAttribute('href') : '', design: row ? !!row.querySelector('.nuHfDesign') : false,
+			chipHref: row ? row.querySelector('.nuHfChip').getAttribute('href') : '' };
+	});
+	db("DELETE FROM zzzzsys_access WHERE zzzzsys_access_id IN ('e2e_hf_blank', 'e2e_hf_gone')");
+	expect(String(r.n) === want && !r.blank && !r.gone, 'rows ' + r.n + ' of ' + want + (r.blank ? ' (nublank listed)' : '') + (r.gone ? ' (missing form listed)' : ''));
+	expect(r.chips && r.chips.length >= 1 && /f=samplehome/.test(r.open) && r.design && /p=accesslevel.*tab=start/.test(r.chipHref), 'sample row: ' + JSON.stringify(r));
+	expect(r.focus === 'nuHfSearch', 'search not focused: ' + r.focus);
+	expect(r.tab === 'forms' && r.tilesHidden, 'Home forms tab not first: ' + r.tab);
+	expect(await p.locator('#nuHfPanel .nuHfHead .nuHfCount').count() === 0, 'number of access levels shown in the head');   // 0.8.1280: the owner
+	// 0.8.1266: rows start collapsed (title + count); the title button folds out code and access levels
+	expect(r.hidden === true, 'details shown at first');
+	await p.click('.nuHfRow[data-nu-hf="samplehome"] .nuHfExp');
+	expect(await p.isVisible('.nuHfRow[data-nu-hf="samplehome"] .nuHfChip') && await p.getAttribute('.nuHfRow[data-nu-hf="samplehome"] .nuHfExp', 'aria-expanded') === 'true', 'row did not fold out');
+	await p.click('.nuHfRow[data-nu-hf="samplehome"] .nuHfExp');
+	expect(!(await p.isVisible('.nuHfRow[data-nu-hf="samplehome"] .nuHfChip')), 'row did not fold in');
+	await p.fill('#nuHfSearch', 'tkt');
+	const shown = await p.evaluate(() => [...document.querySelectorAll('#nuHfList_forms .nuHfRow')].filter(x => !x.hidden).map(x => x.getAttribute('data-nu-hf')));
+	expect(shown.length >= 1 && !shown.includes('samplehome'), 'search: ' + shown.join(','));
+	expect(await p.isVisible('.nuHfRow:not([hidden]) .nuHfChip'), 'hits of a search not folded out');
+	await p.fill('#nuHfSearch', 'zzqq_nothing');
+	expect(await p.isVisible('#nuHfList_forms .nuHfNoMatch'), 'no-match text');
+	await p.fill('#nuHfSearch', '');
+	// 0.8.1276 (the owner picked A): tab Tile pages – the default one first (for=*, the levels without a tile page of their own), then
+	// every saved tile page with its levels; each level counted once; chips open the level's tile page in the editor; the tab is remembered
+	await p.click('#nuHfTab_tiles');
+	const tp = await p.evaluate(() => {
+		const rows = [...document.querySelectorAll('#nuHfList_tiles .nuHfRow')];
+		return { forms: document.getElementById('nuHfList_forms').hidden, ph: document.getElementById('nuHfSearch').placeholder,
+			rows: rows.map(x => ({ id: x.getAttribute('data-nu-hf'), kind: x.getAttribute('data-nu-hf-kind'), open: x.querySelector('.nuHfOpen').getAttribute('href'),
+				chips: [...x.querySelectorAll('.nuHfChip')].map(c => c.getAttribute('href')) })) };
+	});
+	const levels = +db('SELECT COUNT(*) FROM zzzzsys_access') + 2;   // the panel was loaded with the two test levels above
+	const chips = tp.rows.reduce((a, x) => a + x.chips.length, 0);
+	expect(tp.forms && tp.rows.length >= 1 && tp.rows[0].id === '*' && /^(default|auto)$/.test(tp.rows[0].kind) && /p=home&for=(%2A|\*)/.test(tp.rows[0].open), 'tile pages tab: ' + JSON.stringify(tp).slice(0, 300));
+	expect(chips === levels && tp.rows.every(x => x.chips.every(h => /p=home&for=(?!%2A)/.test(h))), 'tile page chips ' + chips + ' of ' + levels + ' levels');
+	expect(tp.rows.slice(1).every(x => x.kind === 'level' && x.chips.length > 0 && /p=home&for=/.test(x.open)), 'own tile pages: ' + JSON.stringify(tp.rows.slice(1)).slice(0, 300));
+	expect(/tile page/i.test(tp.ph), 'placeholder of the tab: ' + tp.ph);
+	await p.keyboard.press('Escape');
+	await p.reload();
+	await p.click('#nuHfToggle');
+	await p.waitForSelector('#nuHfPanel.show .nuHfList:not([hidden]) .nuHfRow');
+	expect(await p.getAttribute('.nuHfTab.active', 'data-tab') === 'tiles', 'tab not remembered');
+	await p.click('#nuHfTab_forms');
+	await p.keyboard.press('Escape');
+	await p.waitForSelector('#nuHfPanel.show', { state: 'detached', timeout: 3000 }).catch(() => {});
+	// compact top bar (no logo): ▾ joined to the Home button; right-click on Home opens the panel and stays on the page
+	const before = db("SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'branding'");
+	const set = (v) => db(v === null ? "DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'branding'"
+		: "DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'branding'; INSERT INTO zzzzsys_nunext_setting (zzzzsys_nunext_setting_id, setting_value) VALUES ('branding', '" + v.replace(/'/g, "''") + "')");
+	try {
+		const cur = before ? JSON.parse(before) : {};
+		set(JSON.stringify(Object.assign({}, cur, { logo_show: 'login' })));
+		await open(p, 'index.php?p=users');
+		expect(await p.locator('.nuHfGroup #nuHomeBtn + #nuHfToggle').count() === 1, 'split button missing in the compact bar');
+		await p.click('#nuHomeBtn', { button: 'right' });
+		await p.waitForSelector('#nuHfPanel.show .nuHfRow');
+		expect(p.url().includes('p=users'), 'right-click navigated');
+		await p.keyboard.press('Escape');
+	} finally { set(before || null); }
+	const u = await login('sample_ben', UPW);
+	try {
+		const st = await u.evaluate(async () => (await fetch('index.php?p=homeforms')).status);
+		expect(st === 403, 'homeforms for a user: ' + st);
+		expect(await u.locator('#nuHfToggle').count() === 0, 'toggle shown to a user');
+	} finally { await u.context().close(); }
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
+T.list_page_keys = async (s) => {
+	// 0.8.1265: Ctrl+Shift+← / → / End / Home page through nuBuilder Next's own lists too (form lists had them), as in nuBuilder
+	// Forte's browse lists – also from the search field; nothing happens on a page without a pager
+	const p = s.ga;
+	await open(p, 'index.php?p=log&per=10');
+	if (!(await p.locator('a.nuPagerNext').count())) { expect(false, 'log has only one page'); return; }
+	const pg = () => new URL(p.url()).searchParams.get('page') || new URL(p.url()).searchParams.get('pg') || '1';
+	const step = async (k) => { const u = p.url(); await p.keyboard.press(k); await p.waitForFunction((x) => location.href !== x, u, { timeout: 8000 }); await p.waitForTimeout(300); };
+	await step('Control+Shift+ArrowRight');
+	expect(pg() === '2', 'next: ' + p.url());
+	await step('Control+Shift+ArrowLeft');
+	expect(pg() === '1', 'prev: ' + p.url());
+	await p.focus('.nuListSearch input[type=search]');
+	await step('Control+Shift+End');
+	const last = pg();
+	expect(Number(last) > 1, 'last from the search field: ' + p.url());
+	await step('Control+Shift+Home');
+	expect(pg() === '1', 'first: ' + p.url());
+	// form lists keep their own keys
+	await open(p, 'index.php?p=form&f=samplecustomer');
+	if ((await p.evaluate(() => (window.nuNext.browse || {}).pages || 1)) > 1) {
+		await step('Control+Shift+ArrowRight');
+		expect(/[?&]pg=2/.test(p.url()), 'form list next: ' + p.url());
+	}
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
+T.top_bar_aligned = async (s) => {
+	// 0.8.1267 (the owner picked B of the canvas "Top bar width"): from 1680 px the bar's contents line up with the content sheet
+	// (the white bar stays full width); below that, with "Full width" and on tool pages nothing changes
+	const p = s.ga;
+	const ctx = await p.context().browser().newContext({ viewport: { width: 1920, height: 1000 }, storageState: await p.context().storageState() });
+	const w = await ctx.newPage();
+	const errs = []; w.on('pageerror', e => errs.push(e.message));
+	const m = () => w.evaluate(() => {
+		const r = (el) => el ? el.getBoundingClientRect() : null;
+		const inner = r(document.querySelector('.nu-navbar > .nuNavInner')), main = r(document.querySelector('main#main'));
+		const bar = r(document.querySelector('.nu-navbar'));
+		return { il: Math.round(inner.left), ir: Math.round(inner.right), ml: Math.round(main.left), mr: Math.round(main.right), bw: Math.round(bar.width), vw: document.documentElement.clientWidth };
+	});
+	try {
+		await w.goto(BASE + 'index.php?p=users');
+		let a = await m();
+		expect(Math.abs(a.il - a.ml) <= 1 && Math.abs(a.ir - a.mr) <= 1 && a.bw >= a.vw - 16 && a.ml > 100, '1920: ' + JSON.stringify(a));
+		await w.evaluate(() => { try { localStorage.setItem('nunext-page-width', 'full'); } catch (e) {} });
+		await w.goto(BASE + 'index.php?p=users');
+		a = await m();
+		expect(a.il <= 1 && a.ir >= a.bw - 1, 'full width: ' + JSON.stringify(a));
+		await w.evaluate(() => { try { localStorage.setItem('nunext-page-width', '1300'); } catch (e) {} });
+		await w.goto(BASE + 'index.php?p=users');
+		a = await m();
+		expect(Math.abs(a.il - a.ml) <= 1 && Math.abs(a.ir - a.mr) <= 1 && a.mr - a.ml <= 1301, 'page width 1300: ' + JSON.stringify(a));
+		await w.evaluate(() => { try { localStorage.removeItem('nunext-page-width'); } catch (e) {} });
+		await w.setViewportSize({ width: 1366, height: 800 });
+		await w.goto(BASE + 'index.php?p=users');
+		a = await m();
+		expect(a.il <= 1 && a.ir >= a.bw - 1, '1366 unchanged: ' + JSON.stringify(a));
+		expect(errs.length === 0, errs.slice(0, 2).join(' | '));
+	} finally { await ctx.close(); }
+};
+
+T.notify_editor_layout = async (s) => {               // 0.8.1271: notification editor – sections, recipient rows, tiles, sticky bar with summary
+	const p = s.ga;
+	await open(p, 'index.php?p=notifications&id=new');
+	expect(await p.locator('.ntfSec').count() === 3, 'three sections expected');
+	const vis = (sel) => p.locator(sel).isVisible();
+	expect(!(await vis('.ntfRule[data-rule=users]')) && !(await vis('.ntfRule[data-rule=teams]')), 'empty rule rows should be hidden');
+	expect(await vis('#ntfRuleNone'), 'hint for no recipients missing');
+	await p.click('.ntfAddRule[data-rule=users]');
+	expect(await vis('.ntfRule[data-rule=users]') && !(await vis('.ntfAddRule[data-rule=users]')), '+ Users did not show the row');
+	expect(!(await vis('#ntfRuleNone')), 'hint should hide with a rule row');
+	await p.locator('#aud_users').locator('xpath=..').locator('.ts-control input').fill('sample_anna');
+	await p.locator('.ts-dropdown .option[data-value="sample_anna"]').click(); await p.keyboard.press('Escape');
+	await p.waitForTimeout(700);
+	expect(/^1\D/.test((await p.textContent('#ntfSum')).trim()), 'summary without the count: ' + await p.textContent('#ntfSum'));
+	await p.locator('label.ntfOpt:has(#ntf_confirm)').click();
+	expect(await p.isChecked('#ntf_confirm'), 'option tile did not tick');
+	expect((await p.textContent('#ntfSum')).includes(await p.locator('label.ntfOpt:has(#ntf_confirm) b').textContent()), 'summary misses Must confirm');
+	await p.click('label[for=ntf_lv_warning]');
+	expect(await p.isChecked('#ntf_lv_warning'), 'level tile did not select');
+	await p.click('.ntfRuleX[data-rule-x=users]'); await p.waitForTimeout(600);
+	expect(!(await vis('.ntfRule[data-rule=users]')) && await vis('.ntfAddRule[data-rule=users]'), '× did not hide the row');
+	expect(await p.evaluate(() => document.getElementById('aud_users').selectedOptions.length) === 0, '× did not clear the field');
+	await p.locator('label[for=ntf_all]').click(); await p.waitForTimeout(200);
+	expect(!(await vis('.ntfAddRule[data-rule=teams]')) && await vis('.ntfAddRule[data-rule=exclude]'), 'Everybody should leave only Exclude to add');
+	const pos = await p.evaluate(() => getComputedStyle(document.getElementById('ntfBar')).position);
+	expect(pos === 'sticky', 'bar not sticky: ' + pos);
+	await p.setViewportSize({width: 390, height: 844});
+	await p.waitForTimeout(300);
+	const r = await p.evaluate(() => { const b = document.getElementById('ntfBar').getBoundingClientRect(); return {bottom: Math.round(b.bottom), sw: document.documentElement.scrollWidth}; });
+	expect(r.bottom <= 844 && r.bottom > 700, 'bar not at the bottom on phones: ' + r.bottom);
+	expect(r.sw <= 390, 'page wider than the phone: ' + r.sw);
+	await p.setViewportSize({width: 1400, height: 1000});
+	await p.evaluate(() => { const f = document.getElementById('ntfForm'); if (f) f.removeAttribute('data-nu-guard'); });
+};
+
+T.external_user = async (s) => {                     // 0.8.1273: nuexternal.php – own PHP apps in a sub-folder use nuBuilder Next's sign-in
+	if (!SITE) return 'skip';
+	const dir = path.join(SITE, 'e2etools', 'extapp');
+	fs.mkdirSync(dir, { recursive: true });
+	fs.writeFileSync(path.join(dir, 'app.php'), `<?php
+require __DIR__ . '/../../nuexternal.php';
+if (($_GET['mode'] ?? '') === 'peek') { header('Content-Type: application/json'); echo json_encode(['user' => NuNextUser::current()]); exit; }
+$me = NuNextUser::require();
+if (($_GET['mode'] ?? '') === 'deny' && !NuNextUser::hasPermission('e2e_no_such_item')) NuNextUser::deny('No right');
+header('Content-Type: application/json');
+echo json_encode(['user' => $me, 'ga' => NuNextUser::isGlobeadmin(), 'perm' => NuNextUser::hasPermission(...($me['permissions'] ?: ['x'])),
+	'levels' => array_column($me['access_levels'], 'code'), 'lvl' => $me['access_levels'] ? NuNextUser::hasAccessLevel($me['access_levels'][0]['code']) : null,
+	'home' => NuNextUser::homeUrl(), 'session_untouched' => session_status() === PHP_SESSION_NONE]);
+`);
+	try {
+		const ctx = await browser.newContext({ locale: 'en-GB' });
+		const p = await ctx.newPage();
+		// not signed in: current() null, require() → sign-in page with the way back
+		let r = await p.request.get(BASE + 'e2etools/extapp/app.php?mode=peek');
+		expect((await r.json()).user === null, 'user without sign-in');
+		await p.goto(BASE + 'e2etools/extapp/app.php?a=1');
+		expect(/p=login/.test(p.url()) && /next=e2etools%2Fextapp%2Fapp\.php%3Fa%3D1/.test(p.url()), 'no redirect to the sign-in: ' + p.url());
+		await p.fill('#username', 'sample_anna'); await p.fill('#password', UPW);
+		await Promise.all([p.waitForURL(/extapp\/app\.php/, { timeout: 15000 }), p.click('form button[type=submit]:not([name=demo_user])')]);
+		expect(/e2etools\/extapp\/app\.php\?a=1$/.test(p.url()), 'not back in the app: ' + p.url());
+		const j = JSON.parse(await p.locator('body').innerText());
+		const uid = sql("SELECT zzzzsys_user_id FROM zzzzsys_user WHERE sus_login_name = 'sample_anna'");
+		expect(j.user.id === uid && j.user.login === 'sample_anna' && !j.ga, 'wrong user: ' + JSON.stringify(j.user).slice(0, 200));
+		const want = sql("SELECT COUNT(*) FROM zzzzsys_user_permission LEFT JOIN zzzzsys_permission_item ON zzzzsys_permission_item_id = upe_ident WHERE upe_zzzzsys_user_id = '" + uid + "' AND COALESCE(upe_active,'0') = '1' AND pme_ident IS NOT NULL");
+		expect(String(j.user.permissions.length) === want, 'permissions ' + j.user.permissions.length + ' vs ' + want);
+		expect(j.user.access_code !== '' && j.levels.includes(j.user.access_code) && j.lvl === true, 'access levels: ' + JSON.stringify(j.levels));
+		expect(j.home === new URL(BASE).pathname, 'homeUrl ' + j.home);
+		expect(j.session_untouched, 'the helper started a session');
+		r = await p.request.get(BASE + 'e2etools/extapp/app.php?mode=deny', { headers: { Accept: 'application/json' } });
+		expect(r.status() === 403 && (await r.json()).error === 'No right', 'deny() did not answer 403 JSON');
+		// the helper file itself is never a page
+		r = await p.request.get(BASE + 'nuexternal.php');
+		expect(r.status() === 404, 'nuexternal.php served: ' + r.status());
+		// signed out: no user any more
+		await open(p, 'index.php?p=home');
+		await Promise.all([p.waitForURL(/p=login/), p.evaluate(() => { const f = document.createElement('form'); f.method = 'post'; f.action = 'index.php?p=logout';
+			const i = document.createElement('input'); i.name = '_csrf'; i.value = document.querySelector('input[name=_csrf]').value; f.appendChild(i); document.body.appendChild(f); f.submit(); })]);
+		r = await p.request.get(BASE + 'e2etools/extapp/app.php?mode=peek');
+		expect((await r.json()).user === null, 'user still there after signing out');
+		// the globeadmin
+		r = await s.ga.request.get(BASE + 'e2etools/extapp/app.php');
+		const g = await r.json();
+		expect(g.ga === true && g.user.id === 'globeadmin' && g.perm === true, 'globeadmin: ' + JSON.stringify(g).slice(0, 200));
+		// an idle session older than the timeout no longer counts
+		const key = sql("SELECT zzzzsys_nunext_session_id FROM zzzzsys_nunext_session WHERE user_id = 'globeadmin' ORDER BY seen_ts DESC LIMIT 1");
+		const ts = sql("SELECT seen_ts FROM zzzzsys_nunext_session WHERE zzzzsys_nunext_session_id = '" + key + "'");
+		expect(+ts > 0, 'seen_ts not written');
+		sql("UPDATE zzzzsys_nunext_session SET seen_ts = seen_ts - 86400 WHERE zzzzsys_nunext_session_id = '" + key + "'");
+		r = await s.ga.request.get(BASE + 'e2etools/extapp/app.php?mode=peek');
+		const idle = (await r.json()).user;
+		sql("UPDATE zzzzsys_nunext_session SET seen_ts = " + ts + " WHERE zzzzsys_nunext_session_id = '" + key + "'");
+		expect(idle === null, 'idle session still counted');
+		await ctx.close();
+	} finally {
+		fs.rmSync(path.join(SITE, 'e2etools'), { recursive: true, force: true });
+	}
+};
+
+// 0.8.1275: phone cards of form lists – each value at most two lines, cut with …; the print view keeps everything
+T.phone_card_clamp = async (s) => {
+	if (sql("SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id = 'samplecustomer'") !== '1') { s.skip = 'no sample data'; return; }
+	const id = sql('SELECT sample_customer_id FROM sample_customer ORDER BY cus_name LIMIT 1');
+	const name0 = sql("SELECT cus_name FROM sample_customer WHERE sample_customer_id = '" + id + "'");
+	sql("UPDATE sample_customer SET cus_name = CONCAT('AAA ', REPEAT('WWWWW ', 16)) WHERE sample_customer_id = '" + id + "'");
+	const ctx = await s.ga.context().browser().newContext({ viewport: { width: 390, height: 800 }, storageState: await s.ga.context().storageState() });
+	const p = await ctx.newPage();
+	try {
+		await p.goto(BASE + 'index.php?p=form&f=samplecustomer&s=cus_name'); await p.waitForTimeout(500);
+		const r = await p.evaluate((pk) => {
+			const row = document.querySelector('#nuBrowseTable tr.nuBrowseRow[data-nu-primary-key="' + pk + '"]');
+			const td = row && [...row.querySelectorAll('td.nuCellTd')].find((x) => x.textContent.includes('AAA'));
+			if (!td) return null;
+			const cs = getComputedStyle(td), lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.5;
+			return { cards: document.documentElement.classList.contains('nuPhoneCards'), h: td.getBoundingClientRect().height, lh, cut: td.scrollHeight > td.clientHeight + 1 };
+		}, id);
+		expect(r && r.cards, 'no phone cards: ' + JSON.stringify(r));
+		expect(r.h <= r.lh * 2 + 4 && r.cut, 'long value not cut to two lines: ' + JSON.stringify(r));
+		await p.goto(BASE + 'index.php?p=form&f=samplecustomer&print=1&s=cus_name'); await p.waitForTimeout(500);
+		const pv = await p.evaluate((pk) => { const row = document.querySelector('#nuBrowseTable tr.nuBrowseRow[data-nu-primary-key="' + pk + '"]');
+			const td = row && [...row.querySelectorAll('td.nuCellTd')].find((x) => x.textContent.includes('AAA'));
+			return td ? td.scrollHeight <= td.clientHeight + 1 : true; }, id);
+		expect(pv, 'print view cut the text');
+	} finally {
+		await ctx.close();
+		sql("UPDATE sample_customer SET cus_name = '" + name0.replace(/'/g, "''") + "' WHERE sample_customer_id = '" + id + "'");
+	}
+};
+
+// 0.8.1277: phones with the logo – the Start pages button sits right before ☰ and has its size; its panel stays on the screen
+T.nav_home_phone_pair = async (s) => {
+	const ctx = await s.ga.context().browser().newContext({ viewport: { width: 390, height: 760 }, storageState: await s.ga.context().storageState() });
+	const p = await ctx.newPage();
+	try {
+		await p.goto(BASE + 'index.php?p=users'); await p.waitForTimeout(400);
+		if (!(await p.locator('.navbar-toggler').count())) { s.skip = 'no logo in the bar'; return; }
+		const r = await p.evaluate(() => { const a = document.getElementById('nuHfToggle').getBoundingClientRect(), b = document.querySelector('.navbar-toggler').getBoundingClientRect();
+			return { a: [a.x, a.y, a.width, a.height].map(Math.round), b: [b.x, b.y, b.width, b.height].map(Math.round) }; });
+		expect(r.a[2] === r.b[2] && r.a[3] === r.b[3] && r.a[1] === r.b[1], 'not the same size / line: ' + JSON.stringify(r));
+		expect(r.a[0] + r.a[2] <= r.b[0] && r.b[0] - (r.a[0] + r.a[2]) <= 12, 'not right before the menu button: ' + JSON.stringify(r));
+		await p.click('#nuHfToggle');
+		await p.waitForSelector('#nuHfPanel.show');
+		const pr = await p.evaluate(() => { const x = document.getElementById('nuHfPanel').getBoundingClientRect(); return [Math.round(x.left), Math.round(x.right)]; });
+		expect(pr[0] >= 0 && pr[1] <= 390, 'panel off the screen: ' + pr);
+		// 0.8.1278 (the owner picked D): one line per row – Open / Design as icon buttons beside the title, not below it
+		await p.waitForSelector('#nuHfPanel .nuHfList:not([hidden]) .nuHfRow');
+		const rows = await p.evaluate(() => [...document.querySelectorAll('#nuHfPanel .nuHfList:not([hidden]) .nuHfRow')].filter(r => !r.hidden).map(r => {
+			const a = r.getBoundingClientRect(), o = r.querySelector('.nuHfOpen').getBoundingClientRect(), t = r.querySelector('.nuHfExp').getBoundingClientRect();
+			return { h: Math.round(a.height), sameLine: Math.abs((o.top + o.height / 2) - (t.top + t.height / 2)) < 6, label: r.querySelector('.nuHfOpen').getAttribute('aria-label') }; }));
+		expect(rows.length && rows.every(r => r.h <= 48 && r.sameLine && /: /.test(r.label)), 'rows not one line: ' + JSON.stringify(rows.slice(0, 3)));
+	} finally { await ctx.close(); }
+};
+
+// 0.8.1279 (the owner: C): an own tile page without tiles is marked "own, empty" (editor + Start pages panel), and saving a level's tile page
+// with no tiles removes it – the level uses the default again
+T.home_tiles_empty = async (s) => {
+	const p = s.ga;
+	const db = (q) => execSync('mysql ' + DB + ' -N -B', { input: q }).toString().trim();
+	const lv = 'sample_viewer';
+	if (db("SELECT COUNT(*) FROM zzzzsys_access WHERE zzzzsys_access_id = '" + lv + "'") !== '1') { s.skip = 'no sample data'; return; }
+	const own = () => db("SELECT COUNT(*) FROM zzzzsys_nunext_list_view WHERE list_key = 'home_user' AND access_ids LIKE '%\"" + lv + "\"%'");
+	expect(own() === '0', 'the level has a tile page already');
+	db("INSERT INTO zzzzsys_nunext_list_view (zzzzsys_nunext_list_view_id, list_key, scope, owner, name, access_ids, definition, sort_order) VALUES ('e2e_empty_tp', 'home_user', 'shared', '', 'e2e empty', '[\"" + lv + "\"]', '{\"groups\":[],\"fav\":[],\"hidden\":[],\"custom\":{}}', 0)");
+	try {
+		await open(p, 'index.php?p=home&for=' + lv);
+		const r = await p.evaluate((l) => ({ opt: [...document.querySelectorAll('#nuHomeFor option')].find(o => o.value === l)?.textContent || '', src: document.getElementById('nuHomeForSrc')?.textContent || '' }), lv);
+		expect(/own, empty/.test(r.opt) && /no tiles/.test(r.src), 'editor: ' + JSON.stringify(r));
+		await p.evaluate(() => { try { localStorage.setItem('nunext-hf-tab', 'tiles'); } catch (e) { /* none */ } });
+		await open(p, 'index.php?p=users');
+		await p.click('#nuHfToggle');
+		await p.waitForSelector('#nuHfPanel.show .nuHfList:not([hidden]) .nuHfRow');
+		expect(await p.locator('#nuHfList_tiles .nuHfRow[data-nu-hf="e2e_empty_tp"] .nuHfEmptyTag').count() === 1, 'panel: no empty mark');
+		await p.keyboard.press('Escape');
+		// saving the level's tile page without tiles removes it
+		await open(p, 'index.php?p=home&for=' + lv);
+		const j = await p.evaluate(async () => { const csrf = document.querySelector('input[name=_csrf]').value;
+			const x = await fetch(location.href, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf }, body: JSON.stringify({ action: 'layout', layout: { groups: [], fav: [], hidden: [], custom: {} } }) });
+			return x.json(); });
+		expect(j.ok && own() === '0', 'empty save kept the tile page: ' + JSON.stringify(j) + ' rows ' + own());
+	} finally { db("DELETE FROM zzzzsys_nunext_list_view WHERE zzzzsys_nunext_list_view_id = 'e2e_empty_tp'"); await p.evaluate(() => { try { localStorage.removeItem('nunext-hf-tab'); } catch (e) { /* none */ } }); }
+};
+
+// 0.8.1284: user menu – Documentation / Tutorial in a section of their own after the database tools / File Manager, no two dividers in a row
+T.user_menu_help_section = async (s) => {
+	const p = s.ga;
+	await open(p, 'index.php?p=users');
+	const r = await p.evaluate(() => {
+		const docs = document.getElementById('nuMenuDocs'), ul = docs && docs.closest('ul');
+		if (!ul) return null;
+		const lis = [...ul.children].filter(li => !li.hidden);
+		const idx = (el) => lis.indexOf(el && el.closest('li'));
+		let dbl = false;
+		lis.forEach((li, i) => { if (i && li.querySelector('hr') && lis[i - 1].querySelector('hr')) dbl = true; });
+		const files = document.getElementById('nuMenuFiles'), db = ul.querySelector('form[action*="p=vendor"]');
+		const prev = lis[idx(docs) - 1];
+		return { docs: idx(docs), files: idx(files), db: idx(db), divider: !!(prev && prev.querySelector('hr')), dbl };
+	});
+	expect(r && !r.dbl && r.divider && (r.files < 0 || r.files < r.docs) && (r.db < 0 || r.db < r.docs), 'user menu order: ' + JSON.stringify(r));
+};
+
+T.design_done_publish_direct = async (s) => {
+	// Done → Publish now publishes at once (no second publish window), also on User Home, with the default "ask" setting
+	const p = s.ga, F = 'nuuserhome';
+	const keep = path.join(os.tmpdir(), 'nunext-e2e-design-done-direct.sql');
+	execSync('mysqldump ' + DB + ' zzzzsys_tab zzzzsys_form zzzzsys_nunext_form_history zzzzsys_nunext_form_draft > ' + keep);
+	try {
+		sql(`DELETE FROM zzzzsys_nunext_form_draft WHERE form_id = '${F}'`);
+		await p.evaluate(() => localStorage.removeItem('nunext-design-pubask'));
+		await open(p, 'index.php?p=form&f=' + F + '&design=1'); await p.waitForSelector('#nuDsBar'); await p.waitForTimeout(800);
+		const tab = await p.evaluate(() => { const t = document.querySelectorAll('#nuTabHolder .nuTab'); return t.length ? t[t.length - 1].textContent.trim() : ''; });
+		expect(tab !== '', 'no tab on User Home');
+		await p.locator('#nuTabHolder .nuTab').last().dblclick(); await p.waitForTimeout(400);
+		await p.keyboard.press('End'); await p.keyboard.type('E2E'); await p.keyboard.press('Enter');
+		await p.waitForTimeout(1500);
+		await p.click('#nuDsDone'); await p.waitForSelector('#nuDsDoneDlg.show');
+		await p.click('#nuDsDonePublish');
+		await p.waitForURL(u => !/design=1/.test(String(u)), { timeout: 10000 }).catch(() => {});
+		await p.waitForTimeout(800);
+		expect(await p.locator('#nuDsPublishDlg.show').count() === 0, 'a second publish window opened');
+		expect(await p.locator('#nuDsBar').count() === 0, 'Publish now did not leave design mode');
+		expect(sql(`SELECT COUNT(*) FROM zzzzsys_tab WHERE syt_zzzzsys_form_id = '${F}' AND syt_title = '${tab}E2E'`) === '1', 'tab name not published');
+		expect(sql(`SELECT COUNT(*) FROM zzzzsys_nunext_form_draft WHERE form_id = '${F}' AND status IN ('open', 'review')`) === '0', 'draft still open');
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		execSync('mysql ' + DB + ' < ' + keep); fs.unlinkSync(keep);
+	}
+};
+
+T.design_publish_old_problems = async (s) => {
+	// a run button to a form that no longer exists (left over on an older database) must not stop publishing an unrelated change:
+	// it is a warning, shown on top of the publish window, and "Publish anyway" publishes
+	const p = s.ga, F = 'nuuserhome';
+	const keep = path.join(os.tmpdir(), 'nunext-e2e-design-oldprob.sql');
+	execSync('mysqldump ' + DB + ' zzzzsys_object zzzzsys_tab zzzzsys_form zzzzsys_nunext_form_history zzzzsys_nunext_form_draft > ' + keep);
+	try {
+		sql(`DELETE FROM zzzzsys_nunext_form_draft WHERE form_id = '${F}'`);
+		sql(`INSERT INTO zzzzsys_object (zzzzsys_object_id, sob_all_zzzzsys_form_id, sob_all_type, sob_all_id, sob_all_label, sob_all_zzzzsys_tab_id, sob_all_order, sob_all_top, sob_all_left, sob_all_width, sob_all_height, sob_run_type, sob_run_zzzzsys_form_id) VALUES ('e2e_oldrun', '${F}', 'run', 'e2e_oldrun', 'Old', 'nufastforms', 99, 10, 10, 120, 30, 'F', 'e2e_form_gone')`);
+		await p.evaluate(() => localStorage.removeItem('nunext-design-pubask'));
+		await open(p, 'index.php?p=form&f=' + F + '&design=1'); await p.waitForSelector('#nuDsBar'); await p.waitForTimeout(800);
+		const tab = await p.evaluate(() => { const t = document.querySelectorAll('#nuTabHolder .nuTab'); return t.length ? t[t.length - 1].textContent.trim() : ''; });
+		await p.locator('#nuTabHolder .nuTab').last().dblclick(); await p.waitForTimeout(400);
+		await p.keyboard.press('End'); await p.keyboard.type('E2E'); await p.keyboard.press('Enter');
+		await p.waitForTimeout(1500);
+		await p.click('#nuDsPublish'); await p.waitForSelector('#nuDsPublishDlg.show');
+		await p.click('#nuDsPubOk'); await p.waitForSelector('#nuDsPubInfo .alert-warning', { timeout: 8000 });
+		expect(/e2e_form_gone/.test(await p.textContent('#nuDsPubInfo')), 'warning text: ' + await p.textContent('#nuDsPubInfo'));
+		const vis = await p.evaluate(() => { const b = document.querySelector('#nuDsPubInfo').getBoundingClientRect(), m = document.querySelector('#nuDsPublishDlg .modal-body').getBoundingClientRect(); return b.top >= m.top - 1 && b.top < m.bottom; });
+		expect(vis, 'the answer is not in view');
+		await p.click('#nuDsPubOk'); await p.waitForTimeout(2500);
+		expect(await p.locator('#nuDsPublishDlg.show').count() === 0, 'window stayed: ' + await p.textContent('#nuDsPubInfo').catch(() => '?'));
+		expect(sql(`SELECT COUNT(*) FROM zzzzsys_tab WHERE syt_zzzzsys_form_id = '${F}' AND syt_title = '${tab}E2E'`) === '1', 'not published');
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		execSync('mysql ' + DB + ' < ' + keep); fs.unlinkSync(keep);
+	}
 };
 
 T.access_delete_expired = async (s) => {

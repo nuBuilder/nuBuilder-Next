@@ -169,6 +169,7 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 	if (array_keys($nav) === ['home']) $nav = [];
 	// compact top bar (0.8.706): no logo in the bar (Branding → Show logo) – on phones the icons stay in the bar, ☰ opens the user menu
 	$compact = !NuBranding::logoShown('');
+	$hf = empty($opt['bare']) && NuHomeForms::allowed();   // Home forms of the access levels (0.8.1264, globeadmin)
 	$sidebar = NuSidebar::enabled() && empty($opt['no_sidebar']);   // side bar (0.8.460, core/nusidebar.php)
 	if (empty($opt['bare'])) NuSidebar::record(NuSidebar::currentKey());   // recently used: side bar and start page (0.8.492)
 	?>
@@ -178,7 +179,9 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 	<?= NuImpersonate::banner() ?>
 	<div class="container-fluid nuNavInner"><?php // full width (0.8.483): the logo stays at the left edge on every page, the menus at the right ?>
 		<?php if ($compact): // no logo in the bar (0.8.707): a Home button at the very left ?>
-			<a class="btn btn-sm btn-outline-secondary me-2 nuHomeBtn" id="nuHomeBtn" href="<?= h(nu_url('home')) ?>" title="<?= h(t('nav_home')) ?>" aria-label="<?= h(t('nav_home')) ?>"<?= $active === 'home' ? ' aria-current="page"' : '' ?>><i class="bi bi-house"></i></a>
+			<?php if ($hf): // Home forms of the access levels (0.8.1264): split button ▾ next to Home ?><div class="btn-group me-2 nuHfGroup"><?php endif; ?>
+			<a class="btn btn-sm btn-outline-secondary<?= $hf ? '' : ' me-2' ?> nuHomeBtn" id="nuHomeBtn" href="<?= h(nu_url('home')) ?>" title="<?= h(t('nav_home')) ?>" aria-label="<?= h(t('nav_home')) ?>"<?= $active === 'home' ? ' aria-current="page"' : '' ?>><i class="bi bi-house"></i></a>
+			<?php if ($hf): ?><?= NuHomeForms::button() ?></div><?php endif; ?>
 		<?php endif; ?>
 		<?php if ($sidebar): // side bar (0.8.460): a drawer opened here, left of the logo, on every screen width (0.8.513) ?>
 			<button type="button" class="btn btn-sm btn-outline-secondary me-2 nuSbOpenBtn" id="nuSbOpen" aria-controls="nuSidebar" aria-expanded="false" title="<?= h(t('sb_open')) ?>" aria-label="<?= h(t('sb_open')) ?>"><i class="bi bi-layout-sidebar"></i></button>
@@ -192,6 +195,7 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 			<?= nu_csrf_field() ?><input type="hidden" name="action" value="hide_logo"><input type="hidden" name="back" value="<?= h('index.php?' . (string)($_SERVER['QUERY_STRING'] ?? '')) ?>">
 		</form>
 		<?php endif; ?>
+		<?php if ($hf && !$compact): // logo shown: the ▾ of the Home forms right of it (0.8.1264) ?><div class="dropdown me-2 nuHfGroup"><?= NuHomeForms::button(false) ?></div><?php endif; ?>
 		<?= NuBranding::envBadge('me-auto me-md-3') ?>
 		<?php if ($compact): // no logo (0.8.730): on desktop the page's breadcrumb moves here, next to the Home button (assets/js/nuapp.js) ?>
 			<nav class="nuNavCrumbs" id="nuNavCrumbs" aria-label="breadcrumb" hidden></nav>
@@ -250,18 +254,14 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 						<?php elseif (!NuAdmin::any()): // admins reach Security through the start page tile (0.8.708) ?>
 						<li><a class="dropdown-item" href="<?= h(nu_url('security')) ?>"><i class="bi bi-shield-lock me-2"></i><?= h(t('sec_title')) ?></a></li>
 						<?php endif; ?>
-						<?php if (NuUserHome::available() && NuAcl::can(NuUserHome::FORM)): // nuBuilder Forte's User Home (0.8.603) ?>
-							<li><a class="dropdown-item" href="<?= h(nu_url('form', ['f' => NuUserHome::FORM])) ?>" id="nuMenuUserHome"><i class="bi bi-house-door me-2"></i><?= h(t('home_userhome')) ?></a></li>
+						<?php if (!$hf && NuUserHome::available() && NuAcl::can(NuUserHome::FORM)): // nuBuilder Forte's User Home (0.8.603); not with the Start pages panel – it has User Home in its head (0.8.1283); window icon as its tile ?>
+							<li><a class="dropdown-item" href="<?= h(nu_url('form', ['f' => NuUserHome::FORM])) ?>" id="nuMenuUserHome"><i class="bi bi-window me-2"></i><?= h(t('home_userhome')) ?></a></li>
 						<?php endif; ?>
 						<?php if ($u['globeadmin'] ? NuHome::globeadminForm() !== null : NuHome::startForm($u) !== null): // a form opens instead of the tile page ($nuConfigGlobeadminHome, start page "Home form" of the access level 0.8.1203) – the tile page stays reachable here ?>
 							<li><a class="dropdown-item" id="nuMenuTiles" href="<?= h(nu_url('home', ['tiles' => '1'])) ?>"><i class="bi bi-grid me-2"></i><?= h(t('home_tiles_link')) ?></a></li>
 						<?php endif; ?>
-						<?php // side bar on / off: start page → Customise → Appearance (0.8.708); "for everyone": Settings → Look ?>
-						<li><hr class="dropdown-divider"></li>
-						<?php if (NuUserHelp::any() && !NuUserHelp::canManage()): // user help pages of this installation (0.8.1023); not for those who manage them (0.8.1112: tile Help pages, the Help button of a form) ?><li><a class="dropdown-item" href="<?= h(nu_url('userhelp')) ?>" id="nuMenuUserHelp"><i class="bi bi-journal-bookmark me-2"></i><?= h(t('uh_title')) ?></a></li><?php endif; ?>
-						<li hidden id="nuMenuInstallLi"><button type="button" class="dropdown-item" id="nuMenuInstall" data-ios="<?= h(t('pwa_ios_hint')) ?>" data-title="<?= h(t('pwa_install')) ?>"><i class="bi bi-phone me-2"></i><?= h(t('pwa_install')) ?></button></li>
-						<li><a class="dropdown-item" href="<?= h(nu_url('help')) ?>" target="_blank" rel="noopener" id="nuMenuDocs"><i class="bi bi-book me-2"></i><?= h(t('help_title')) ?></a></li>
-						<?php if (NuTutorial::allowed()): ?><li><a class="dropdown-item" href="<?= h(nu_url('tutorial')) ?>"><i class="bi bi-mortarboard me-2"></i><?= h(t('tut_title')) ?></a></li><?php endif; ?>
+						<?php // side bar on / off: start page → Customise → Appearance (0.8.708); "for everyone": Settings → Look
+						ob_start();   // the user's own items (password, import, account): a divider only when there are any (0.8.1284) ?>
 						<?php if (!$u['globeadmin'] && $u['via'] !== 'nubuilder' && !NuImpersonate::active()): ?>
 							<li><a class="dropdown-item" href="<?= h(nu_url('password')) ?>"><i class="bi bi-key me-2"></i><?= h(t('nav_change_password')) ?></a></li>
 						<?php endif; ?>
@@ -271,6 +271,7 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 						<?php if (!$u['globeadmin'] && NuUserFields::editable('self')): // custom fields the user fills in himself (0.8.454) ?>
 							<li><a class="dropdown-item" href="<?= h(nu_url('account')) ?>" id="nuMyAccount"><i class="bi bi-person-lines-fill me-2"></i><?= h(t('acc_title')) ?></a></li>
 						<?php endif; ?>
+						<?php $own = trim((string)ob_get_clean()); if ($own !== ''): ?><li><hr class="dropdown-divider"></li><?= $own ?><?php endif; ?>
 						<?php if (NuAdmin::any() && (nu_db()->type === 'mysql' || NuVendor::available('ADM') || NuFileManager::visible())): // admin roles (0.8.323): only what the role allows ?>
 							<li><hr class="dropdown-divider"></li>
 							<?php // database tools (0.8.282): phpMyAdmin / Adminer, the primary one first ($nuConfigPrimaryDatabaseManagement); then File Manager
@@ -295,6 +296,12 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 								<li><a class="dropdown-item" href="<?= h(NuFileManager::url()) ?>" target="_blank" rel="noopener" id="nuMenuFiles"><i class="bi bi-folder2-open me-2"></i><?= h(t('vendor_tfm')) ?></a></li>
 							<?php endif; ?>
 						<?php endif; ?>
+						<?php // help and learning after the tools (0.8.1284, the owner): documentation, tutorial, help pages, install as app ?>
+						<li><hr class="dropdown-divider"></li>
+						<?php if (NuUserHelp::any() && !NuUserHelp::canManage()): // user help pages of this installation (0.8.1023); not for those who manage them (0.8.1112: tile Help pages, the Help button of a form) ?><li><a class="dropdown-item" href="<?= h(nu_url('userhelp')) ?>" id="nuMenuUserHelp"><i class="bi bi-journal-bookmark me-2"></i><?= h(t('uh_title')) ?></a></li><?php endif; ?>
+						<li hidden id="nuMenuInstallLi"><button type="button" class="dropdown-item" id="nuMenuInstall" data-ios="<?= h(t('pwa_ios_hint')) ?>" data-title="<?= h(t('pwa_install')) ?>"><i class="bi bi-phone me-2"></i><?= h(t('pwa_install')) ?></button></li>
+						<li><a class="dropdown-item" href="<?= h(nu_url('help')) ?>" target="_blank" rel="noopener" id="nuMenuDocs"><i class="bi bi-book me-2"></i><?= h(t('help_title')) ?></a></li>
+						<?php if (NuTutorial::allowed()): ?><li><a class="dropdown-item" href="<?= h(nu_url('tutorial')) ?>"><i class="bi bi-mortarboard me-2"></i><?= h(t('tut_title')) ?></a></li><?php endif; ?>
 						<?php if (NuSysInfo::allowed()): // System info dialog (0.8.1237; was the version link to the Update page) ?>
 							<li><hr class="dropdown-divider"></li>
 							<li><button type="button" class="dropdown-item" id="nuSysInfoBtn" data-bs-toggle="modal" data-bs-target="#nuSysInfoDlg"><i class="bi bi-info-circle me-2"></i><?= h(t('si_menu')) ?></button></li>
@@ -481,6 +488,7 @@ function nu_layout_end(string $extraBody = '', bool $bare = false): void
 <?php if (!$bare && !empty($GLOBALS['nu_bell_on'])): ?><script src="<?= nu_asset('assets/js/nunotify.js') ?>"></script><?php endif; ?>
 <?php if (NuSidebar::$drawn): ?><script src="<?= nu_asset('assets/js/nusidebar.js') ?>"></script><?php endif; ?>
 <?php if (!$bare && NuAuth::user() && NuSysInfo::allowed()): ?><script src="<?= nu_asset('assets/js/nusysinfo.js') ?>"></script><?php endif; /* System info dialog (0.8.1237) */ ?>
+<?php if (!$bare && NuAuth::user() && NuHomeForms::allowed()): ?><script src="<?= nu_asset('assets/js/nuhomeforms.js') ?>"></script><?php endif; /* Home forms panel (0.8.1264) */ ?>
 <?= $extraBody ?>
 </body>
 </html>

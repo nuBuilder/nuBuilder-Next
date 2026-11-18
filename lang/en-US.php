@@ -53,6 +53,7 @@ return [
 	'page_sample_lists' => 'Lists and colors',
 	'pk_js_cancel' => 'Canceled or timed out – nothing was changed.',
 	'ntf_f_format_tip' => 'On: an editor for bold, italic, lists and links. Other HTML is removed when saving (no colors, fonts, images or scripts). Off: plain text.',
+	'ntf_opt_confirm_d' => 'Shown as a dialog until the user clicks “Got it”',
 	'ntf_f_must_confirm_tip' => 'Shown as a dialog on the next page the recipient opens, until "Got it" is clicked; the time is recorded. Always uses the fixed list.',
 	'mail_oauth_auth_url' => 'Authorization address',
 	'mail_oauth_redirect_tip' => 'Enter this address in the Google Cloud console (OAuth client, "Authorized redirect URIs") or in the Azure app registration (Authentication → Web → Redirect URIs).',

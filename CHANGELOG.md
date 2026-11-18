@@ -3,6 +3,127 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.1287 – Release gate
+- Release gate: the full test suite (smoke, end-to-end, cross-tests with nuBuilder Forte, security scan) for
+  0.8.1263–0.8.1287; feature list, tutorial and open checks brought up to date.
+
+## 0.8.1286 – Publishing no longer blocked by old problems
+- Design mode, publishing: problems in parts of a form the draft did not change (for example a button that
+  opens a form deleted long ago, common on older databases) no longer block publishing – they are shown as
+  warnings and "Publish anyway" publishes. Before, Publish refused with an error that was hard to see.
+- The publish window shows warnings, errors and failures at the top, scrolled into view (they were below the
+  summary of changes, out of sight, so Publish seemed to do nothing).
+
+## 0.8.1285 – Done → Publish now publishes directly
+- Design mode: Done → Publish now publishes at once and leaves design mode. Before, a second publish
+  window opened on top of the closing question, and its Publish button could seem to do nothing. A window
+  now opens only for warnings, errors or when someone else changed the published form.
+
+## 0.8.1284 – User menu: help section after the tools
+- User menu: Documentation and Tutorial (with the help pages and "Install as app") now form their own section after the
+  database tools and the File Manager; the personal entries (password, import, my account) come first.
+
+## 0.8.1283 – User Home out of the globeadmin's user menu
+- User menu: User Home is no longer listed for the globeadmin (it is in the head of the Start pages panel); other users who
+  may open it keep the entry, now with the window icon of its tile instead of the house.
+
+## 0.8.1282 – User Home in the Start pages panel head
+- Start pages panel: User Home sits in the head of the panel (button with its window icon, pencil for design mode),
+  one tap away on both tabs however long the list is; it is no longer a row of the Home forms list.
+
+## 0.8.1281 – Start page without the User Home button
+- Start page: the User Home button (house) next to Customise is gone – with the Start pages button there were two house
+  icons. User Home still opens from its tile, Recently used, the user menu and the Start pages panel.
+
+## 0.8.1280 – Start pages panel without the access level count
+- Start pages panel: the number of access levels is no longer shown next to the title.
+
+## 0.8.1279 – Empty tile pages marked and no longer kept
+- Tile pages of users: a tile page saved without any tile is no longer kept – the access level uses the default tile page
+  again. Older own tile pages without tiles are marked "own, empty" in the tile page editor (with a note that "Use the default"
+  removes them) and "empty" in the Tile pages tab of the Start pages panel.
+
+## 0.8.1278 – Start pages panel: one line per row
+- Start pages panel: every row is one line – title (cut with … when long, full title as tooltip), number of access levels and
+  Open / Design as small icon buttons at the right, also on phones. About twice as many rows fit on a phone screen.
+
+## 0.8.1277 – Start pages button next to the menu button on phones
+- Phones: with a logo in the top bar, the Start pages button (house ▾) now sits right before the menu button and has the same
+  size.
+
+## 0.8.1276 – Start pages panel with a Tile pages tab
+- The Home forms panel next to the Home button is now "Start pages" with two tabs: Home forms (as before) and Tile pages.
+  Tile pages lists the default tile page of users (or the automatic one while none is saved) with the access levels that use
+  it, then every saved tile page with its access levels; a level chip opens that level's tile page in the editor, Open the
+  tile page itself. The search works on the shown tab and the panel opens on the tab used last. The former last row
+  "Tile pages of users" is replaced by the tab.
+
+## 0.8.1275 – Phone cards: two lines per value
+- Phones: in the card view of form lists every value shows at most two lines and ends with "…" – a long text no longer makes
+  one card fill the screen. A tap on the card opens the record with the whole text; stored data, search and the print view
+  are unchanged.
+
+## 0.8.1274 – Home forms list: tile pages of users
+- Home forms list (globeadmin): its last row "Tile pages of users" lists the access levels that start on a tile page;
+  a click on one opens its tile page in the editor, Open shows the default tile page of users. The link "Tile page"
+  in the foot, which only led to the globeadmin's own tile page, is gone – that page is the Home button.
+
+## 0.8.1273 – Sign-in for own PHP apps
+- New for own PHP apps: nuexternal.php – a plain PHP app in a sub-folder of nuBuilder Next includes it and gets the
+  signed-in user (name, team, department, position, access levels, permission items) through the class NuNextUser,
+  with require() (to the sign-in page and back), deny() and checks such as hasPermission() or inTeam(). It only reads
+  and loads nothing else of nuBuilder Next, so the app keeps its own code and session. Help: Custom pages → Own PHP
+  apps without a custom page.
+- The sign-in page can return to such an app page after signing in.
+
+## 0.8.1272 – Help: rights on system forms
+- Help: rights on the system forms (users, access levels, forms, procedures …) also open the matching admin
+  tools and show their tiles on the start page – unlike in nuBuilder Forte; noted under How rights work and
+  in the list of differences to nuBuilder Forte.
+
+## 0.8.1271 – Notification editor layout
+- Notification editor in a new layout: one column with three numbered sections (Message, Recipients,
+  Delivery). Recipients are added as rows with "+ Users", "+ Teams" … instead of six empty fields; level and
+  options are tiles with a short explanation; a bar at the bottom always shows the summary (how many users,
+  from / until, must confirm) with Save as draft and Publish. Works the same on phones, tablets and desktops.
+
+## 0.8.1270 – Home forms list without missing forms
+- Home forms menu: access levels whose Home form no longer exists are left out of the list
+  (no "form not found" rows).
+
+## 0.8.1269 – Start page: back to the tiles
+- Access levels, Start page: a level with "Home form" chosen but no Home form now saves as the tile page instead of stopping
+  with an error, so a level can always go back to the tiles; clearing the Home form also switches the choice to "Tile page".
+
+## 0.8.1268 – Blank page (system)
+- nuBuilder Forte's empty form "Blank" (nublank) is shown as "Blank page (system)" wherever a form is named – e.g. the access
+  levels list and the Home form field – and is no longer listed in the Home forms menu next to the Home button.
+
+## 0.8.1267 – Top bar lines up with the content
+- Top bar on large screens: the white bar still spans the window, but the logo / Home button and the menus now line up with
+  the edges of the content (the 1600 px sheet from 1680 px on, or the page width chosen for the device). Below 1680 px, with
+  "Full width" and in design mode nothing changes.
+
+## 0.8.1266 – Home forms list collapsed
+- Home forms list: rows start collapsed – the form's title and the number of its access levels; a click on the title folds out
+  the code and the access levels. A search folds out the rows it finds.
+
+## 0.8.1265 – Page keys in all lists
+- Lists: Ctrl+Shift+← / → go to the previous / next page and Ctrl+Shift+Home / End to the first / last page in nuBuilder
+  Next's own lists too (users, forms, procedures, log …), as in nuBuilder Forte's browse lists – also while the search field
+  has the focus. Form lists already had these keys.
+
+## 0.8.1264 – Home forms at a glance
+- Home forms at a glance: the globeadmin opens a list of every Home form of the access levels from the ▾ next to the Home
+  button (with a logo in the top bar: the house button right of the logo); without a logo, a right-click on Home or a long
+  press on a phone opens it too, a plain click still goes Home.
+- Each row shows the form's title and code, its access levels as chips (solid = the level starts on this form, dashed = on
+  the tile page; a chip opens the level's Start page tab), Open and Design; a search field finds a form or an access level,
+  the foot counts the levels without a Home form.
+
+## 0.8.1263 – Notes
+- Notes only: v0.8.1262 published on GitHub (dev/release-notes.md).
+
 ## 0.8.1262 – Release gate
 - Release gate. Documentation checked page by page against the application: every page's buttons, fields and menus compared with
   its help page, and every menu path and label named in the help and the tutorial compared with the texts of the application.

@@ -69,6 +69,8 @@ page) for how to use it.
 - **Dashboards** – KPI tiles, charts and tables built from SQL, on the start page or on any form.
 - **Custom pages** – your own PHP apps inside nuBuilder Next, with its sign-in, rights, a stable page API, drafts and
   versions.
+- **Sign-in for own PHP apps** – plain PHP apps in a sub-folder include `nuexternal.php` and get the signed-in user,
+  permissions, teams and access levels of nuBuilder Next (no custom page needed).
 - **Data import and export** – CSV and Excel / OpenDocument into any table with column mapping; saved exports of tables,
   views and queries to Excel or CSV, streamed for any size.
 - **Integration** – a REST API (OAuth 2.0 client credentials) with a playground, webhooks to n8n, Zapier, Teams or your own
@@ -100,6 +102,8 @@ page) for how to use it.
 - **Audit trail and log** – every change per field, with history and restore; a log of logins, exports and admin changes (older entries can be deleted).
 - **Tile pages per access level** – users get their own tiles and can personalise them; or, per access level, the Home form opens
   after sign-in as in nuBuilder Forte – set on the access level's tab *Start page*, with a preview of the tiles.
+- **Start pages at a glance** – the globeadmin lists every Home form and every tile page with their access levels from the ▾ next to Home
+  (or a right-click / long press on Home): tabs Home forms / Tile pages, search, Open and Design on one line, User Home in the head
 - **Maintenance in the browser** – signed updates with backup, rollback and a preview of database changes; restore the
   database from a backup (MySQL / MariaDB); a `nuconfig.php`
   editor; global JavaScript / CSS; system status; logged-in users; phpMyAdmin, Adminer and a file manager (recycle bin,

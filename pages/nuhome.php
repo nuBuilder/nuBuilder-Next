@@ -149,7 +149,8 @@ nu_layout_start($editorPage ? t('home_u_title') : t('nav_home'), 'home', ['head'
 	$curSrc = (string)NuHome::current()['source'];
 	$allLv = $for === NuHome::ALL_LEVELS;
 	$own = $curSrc === 'level' || ($allLv && $curSrc === 'default');   // saved for this choice: "Use the default again" / "Remove the default"
-	$srcKey = $allLv ? ($own ? 'home_u_src_saved_default' : 'home_u_src_auto_all') : ['level' => 'home_u_src_level', 'default' => 'home_u_src_default', 'auto' => 'home_u_src_auto'][$curSrc]; ?>
+	$srcKey = $allLv ? ($own ? 'home_u_src_saved_default' : 'home_u_src_auto_all') : ['level' => 'home_u_src_level', 'default' => 'home_u_src_default', 'auto' => 'home_u_src_auto'][$curSrc];
+	if ($curSrc === 'level' && !$allLv && !empty($choices[$for]['empty'])) $srcKey = 'home_u_src_level_empty';   // 0.8.1279: own but without tiles ?>
 <div class="nuTitleBar mb-3">
 	<h1 class="h3 mb-0 d-flex align-items-center gap-2"><i class="bi bi-grid-1x2" aria-hidden="true"></i><?= h(t('home_u_title')) ?></h1>
 	<div class="d-flex flex-wrap gap-2">
@@ -166,7 +167,7 @@ nu_layout_start($editorPage ? t('home_u_title') : t('nav_home'), 'home', ['head'
 		<label class="fw-semibold" for="nuHomeFor"><?= h(t('home_u_for')) ?></label>
 		<select class="form-select nuListTomSelect nuHomeForSel" id="nuHomeFor"><?php /* 0.8.1202: searchable, never wider than the screen */ ?>
 			<?php foreach ($choices as $cid => $c): ?>
-				<option value="<?= h($cid) ?>" data-url="<?= h(nu_url('home', ['for' => $cid])) ?>"<?= $cid === $for ? ' selected' : '' ?>><?= h($c['label'] . ($cid !== NuHome::ALL_LEVELS ? ' (' . t('home_u_short_' . $c['source']) . ')' : '')) ?></option>
+				<option value="<?= h($cid) ?>" data-url="<?= h(nu_url('home', ['for' => $cid])) ?>"<?= $cid === $for ? ' selected' : '' ?>><?= h($c['label'] . ($cid !== NuHome::ALL_LEVELS ? ' (' . t($c['source'] === 'level' && !empty($c['empty']) ? 'home_u_short_level_empty' : 'home_u_short_' . $c['source']) . ')' : '')) ?></option>
 				<?php if ($cid === NuHome::ALL_LEVELS && count($choices) > 1): ?><option disabled>──────────</option><?php endif; ?>
 			<?php endforeach; ?>
 		</select>
@@ -381,9 +382,7 @@ foreach (NuHomeHook::$banners as [$bText, $bLevel]): ?>
 	<?php // one Customise button (0.8.452): the panel #nuHomeViewPanel with the tabs Content (edit mode / Personalise – the two hidden
 	// buttons below start them), Appearance (how the tiles look, before: View) and Layouts (choose, save, share) ?>
 	<div class="nuHomeTools">
-		<?php if (!$editorPage && NuUserHome::available() && NuAcl::can(NuUserHome::FORM)): // nuBuilder Forte's User Home (0.8.603) – its own button next to Customise (0.8.998; back 0.8.1220) ?>
-		<a class="btn btn-outline-secondary nuHomeUhBtn" id="nuHomeUserHome" href="<?= h(nu_url('form', ['f' => NuUserHome::FORM])) ?>" title="<?= h(t('home_userhome')) ?>" aria-label="<?= h(t('home_userhome')) ?>"><i class="bi bi-house-door" aria-hidden="true"></i></a>
-		<?php endif; ?>
+		<?php // User Home: no button here any more (0.8.1281, the owner: two house icons with the Start pages ▾) – tile, Recently used, user menu, Start pages panel ?>
 		<button type="button" class="btn btn-outline-secondary" id="nuHomeViewBtn" aria-expanded="false" aria-controls="nuHomeViewPanel" title="<?= h(t('home_c_tip')) ?>" aria-label="<?= h(t('home_customize')) ?>">
 			<i class="bi bi-sliders2" aria-hidden="true"></i><span class="nuHomeBtnTx"><?= h(t('home_customize')) ?></span></button>
 		<?php if ($canLayout): ?><button type="button" hidden class="btn btn-outline-secondary" id="nuHomeCustomize" title="<?= h(t($editorPage ? 'home_u_customise_tip' : 'home_v_customise_tip')) ?>">

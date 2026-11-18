@@ -28,6 +28,7 @@
 </tbody>
 </table>
 <p>Row present = view; Save = edit; Add/New = create; Delete; Clone; Print = print view, CSV and Excel export. Procedures need a row in <code>zzzzsys_access_php</code> (or <em>global</em>).</p>
+<p><strong>Rights on the system forms open the matching admin tools.</strong> An access level with a row for nuBuilder Forte's Users form, Access levels form, Forms, Procedures, Reports and so on also gets that tool's page and its tile on the start page – unlike in nuBuilder Forte, where only the form itself opens. Give such rights on purpose, not only to let someone add or delete a record.</p>
 <p><strong>Admin-equivalent rights</strong> (marked <i class="bi bi-shield-exclamation"></i> on the access level page): Save, Add, New, Delete or Clone on <code>nuform</code>, <code>nuprocedure</code>, <code>nuselect</code>, <code>nusetup</code>, <code>nuuser</code> or <code>nuaccess</code> give full control – PHP code on the server, SQL on every table, the mail server (password-reset mails), the passwords and access levels of all users. With <em>Only the globeadmin grants admin rights</em> (<a href="#security-check">Security check</a>, on by default):</p>
 <ul>
 <li>only the globeadmin adds these rights to an access level or assigns an access level that has them (also through the REST API);</li>

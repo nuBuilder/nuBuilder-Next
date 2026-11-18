@@ -84,6 +84,7 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **Installable app** (0.8.1136) – on HTTPS: install on Android / desktop Chrome, Add to Home Screen on iPhone; icon, name, favourites as shortcuts, offline page in airplane mode, Branding switch off removes the worker; own logo as icon.
 
 ## Sign-in and security
+- [ ] **Own PHP apps with nuexternal.php** (0.8.1273) – please verify on the live server: an app in a sub-folder of nuBuilder Next gets the signed-in user, returns there after the sign-in, loses access after signing out; with $nuConfigSettingsFromDB the timeout of zzzzsys_config counts
 - [ ] **Hardening from the security check of 0.8.1061** (decision: which to build) – no exploitable finding; four optional points:
       1. *Inline styles in list cells*: the cleaner keeps `style` (without `url()` / scripts), so `position: fixed` could draw over the
          page → allow only harmless properties (colour, font, padding, border).
@@ -118,6 +119,8 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       protect_fields is off.
 
 ## Forms and design mode
+- [ ] **Publishing with old problems** (0.8.1285 / 0.8.1286) – Done → Publish now publishes at once; problems in parts the draft did not change (a run button to a deleted form) only warn – please verify on other older forms of the live database
+- [ ] **Phone cards two lines, notification editor** (0.8.1271 / 0.8.1275) – please verify on a phone: long values in list cards end after two lines with …; the new notification editor (sections, rule rows, summary bar)
 - [ ] **Record check per form** (0.8.1234) – please verify: design mode → Form → Data "Any record may be opened" lets a link to a record outside the list open; `nuNextRecordCheck(false)` in Before Edit does the same for one record.
 - [ ] **List cells one line, widths while sorting** (0.8.1228 / 0.8.1232 / 0.8.1233) – please verify on a list with long text: one line with …, tooltip with the whole text; sorting / paging keeps the column widths.
 - [ ] **Remembered tab without a flash** (0.8.1224) – please verify on a form with tabs: after a refresh the first tab no longer shows for a moment.
@@ -255,6 +258,7 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **Procedures list: search in code** (0.8.1254) – please verify: tick *Code* next to the search of the procedures list; procedures whose PHP or JavaScript contains the text are found.
 
 ## Users, access levels and permissions
+- [ ] **Start pages at a glance** (0.8.1264–0.8.1283) – please verify: ▾ next to Home (or the house button right of the logo, next to ☰ on phones) – tabs Home forms / Tile pages, rows on one line, User Home in the head; an empty tile page is not kept (the level uses the default); the user menu order (own items · tools · help · System info)
 - [ ] **Delete access level with expired users** (0.8.1250) – a level used only by expired users can be deleted; check that those users show an empty access level and that nuBuilder Forte's user form handles them
 - [ ] **User form layout** (0.8.1230–0.8.1245) – please verify on the live server: summary on the left (jumps to login / code / status / level, no keyboard on phones), sections capped in width, compact summary on phones.
 - [ ] **Start page Home form on a Forte database** (0.8.1219) – please verify after the update on the live server: every access level with a Home form opens it after sign-in (Access levels → a level → Start page shows Home form); levels switched back to Tile page stay so; a new level with a Home form starts on it

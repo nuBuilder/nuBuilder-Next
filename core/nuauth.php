@@ -279,11 +279,27 @@ final class NuAuth
 	/** index.php?p=<page>… of this installation, or null (no other host, no login / logout page, no auto-login link). */
 	public static function validNext(string $url): ?string
 	{
+		if (self::validAppNext($url)) return $url;            // a page of an own app that uses nuexternal.php (0.8.1273)
 		if (strlen($url) > 2000 || !preg_match('~^index\.php\?[^\s\\\\]*$~', $url) || str_contains($url, '//')) return null;
 		parse_str((string)substr($url, 10), $q);
 		$p = $q['p'] ?? null;
 		if (!is_string($p) || $p === '' || in_array($p, self::NO_NEXT, true) || isset($q['u'])) return null;
 		return $url;
+	}
+
+	/** Folders of nuBuilder Next itself – never the page of an own app (nuexternal.php keeps the same list). */
+	private const APP_NEXT_DENY = ['core', 'pages', 'lang', 'assets', 'vendor', 'install', 'docs', 'custom', 'dev', 'apps', 'temp', '_backup', '_update', '_install', '_libsrc'];
+
+	/**
+	 * A PHP file of an own app in a sub-folder of nuBuilder Next's folder (tools/x/app.php?…), relative, as nuexternal.php sends it:
+	 * letters, digits, - _ . in each folder name, no "..", no "//", not one of nuBuilder Next's own folders.
+	 */
+	public static function validAppNext(string $url): bool
+	{
+		if (strlen($url) > 2000 || preg_match('/[\s\\\\]/', $url) || str_contains($url, '//') || str_contains($url, '..')) return false;
+		$path = explode('?', $url, 2)[0];
+		if (!preg_match('~^[A-Za-z0-9_-][A-Za-z0-9_.-]*(/[A-Za-z0-9_-][A-Za-z0-9_.-]*)+\.php$~', $path)) return false;
+		return !in_array(explode('/', $path)[0], self::APP_NEXT_DENY, true);
 	}
 
 	/** The page a POST / background request came from (same host, index.php?…), to return there after the login. */

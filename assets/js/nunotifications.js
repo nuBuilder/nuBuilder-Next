@@ -25,7 +25,63 @@
 		ts.push(t);
 	});
 
+	// recipient builder (0.8.1271): one row per field (.ntfRule[data-rule]), hidden while empty; "+ …" shows it, × empties and hides it
+	var rulesBox = document.getElementById('ntfAudience'), addBox = document.getElementById('ntfAdd'), noneHint = document.getElementById('ntfRuleNone');
+	function tsOf(key) { var s = document.getElementById('aud_' + key); return s && s.tomselect ? s.tomselect : null; }
+	function syncRules() {
+		if (!rulesBox) return;
+		var on = !!(all && all.checked), any = false;
+		rulesBox.querySelectorAll('.ntfRule').forEach(function (r) {
+			var k = r.getAttribute('data-rule'), b = addBox ? addBox.querySelector('[data-rule="' + k + '"]') : null;
+			if (b) b.hidden = !r.hidden || (on && k !== 'exclude');
+			if (!r.hidden && k !== 'exclude') any = true;
+			r.classList.toggle('ntfRuleOff', on && k !== 'exclude');
+		});
+		if (noneHint) noneHint.hidden = on || any;
+	}
+	if (addBox) addBox.addEventListener('click', function (e) {
+		var b = e.target.closest('.ntfAddRule');
+		if (!b) return;
+		var r = rulesBox.querySelector('.ntfRule[data-rule="' + b.getAttribute('data-rule') + '"]');
+		if (!r) return;
+		r.hidden = false;
+		syncRules();
+		var t = tsOf(b.getAttribute('data-rule'));
+		if (t) t.focus(); else { var s = r.querySelector('select'); if (s) s.focus(); }
+	});
+	if (rulesBox) rulesBox.addEventListener('click', function (e) {
+		var x = e.target.closest('.ntfRuleX');
+		if (!x) return;
+		var k = x.getAttribute('data-rule-x'), r = x.closest('.ntfRule'), t = tsOf(k);
+		if (t) t.clear(); else Array.prototype.forEach.call(r.querySelectorAll('option'), function (o) { o.selected = false; });
+		r.hidden = true;
+		syncRules();
+		schedule();
+		var b = addBox && addBox.querySelector('[data-rule="' + k + '"]');
+		if (b) b.focus();
+	});
+
+	// summary in the bottom bar: "24 users · now · until … · Must confirm"
+	var sumBox = document.getElementById('ntfSum'), lastN = null;
+	function when(v) {
+		if (!v) return '';
+		var d = new Date(v);
+		return isNaN(d) ? v : d.toLocaleString(document.documentElement.lang || undefined, {dateStyle: 'medium', timeStyle: 'short'});
+	}
+	function fill1(t, x) { return String(t).replace(/%[sd]/, x); }
+	function summary() {
+		if (!sumBox) return;
+		var parts = [], pub = document.getElementById('ntf_pub'), exp = document.getElementById('ntf_exp');
+		if (lastN !== null) parts.push(fill1(sumBox.getAttribute('data-users'), lastN));
+		parts.push(pub && pub.value ? fill1(sumBox.getAttribute('data-from'), when(pub.value)) : sumBox.getAttribute('data-now'));
+		if (exp && exp.value) parts.push(fill1(sumBox.getAttribute('data-until'), when(exp.value)));
+		if (confirmSw && confirmSw.checked) parts.push(sumBox.getAttribute('data-confirm'));
+		sumBox.textContent = parts.join(' · ');
+	}
+	['ntf_pub', 'ntf_exp'].forEach(function (id) { var el = document.getElementById(id); if (el) el.addEventListener('change', summary); });
+
 	function lockAudience() {
+		syncRules();
 		var on = !!(all && all.checked);
 		// "Exclude users" stays open with "Everybody" (0.8.510)
 		ts.forEach(function (t) { if (on && !t.input.hasAttribute('data-ntf-exclude')) t.disable(); else t.enable(); });
@@ -46,7 +102,9 @@
 			.then(function (j) {
 				if (my !== seq || !j.ok) return;
 				countBox.textContent = j.text;
-				countBox.className = 'alert py-2 mb-0 small ' + (j.n ? 'alert-info' : 'alert-warning');
+				lastN = j.n;
+				summary();
+				countBox.className = 'alert py-2 mb-0 ' + (j.n ? 'alert-success' : 'alert-warning');
 				people = j.people || [];
 				showBtn.hidden = !people.length;
 				if (dlg && dlg.classList.contains('show')) fill();
@@ -55,7 +113,7 @@
 	function schedule() { window.clearTimeout(timer); timer = window.setTimeout(count, 250); }
 
 	if (all) all.addEventListener('change', function () { lockAudience(); schedule(); });
-	if (confirmSw) confirmSw.addEventListener('change', lockMode);
+	if (confirmSw) confirmSw.addEventListener('change', function () { lockMode(); summary(); });
 	// recipients in a dialogue (0.8.510): full name, login name, department, team, position; a click on a column title sorts by it
 	var coll = window.Intl && Intl.Collator ? new Intl.Collator(undefined, {numeric: true, sensitivity: 'base'}) : null;
 	function fill() {
@@ -90,6 +148,7 @@
 	showBtn.addEventListener('click', function () { if (!dlg) return; fill(); nuBs.modal(dlg).show(); });
 	lockAudience();
 	lockMode();
+	summary();
 	count();
 
 	// ---- formatted text (0.8.400): the switch turns the text field into a TinyMCE editor (when installed); the server cleans the HTML

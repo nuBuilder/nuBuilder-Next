@@ -56,6 +56,11 @@
 		else { link.removeAttribute('aria-disabled'); link.removeAttribute('tabindex'); }
 	}
 	sel.addEventListener('change', sync);
+	// no Home form chosen = the tile page (0.8.1269): clearing the field switches the start page back to Tiles
+	sel.addEventListener('change', function () {
+		var tiles = document.getElementById('accStartTiles');
+		if (sel.value === '' && tiles && !tiles.checked) { tiles.checked = true; tiles.dispatchEvent(new Event('change', {bubbles: true})); }
+	});
 	sync();
 })();
 

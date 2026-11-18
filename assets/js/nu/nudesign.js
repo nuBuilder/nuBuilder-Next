@@ -357,8 +357,13 @@
 				keep: el('a', {'class': 'btn btn-outline-primary', id: 'nuDsDoneKeep', href: D.exit, text: t('ds_done_keep')}),
 				pub: el('button', {type: 'button', 'class': 'btn btn-primary', id: 'nuDsDonePublish', text: t('ds_done_publish')})};
 			doneDlg.pub.addEventListener('click', function () {
-				hide(doneDlg.root);
-				publish({then: function () { window.location.href = D.exit; }});
+				// publish at once (the question was just asked): the note window opens only for warnings, errors or a conflict –
+				// and only after this dialogue is gone (two Bootstrap modals at once left the second one without a working body state)
+				var go = function () { publish({direct: true, then: function () { window.location.href = D.exit; }}); };
+				if (doneDlg.root.classList.contains('show') && window.nuBs && window.nuBs.ready()) {
+					doneDlg.root.addEventListener('hidden.bs.modal', go, {once: true});
+					hide(doneDlg.root);
+				} else go();
 			});
 			doneDlg.root = modal('nuDsDoneDlg', t('ds_done_title'), [doneDlg.text, doneDlg.nopub], [doneDlg.keep, doneDlg.pub], false);
 		}
@@ -527,7 +532,7 @@
 	}
 
 	// Publish: the change note; warnings → "Publish anyway", a conflict → the builder (it compares)
-	// opt.ask: always show the window (Publish with a note…); opt.then: after a successful publish (Done → Publish now)
+	// opt.ask: always show the window (Publish with a note…); opt.direct: never ask first (Done → Publish now); opt.then: after a successful publish (Done → Publish now)
 	var pubDlg = null;
 	function publish(opt) {
 		opt = opt || {};
@@ -541,8 +546,10 @@
 			pubDlg = {note: el('textarea', {'class': 'form-control', id: 'nuDsPubNote', rows: '3'}), info: el('div', {'class': 'nuDsPubInfo small mt-2', id: 'nuDsPubInfo'}),
 				sum: el('div', {'class': 'nuDsPubSum', id: 'nuDsPubSum'})};
 			pubDlg.ok = el('button', {type: 'button', 'class': 'btn btn-primary', id: 'nuDsPubOk', onclick: doPublish});
-			pubDlg.root = modal('nuDsPublishDlg', t('ds_publish_title'), [el('label', {'class': 'form-label', 'for': 'nuDsPubNote', text: t('ds_publish_note_opt')}), pubDlg.note,
-				el('h3', {'class': 'h6 mt-3', text: t('builder_draft_summary')}), pubDlg.sum, pubDlg.info], [pubDlg.ok], true);
+			// the answer (warnings, errors, conflict) on top (0.8.1286): below a long summary it was out of sight and Publish seemed to do nothing
+			pubDlg.info.className = 'nuDsPubInfo small mb-3';
+			pubDlg.root = modal('nuDsPublishDlg', t('ds_publish_title'), [pubDlg.info, el('label', {'class': 'form-label', 'for': 'nuDsPubNote', text: t('ds_publish_note_opt')}), pubDlg.note,
+				el('h3', {'class': 'h6 mt-3', text: t('builder_draft_summary')}), pubDlg.sum], [pubDlg.ok], true);
 		}
 		pubDlg.note.value = DR.note || '';
 		pubDlg.info.textContent = '';
@@ -553,7 +560,7 @@
 		pubDlg.code = '';
 		pubDlg.then = opt.then || null;
 		pubDlg.shown = false;
-		if (!opt.ask && !pubAsk()) { doPublish(); return; }        // one click: the window only opens for warnings, errors or a conflict
+		if (opt.direct || (!opt.ask && !pubAsk())) { doPublish(); return; }        // one click: the window only opens for warnings, errors or a conflict
 		pubDlg.sum.innerHTML = '';
 		pubDlg.sum.appendChild(el('div', {'class': 'text-body-secondary small', text: '…'}));
 		api('draft.diff', {}).then(function (r) { pubDlg.sum.innerHTML = ''; if (r.ok) pubDlg.sum.appendChild(diffView(r.diff)); }).catch(function () { pubDlg.sum.innerHTML = ''; });
@@ -574,9 +581,9 @@
 				api('draft.diff', {}).then(function (r) { d.sum.innerHTML = ''; if (r.ok) d.sum.appendChild(diffView(r.diff)); }).catch(function () { d.sum.innerHTML = ''; });
 				if (window.nuBs && window.nuBs.ready()) show(d.root);
 			}
-			var list = function (head, items) {
-				d.info.appendChild(el('div', {'class': 'fw-semibold', text: head}));
-				d.info.appendChild(el('ul', {'class': 'mb-0'}, (items || []).map(function (x) { return el('li', {text: String(x)}); })));
+			var list = function (head, items, cls) {
+				d.info.appendChild(el('div', {'class': 'alert ' + cls + ' small mb-0'}, [el('div', {'class': 'fw-semibold', text: head}),
+					el('ul', {'class': 'mb-0'}, (items || []).map(function (x) { return el('li', {text: String(x)}); }))]));
 			};
 			if (j.conflict) {
 				// the published form was changed after the draft started: overwrite only with the typed form code (as the builder)
@@ -588,10 +595,16 @@
 				d.ok.textContent = t('builder_draft_overwrite');
 				d.ok.className = 'btn btn-danger';
 			}
-			else if (j.warnings) { list(t('builder_draft_warnings'), j.warnings); d.warn = true; d.ok.textContent = t('builder_draft_warnings_ok'); }
-			else if (j.errors) list(t('builder_draft_errors'), j.errors);
-			else d.info.textContent = j.error || 'Error';
-		}).catch(function (e) { d.ok.disabled = false; d.info.textContent = e.message; });
+			else if (j.warnings) { list(t('builder_draft_warnings'), j.warnings, 'alert-warning'); d.warn = true; d.ok.textContent = t('builder_draft_warnings_ok'); }
+			else if (j.errors) list(t('builder_draft_errors'), j.errors, 'alert-danger');
+			else d.info.appendChild(el('div', {'class': 'alert alert-danger small mb-0', text: j.error || 'Error'}));
+			reveal();
+		}).catch(function (e) { d.ok.disabled = false; d.info.textContent = ''; d.info.appendChild(el('div', {'class': 'alert alert-danger small mb-0', text: e.message || 'Error'})); reveal(); });
+		function reveal() {
+			var body = d.root.querySelector('.modal-body');
+			if (body) body.scrollTop = 0;
+			if (d.info.scrollIntoView) d.info.scrollIntoView({block: 'nearest'});
+		}
 	}
 
 	// The code window (0.8.665): SQL, JavaScript, HTML of a panel field in CodeMirror with the code editors' toolbar (NuCodeTools:

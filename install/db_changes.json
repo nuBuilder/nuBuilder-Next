@@ -1,6 +1,6 @@
 {
     "format": 1,
-    "version": "0.8.1262",
+    "version": "0.8.1287",
     "steps": [
         {
             "id": "0001-own-tables",
@@ -880,6 +880,10 @@
                 [
                     "last_seen",
                     "datetime"
+                ],
+                [
+                    "seen_ts",
+                    "int"
                 ]
             ],
             "index": [

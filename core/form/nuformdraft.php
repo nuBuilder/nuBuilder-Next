@@ -209,38 +209,53 @@ final class NuFormDraft
 		$db = nu_db();
 		$e = $w = [];
 		$f = $snap['form'] ?? [];
+		$live ??= NuFormSnapshot::capture($formId);
+		$lf = $live['form'] ?? [];
+		// problems the draft did not cause (0.8.1286): parts that are as on the live form only warn – a database of nuBuilder Forte may hold
+		// e.g. a run button to a form deleted long ago, and that must not stop publishing an unrelated change
+		$same = static function ($a, $b): bool {
+			if (!is_array($a) || !is_array($b)) return false;
+			foreach ($a + $b as $k => $_) if ((string)($a[$k] ?? '') !== (string)($b[$k] ?? '')) return false;
+			return true;
+		};
+		$add = static function (bool $changed, string $msg) use (&$e, &$w): void { if ($changed) $e[] = $msg; else $w[] = $msg; };
 		$code = trim((string)($f['sfo_code'] ?? ''));
-		if ($code === '' || (int)$db->value('SELECT COUNT(*) FROM zzzzsys_form WHERE sfo_code = ? AND zzzzsys_form_id <> ?', [$code, $formId])) $e[] = t('builder_draft_err_code', $code);
+		if ($code === '' || (int)$db->value('SELECT COUNT(*) FROM zzzzsys_form WHERE sfo_code = ? AND zzzzsys_form_id <> ?', [$code, $formId])) $add($code !== trim((string)($lf['sfo_code'] ?? '')) || !$live, t('builder_draft_err_code', $code));
 		$tabs = array_flip(array_map(static fn($t) => (string)$t['zzzzsys_tab_id'], $snap['tabs'] ?? []));
 		if (!$tabs && ($snap['objects'] ?? [])) $e[] = t('builder_err_one_tab');
 		$seen = [];
 		$cols = trim((string)($f['sfo_table'] ?? '')) !== '' && ($f['sfo_type'] ?? '') !== 'launch' ? $db->columns((string)$f['sfo_table']) : [];
 		$formExists = static function (string $id) use ($db): bool { return $id === '' || (bool)$db->value('SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id = ?', [$id]); };
 		// ids of the live form (0.8.1164): an id nuBuilder Forte allowed (e.g. with umlauts) blocks only when it is new or renamed in the draft
-		$liveIds = [];
-		foreach (($live ?? NuFormSnapshot::capture($formId))['objects'] ?? [] as $lo) $liveIds[(string)($lo['zzzzsys_object_id'] ?? '')] = (string)($lo['sob_all_id'] ?? '');
+		$liveIds = $liveObj = [];
+		foreach ($live['objects'] ?? [] as $lo) { $k = (string)($lo['zzzzsys_object_id'] ?? ''); $liveIds[$k] = (string)($lo['sob_all_id'] ?? ''); $liveObj[$k] = $lo; }
 		foreach ($snap['objects'] ?? [] as $o) {
 			$oid = (string)($o['sob_all_id'] ?? '');
-			$kept = ($liveIds[(string)($o['zzzzsys_object_id'] ?? '')] ?? null) === $oid;
+			$key = (string)($o['zzzzsys_object_id'] ?? '');
+			$kept = ($liveIds[$key] ?? null) === $oid;
+			$changed = !$same($o, $liveObj[$key] ?? null);
 			if (!$kept && !preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $oid)) $e[] = t('builder_err_id') . ' (' . $oid . ')';
-			elseif (isset($seen[$oid])) $e[] = t('builder_err_id_taken', $oid);
+			elseif (isset($seen[$oid])) $add($changed, t('builder_err_id_taken', $oid));
 			$seen[$oid] = true;
-			if (!in_array((string)($o['sob_all_type'] ?? ''), self::TYPES, true)) $e[] = t('builder_err_type') . ' (' . $oid . ')';
-			if (!isset($tabs[(string)($o['sob_all_zzzzsys_tab_id'] ?? '')])) $e[] = t('builder_draft_err_tab', $oid);
+			if (!in_array((string)($o['sob_all_type'] ?? ''), self::TYPES, true)) $add($changed, t('builder_err_type') . ' (' . $oid . ')');
+			if (!isset($tabs[(string)($o['sob_all_zzzzsys_tab_id'] ?? '')])) $add($changed, t('builder_draft_err_tab', $oid));
 			foreach (['sob_subform_zzzzsys_form_id' => 'subform', 'sob_lookup_zzzzsys_form_id' => 'lookup'] as $col => $type) {
-				if (($o['sob_all_type'] ?? '') === $type && !$formExists(trim((string)($o[$col] ?? '')))) $e[] = t('builder_draft_err_ref', $oid, (string)$o[$col]);
+				if (($o['sob_all_type'] ?? '') === $type && !$formExists(trim((string)($o[$col] ?? '')))) $add($changed, t('builder_draft_err_ref', $oid, (string)$o[$col]));
 			}
 			if (($o['sob_all_type'] ?? '') === 'run' && strtoupper((string)($o['sob_run_type'] ?? '')) === 'F' && !$formExists(trim((string)($o['sob_run_zzzzsys_form_id'] ?? '')))) {
-				$e[] = t('builder_draft_err_ref', $oid, (string)$o['sob_run_zzzzsys_form_id']);
+				$add($changed, t('builder_draft_err_ref', $oid, (string)$o['sob_run_zzzzsys_form_id']));
 			}
 			if ($cols && ($p = NuDDL::typeForObject($o)) !== null && NuRecord::column($cols, $oid) === null) $w[] = t('builder_draft_warn_column', $oid, (string)$f['sfo_table']);
 		}
-		if (!$formExists(trim((string)($f['sfo_browse_redirect_form_id'] ?? '')))) $e[] = t('builder_draft_err_ref', $code, (string)$f['sfo_browse_redirect_form_id']);
+		$redir = trim((string)($f['sfo_browse_redirect_form_id'] ?? ''));
+		if (!$formExists($redir)) $add($redir !== trim((string)($lf['sfo_browse_redirect_form_id'] ?? '')), t('builder_draft_err_ref', $code, $redir));
+		$livePhp = [];
+		foreach ($live['php'] ?? [] as $lp) $livePhp[(string)($lp['zzzzsys_php_id'] ?? '')] = (string)($lp['sph_php'] ?? '');
 		foreach ($snap['php'] ?? [] as $p) {
 			try { token_get_all('<?php ' . (string)($p['sph_php'] ?? ''), TOKEN_PARSE); }
-			catch (Throwable $x) { $e[] = t('builder_draft_err_php', (string)$p['zzzzsys_php_id'], $x->getMessage()); }
+			catch (Throwable $x) { $add(($livePhp[(string)$p['zzzzsys_php_id']] ?? null) !== (string)($p['sph_php'] ?? ''), t('builder_draft_err_php', (string)$p['zzzzsys_php_id'], $x->getMessage())); }
 		}
-		if ($live && trim((string)($live['form']['sfo_browse_sql'] ?? '')) !== trim((string)($f['sfo_browse_sql'] ?? ''))) $w[] = t('builder_draft_warn_browse');
+		if ($live && trim((string)($lf['sfo_browse_sql'] ?? '')) !== trim((string)($f['sfo_browse_sql'] ?? ''))) $w[] = t('builder_draft_warn_browse');
 		return ['errors' => array_values(array_unique($e)), 'warnings' => array_values(array_unique($w))];
 	}
 

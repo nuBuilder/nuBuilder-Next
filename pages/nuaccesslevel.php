@@ -127,7 +127,8 @@ if (nu_is_post() && nu_post('action') === 'save') {
 	if ($v['sal_zzzzsys_form_id'] !== '' && !isset($forms[$v['sal_zzzzsys_form_id']]) && $v['sal_zzzzsys_form_id'] !== (string)($existing['sal_zzzzsys_form_id'] ?? '')) {
 		$errors['sal_zzzzsys_form_id'] = t('err_invalid');
 	}
-	if ($v['start_page'] === 'form' && $v['sal_zzzzsys_form_id'] === '') $errors['sal_zzzzsys_form_id'] = t('acc_start_err_form');
+	// no Home form = the tile page (0.8.1269, a tester: the error left no way back to the tiles once a Home form was set)
+	if ($v['start_page'] === 'form' && $v['sal_zzzzsys_form_id'] === '') $v['start_page'] = 'tiles';
 
 	// rights grid
 	$rows = [];

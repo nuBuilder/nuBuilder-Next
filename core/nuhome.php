@@ -787,6 +787,10 @@ final class NuHome
 		$db = nu_db();
 		NuSchema::ensure();
 		$own = self::userRows()[$acc] ?? null;
+		if (self::layoutEmpty($layout)) {   // 0.8.1279: no tiles = no own tile page – the level uses the default (or the automatic one) again
+			if ($own !== null) self::dropOwn($acc, ['empty' => true]);
+			return [];
+		}
 		$def = json_encode($layout, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 		if ($own !== null) {
 			$id = (string)$own['zzzzsys_nunext_list_view_id'];
@@ -1472,31 +1476,52 @@ final class NuHome
 	public static function levelChoices(): array
 	{
 		$rows = self::userRows();
-		$out = [self::ALL_LEVELS => ['label' => t('home_u_default'), 'source' => isset($rows[self::ALL_LEVELS]) ? 'level' : 'auto']];
+		$empty = static fn(string $k): bool => isset($rows[$k]) && self::layoutEmpty((string)$rows[$k]['definition']);   // 0.8.1279: own, but no tiles
+		$out = [self::ALL_LEVELS => ['label' => t('home_u_default'), 'source' => isset($rows[self::ALL_LEVELS]) ? 'level' : 'auto', 'empty' => $empty(self::ALL_LEVELS)]];
 		foreach (nu_db()->all('SELECT zzzzsys_access_id, sal_code, sal_description FROM zzzzsys_access ORDER BY sal_code') as $a) {
 			$id = (string)$a['zzzzsys_access_id'];
 			$out[$id] = ['label' => $a['sal_code'] . ($a['sal_description'] ? ' – ' . $a['sal_description'] : ''),
-				'source' => isset($rows[$id]) ? 'level' : (isset($rows[self::ALL_LEVELS]) ? 'default' : 'auto')];
+				'source' => isset($rows[$id]) ? 'level' : (isset($rows[self::ALL_LEVELS]) ? 'default' : 'auto'), 'empty' => $empty($id)];
 		}
 		return $out;
+	}
+
+	/**
+	 * A tile page without a single tile (0.8.1279): no tile in any group and no favourite. Such a page of an access level only hides the
+	 * default – saveUser() drops it, and the editor / Start pages panel mark old ones as empty.
+	 */
+	public static function layoutEmpty($def): bool
+	{
+		if (is_string($def)) $def = json_decode($def, true);
+		if (!is_array($def)) return true;
+		if (array_filter((array)($def['fav'] ?? [])) !== []) return false;
+		foreach ((array)($def['groups'] ?? []) as $g) {
+			if (is_array($g) && array_filter((array)($g['tiles'] ?? [])) !== []) return false;
+		}
+		return true;
 	}
 
 	/** The access level's own start page goes; it uses the default (or the automatic one) again. '*': the default goes. */
 	public static function resetLevel(): string
 	{
 		if (self::$for === null || !self::$for['preview'] || !self::canManage()) return t('err_forbidden');
-		$acc = (string)self::$for['access'];
+		self::dropOwn((string)self::$for['access']);
+		return '';
+	}
+
+	/** Removes the level from its own tile page row (the row goes when no other level uses it). */
+	private static function dropOwn(string $acc, array $details = []): void
+	{
 		$row = self::userRows()[$acc] ?? null;
-		if ($row === null) return '';
+		if ($row === null) return;
 		$ids = json_decode((string)$row['access_ids'], true);
 		$ids = array_values(array_filter(is_array($ids) ? $ids : [], static fn($a) => $a !== $acc));
 		$db = nu_db();
 		$id = (string)$row['zzzzsys_nunext_list_view_id'];
 		if ($ids) $db->update(NuListView::TABLE, ['access_ids' => json_encode($ids), 'updated_at' => date('Y-m-d H:i:s')], 'zzzzsys_nunext_list_view_id', $id);
 		else $db->run('DELETE FROM ' . NuListView::TABLE . ' WHERE zzzzsys_nunext_list_view_id = ?', [$id]);
-		NuLog::write('home_user_reset', NuListView::TABLE, $id, ['access' => $acc]);
+		NuLog::write('home_user_reset', NuListView::TABLE, $id, ['access' => $acc] + $details);
 		self::$current = self::$rows = null;
-		return '';
 	}
 
 	/** Where a tile comes from (0.8.378): builtin (catalogue), pinned (a page of a tile's menu), own (c_…) or dynamic (x_…, start page hook). */

@@ -111,6 +111,8 @@ if ($tab === 'manage' && $id !== '' && !isset($_GET['receipts'])) {
 	$fe = static fn(string $k) => isset($err[$k]) ? '<div class="invalid-feedback d-block">' . h($err[$k]) . '</div>' : '';
 	$published = $n && $n['status'] === 'published';
 	$mailOk = NuMail::configured();
+	// recipient builder (0.8.1271, layout D of the canvas "Notification editor layouts"): one rule row per field, shown when it holds
+	// values or after its "+ …" button; empty rows stay hidden (assets/js/nunotifications.js shows / hides them)
 	$sel = static function (string $key, array $options, array $chosen, string $label, string $tip = '') use ($own): string {
 		$o = '';
 		foreach ($options as $val => $lab) {
@@ -118,10 +120,14 @@ if ($tab === 'manage' && $id !== '' && !isset($_GET['receipts'])) {
 			$o .= '<option value="' . h($val) . '"' . (in_array($val, $chosen, true) ? ' selected' : '') . ($sub !== '' ? ' data-sub="' . h($sub) . '"' : '') . '>' . h($text) . '</option>';
 		}
 		foreach ($chosen as $c) if (!array_key_exists($c, $options) && !in_array($c, $options, true)) $o .= '<option value="' . h($c) . '" selected>' . h($c) . '</option>';
-		return '<div class="col-md-6"><label class="form-label small mb-1" for="aud_' . $key . '">' . h($label) . '</label>' . ($tip !== '' ? NuListView::infoTip($tip) : '')
-			. '<select class="form-select" multiple name="audience[' . $key . '][]" id="aud_' . $key . '" data-ntf-ts' . ($key === 'exclude' ? ' data-ntf-exclude' : '')
-			. ($own ? '' : ' data-create="' . (in_array($key, ['departments', 'teams', 'positions'], true) ? '1' : '') . '"') . '>' . $o . '</select></div>';
+		return '<div class="ntfRule' . ($key === 'exclude' ? ' ntfRuleEx' : '') . '" data-rule="' . $key . '"' . ($chosen ? '' : ' hidden') . '>'
+			. '<div class="ntfRuleLbl"><label for="aud_' . $key . '">' . h($label) . '</label>' . ($tip !== '' ? NuListView::infoTip($tip) : '') . '</div>'
+			. '<div class="ntfRuleSel"><select class="form-select" multiple name="audience[' . $key . '][]" id="aud_' . $key . '" data-ntf-ts' . ($key === 'exclude' ? ' data-ntf-exclude' : '')
+			. ($own ? '' : ' data-create="' . (in_array($key, ['departments', 'teams', 'positions'], true) ? '1' : '') . '"') . '>' . $o . '</select></div>'
+			. '<button type="button" class="btn btn-sm ntfRuleX" data-rule-x="' . $key . '" aria-label="' . h(t('remove') . ': ' . $label) . '" title="' . h(t('remove')) . '"><i class="bi bi-x-lg"></i></button></div>';
 	};
+	$ruleKeys = $own ? ['departments' => 'ntf_aud_departments', 'teams' => 'ntf_aud_teams']
+		: ['users' => 'ntf_aud_users', 'departments' => 'ntf_aud_departments', 'teams' => 'ntf_aud_teams', 'positions' => 'ntf_aud_positions', 'access' => 'ntf_aud_access', 'exclude' => 'ntf_aud_exclude'];
 	// formatted text (0.8.400): TinyMCE when it is installed (copied from nuBuilder); it needs inline styles on this page only
 	$html = ($v['format'] ?? '') === 'html';
 	$tinyDir = NuLibs::tinymce();                         // library pack or assets/vendor/tinymce (0.8.405)
@@ -130,15 +136,13 @@ if ($tab === 'manage' && $id !== '' && !isset($_GET['receipts'])) {
 	nu_layout_start(t('ntf_title'), 'notifications', ['head' => '<link rel="stylesheet" href="' . nu_asset(NU_TOMSELECT . '/tom-select.bootstrap5.min.css') . '">']);
 	echo $tabs;
 	?>
-<form method="post" class="card shadow-sm nuListCard" id="ntfForm" data-nu-guard action="<?= h(nu_url('notifications', ['id' => $id])) ?>">
+<form method="post" class="card shadow-sm nuListCard ntfEdit" id="ntfForm" data-nu-guard action="<?= h(nu_url('notifications', ['id' => $id])) ?>">
 	<?= nu_csrf_field() ?><input type="hidden" name="action" value="save"><input type="hidden" name="id" value="<?= h($n ? $id : '') ?>">
 	<div class="card-header nuListHead nuTitleBar">
 		<h1 class="h5 mb-0 fw-semibold d-inline-flex align-items-center gap-1"><?= h($n ? t('ntf_edit') : t('ntf_new')) ?><?= NuListView::infoTip(t('ntf_form_hint')) ?></h1>
 		<?php if ($n): ?><div class="nuTitleSub"><?= $stateBadge(NuNotify::state($n)) ?></div><?php endif; ?>
 		<div class="d-flex flex-wrap gap-2">
 			<?= nu_back_button(null, nu_url('notifications', ['tab' => 'manage'])) ?>
-			<?php if (!$published): ?><button type="submit" class="btn nuBtnAct" name="publish" value="0" id="ntfDraft"><i class="bi bi-floppy me-1"></i><?= h(t('ntf_save_draft')) ?></button><?php endif; ?>
-			<button type="submit" class="btn nuBtnAct nuBtnSave" name="publish" value="1" id="ntfPublish" data-nu-save><i class="bi <?= $published ? 'bi-floppy' : 'bi-send' ?> me-1"></i><?= h($published ? t('save') : t('ntf_publish')) ?></button>
 			<?php if ($n): // 0.8.402: Delete and the list's ⋯ actions also here (the list's ⋯ column is off-screen on phones) ?>
 			<button type="submit" class="btn nuBtnAct nuBtnDel" form="ntfActDelete" id="ntfDelete" title="<?= h(t('delete')) ?>"><i class="bi bi-trash me-1"></i><span><?= h(t('delete')) ?></span></button>
 			<div class="dropdown"><button class="btn nuBtnAct" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="<?= h(t('actions')) ?>" id="ntfMore"><i class="bi bi-three-dots"></i></button>
@@ -150,74 +154,85 @@ if ($tab === 'manage' && $id !== '' && !isset($_GET['receipts'])) {
 			<?php endif; ?>
 		</div>
 	</div>
-	<div class="card-body">
-		<div class="row g-3">
-			<div class="col-lg-7">
-				<div class="mb-3"><label class="form-label" for="ntf_title"><?= h(t('ntf_f_title')) ?> *</label>
-					<input type="text" class="form-control<?= isset($err['title']) ? ' is-invalid' : '' ?>" name="title" id="ntf_title" maxlength="200" required value="<?= h((string)($v['title'] ?? '')) ?>"><?= $fe('title') ?></div>
-				<div class="mb-3"><div class="d-flex flex-wrap align-items-center gap-2 mb-2"><label class="form-label mb-0 me-auto" for="ntf_body"><?= h(t('ntf_f_body')) ?></label>
-						<div class="form-check form-switch mb-0"><input class="form-check-input" type="checkbox" role="switch" id="ntf_format" name="format" value="html"<?= $html ? ' checked' : '' ?>
-							data-tiny="<?= $tiny ? h(nu_asset($tinyDir . '/tinymce.min.js')) : '' ?>" data-base="<?= h($tinyDir) ?>" data-lang="<?= h(nu_lang()) ?>"
-							data-confirm-text="<?= h(t('ntf_format_off_confirm')) ?>"><label class="form-check-label" for="ntf_format"><?= h(t('ntf_f_format')) ?></label></div><?= NuListView::infoTip(t('ntf_f_format_tip')) ?></div>
-					<textarea class="form-control<?= isset($err['body']) ? ' is-invalid' : '' ?><?= $html && $tiny ? ' nuTmceWait' : '' ?>" name="body" id="ntf_body" rows="6"<?= $html ? '' : ' maxlength="4000"' ?>><?= h((string)($v['body'] ?? '')) ?></textarea><?= $fe('body') ?>
-					<?php if (!$tiny): ?><div class="form-text<?= $html ? '' : ' d-none' ?>" id="ntfNoTiny"><?= h(t('ntf_tinymce_missing')) ?> <?= nu_lp_hint('lp_get_pack') ?></div><?php endif; ?></div>
-				<div class="mb-3"><span class="form-label d-block"><?= h(t('ntf_f_level')) ?></span>
-					<div class="btn-group flex-wrap nuNtfLevels" role="group" aria-label="<?= h(t('ntf_f_level')) ?>">
-						<?php foreach (NuNotify::LEVELS as $lv => $ic): ?>
-							<input type="radio" class="btn-check" name="level" id="ntf_lv_<?= $lv ?>" value="<?= $lv ?>"<?= ($v['level'] ?? 'info') === $lv ? ' checked' : '' ?>>
-							<label class="btn btn-outline-secondary nuNtfLv-<?= $lv ?>" for="ntf_lv_<?= $lv ?>"><i class="bi <?= $ic ?> me-1 nuBellIcon nuBellLv-<?= $lv ?>"></i><?= h(t('ntf_lv_' . $lv)) ?></label>
-						<?php endforeach; ?>
-					</div></div>
-				<div class="mb-3"><label class="form-label" for="ntf_link"><?= h(t('ntf_f_link')) ?></label><?= NuListView::infoTip(t('ntf_f_link_tip')) ?>
-					<input type="text" class="form-control<?= isset($err['link']) ? ' is-invalid' : '' ?>" name="link" id="ntf_link" maxlength="1000" placeholder="index.php?p=form&amp;f=…  ·  https://…" value="<?= h((string)($v['link'] ?? '')) ?>"><?= $fe('link') ?></div>
-			</div>
-			<div class="col-lg-5">
-				<div class="row g-3">
-					<div class="col-sm-6"><label class="form-label" for="ntf_pub"><?= h(t('ntf_f_publish_at')) ?></label><?= NuListView::infoTip(t('ntf_f_publish_at_tip')) ?>
-						<input type="datetime-local" class="form-control<?= isset($err['publish_at']) ? ' is-invalid' : '' ?>" name="publish_at" id="ntf_pub" value="<?= h($dtl($v['publish_at'] ?? '')) ?>"><?= $fe('publish_at') ?></div>
-					<div class="col-sm-6"><label class="form-label" for="ntf_exp"><?= h(t('ntf_f_expires_at')) ?></label><?= NuListView::infoTip(t('ntf_f_expires_at_tip')) ?>
-						<input type="datetime-local" class="form-control<?= isset($err['expires_at']) ? ' is-invalid' : '' ?>" name="expires_at" id="ntf_exp" value="<?= h($dtl($v['expires_at'] ?? '')) ?>"><?= $fe('expires_at') ?></div>
-				</div>
-				<div class="mt-3">
-					<div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" name="pinned" value="1" id="ntf_pinned"<?= $on('pinned') ? ' checked' : '' ?>>
-						<label class="form-check-label" for="ntf_pinned"><?= h(t('ntf_f_pinned')) ?></label><?= NuListView::infoTip(t('ntf_f_pinned_tip')) ?></div>
-					<div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" name="must_confirm" value="1" id="ntf_confirm"<?= $on('must_confirm') ? ' checked' : '' ?><?= $published ? ' disabled' : '' ?>>
-						<label class="form-check-label" for="ntf_confirm"><?= h(t('ntf_f_must_confirm')) ?></label><?= NuListView::infoTip(t('ntf_f_must_confirm_tip')) ?>
-						<?php if ($published && $on('must_confirm')): ?><input type="hidden" name="must_confirm" value="1"><?php endif; ?></div>
-					<div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" name="email" value="1" id="ntf_email"<?= $on('email') ? ' checked' : '' ?><?= $mailOk && !($n && (string)$n['sent_mail_at'] !== '') ? '' : ' disabled' ?>>
-						<label class="form-check-label" for="ntf_email"><?= h(t('ntf_f_email')) ?></label><?= NuListView::infoTip($mailOk ? t('ntf_f_email_tip') : t('ntf_f_email_off')) ?>
-						<?php if ($n && (string)$n['sent_mail_at'] !== ''): ?><span class="small text-body-secondary ms-1"><?= h(t('ntf_mailed', $dt($n['sent_mail_at']))) ?></span><input type="hidden" name="email" value="1"><?php endif; ?></div>
-				</div>
-			</div>
-		</div>
+	<div class="card-body ntfBody">
+		<div class="ntfCol">
+		<section class="ntfSec" aria-labelledby="ntfSecMsg">
+			<h2 class="ntfSecHead" id="ntfSecMsg"><span class="ntfNum">1</span><?= h(t('ntf_sec_message')) ?></h2>
+			<div><label class="form-label" for="ntf_title"><?= h(t('ntf_f_title')) ?> *</label>
+				<input type="text" class="form-control<?= isset($err['title']) ? ' is-invalid' : '' ?>" name="title" id="ntf_title" maxlength="200" required value="<?= h((string)($v['title'] ?? '')) ?>"><?= $fe('title') ?></div>
+			<div><div class="d-flex flex-wrap align-items-center gap-2 mb-2"><label class="form-label mb-0 me-auto" for="ntf_body"><?= h(t('ntf_f_body')) ?></label>
+					<div class="form-check form-switch mb-0"><input class="form-check-input" type="checkbox" role="switch" id="ntf_format" name="format" value="html"<?= $html ? ' checked' : '' ?>
+						data-tiny="<?= $tiny ? h(nu_asset($tinyDir . '/tinymce.min.js')) : '' ?>" data-base="<?= h($tinyDir) ?>" data-lang="<?= h(nu_lang()) ?>"
+						data-confirm-text="<?= h(t('ntf_format_off_confirm')) ?>"><label class="form-check-label" for="ntf_format"><?= h(t('ntf_f_format')) ?></label></div><?= NuListView::infoTip(t('ntf_f_format_tip')) ?></div>
+				<textarea class="form-control<?= isset($err['body']) ? ' is-invalid' : '' ?><?= $html && $tiny ? ' nuTmceWait' : '' ?>" name="body" id="ntf_body" rows="5"<?= $html ? '' : ' maxlength="4000"' ?>><?= h((string)($v['body'] ?? '')) ?></textarea><?= $fe('body') ?>
+				<?php if (!$tiny): ?><div class="form-text<?= $html ? '' : ' d-none' ?>" id="ntfNoTiny"><?= h(t('ntf_tinymce_missing')) ?> <?= nu_lp_hint('lp_get_pack') ?></div><?php endif; ?></div>
+			<fieldset><legend class="form-label fs-6 mb-2"><?= h(t('ntf_f_level')) ?></legend>
+				<div class="ntfLevels nuNtfLevels">
+					<?php foreach (NuNotify::LEVELS as $lv => $ic): ?>
+						<input type="radio" class="btn-check" name="level" id="ntf_lv_<?= $lv ?>" value="<?= $lv ?>"<?= ($v['level'] ?? 'info') === $lv ? ' checked' : '' ?>>
+						<label class="ntfLv ntfLv-<?= $lv ?> nuNtfLv-<?= $lv ?>" for="ntf_lv_<?= $lv ?>"><span class="ntfLvName"><i class="bi <?= $ic ?> nuBellIcon nuBellLv-<?= $lv ?>" aria-hidden="true"></i><?= h(t('ntf_lv_' . $lv)) ?></span><small><?= h(t('ntf_lv_' . $lv . '_d')) ?></small></label>
+					<?php endforeach; ?>
+				</div></fieldset>
+			<div><label class="form-label" for="ntf_link"><?= h(t('ntf_f_link')) ?></label><?= NuListView::infoTip(t('ntf_f_link_tip')) ?>
+				<input type="text" class="form-control<?= isset($err['link']) ? ' is-invalid' : '' ?>" name="link" id="ntf_link" maxlength="1000" placeholder="index.php?p=form&amp;f=…  ·  https://…" value="<?= h((string)($v['link'] ?? '')) ?>"><?= $fe('link') ?></div>
+		</section>
 
-		<h2 class="h6 mt-4 mb-2 d-flex align-items-center gap-1"><?= h(t('ntf_f_audience')) ?><?= NuListView::infoTip($own ? t('ntf_f_audience_own') : t('ntf_f_audience_tip')) ?></h2>
-		<?php if (isset($err['audience'])): ?><div class="alert alert-danger py-2 small"><?= h($err['audience']) ?></div><?php endif; ?>
-		<?php if (!$own): ?>
-			<div class="form-check form-switch mb-2"><input class="form-check-input" type="checkbox" role="switch" name="aud_all" value="1" id="ntf_all"<?= !empty($aud['all']) ? ' checked' : '' ?>>
-				<label class="form-check-label" for="ntf_all"><?= h(t('ntf_aud_all')) ?></label></div>
-		<?php endif; ?>
-		<div class="row g-3" id="ntfAudience">
-			<?php if (!$own): ?><?= $sel('users', $ch['users'], $aud['users'], t('ntf_aud_users')) ?><?php endif; ?>
-			<?= $sel('departments', $ch['departments'], $aud['departments'], t('ntf_aud_departments')) ?>
-			<?= $sel('teams', $ch['teams'], $aud['teams'], t('ntf_aud_teams')) ?>
-			<?php if (!$own): ?>
-				<?= $sel('positions', $ch['positions'], $aud['positions'], t('ntf_aud_positions')) ?>
-				<?= $sel('access', $ch['access'], $aud['access'], t('ntf_aud_access')) ?>
-				<?= $sel('exclude', $ch['users'], $aud['exclude'] ?? [], t('ntf_aud_exclude'), t('ntf_aud_exclude_tip')) ?>
-			<?php endif; ?>
-		</div>
-		<div class="d-flex flex-wrap align-items-center gap-3 mt-3">
-			<div class="alert alert-secondary py-2 mb-0 small" id="ntfCount" role="status" aria-live="polite" data-url="<?= h(nu_url('notifications')) ?>">…</div>
-			<button type="button" class="btn btn-link btn-sm p-0" id="ntfCountShow" hidden><?= h(t('ntf_show_names')) ?></button>
-		</div>
+		<section class="ntfSec" aria-labelledby="ntfSecAud">
+			<div class="ntfSecHead"><h2 class="ntfSecHead m-0" id="ntfSecAud"><span class="ntfNum">2</span><?= h(t('ntf_f_audience')) ?><?= NuListView::infoTip($own ? t('ntf_f_audience_own') : t('ntf_f_audience_tip')) ?></h2>
+				<?php if (!$own): ?>
+				<div class="form-check form-switch mb-0 ms-auto"><input class="form-check-input" type="checkbox" role="switch" name="aud_all" value="1" id="ntf_all"<?= !empty($aud['all']) ? ' checked' : '' ?>>
+					<label class="form-check-label" for="ntf_all"><?= h(t('ntf_aud_all')) ?></label></div>
+				<?php endif; ?></div>
+			<?php if (isset($err['audience'])): ?><div class="alert alert-danger py-2 small mb-0"><?= h($err['audience']) ?></div><?php endif; ?>
+			<div class="ntfRules" id="ntfAudience">
+				<?php foreach ($ruleKeys as $k => $lk): ?><?= $sel($k, $k === 'exclude' ? $ch['users'] : $ch[$k], $k === 'exclude' ? ($aud['exclude'] ?? []) : $aud[$k], t($lk), $k === 'exclude' ? t('ntf_aud_exclude_tip') : '') ?><?php endforeach; ?>
+				<p class="ntfRuleNone small text-body-secondary mb-0" id="ntfRuleNone" hidden><?= h(t('ntf_rule_none')) ?></p>
+			</div>
+			<div class="ntfAdd" id="ntfAdd" role="group" aria-label="<?= h(t('ntf_add_rule')) ?>">
+				<?php foreach ($ruleKeys as $k => $lk): ?><button type="button" class="ntfAddRule<?= $k === 'exclude' ? ' ntfAddEx' : '' ?>" data-rule="<?= $k ?>"><i class="bi <?= $k === 'exclude' ? 'bi-dash' : 'bi-plus' ?>" aria-hidden="true"></i><?= h(t($lk)) ?></button><?php endforeach; ?>
+			</div>
+			<div class="ntfMeter">
+				<div class="alert alert-secondary py-2 mb-0" id="ntfCount" role="status" aria-live="polite" data-url="<?= h(nu_url('notifications')) ?>">…</div>
+				<button type="button" class="btn btn-link btn-sm p-0" id="ntfCountShow" hidden><?= h(t('ntf_show_names')) ?></button>
+			</div>
+			<fieldset><legend class="form-label fs-6 mb-1"><?= h(t('ntf_f_mode')) ?></legend>
+				<div class="ntfModes">
+				<div class="form-check"><input class="form-check-input" type="radio" name="mode" value="live" id="ntf_mode_live"<?= ($v['mode'] ?? 'live') !== 'fixed' ? ' checked' : '' ?><?= $published ? ' disabled' : '' ?>>
+					<label class="form-check-label" for="ntf_mode_live"><?= h(t('ntf_mode_live')) ?></label><?= NuListView::infoTip(t('ntf_mode_live_tip')) ?></div>
+				<div class="form-check"><input class="form-check-input" type="radio" name="mode" value="fixed" id="ntf_mode_fixed"<?= ($v['mode'] ?? '') === 'fixed' ? ' checked' : '' ?><?= $published ? ' disabled' : '' ?>>
+					<label class="form-check-label" for="ntf_mode_fixed"><?= h(t('ntf_mode_fixed')) ?></label><?= NuListView::infoTip(t('ntf_mode_fixed_tip')) ?></div>
+				</div>
+				<?php if ($published): ?><input type="hidden" name="mode" value="<?= h((string)$n['mode']) ?>"><?php endif; ?>
+			</fieldset>
+		</section>
 
-		<div class="mt-4"><span class="form-label d-block"><?= h(t('ntf_f_mode')) ?></span>
-			<div class="form-check"><input class="form-check-input" type="radio" name="mode" value="live" id="ntf_mode_live"<?= ($v['mode'] ?? 'live') !== 'fixed' ? ' checked' : '' ?><?= $published ? ' disabled' : '' ?>>
-				<label class="form-check-label" for="ntf_mode_live"><?= h(t('ntf_mode_live')) ?></label><?= NuListView::infoTip(t('ntf_mode_live_tip')) ?></div>
-			<div class="form-check"><input class="form-check-input" type="radio" name="mode" value="fixed" id="ntf_mode_fixed"<?= ($v['mode'] ?? '') === 'fixed' ? ' checked' : '' ?><?= $published ? ' disabled' : '' ?>>
-				<label class="form-check-label" for="ntf_mode_fixed"><?= h(t('ntf_mode_fixed')) ?></label><?= NuListView::infoTip(t('ntf_mode_fixed_tip')) ?></div>
-			<?php if ($published): ?><input type="hidden" name="mode" value="<?= h((string)$n['mode']) ?>"><?php endif; ?>
+		<section class="ntfSec" aria-labelledby="ntfSecDel">
+			<h2 class="ntfSecHead" id="ntfSecDel"><span class="ntfNum">3</span><?= h(t('ntf_sec_delivery')) ?></h2>
+			<div class="ntfWhen">
+				<div><label class="form-label" for="ntf_pub"><?= h(t('ntf_f_publish_at')) ?></label><?= NuListView::infoTip(t('ntf_f_publish_at_tip')) ?>
+					<input type="datetime-local" class="form-control<?= isset($err['publish_at']) ? ' is-invalid' : '' ?>" name="publish_at" id="ntf_pub" value="<?= h($dtl($v['publish_at'] ?? '')) ?>"><?= $fe('publish_at') ?></div>
+				<div><label class="form-label" for="ntf_exp"><?= h(t('ntf_f_expires_at')) ?></label><?= NuListView::infoTip(t('ntf_f_expires_at_tip')) ?>
+					<input type="datetime-local" class="form-control<?= isset($err['expires_at']) ? ' is-invalid' : '' ?>" name="expires_at" id="ntf_exp" value="<?= h($dtl($v['expires_at'] ?? '')) ?>"><?= $fe('expires_at') ?></div>
+			</div>
+			<?php $mailed = $n && (string)$n['sent_mail_at'] !== ''; ?>
+			<div class="ntfOpts">
+				<label class="ntfOpt" title="<?= h(t('ntf_f_pinned_tip')) ?>"><input class="form-check-input" type="checkbox" name="pinned" value="1" id="ntf_pinned"<?= $on('pinned') ? ' checked' : '' ?>>
+					<span><b><?= h(t('ntf_f_pinned')) ?></b><small><?= h(t('ntf_opt_pinned_d')) ?></small></span></label>
+				<label class="ntfOpt" title="<?= h(t('ntf_f_must_confirm_tip')) ?>"><input class="form-check-input" type="checkbox" name="must_confirm" value="1" id="ntf_confirm"<?= $on('must_confirm') ? ' checked' : '' ?><?= $published ? ' disabled' : '' ?>>
+					<span><b><?= h(t('ntf_f_must_confirm')) ?></b><small><?= h(t('ntf_opt_confirm_d')) ?></small></span>
+					<?php if ($published && $on('must_confirm')): ?><input type="hidden" name="must_confirm" value="1"><?php endif; ?></label>
+				<label class="ntfOpt" title="<?= h($mailOk ? t('ntf_f_email_tip') : t('ntf_f_email_off')) ?>"><input class="form-check-input" type="checkbox" name="email" value="1" id="ntf_email"<?= $on('email') ? ' checked' : '' ?><?= $mailOk && !$mailed ? '' : ' disabled' ?>>
+					<span><b><?= h(t('ntf_f_email')) ?></b><small><?= h($mailed ? t('ntf_mailed', $dt($n['sent_mail_at'])) : ($mailOk ? t('ntf_opt_email_d') : t('ntf_f_email_off'))) ?></small></span>
+					<?php if ($mailed): ?><input type="hidden" name="email" value="1"><?php endif; ?></label>
+			</div>
+		</section>
+		</div>
+	</div>
+	<div class="ntfBar" id="ntfBar">
+		<div class="ntfBarIn">
+			<span class="ntfSum" id="ntfSum" aria-live="polite" data-users="<?= h(t('ntf_sum_users')) ?>" data-now="<?= h(t('ntf_sum_now')) ?>" data-from="<?= h(t('ntf_sum_from')) ?>" data-until="<?= h(t('ntf_sum_until')) ?>" data-confirm="<?= h(t('ntf_f_must_confirm')) ?>" data-all="<?= h(t('ntf_aud_all')) ?>"></span>
+			<?php if (!$published): ?><button type="submit" class="btn nuBtnAct" name="publish" value="0" id="ntfDraft"><i class="bi bi-floppy me-1"></i><?= h(t('ntf_save_draft')) ?></button><?php endif; ?>
+			<button type="submit" class="btn btn-primary" name="publish" value="1" id="ntfPublish" data-nu-save><i class="bi <?= $published ? 'bi-floppy' : 'bi-send' ?> me-1"></i><?= h($published ? t('save') : t('ntf_publish')) ?></button>
 		</div>
 	</div>
 </form>

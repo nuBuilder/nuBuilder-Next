@@ -2241,6 +2241,21 @@ window.nuPageNoGo = function (value) {
 		e.preventDefault();
 		if (go) focusRow(go);
 	});
+	// Ctrl+Shift+← / → / Home / End = previous / next / first / last page of the system lists and own pages, as in nuBuilder Forte's
+	// browse lists (0.8.1265; form lists: nuruntime.js shortcutActions, which handles the keys first in the capture phase)
+	var PAGE_KEYS = {ArrowLeft: 'Prev', ArrowRight: 'Next', Home: 'First', End: 'Last'};
+	document.addEventListener('keydown', function (e) {
+		var cls = PAGE_KEYS[e.key];
+		if (!cls || e.defaultPrevented || !(e.ctrlKey || e.metaKey) || !e.shiftKey || e.altKey) return;
+		var t = e.target;
+		if (t && t.closest && t.closest('textarea, [contenteditable], .cm-editor, .modal.show, .dropdown-menu.show')) return;
+		if (document.querySelector('.modal.show')) return;
+		var a = t && t.closest && t.closest('table') ? pagerLink(t, cls) : null;
+		if (!a) a = document.querySelector('a.nuPager' + cls);
+		if (!a && !document.querySelector('.nuPager' + cls)) return;   // no pager on this page: leave the key to the browser
+		e.preventDefault();
+		if (a) a.click();
+	});
 	document.addEventListener('focusin', function (e) { if (ok(e.target)) rove(e.target); });
 	document.addEventListener('focusout', function (e) { if (e.target && e.target.removeAttribute && e.target.hasAttribute('data-nu-kb')) e.target.removeAttribute('data-nu-kb'); });
 	document.addEventListener('pointerdown', function (e) { var r = e.target.closest && e.target.closest('tr[data-nu-kb]'); if (r) r.removeAttribute('data-nu-kb'); });   // a click / Tab makes it the list's stop

@@ -150,6 +150,10 @@ check('secret names', NuSecurity::secretName('sus_login_password') && NuSecurity
 	&& !NuSecurity::secretName('nuConfigPasswordMinLength'));
 check('hash values', NuSecurity::hashValue('$2y$10$abcdefghijklmnopqrstuv') && !NuSecurity::hashValue('hello'));
 check('validNext local', NuAuth::validNext('index.php?p=users') === 'index.php?p=users');
+check('validNext own app (nuexternal.php)', NuAuth::validNext('tools/perno/app.php?mode=edit&id=3') === 'tools/perno/app.php?mode=edit&id=3'
+	&& NuAuth::validNext('app.php') === null && NuAuth::validNext('core/nuapp.php') === null && NuAuth::validNext('tools/../index.php') === null
+	&& NuAuth::validNext('/tools/x.php') === null && NuAuth::validNext('tools//x.php') === null && NuAuth::validNext('custom/pages/x/index.php') === null
+	&& NuAuth::validNext('tools/x.php?u=https://evil.example') === null && NuAuth::validNext('https://evil.example/x.php') === null);
 check('validNext no other host', NuAuth::validNext('https://evil.example/') === null && NuAuth::validNext('index.php?p=login') === null
 	&& NuAuth::validNext('index.php?p=x&u=a') === null && NuAuth::validNext('index.php?p=reauth') === null);
 

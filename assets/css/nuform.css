@@ -962,3 +962,9 @@ html.nuFormTabPending #nuEditForm .nuTabHolder, html.nuFormTabPending #nuTabHold
    height. Not on phone cards, not in the print view; a form with a row height keeps that (max-height on div.nuCell, 0.8.974) */
 html:not(.nuPhoneCards) body:not(.nuPrintView) #nuBrowseTable:not([data-nu-row-height]) > tbody > tr > td.nuCellTd > div.nuCell {
 	display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; line-clamp: 1; overflow: hidden; overflow-wrap: anywhere; }
+
+/* phone cards: each value at most two lines, cut with … (0.8.1275 – long texts made one card a screen high; a tap opens the record with
+   the whole text; the desktop list shows one line, 0.8.1232). The label (::before) counts as part of the first line. Not in the print view */
+html.nuPhoneCards body:not(.nuPrintView) #nuBrowseTable > tbody > tr.nuBrowseRow > td.nuCellTd:not([style*="display:none"]) {
+	display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+html.nuPhoneCards body:not(.nuPrintView) #nuBrowseTable > tbody > tr.nuBrowseRow > td.nuCellTd > div.nuCell br { display: none; }
