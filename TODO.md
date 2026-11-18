@@ -258,7 +258,7 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **Procedures list: search in code** (0.8.1254) – please verify: tick *Code* next to the search of the procedures list; procedures whose PHP or JavaScript contains the text are found.
 
 ## Users, access levels and permissions
-- [ ] **Start pages at a glance** (0.8.1264–0.8.1283) – please verify: ▾ next to Home (or the house button right of the logo, next to ☰ on phones) – tabs Home forms / Tile pages, rows on one line, User Home in the head; an empty tile page is not kept (the level uses the default); the user menu order (own items · tools · help · System info)
+- [ ] **Start pages at a glance** (0.8.1264–0.8.1283) – please verify: the button right of Customise on the start page (right-click / long press on Home elsewhere) – tabs Home forms / Tile pages, rows on one line, User Home in the head; an empty tile page is not kept (the level uses the default); the user menu order (own items · tools · help · System info)
 - [ ] **Delete access level with expired users** (0.8.1250) – a level used only by expired users can be deleted; check that those users show an empty access level and that nuBuilder Forte's user form handles them
 - [ ] **User form layout** (0.8.1230–0.8.1245) – please verify on the live server: summary on the left (jumps to login / code / status / level, no keyboard on phones), sections capped in width, compact summary on phones.
 - [ ] **Start page Home form on a Forte database** (0.8.1219) – please verify after the update on the live server: every access level with a Home form opens it after sign-in (Access levels → a level → Start page shows Home form); levels switched back to Tile page stay so; a new level with a Home form starts on it
@@ -335,6 +335,7 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **System info, page width, compact settings, code search on phones** (0.8.1226–0.8.1242) – please verify: System info… in the user menu (Copy for support), Customise → Appearance → page width on a large monitor, Settings → Compact, code search on a phone (Options / Filters sheets, chips).
 - [ ] **Backup memory** (0.8.1209) – please verify a backup before an update on the live server with a large log (the forum report);
       the folded Database steps card (0.8.1207) and no tooltip over the Check & install dialogue on a phone (0.8.1208).
+- [ ] **Please verify: Reset database in steps on the live host** (0.8.1290) – a large dump (hundreds of MB) runs through to the result without a 503; progress window, reload in the middle goes on; the check of the file is still ONE request (if that times out on a host, it needs steps too)
 - [ ] **Please verify: Reset database with a mysqldump file** (0.8.1148 / 0.8.1149) – large file (time limit of the check) and views / triggers with DEFINER (imported without it, owned by the importing user)
 - [ ] **File Manager tiles** (0.8.1121) – please verify with a folder of real photos (large phone pictures, orientation, loading speed) and in dark mode; no note is shown when PHP has no GD (tiles then show icons)
 - [ ] **File Manager for nuBuilder Forte** (0.8.1122 / 0.8.1123) – light / dark switch at the foot of the side bar; on phones it sits behind ☰ – wanted in the top bar there?

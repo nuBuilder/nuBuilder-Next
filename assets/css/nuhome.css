@@ -24,7 +24,7 @@
 }
 .nuHomeTools { display: flex; gap: .5rem; flex: none; }
 .nuHomeTools .btn { display: inline-flex; align-items: center; gap: .4rem; white-space: nowrap; }
-#nuHomeViewBtn .nuHomeBtnTx { display: none; }   /* icon only (0.8.455) – name in title / aria-label */
+#nuHomeViewBtn .nuHomeBtnTx, #nuHfToggle .nuHomeBtnTx { display: none; }   /* icon only (0.8.455) – name in title / aria-label */
 #nuHomeViewBtn[aria-expanded="true"] { background: var(--bs-primary-bg-subtle); color: var(--bs-primary-text-emphasis); border-color: var(--bs-primary-border-subtle); }
 @container (max-width: 640px) {
 	.nuHomeBtnTx { display: none; }

@@ -102,10 +102,10 @@ page) for how to use it.
 - **Audit trail and log** – every change per field, with history and restore; a log of logins, exports and admin changes (older entries can be deleted).
 - **Tile pages per access level** – users get their own tiles and can personalise them; or, per access level, the Home form opens
   after sign-in as in nuBuilder Forte – set on the access level's tab *Start page*, with a preview of the tiles.
-- **Start pages at a glance** – the globeadmin lists every Home form and every tile page with their access levels from the ▾ next to Home
-  (or a right-click / long press on Home): tabs Home forms / Tile pages, search, Open and Design on one line, User Home in the head
+- **Start pages at a glance** – the globeadmin lists every Home form and every tile page with their access levels from the button right of
+  Customise on the start page (or a right-click / long press on Home): tabs Home forms / Tile pages, search, Open and Design on one line, User Home in the head
 - **Maintenance in the browser** – signed updates with backup, rollback and a preview of database changes; restore the
-  database from a backup (MySQL / MariaDB); a `nuconfig.php`
+  database from a backup (MySQL / MariaDB); in developer mode, reset the database from a SQL dump of any size (runs in short steps with a progress window); a `nuconfig.php`
   editor; global JavaScript / CSS; system status; logged-in users; phpMyAdmin, Adminer and a file manager (recycle bin,
   versions, code editor, tiles with picture thumbnails; made for phones too).
 - **Library packs** – install, update, roll back and remove older versions of the bundled libraries (TCPDF 7, PHPMailer, TinyMCE …) from the browser.

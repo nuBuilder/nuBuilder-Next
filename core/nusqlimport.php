@@ -99,6 +99,94 @@ final class NuSqlImport
 		return $n;
 	}
 
+	/**
+	 * Resumable import (0.8.1290, Reset database in steps): runs the statements of a PLAIN .sql file from byte $st['off'] on until the
+	 * clock passes $until, then stops at the end of a line where no statement is open. $st (kept by the caller between requests):
+	 * off = bytes done, n = statements run, delim = the DELIMITER in force, sets = the SET statements of the dump so far – they are
+	 * session settings (time zone, sql_mode NO_AUTO_VALUE_ON_ZERO, character set …) and are run again at the start of the next slice,
+	 * which has a new connection. Each slice ends with COMMIT (dumps may switch autocommit off) and UNLOCK TABLES.
+	 * @param array<string, mixed> $st
+	 * @return bool true = the file is done
+	 */
+	public static function slice(NuDB $db, string $file, array &$st, float $until, bool $engines = false): bool
+	{
+		$h = @fopen($file, 'rb');
+		if (!$h) throw new RuntimeException(t('ins_dump_err_read'));
+		$off = (int)($st['off'] ?? 0);
+		$st['n'] = (int)($st['n'] ?? 0);
+		$sets = array_values(array_filter((array)($st['sets'] ?? []), 'is_string'));
+		$s = new self($db->type);
+		$s->delim = (string)($st['delim'] ?? ';') ?: ';';
+		$run = function (string $stmt) use ($db, $file, &$st, &$sets, $engines): void {
+			if ($engines && $db->type === 'mysql') $stmt = (string)preg_replace('/\bENGINE\s*=\s*MyISAM\b/i', 'ENGINE=InnoDB', $stmt);
+			try {
+				$db->exec($stmt);
+			} catch (PDOException $e) {
+				throw new RuntimeException(basename($file) . ', ' . t('ins_err_statement', $st['n'] + 1) . ': ' . $e->getMessage() . ' — ' . mb_substr(trim($stmt), 0, 160), 0, $e);
+			}
+			$st['n']++;
+			if (preg_match('#^(/\*!\d+\s*)?SET\s#i', $stmt)) {
+				$k = array_search($stmt, $sets, true);
+				if ($k !== false) array_splice($sets, (int)$k, 1);
+				$sets[] = $stmt;
+				if (count($sets) > 200) array_shift($sets);
+			}
+		};
+		try {
+			if ($off > 0 && fseek($h, $off) !== 0) throw new RuntimeException(t('ins_dump_err_read'));
+			foreach ($sets as $q) { try { $db->exec($q); } catch (PDOException) {} }
+			$done = true;
+			while (($line = fgets($h)) !== false) {
+				$off += strlen($line);
+				$s->feed($line);
+				foreach ($s->out as $stmt) $run($stmt);
+				$s->out = [];
+				if ($s->q === '' && !$s->block && trim($s->buf) === '' && microtime(true) >= $until) { $done = false; break; }
+			}
+			if ($done) {
+				$s->finish();
+				foreach ($s->out as $stmt) $run($stmt);
+				$s->out = [];
+			}
+			$st['off'] = $off;
+			$st['delim'] = $s->delim;
+			$st['sets'] = $sets;
+			return $done;
+		} finally {
+			fclose($h);
+			if ($db->type === 'mysql') {
+				try { $db->exec('COMMIT'); } catch (PDOException) {}
+				try { $db->exec('UNLOCK TABLES'); } catch (PDOException) {}
+			}
+		}
+	}
+
+	/**
+	 * A .sql.gz or .zip as a plain .sql file $dest (for slice(), which needs to seek); a plain .sql stays where it is.
+	 * @return string the plain file
+	 */
+	public static function plainCopy(string $path, string $dest): string
+	{
+		$name = strtolower($path);
+		if (!str_ends_with($name, '.zip') && !str_ends_with($name, '.gz')) return $path;
+		[$h, $kind, , $zip] = self::open($path);
+		$out = @fopen($dest . '.part', 'wb');
+		try {
+			if (!$out) throw new RuntimeException(t('ins_dump_err_read'));
+			while (true) {
+				$buf = $kind === 'gz' ? gzread($h, 1 << 20) : fread($h, 1 << 20);
+				if ($buf === false || $buf === '') break;
+				if (fwrite($out, $buf) !== strlen($buf)) throw new RuntimeException(t('dbr_err_unpack'));
+			}
+		} finally {
+			if ($out) fclose($out);
+			if ($kind === 'gz') gzclose($h); else fclose($h);
+			if ($zip) $zip->close();
+		}
+		if (!@rename($dest . '.part', $dest)) { @unlink($dest . '.part'); throw new RuntimeException(t('ins_dump_err_read')); }
+		return $dest;
+	}
+
 	/** Size of the SQL text of a file (bytes; .sql.gz: the size gzip noted, modulo 4 GB) – for messages and progress. */
 	public static function size(string $path): int
 	{

@@ -3,6 +3,27 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.1291 – Release gate
+- Release gate: full test run (smoke, end-to-end, cross-tests against nuBuilder Forte, OWASP ZAP); documentation brought up to date
+  (feature list: Reset database in steps; open points to verify).
+
+## 0.8.1290 – Reset database in steps
+- Reset database runs in short steps: a large SQL file no longer ends in an error page of the web server (503 / 504) after a while.
+  The page works through backup, unpacking, deleting the tables, the import and nuBuilder Next's tables in steps of a few seconds;
+  a dropped connection is simply asked again, and reloading the page goes on where it stopped. Session settings of the dump (time
+  zone, SQL mode, character set) carry over from step to step. A .zip / .sql.gz is unpacked first and the copy removed afterwards.
+- While the reset runs, a window shows what is being done and how far the import is (as Install on the update page); it cannot be
+  closed by accident.
+- The reset goes on when the browser connection is lost (package and command-line resets too).
+
+## 0.8.1289 – Start pages button on the start page
+- Start pages panel: its button moved from the top bar to the start page, right of Customise (icon only, like
+  Customise). On other pages a right-click or long press on the Home button of the top bar opens the start page
+  with the panel open; a plain click still just goes Home.
+
+## 0.8.1288 – Notes
+- Notes for the development: v0.8.1287 is published on GitHub.
+
 ## 0.8.1287 – Release gate
 - Release gate: the full test suite (smoke, end-to-end, cross-tests with nuBuilder Forte, security scan) for
   0.8.1263–0.8.1287; feature list, tutorial and open checks brought up to date.

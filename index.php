@@ -27,6 +27,19 @@ if (($_GET['p'] ?? '') === 'pwa' && !NuInstall::needed()) {
 	exit;
 }
 
+// Reset database in steps (0.8.1290, NuDbReset::step): WITHOUT nu_boot's session and sign-in – the job's random token is the right;
+// between the steps the database has no sessions table, and a step must not wait for the session lock of the page's other requests
+if (($_GET['p'] ?? '') === 'dbresetstep' && !NuInstall::needed()) {
+	nu_config();
+	nu_security_headers();
+	nu_apply_timezone();
+	header('Content-Type: application/json; charset=utf-8');
+	header('Cache-Control: no-store');
+	$tok = (string)($_POST['job'] ?? '');
+	if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !preg_match('/^[0-9a-f]{48}$/', $tok)) { http_response_code(400); exit('{"ok":false}'); }
+	exit(json_encode(NuDbReset::step($tok), JSON_UNESCAPED_UNICODE));
+}
+
 // first run: no nuconfig.php yet → installer (core/nuinstall.php)
 // (also right after it: the installer finishes when nuconfig.php was copied by hand – see pages/nuinstall.php)
 if (NuInstall::needed() || (($_GET['p'] ?? '') === 'install' && isset($_COOKIE['nunext_install']))) {
@@ -211,6 +224,7 @@ if ($p === 'formapi' && ($_GET['presence'] ?? '') === '1') define('NU_PASSIVE', 
 // a page's background poll (?passive=1) does not count as activity either (0.8.387)
 if ($p === 'page' && ($_GET['passive'] ?? '') === '1' && !defined('NU_PASSIVE')) define('NU_PASSIVE', true);
 
+if (!empty($_SESSION['nu_dbreset']['job'])) NuDbReset::afterJob();   // 0.8.1290: signed in again after a reset in steps
 if (empty($routes[$p]['public'])) {
 	$user = NuAuth::user();
 	if (!$user) {

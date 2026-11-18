@@ -53,6 +53,12 @@
   },
   {
    "id": "90035",
+   "url": "[?&]p=notifications(&|$)",
+   "param": ".*",
+   "reason": "false positive (0.8.1291 gate): as for p=form above – the 'proof' is the sign-in redirect of a request whose session the scan had ended; its Location header carries the requested address URL-encoded as next=…, so the digits of the payload show up in %2522… escapes. Nothing is evaluated: the list's state filter is matched against its fixed options"
+  },
+  {
+   "id": "90035",
    "url": "[?&]p=forms(&|$)",
    "param": ".*",
    "reason": "false positive (0.8.1216 gate): the forms list puts the address of the page, URL-encoded, into its sort and pager links (nu_url) – the payload {{print \"2522\" \"2320\"}} becomes %2B%25222320… there, which contains the digits ZAP looks for. Nothing is evaluated: the list parameters are matched against fixed values and only ever written escaped (checked: the page holds 25222320 only inside those %-escapes)"

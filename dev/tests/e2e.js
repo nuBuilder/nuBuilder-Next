@@ -9898,7 +9898,7 @@ T.home_customise = async (s) => {
 	await p.evaluate(() => { try { localStorage.removeItem('nunext-home-cust-tab'); } catch (e) { /* */ } });
 	await open(p, 'index.php?p=home');
 	const shown = await p.$$eval('.nuHomeTools button', b => b.filter(x => !x.hidden).map(x => x.id));
-	expect(shown.length === 1 && shown[0] === 'nuHomeViewBtn', 'one button: ' + shown);
+	expect(shown.filter(x => x !== 'nuHfToggle').join() === 'nuHomeViewBtn', 'one button: ' + shown);   // + the Start pages button (0.8.1289)
 	await p.click('#nuHomeViewBtn'); await p.waitForTimeout(300);
 	const tabs = await p.$$eval('.nuHomeVpTabs .nav-link', b => b.map(x => x.id.replace('nuHomeVpTab-', '') + (x.classList.contains('active') ? '*' : '')));
 	expect(tabs.join(',') === 'appearance*,content,layouts', 'tabs: ' + tabs);
@@ -13577,12 +13577,22 @@ T.db_reset = async (s) => {
 		await Promise.all([p.waitForNavigation(), p.click('#dbrCheckBtn')]);
 		expect(await p.locator('#dbrWarn').count() === 1, 'check: no warning / ' + (await p.locator('.alert').allTextContents()).join(' | '));
 		expect(await p.locator('#dbrTables code', { hasText: 'e2e_dbr_marker' }).count() === 1, 'marker table not listed as deleted');
+		// 0.8.1290: the reset shows a progress window that cannot be closed (as Install on the update page)
+		expect(await p.locator('#dbrRunForm[data-nu-progress="#dbrProgress"]').count() === 1 && await p.locator('#dbrProgress[data-bs-backdrop="static"][data-bs-keyboard="false"]').count() === 1, 'no progress window');
 		await p.fill('#dbrConfirm', 'not-the-db');
+		await p.evaluate(() => { window.__dbrShown = false; document.getElementById('dbrProgress').addEventListener('show.bs.modal', () => { sessionStorage.setItem('e2e-dbr-shown', '1'); }); });
 		await Promise.all([p.waitForNavigation(), p.click('#dbrRun')]);
+		expect(await p.evaluate(() => { const v = sessionStorage.getItem('e2e-dbr-shown'); sessionStorage.removeItem('e2e-dbr-shown'); return v === '1'; }), 'progress window not shown while running');
 		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=dbreset'); }
 		expect(sql("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'e2e_dbr_marker'") === '1', 'wrong database name: tables deleted');
 		await p.fill('#dbrConfirm', sql('SELECT DATABASE()'));
 		await Promise.all([p.waitForNavigation({ timeout: 120000 }), p.click('#dbrRun')]);
+		// 0.8.1290: the reset runs in steps (?p=dbresetstep) – the page with the progress bar loads the result by itself
+		const steps = [];
+		p.on('response', (rr) => { if (/p=dbresetstep/.test(rr.url())) steps.push(rr.status()); });
+		await p.waitForSelector('#dbrDone, #nuFlash .alert-danger, .alert-danger', { timeout: 180000 });
+		expect(steps.length > 0 && steps.every((x) => x === 200), 'steps: ' + steps.join(','));
+		if (SITE) expect(!fs.readdirSync(path.join(SITE, '_update')).some((f) => /^\.dbreset-work/.test(f)), 'work copy left in _update/');
 		expect(await p.locator('#dbrDone').count() === 1, 'no result: ' + (await p.locator('.alert').allTextContents()).join(' | '));
 		expect(sql("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'e2e_dbr_marker'") === '0', 'table not in the dump still there');
 		expect(sql('SELECT COUNT(*) FROM zzzzsys_form') === forms, 'forms after the import: ' + sql('SELECT COUNT(*) FROM zzzzsys_form') + ' of ' + forms);
@@ -18989,7 +18999,12 @@ T.home_forms_panel = async (s) => {
 		await open(p, 'index.php?p=access&q=e2e_hf_blank');
 		expect(/Blank page \(system\)/.test(await p.locator('.nuAccHomeLink').first().innerText()), 'access list label');
 	} catch (e) { db("DELETE FROM zzzzsys_access WHERE zzzzsys_access_id IN ('e2e_hf_blank', 'e2e_hf_gone')"); throw e; }
+	// 0.8.1289 (the owner): the button sits on the start page, right of Customise – not in the top bar any more
 	await open(p, 'index.php?p=users');
+	expect(await p.locator('#nuHfToggle').count() === 0, 'Start pages button still in the top bar');
+	await open(p, 'index.php?p=home');
+	expect(await p.evaluate(() => { const c = document.getElementById('nuHomeViewBtn'), t = document.getElementById('nuHfToggle');
+		return !!(c && t && t.closest('.nuHomeTools') && (c.compareDocumentPosition(t) & Node.DOCUMENT_POSITION_FOLLOWING)); }), 'not right of Customise');
 	await p.evaluate(() => { try { localStorage.removeItem('nunext-hf-tab'); } catch (e) { /* none */ } });
 	await p.click('#nuHfToggle');
 	await p.waitForSelector('#nuHfPanel.show .nuHfRow');
@@ -19048,7 +19063,7 @@ T.home_forms_panel = async (s) => {
 	await p.click('#nuHfTab_forms');
 	await p.keyboard.press('Escape');
 	await p.waitForSelector('#nuHfPanel.show', { state: 'detached', timeout: 3000 }).catch(() => {});
-	// compact top bar (no logo): ▾ joined to the Home button; right-click on Home opens the panel and stays on the page
+	// compact top bar (no logo): right-click on Home on another page goes to the start page with the panel open (?hf=1, removed from the address)
 	const before = db("SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'branding'");
 	const set = (v) => db(v === null ? "DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'branding'"
 		: "DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'branding'; INSERT INTO zzzzsys_nunext_setting (zzzzsys_nunext_setting_id, setting_value) VALUES ('branding', '" + v.replace(/'/g, "''") + "')");
@@ -19056,10 +19071,13 @@ T.home_forms_panel = async (s) => {
 		const cur = before ? JSON.parse(before) : {};
 		set(JSON.stringify(Object.assign({}, cur, { logo_show: 'login' })));
 		await open(p, 'index.php?p=users');
-		expect(await p.locator('.nuHfGroup #nuHomeBtn + #nuHfToggle').count() === 1, 'split button missing in the compact bar');
+		await Promise.all([p.waitForNavigation(), p.click('#nuHomeBtn', { button: 'right' })]);
+		await p.waitForSelector('#nuHfPanel.show .nuHfRow');
+		expect(/p=home/.test(p.url()) && !/hf=1/.test(p.url()), 'right-click: ' + p.url());
+		await p.keyboard.press('Escape');
+		// on the start page itself it opens in place
 		await p.click('#nuHomeBtn', { button: 'right' });
 		await p.waitForSelector('#nuHfPanel.show .nuHfRow');
-		expect(p.url().includes('p=users'), 'right-click navigated');
 		await p.keyboard.press('Escape');
 	} finally { set(before || null); }
 	const u = await login('sample_ben', UPW);
@@ -19260,17 +19278,15 @@ T.phone_card_clamp = async (s) => {
 	}
 };
 
-// 0.8.1277: phones with the logo – the Start pages button sits right before ☰ and has its size; its panel stays on the screen
+// 0.8.1277 / 0.8.1289: phones – the Start pages button (start page, right of Customise) opens a panel that stays on the screen
 T.nav_home_phone_pair = async (s) => {
 	const ctx = await s.ga.context().browser().newContext({ viewport: { width: 390, height: 760 }, storageState: await s.ga.context().storageState() });
 	const p = await ctx.newPage();
 	try {
-		await p.goto(BASE + 'index.php?p=users'); await p.waitForTimeout(400);
-		if (!(await p.locator('.navbar-toggler').count())) { s.skip = 'no logo in the bar'; return; }
-		const r = await p.evaluate(() => { const a = document.getElementById('nuHfToggle').getBoundingClientRect(), b = document.querySelector('.navbar-toggler').getBoundingClientRect();
+		await p.goto(BASE + 'index.php?p=home'); await p.waitForTimeout(400);
+		const r = await p.evaluate(() => { const a = document.getElementById('nuHfToggle').getBoundingClientRect(), b = document.getElementById('nuHomeViewBtn').getBoundingClientRect();
 			return { a: [a.x, a.y, a.width, a.height].map(Math.round), b: [b.x, b.y, b.width, b.height].map(Math.round) }; });
-		expect(r.a[2] === r.b[2] && r.a[3] === r.b[3] && r.a[1] === r.b[1], 'not the same size / line: ' + JSON.stringify(r));
-		expect(r.a[0] + r.a[2] <= r.b[0] && r.b[0] - (r.a[0] + r.a[2]) <= 12, 'not right before the menu button: ' + JSON.stringify(r));
+		expect(Math.abs(r.a[1] - r.b[1]) <= 2 && r.a[3] === r.b[3] && r.a[0] > r.b[0] && r.a[0] + r.a[2] <= 390, 'not beside Customise: ' + JSON.stringify(r));
 		await p.click('#nuHfToggle');
 		await p.waitForSelector('#nuHfPanel.show');
 		const pr = await p.evaluate(() => { const x = document.getElementById('nuHfPanel').getBoundingClientRect(); return [Math.round(x.left), Math.round(x.right)]; });
@@ -19299,7 +19315,7 @@ T.home_tiles_empty = async (s) => {
 		const r = await p.evaluate((l) => ({ opt: [...document.querySelectorAll('#nuHomeFor option')].find(o => o.value === l)?.textContent || '', src: document.getElementById('nuHomeForSrc')?.textContent || '' }), lv);
 		expect(/own, empty/.test(r.opt) && /no tiles/.test(r.src), 'editor: ' + JSON.stringify(r));
 		await p.evaluate(() => { try { localStorage.setItem('nunext-hf-tab', 'tiles'); } catch (e) { /* none */ } });
-		await open(p, 'index.php?p=users');
+		await open(p, 'index.php?p=home');
 		await p.click('#nuHfToggle');
 		await p.waitForSelector('#nuHfPanel.show .nuHfList:not([hidden]) .nuHfRow');
 		expect(await p.locator('#nuHfList_tiles .nuHfRow[data-nu-hf="e2e_empty_tp"] .nuHfEmptyTag').count() === 1, 'panel: no empty mark');

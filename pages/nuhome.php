@@ -385,6 +385,7 @@ foreach (NuHomeHook::$banners as [$bText, $bLevel]): ?>
 		<?php // User Home: no button here any more (0.8.1281, the owner: two house icons with the Start pages ▾) – tile, Recently used, user menu, Start pages panel ?>
 		<button type="button" class="btn btn-outline-secondary" id="nuHomeViewBtn" aria-expanded="false" aria-controls="nuHomeViewPanel" title="<?= h(t('home_c_tip')) ?>" aria-label="<?= h(t('home_customize')) ?>">
 			<i class="bi bi-sliders2" aria-hidden="true"></i><span class="nuHomeBtnTx"><?= h(t('home_customize')) ?></span></button>
+		<?php if (!$editorPage && NuHomeForms::allowed()): // Start pages panel (0.8.1289, the owner: right of Customise; was next to Home in the top bar) ?><?= NuHomeForms::button() ?><?php endif; ?>
 		<?php if ($canLayout): ?><button type="button" hidden class="btn btn-outline-secondary" id="nuHomeCustomize" title="<?= h(t($editorPage ? 'home_u_customise_tip' : 'home_v_customise_tip')) ?>">
 			<i class="bi bi-pencil" aria-hidden="true"></i><span class="nuHomeBtnTx"><?= h(t('home_customize')) ?></span></button><?php endif; ?>
 		<?php if ($userPage && !$editorPage && !NuImpersonate::readOnly()): // a user's own favourites and hidden tiles (0.8.425) ?><button type="button" hidden class="btn btn-outline-secondary" id="nuHomeMine" title="<?= h(t('home_u_mine_tip')) ?>">

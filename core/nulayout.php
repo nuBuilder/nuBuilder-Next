@@ -179,9 +179,8 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 	<?= NuImpersonate::banner() ?>
 	<div class="container-fluid nuNavInner"><?php // full width (0.8.483): the logo stays at the left edge on every page, the menus at the right ?>
 		<?php if ($compact): // no logo in the bar (0.8.707): a Home button at the very left ?>
-			<?php if ($hf): // Home forms of the access levels (0.8.1264): split button ▾ next to Home ?><div class="btn-group me-2 nuHfGroup"><?php endif; ?>
-			<a class="btn btn-sm btn-outline-secondary<?= $hf ? '' : ' me-2' ?> nuHomeBtn" id="nuHomeBtn" href="<?= h(nu_url('home')) ?>" title="<?= h(t('nav_home')) ?>" aria-label="<?= h(t('nav_home')) ?>"<?= $active === 'home' ? ' aria-current="page"' : '' ?>><i class="bi bi-house"></i></a>
-			<?php if ($hf): ?><?= NuHomeForms::button() ?></div><?php endif; ?>
+			<?php // the Start pages ▾ sits on the start page next to Customise (0.8.1289, the owner); right-click / long press on Home opens it there (data-nu-hf-url) ?>
+			<a class="btn btn-sm btn-outline-secondary me-2 nuHomeBtn" id="nuHomeBtn" href="<?= h(nu_url('home')) ?>" title="<?= h(t('nav_home')) ?>" aria-label="<?= h(t('nav_home')) ?>"<?= $active === 'home' ? ' aria-current="page"' : '' ?><?= $hf ? ' data-nu-hf-url="' . h(nu_url('home', ['hf' => '1'])) . '"' : '' ?>><i class="bi bi-house"></i></a>
 		<?php endif; ?>
 		<?php if ($sidebar): // side bar (0.8.460): a drawer opened here, left of the logo, on every screen width (0.8.513) ?>
 			<button type="button" class="btn btn-sm btn-outline-secondary me-2 nuSbOpenBtn" id="nuSbOpen" aria-controls="nuSidebar" aria-expanded="false" title="<?= h(t('sb_open')) ?>" aria-label="<?= h(t('sb_open')) ?>"><i class="bi bi-layout-sidebar"></i></button>
@@ -195,7 +194,6 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 			<?= nu_csrf_field() ?><input type="hidden" name="action" value="hide_logo"><input type="hidden" name="back" value="<?= h('index.php?' . (string)($_SERVER['QUERY_STRING'] ?? '')) ?>">
 		</form>
 		<?php endif; ?>
-		<?php if ($hf && !$compact): // logo shown: the ▾ of the Home forms right of it (0.8.1264) ?><div class="dropdown me-2 nuHfGroup"><?= NuHomeForms::button(false) ?></div><?php endif; ?>
 		<?= NuBranding::envBadge('me-auto me-md-3') ?>
 		<?php if ($compact): // no logo (0.8.730): on desktop the page's breadcrumb moves here, next to the Home button (assets/js/nuapp.js) ?>
 			<nav class="nuNavCrumbs" id="nuNavCrumbs" aria-label="breadcrumb" hidden></nav>

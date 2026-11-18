@@ -2752,7 +2752,6 @@ html.nuSetCompact .nuSetLink { padding-top: .55rem; padding-bottom: .55rem; alig
 .smpWhatsNew .smpChg { border-color: rgba(0, 0, 0, .08); }
 
 /* Home forms of the access levels (0.8.1264, assets/js/nuhomeforms.js): ▾ next to Home, panel with one row per Home form */
-.nuHfGroup .nuHfToggle.dropdown-toggle-split { padding-left: .35rem; padding-right: .35rem; }
 .nuHfPanel { width: min(620px, calc(100vw - 24px)); padding: 0; max-height: min(70vh, 560px); overflow: hidden; }
 .nuHfPanel.show { display: flex; flex-direction: column; }
 .nuHfHead { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem; padding: .65rem .85rem; border-bottom: 1px solid var(--bs-border-color); }
@@ -2878,17 +2877,6 @@ html.nuPwSet:not(.nuEmbedded) body.nu-app:not(.nu-bare):not(.nuDesignMode):has(>
 .nuHfList[hidden] { display: none; }
 .nuHfNote { font-size: .78rem; color: var(--bs-secondary-color); }
 .nuHfHead .nuHfSearch { flex: 1 1 100%; width: auto; margin-left: 0; }
-
-/* phones with the logo in the top bar (0.8.1277, the owner): the Start pages button sits right before the menu button (☰) and has
-   its size (56 × 40 px, same radius / border) – the two read as one pair at the right edge */
-@media (max-width: 767.98px) {
-	.nuNavInner > .dropdown.nuHfGroup { order: 2; margin-left: auto; margin-right: .5rem !important; }
-	.nuNavInner > .navbar-toggler { order: 3; }
-	.nuNavInner > .navbar-collapse { order: 4; }
-	.nuNavInner > .dropdown.nuHfGroup > .nuHfToggle { width: 56px; height: 40px; padding: 0; border-radius: var(--bs-navbar-toggler-border-radius, .375rem);
-		border-color: var(--bs-navbar-toggler-border-color, var(--bs-border-color)); display: inline-flex; align-items: center; justify-content: center; gap: .3rem; font-size: 1.25rem; }
-	.nuNavInner > .dropdown.nuHfGroup > .nuHfToggle::after { margin-left: 0; }
-}
 
 /* Start pages panel: one line per row (0.8.1278, the owner picked D of the canvas "Start pages menu") – title cut with …, count,
    Open (and Design) as square icon buttons at the right on every width; the folded-out chips go below the title */

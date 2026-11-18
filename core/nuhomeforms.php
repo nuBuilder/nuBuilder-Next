@@ -115,11 +115,12 @@ final class NuHomeForms
 	}
 
 	/** The ▾ button + its empty panel (core/nulayout.php). */
-	public static function button(bool $split = true): string
+	/** The Start pages button with its panel – on the start page next to Customise (0.8.1289, the owner; was a split button next to Home). */
+	public static function button(): string
 	{
 		$lbl = h(t('hf_panel_btn'));
-		// $split: next to the Home button (compact top bar); else on its own right of the logo, with a house icon
-		return '<button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle' . ($split ? ' dropdown-toggle-split' : '') . ' nuHfToggle" id="nuHfToggle" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" title="' . $lbl . '" aria-label="' . $lbl . '" data-url="' . h(nu_url('homeforms')) . '">' . ($split ? '' : '<i class="bi bi-house"></i> ') . '</button>'
-			. '<div class="dropdown-menu nuHfPanel" id="nuHfPanel" aria-labelledby="nuHfToggle"><div class="p-3 text-body-secondary small">…</div></div>';
+		return '<div class="dropdown nuHfGroup"><button type="button" class="btn btn-outline-secondary dropdown-toggle nuHfToggle" id="nuHfToggle" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" title="' . $lbl . '" aria-label="' . $lbl . '" data-url="' . h(nu_url('homeforms')) . '">'
+			. '<i class="bi bi-house-gear" aria-hidden="true"></i><span class="nuHomeBtnTx">' . $lbl . '</span></button>'
+			. '<div class="dropdown-menu dropdown-menu-end nuHfPanel" id="nuHfPanel" aria-labelledby="nuHfToggle"><div class="p-3 text-body-secondary small">…</div></div></div>';
 	}
 }

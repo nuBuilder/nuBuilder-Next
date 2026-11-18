@@ -48,9 +48,8 @@ if (nu_is_post()) {
 					$S = [];
 					nu_redirect(nu_url('dbreset', ['fresh' => '1']));   // the next request runs the new code
 				}
-				$r = NuDbReset::run((string)$S['path'], nu_post('backup') === '1', nu_post('sample') === '1');
-				NuDbReset::forgetUpload((string)$S['path']);
-				$S = ['done' => $r];
+				// 0.8.1290: in steps (NuDbReset::step, assets/js/nudbreset.js) – one request for a large file outlasted the host's time limit (503)
+				$S = ['job' => NuDbReset::startJob((string)$S['path'], nu_post('backup') === '1', nu_post('sample') === '1', (array)$S['check'])];
 			} catch (Throwable $e) {
 				error_log('nuBuilder Next reset database: ' . $e->getMessage());
 				nu_flash('danger', t('dbr_err_failed', $e->getMessage()));
@@ -63,6 +62,16 @@ if (nu_is_post()) {
 	nu_redirect(nu_url('dbreset'));
 }
 
+$job = null;
+if (!empty($S['job'])) {                                            // a reset in steps (0.8.1290)
+	$job = NuDbReset::job((string)$S['job']);
+	if ($job && $job['phase'] === 'done') { $S = ['done' => $job['result']]; $job = null; }
+	elseif (!$job || $job['phase'] === 'error') {
+		nu_flash('danger', $job ? t('dbr_err_failed', (string)$job['error']) : t('dbr_err_no_job'));
+		$S = [];
+		nu_redirect(nu_url('dbreset'));
+	}
+}
 $chk = $S['check'] ?? null;
 $done = $S['done'] ?? null;
 $fresh = $S['fresh'] ?? null;
@@ -77,7 +86,24 @@ nu_layout_start(t('dbr_title'), 'dbreset');
 		<div class="d-flex flex-wrap gap-2"><?= nu_back_button() ?></div>
 	</div>
 	<div class="card-body">
-	<?php if ($fresh): ?>
+	<?php if ($job): ?>
+		<div class="alert alert-warning" id="dbrJobRunning"><i class="bi bi-hourglass-split me-1"></i><?= h(t('dbr_job_running', (string)$job['database'])) ?></div>
+		<?php // the page goes through the steps (assets/js/nudbreset.js): the token is the right of ?p=dbresetstep ?>
+		<div class="modal fade" id="dbrProgress" tabindex="-1" aria-labelledby="dbrProgressTitle" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false"
+			data-nu-dbr-job="<?= h((string)$S['job']) ?>" data-nu-dbr-step="<?= h(nu_url('dbresetstep')) ?>" data-nu-dbr-done="<?= h(nu_url('dbreset')) ?>"
+			data-nu-dbr-lost="<?= h(t('dbr_job_lost')) ?>">
+			<div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+				<div class="modal-body p-4 text-center">
+					<div class="spinner-border text-danger mb-3 nuUpdSpinner" role="status" aria-hidden="true"></div>
+					<h2 class="h5 mb-3" id="dbrProgressTitle"><?= h(t('dbr_progress_title', (string)$job['database'])) ?></h2>
+					<div class="progress mb-2" role="progressbar" aria-labelledby="dbrPhase" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="dbrBar"><div class="progress-bar bg-danger" id="dbrBarFill"></div></div>
+					<p class="small mb-3" id="dbrPhase" aria-live="polite"><?= h(t('dbr_ph_' . ($job['phase'] === 'import' ? 'drop' : $job['phase']))) ?></p>
+					<div class="alert alert-warning text-start small mb-2 py-2"><i class="bi bi-exclamation-triangle me-1"></i><?= h(t('dbr_progress_keep')) ?></div>
+					<p class="small text-body-secondary text-start mb-0"><?= h(t('dbr_progress_info')) ?></p>
+				</div>
+			</div></div>
+		</div>
+	<?php elseif ($fresh): ?>
 		<div class="alert <?= empty($fresh['error']) ? 'alert-success' : 'alert-warning' ?>" id="dbrFreshDone">
 			<p class="fw-semibold mb-1"><?= h(t('dbr_fresh_done', $fresh['version'])) ?></p>
 			<ul class="mb-0 small">
@@ -133,7 +159,7 @@ nu_layout_start(t('dbr_title'), 'dbreset');
 					</table></div>
 				</details></dd>
 		</dl>
-		<form method="post" id="dbrRunForm" data-nu-once>
+		<form method="post" id="dbrRunForm" data-nu-once data-nu-progress="#dbrProgress">
 			<?= nu_csrf_field() ?><input type="hidden" name="action" value="run">
 			<div class="form-check mb-1"><input class="form-check-input" type="checkbox" name="backup" value="1" id="dbrBackup"<?= !empty($S['backup']) ? ' checked' : '' ?>>
 				<label class="form-check-label" for="dbrBackup"><?= h(t('dbr_opt_backup')) ?></label></div>
@@ -147,6 +173,18 @@ nu_layout_start(t('dbr_title'), 'dbreset');
 			</div>
 		</form>
 		<form method="post" id="dbrCancel"><?= nu_csrf_field() ?><input type="hidden" name="action" value="cancel"></form>
+		<?php // shown while the reset runs (0.8.1290, the owner: as on the update page) – no close button, no Escape ?>
+		<div class="modal fade" id="dbrProgress" tabindex="-1" aria-labelledby="dbrProgressTitle" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+			<div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+				<div class="modal-body p-4 text-center">
+					<div class="spinner-border text-danger mb-3 nuUpdSpinner" role="status" aria-hidden="true"></div>
+					<h2 class="h5 mb-2" id="dbrProgressTitle"><?= h(t('dbr_progress_title', $chk['database'])) ?></h2>
+					<p class="mb-3 small text-body-secondary"><?= h(t($pkg ? 'dbr_progress_steps_pkg' : 'dbr_progress_steps')) ?></p>
+					<div class="alert alert-warning text-start small mb-2 py-2"><i class="bi bi-exclamation-triangle me-1"></i><?= h(t('dbr_progress_keep')) ?></div>
+					<p class="small text-body-secondary text-start mb-0"><?= h(t('dbr_progress_info')) ?></p>
+				</div>
+			</div></div>
+		</div>
 	<?php else:
 		$src = NuDbReset::sources(); ?>
 		<details class="mb-3 nuMoreHint"><summary class="small"><?= h(t('more_info')) ?></summary><p class="mb-0 mt-1"><?= h(t('dbr_intro', $dbName)) ?></p></details><?php /* review M3 */ ?>
@@ -172,4 +210,4 @@ nu_layout_start(t('dbr_title'), 'dbreset');
 	</div>
 </div>
 <?php
-nu_layout_end();
+nu_layout_end($job ? '<script src="' . nu_asset('assets/js/nudbreset.js') . '"></script>' : '');

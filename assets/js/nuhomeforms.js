@@ -1,6 +1,6 @@
 /* global nuBs */
 /*
- * Home forms of the access levels (0.8.1264, core/nuhomeforms.php): the ▾ next to the Home button (globeadmin) opens a panel with
+ * Home forms of the access levels (0.8.1264, core/nuhomeforms.php): the Start pages button on the start page, right of Customise (globeadmin, 0.8.1289), opens a panel with
  * one row per Home form – its access levels as chips (dashed = the level starts on the tile page), Open / Design – and, in a second tab
  * (0.8.1276), the tile pages of users with their levels; loaded once from ?p=homeforms. Right-click or a long press on the Home button opens the same panel; a plain click still goes Home.
  */
@@ -8,7 +8,25 @@
 	'use strict';
 	var tog = document.getElementById('nuHfToggle');
 	var panel = document.getElementById('nuHfPanel');
-	if (!tog || !panel) return;
+	var home = document.getElementById('nuHomeBtn');
+	// the button is on the start page only (0.8.1289): elsewhere right-click / long press on Home goes there and opens the panel (?hf=1)
+	function onHome(fn) {
+		if (!home || !home.hasAttribute('data-nu-hf-url')) return;
+		home.addEventListener('contextmenu', function (e) { e.preventDefault(); fn(); });
+		var timer = null, fired = false;
+		home.addEventListener('touchstart', function () {
+			fired = false;
+			timer = setTimeout(function () { fired = true; fn(); }, 550);
+		}, {passive: true});
+		['touchend', 'touchmove', 'touchcancel'].forEach(function (ev) {
+			home.addEventListener(ev, function () { clearTimeout(timer); }, {passive: true});
+		});
+		home.addEventListener('click', function (e) { if (fired) { e.preventDefault(); fired = false; } });
+	}
+	if (!tog || !panel) {
+		onHome(function () { window.location.href = home.getAttribute('data-nu-hf-url'); });
+		return;
+	}
 	var data = null, loading = false;
 
 	function el(tag, cls, text) {
@@ -232,18 +250,15 @@
 	function open() { nuBs.dropdown(tog).show(); }
 	window.nuHomeFormsOpen = open;
 
-	// right-click / long press on the Home button (compact top bar) opens the panel
-	var home = document.getElementById('nuHomeBtn');
-	if (home && home.closest('.nuHfGroup')) {
-		home.addEventListener('contextmenu', function (e) { e.preventDefault(); open(); });
-		var timer = null, fired = false;
-		home.addEventListener('touchstart', function () {
-			fired = false;
-			timer = setTimeout(function () { fired = true; open(); }, 550);
-		}, {passive: true});
-		['touchend', 'touchmove', 'touchcancel'].forEach(function (ev) {
-			home.addEventListener(ev, function () { clearTimeout(timer); }, {passive: true});
-		});
-		home.addEventListener('click', function (e) { if (fired) { e.preventDefault(); fired = false; } });
-	}
+	// right-click / long press on the Home button opens the panel; ?hf=1 (from another page) opens it at once
+	onHome(open);
+	try {
+		var q = new URLSearchParams(window.location.search);
+		if (q.get('hf') === '1') {
+			q.delete('hf');
+			var rest = q.toString();
+			window.history.replaceState(null, '', window.location.pathname + (rest ? '?' + rest : '') + window.location.hash);
+			setTimeout(open, 0);
+		}
+	} catch (e) { /* old browser: the panel just stays closed */ }
 })();

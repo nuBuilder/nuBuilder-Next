@@ -118,7 +118,8 @@ final class NuDbReset
 		// read line by line (0.8.1031): no size limit, routines / triggers between DELIMITER lines
 		try { $chk = NuInstall::checkDump(NuSqlImport::statements($path), true); } catch (RuntimeException $e) { return ['ok' => false, 'error' => $e->getMessage()]; }
 		$tables = self::currentTables();
-		return $chk + ['file' => basename($path), 'bytes' => NuSqlImport::size($path), 'current' => $tables, 'database' => (string)nu_db()->value('SELECT DATABASE()')];
+		clearstatcache();
+		return $chk + ['file' => basename($path), 'bytes' => NuSqlImport::size($path), 'fsize' => (int)@filesize($path), 'mtime' => (int)@filemtime($path), 'current' => $tables, 'database' => (string)nu_db()->value('SELECT DATABASE()')];
 	}
 
 	/**
@@ -129,6 +130,7 @@ final class NuDbReset
 	{
 		if (!self::available()) throw new RuntimeException(t('dbr_err_unavailable'));
 		nu_time_limit(0);
+		nu_ignore_abort();   // 0.8.1290: a closed tab / dropped connection must not stop the reset half way
 		$chk = NuInstall::checkDump(NuSqlImport::statements($path), true);
 		if (!$chk['ok']) throw new RuntimeException($chk['error']);
 		$out = ['backup' => '', 'dropped' => 0, 'statements' => 0, 'upgraded' => [], 'steps' => [], 'sample' => ''];
@@ -164,6 +166,212 @@ final class NuDbReset
 		NuLog::write('database_reset', $dbName, '', ['file' => basename($path), 'dropped' => $out['dropped'], 'statements' => $out['statements'],
 			'backup' => $out['backup'], 'sample' => $out['sample'], 'via' => $via]);
 		return $out;
+	}
+
+	// ------------------------------------------------------------------ the reset in steps (0.8.1290)
+	/*
+	 * A large file takes minutes; web hosts end a request long before (a proxy answers 503 / 504). From the page the reset therefore
+	 * runs as a JOB in short steps: startJob() writes a job file next to the upload (_update/, deny-all) and gives the page a random
+	 * token; the page (assets/js/nudbreset.js) calls ?p=dbresetstep with it again and again (index.php, before nu_boot: no session,
+	 * no sign-in – the token is the right, the database has no sessions table in between). step() works for JOB_SECONDS, saves where
+	 * it stopped and answers: backup → unpack (.zip / .gz to a plain .sql, which can be read from any byte on) → drop → import in
+	 * slices (NuSqlImport::slice) → finish (as run()) → done. A step that is still running holds a lock: a second call answers
+	 * "busy" and the page asks again. A dropped connection therefore loses nothing; reloading the page goes on where it was.
+	 */
+	public const JOB_SECONDS = 12;
+
+	private static function jobPath(): string
+	{
+		return NuUpdate::folderDir() . '/.dbreset-job.json';
+	}
+
+	/** @return array<string, mixed>|null */
+	private static function jobRead(): ?array
+	{
+		$f = self::jobPath();
+		if (!is_file($f)) return null;
+		$j = json_decode((string)@file_get_contents($f), true);
+		return is_array($j) ? $j : null;
+	}
+
+	/** @param array<string, mixed> $j */
+	private static function jobWrite(array $j): void
+	{
+		$j['updated'] = time();
+		$f = self::jobPath();
+		if (@file_put_contents($f . '.tmp', json_encode($j, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) === false || !@rename($f . '.tmp', $f)) {
+			throw new RuntimeException(t('dbr_err_job_file'));
+		}
+		@chmod($f, 0640);
+	}
+
+	/** The job of this token (any phase), or null. @return array<string, mixed>|null */
+	public static function job(string $token): ?array
+	{
+		$j = self::jobRead();
+		return $j && $token !== '' && hash_equals((string)($j['th'] ?? ''), hash('sha256', $token)) ? $j : null;
+	}
+
+	/**
+	 * Starts a reset from the page (the check was done on this file: size and time unchanged). @return string the token
+	 */
+	public static function startJob(string $path, bool $backup, bool $sample, array $chk): string
+	{
+		if (!self::available()) throw new RuntimeException(t('dbr_err_unavailable'));
+		$old = self::jobRead();
+		if ($old && !in_array($old['phase'] ?? '', ['done', 'error'], true) && time() - (int)($old['updated'] ?? 0) < 600) throw new RuntimeException(t('dbr_err_job_running'));
+		clearstatcache();
+		if (!is_file($path) || (int)@filesize($path) !== (int)($chk['fsize'] ?? -1) || (int)@filemtime($path) !== (int)($chk['mtime'] ?? -1)) throw new RuntimeException(t('dbr_err_changed'));
+		self::jobClean($old);
+		$token = bin2hex(random_bytes(24));
+		self::jobWrite([
+			'th' => hash('sha256', $token), 'path' => $path, 'work' => '', 'backup' => $backup, 'sample' => $sample,
+			'phase' => $backup ? 'backup' : 'unpack', 'total' => max(1, (int)($chk['bytes'] ?? 0)), 'st' => ['off' => 0, 'n' => 0],
+			'database' => (string)nu_db()->value('SELECT DATABASE()'), 'user' => NuAuth::currentRaw(),
+			'started' => time(), 'result' => null, 'error' => '', 'stayed' => false,
+		]);
+		error_log('nuBuilder Next: reset database ' . $chk['database'] . ' from ' . basename($path) . ' (page, in steps)');
+		return $token;
+	}
+
+	/** The plain work copy and the upload of a finished / failed / given-up job. @param array<string, mixed>|null $j */
+	private static function jobClean(?array $j): void
+	{
+		if (!$j) return;
+		$w = (string)($j['work'] ?? '');
+		if ($w !== '' && dirname($w) === NuUpdate::folderDir() && str_starts_with(basename($w), '.dbreset-work')) { @unlink($w); @unlink($w . '.part'); }
+		if (in_array($j['phase'] ?? '', ['done', 'error'], true)) self::forgetUpload((string)($j['path'] ?? ''));
+	}
+
+	/** What the page shows. @param array<string, mixed> $j @return array<string, mixed> */
+	private static function jobStatus(array $j, bool $busy = false): array
+	{
+		$ph = (string)$j['phase'];
+		$pct = match ($ph) {
+			'backup' => 0, 'unpack' => 1, 'drop' => 2,
+			'import' => 2 + (int)floor(95 * min(1, (int)($j['st']['off'] ?? 0) / max(1, (int)$j['total']))),
+			'finish' => 97, default => 100,
+		};
+		$n = (int)($j['st']['n'] ?? 0);
+		return ['ok' => $ph !== 'error', 'phase' => $ph, 'pct' => $pct, 'busy' => $busy, 'done' => $ph === 'done',
+			'text' => $ph === 'import' ? t('dbr_ph_import', number_format($n, 0, '', ' ')) : t('dbr_ph_' . $ph),
+			'error' => $ph === 'error' ? t('dbr_err_failed', (string)$j['error']) : ''];
+	}
+
+	/**
+	 * One step of the job ($token from startJob). Never longer than about JOB_SECONDS, except a backup and the finish (one piece each);
+	 * those go on after a dropped connection too. @return array<string, mixed> status for the page
+	 */
+	public static function step(string $token): array
+	{
+		$j = self::job($token);
+		if (!$j) return ['ok' => false, 'phase' => 'none', 'error' => t('dbr_err_no_job')];
+		if (in_array($j['phase'], ['done', 'error'], true)) return self::jobStatus($j);
+		$lock = @fopen(self::jobPath() . '.lock', 'c');
+		if (!$lock || !flock($lock, LOCK_EX | LOCK_NB)) { if ($lock) fclose($lock); return self::jobStatus($j, true); }
+		nu_time_limit(0);
+		nu_ignore_abort();
+		$start = microtime(true);
+		$max = (int)nu_ini_get('max_execution_time');
+		$until = $start + ($max > 0 ? min(self::JOB_SECONDS, max(3, intdiv($max, 3))) : self::JOB_SECONDS);
+		try {
+			$j = self::job($token) ?? $j;                                  // read again under the lock
+			$db = nu_db();
+			while (!in_array($j['phase'], ['done', 'error'], true) && microtime(true) < $until) {
+				switch ($j['phase']) {
+					case 'backup':
+						$j['result']['backup'] = NuUpdate::backup('dbreset', 'all', false);
+						$j['phase'] = 'unpack';
+						break;
+					case 'unpack':
+						$path = (string)$j['path'];
+						if (!is_file($path)) throw new RuntimeException(t('dbr_err_changed'));
+						$lc = strtolower($path);
+						if (str_ends_with($lc, '.zip') || str_ends_with($lc, '.gz')) {
+							$p = NuSqlDump::spaceProblem(NuUpdate::folderDir(), (int)$j['total']);
+							if ($p !== null) throw new RuntimeException($p);
+						}
+						$j['work'] = NuSqlImport::plainCopy($path, NuUpdate::folderDir() . '/.dbreset-work-' . substr((string)$j['th'], 0, 8) . '.sql');
+						$j['total'] = max(1, (int)@filesize((string)$j['work']));
+						$j['phase'] = 'drop';
+						break;
+					case 'drop':
+						$db->exec('SET FOREIGN_KEY_CHECKS = 0');
+						$j['result']['dropped'] = 0;
+						foreach (self::currentTables() as [$t, $kind]) {
+							$db->exec(($kind === 'VIEW' ? 'DROP VIEW IF EXISTS ' : 'DROP TABLE IF EXISTS ') . '`' . str_replace('`', '``', $t) . '`');
+							$j['result']['dropped']++;
+						}
+						$db->exec('SET FOREIGN_KEY_CHECKS = 1');
+						$j['phase'] = 'import';
+						break;
+					case 'import':
+						$db->exec('SET FOREIGN_KEY_CHECKS = 0');
+						$st = (array)$j['st'];
+						try {
+							$fin = NuSqlImport::slice($db, (string)$j['work'], $st, $until, true);
+						} finally {
+							$j['st'] = $st;
+							try { $db->exec('SET FOREIGN_KEY_CHECKS = 1'); } catch (Throwable) {}
+						}
+						if ($fin) $j['phase'] = 'finish';
+						break;
+					case 'finish':
+						$j['result'] = self::finishImport($db, $j);
+						$j['phase'] = 'done';
+						break;
+					default:
+						throw new RuntimeException('phase ' . $j['phase']);
+				}
+				self::jobWrite($j);
+			}
+		} catch (Throwable $e) {
+			error_log('nuBuilder Next reset database (step ' . $j['phase'] . '): ' . $e->getMessage());
+			$j['error'] = $e->getMessage();
+			$j['failed_in'] = $j['phase'];
+			$j['phase'] = 'error';
+			try { self::jobWrite($j); } catch (Throwable) {}
+		} finally {
+			if (in_array($j['phase'], ['done', 'error'], true)) self::jobClean($j);
+			flock($lock, LOCK_UN);
+			fclose($lock);
+		}
+		return self::jobStatus($j);
+	}
+
+	/** The end of a reset in steps – as run() after the import (no session here: the page re-signs the user in, afterJob()). @param array<string, mixed> $j */
+	private static function finishImport(NuDB $db, array $j): array
+	{
+		NuDB::forgetColumns('');
+		$out = ['backup' => (string)($j['result']['backup'] ?? ''), 'dropped' => (int)($j['result']['dropped'] ?? 0), 'statements' => (int)$j['st']['n'],
+			'upgraded' => NuInstall::upgradeTo49($db), 'steps' => [], 'sample' => ''];
+		try { NuSettings::create($db); } catch (Throwable $e) { error_log('nuBuilder Next reset, settings table: ' . $e->getMessage()); }
+		NuSchema::allow();
+		NuSchema::create();
+		NuInstall::setOrigin('nunext');
+		NuSecurity::save(['record_check' => true, 'protect_fields' => true]);
+		$out['steps'] = NuMigrate::run();
+		if (!empty($j['sample'])) {
+			try { NuSample::install(); $out['sample'] = 'ok'; } catch (Throwable $e) { $out['sample'] = $e->getMessage(); }
+		}
+		$u = is_array($j['user'] ?? null) ? $j['user'] : null;
+		NuLog::write('database_reset', (string)$j['database'], '', ['file' => basename((string)$j['path']), 'dropped' => $out['dropped'], 'statements' => $out['statements'],
+			'backup' => $out['backup'], 'sample' => $out['sample'], 'via' => 'page'], $u && $u['id'] !== '' ? $u : null);
+		return $out;
+	}
+
+	/**
+	 * index.php, before the sign-in check: once the job of this session is done, the user stays signed in – the sessions table is new
+	 * (as run() does at its end). Cheap: only with a job token in the session.
+	 */
+	public static function afterJob(): void
+	{
+		$tok = $_SESSION['nu_dbreset']['job'] ?? '';
+		if (!is_string($tok) || $tok === '' || !empty($_SESSION['nu_dbreset']['stayed'])) return;
+		$j = self::job($tok);
+		if (!$j || $j['phase'] !== 'done') return;
+		unset($_SESSION['nu_sess'], $_SESSION['nu_schema'], $_SESSION['nu_db_ready']);
+		$_SESSION['nu_dbreset']['stayed'] = true;
 	}
 
 	/** Dry run of a fresh installation: the package checked (signature must be valid), its version, packs, what would be deleted. */
@@ -211,6 +419,7 @@ final class NuDbReset
 	{
 		if (!self::available()) throw new RuntimeException(t('dbr_err_unavailable'));
 		nu_time_limit(0);
+		nu_ignore_abort();   // 0.8.1290: a closed tab / dropped connection must not stop the reset half way
 		$chk = self::checkPackage($path);
 		if (!$chk['ok']) throw new RuntimeException($chk['error']);
 		$info = NuUpdate::inspect($path);
