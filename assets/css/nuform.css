@@ -968,3 +968,49 @@ html:not(.nuPhoneCards) body:not(.nuPrintView) #nuBrowseTable:not([data-nu-row-h
 html.nuPhoneCards body:not(.nuPrintView) #nuBrowseTable > tbody > tr.nuBrowseRow > td.nuCellTd:not([style*="display:none"]) {
 	display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
 html.nuPhoneCards body:not(.nuPrintView) #nuBrowseTable > tbody > tr.nuBrowseRow > td.nuCellTd > div.nuCell br { display: none; }
+
+/* lookup dialog (0.8.1293): one title (the dialog's), the buttons in the search row, the list without its card frame, the record
+   already chosen marked; the dialog's size is fitted by nuruntime.js lookupFit */
+.nuLookupDialog .modal-body { overflow: hidden; }
+.nuLookupDialog .nuLookupFrame { height: 50vh; }
+body.nuLookupPage { background: var(--bs-body-bg); }
+body.nuLookupPage main#main { padding: .75rem 1rem .25rem !important; }
+.nuLookupPage .nuFormHeader { display: none !important; }
+.nuLookupPage .nuBrowseCard { border: 0; box-shadow: none !important; background: transparent; }
+.nuLookupPage .nuBrowseCard > .nuBrowseSearch { padding: 0 0 .5rem; border: 0; background: transparent; }
+.nuLookupPage .nuBrowseSearch .row > .col-md-6 { flex: 1 1 auto; width: auto; max-width: none; }
+.nuLookupPage .nuListSearch > .nuSearchGroup { flex: 1 1 auto; width: auto; max-width: 30rem; }
+.nuLookupPage .nuLookupActs { display: flex; flex-wrap: nowrap; gap: .375rem; margin: 0; padding: 0; position: static; background: none; border: 0; box-shadow: none; }
+.nuLookupPage #nuBrowseTable tr.nuBrowseRow { cursor: pointer; }
+.nuLookupPage tr.nuLookupCur > td { font-weight: 600; }
+.nuLookupPage .nuLookupCurMark { color: var(--bs-primary); margin-right: .35rem; }
+.nuLookupFoot { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; padding: .5rem 0 .25rem; font-size: .8rem; color: var(--bs-secondary-color); }
+.nuLookupFoot .nuLookupKeys:first-child { margin-left: 0; }
+.nuLookupFoot #nuLookupClear + .nuLookupKeys { margin-left: auto; }
+@media (max-width: 575.98px) { .nuLookupFoot .nuLookupKeys { display: none; } }
+@media (max-width: 575.98px) {   /* phones: one row – search, its buttons, Add (icon) and ⋮ */
+	.nuLookupPage .nuListSearch { flex-wrap: nowrap; gap: .25rem !important; }
+	.nuLookupPage .nuListSearch > .nuSearchGroup { flex: 1 1 0; min-width: 0; width: auto; }
+	.nuLookupPage .nuListSearch > .nuPhAdd, .nuLookupPage .nuLookupActs #nuPhoneCardsBtn { display: none !important; }
+	.nuLookupPage .nuLookupActs { gap: .25rem; }
+}
+
+/* where Save of the code side panels goes (0.8.1300): a small label in their title, the rule as tooltip */
+.nuSaveTarget { display: inline-flex; align-items: center; gap: .3rem; flex: none; white-space: nowrap; font-size: .75rem; font-weight: 600; line-height: 1;
+	border-radius: 999px; padding: .3rem .6rem; margin-inline: .5rem; border: 1px solid transparent; cursor: help; }
+.nuSaveTarget-live { background: #d1e7dd; color: #0a3622; border-color: #a3cfbb; }
+.nuSaveTarget-draft { background: #e7f1ff; color: #0a58ca; border-color: #9ec5fe; }
+.nuSaveTarget-unpub { background: #eceff2; color: #495057; border-color: #dee2e6; }
+.nuSaveTarget-open, .nuSaveTarget-need { background: #fff3cd; color: #664d03; border-color: #ffe69c; }
+[data-bs-theme="dark"] .nuSaveTarget-live { background: rgba(25, 135, 84, .22); color: #75b798; border-color: #1f5c40; }
+[data-bs-theme="dark"] .nuSaveTarget-draft { background: rgba(13, 110, 253, .2); color: #9ec5fe; border-color: #3d6fb5; }
+[data-bs-theme="dark"] .nuSaveTarget-unpub { background: #343a40; color: #dee2e6; border-color: #495057; }
+[data-bs-theme="dark"] .nuSaveTarget-open, [data-bs-theme="dark"] .nuSaveTarget-need { background: rgba(255, 193, 7, .16); color: #ffda6a; border-color: #997404; }
+.nuSaveTarget:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 2px; }
+
+/* designer, content boxes (0.8.1302): a box stays BEHIND the objects on the canvas also while selected (it was lifted above them and its
+   background hid them) – its frame, title and handle stay grabbable where no object lies; the objects inside a selected box are tinted,
+   they move with it */
+.nuDesigning .nuAbsoluteCanvas > .nuAbs.nuWrap_contentbox, .nuDesigning .nuAbsoluteCanvas > .nuAbs.nuWrap_contentbox.nuBuilderSelected,
+.nuDesigning .nuAbsoluteCanvas > .nuAbs.nuWrap_contentbox.nuDesignSelected { z-index: -1 !important; }
+.nuDesigning .nuDesignInBox > .nuDesignOverlay { background: rgba(var(--bs-primary-rgb), .08); outline: 1px solid rgba(var(--bs-primary-rgb), .35); }

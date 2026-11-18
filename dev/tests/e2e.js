@@ -3452,8 +3452,8 @@ T.review_761 = async (s) => {                          // 0.8.761: review fixes 
 	const sc = await p.$$eval('.CodeMirror-scroll', (e) => e.map((x) => x.getAttribute('tabindex') + '|' + (x.getAttribute('aria-label') || '')));
 	expect(sc.length > 0 && sc.every((x) => /^0\|./.test(x)), 'CodeMirror scroll box focusable and named: ' + sc.join(', '));
 	await open(p, 'index.php');
-	const bg = await p.$$eval('.text-bg-secondary', (e) => e.slice(0, 1).map((x) => getComputedStyle(x).backgroundColor));
-	expect(!bg.length || bg[0] === 'rgb(108, 117, 125)', 'grey badges with 4.5:1 contrast: ' + bg.join());
+	const bg = await p.$$eval('.text-bg-secondary', (e) => e.slice(0, 1).map((x) => getComputedStyle(x).backgroundColor + '|' + getComputedStyle(x).color));
+	expect(!bg.length || bg[0] === 'rgb(236, 239, 242)|rgb(73, 80, 87)', 'grey badges light grey with dark text (0.8.1299, 4.5:1 contrast): ' + bg.join());
 	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
 };
 
@@ -13824,6 +13824,16 @@ T.access_users_filter = async (s) => {                  // access level → User
 		expect(await p.$$eval('#accUserList li[data-st="active"]', lis => lis.every(l => l.hidden)), 'active users hidden under Archived');
 		await p.click('label[for="accUf_all"]');
 		expect((await vis()).length === await p.locator('#accUserList li[data-st]').count(), 'All shows everyone');
+		// 0.8.1297: search over login and name, together with the state filter; Esc clears it
+		await p.fill('#accUserSearch', 'BEN');
+		expect(JSON.stringify(await vis()) === '["sample_ben"]', 'search: ' + (await vis()).join(','));
+		await p.click('label[for="accUf_active"]');
+		expect((await vis()).length === 0 && await p.locator('#accUserList .accUserNone:not([hidden])').count() === 1, 'search + Active: archived user still shown');
+		await p.fill('#accUserSearch', 'zzqq-none'); await p.click('label[for="accUf_all"]');
+		expect((await vis()).length === 0, 'unknown word still shows users');
+		await p.locator('#accUserSearch').press('Escape');
+		expect(await p.inputValue('#accUserSearch') === '' && (await vis()).length === await p.locator('#accUserList li[data-st]').count(), 'Esc did not clear');
+		expect(await p.locator('.nuBtnSave.nuSaveEdited').count() === 0, 'searching marked the form as changed');
 		expect(p.errors.length === 0, p.errors.join(' | '));
 	} finally {
 		sql(`UPDATE zzzzsys_user SET sus_expires_on = ${keep === '-' ? 'NULL' : `'${keep}'`} WHERE zzzzsys_user_id = '${uid}'`);
@@ -19185,6 +19195,211 @@ T.notify_editor_layout = async (s) => {               // 0.8.1271: notification 
 	await p.evaluate(() => { const f = document.getElementById('ntfForm'); if (f) f.removeAttribute('data-nu-guard'); });
 };
 
+T.notify_wide = async (s) => {                        // 0.8.1298: notification editor on wide screens – two columns + preview / summary / buttons
+	const p = s.ga;
+	await p.setViewportSize({width: 1600, height: 1000});
+	try {
+		await open(p, 'index.php?p=notifications&id=new');
+		const vis = (sel) => p.locator(sel).isVisible();
+		expect(await vis('#ntfSide') && !(await vis('#ntfBar')), 'side column not shown / bottom bar not hidden at 1600 px');
+		const g = await p.evaluate(() => ['ntfSecMsg', 'ntfSecAud', 'ntfSecDel', 'ntfSide'].map((id) => { const e = document.getElementById(id); const b = (e.closest('.ntfSec') || e).getBoundingClientRect(); return [Math.round(b.left), Math.round(b.top)]; }));
+		expect(g[0][0] < g[1][0] && g[1][0] < g[3][0] && g[1][0] === g[2][0] && g[2][1] > g[1][1], 'layout: ' + JSON.stringify(g));
+		await p.fill('#ntf_title', 'E2E wide preview'); await p.fill('#ntf_body', 'Body of the preview');
+		await p.click('label[for=ntf_lv_warning]');
+		await p.click('.ntfAddRule[data-rule=users]');
+		await p.locator('#aud_users').locator('xpath=..').locator('.ts-control input').fill('sample_anna');
+		await p.locator('.ts-dropdown .option[data-value="sample_anna"]').click(); await p.keyboard.press('Escape');
+		await p.waitForTimeout(900);
+		expect(await p.textContent('#ntfPvTitle') === 'E2E wide preview' && await p.textContent('#ntfPvBody') === 'Body of the preview', 'preview does not follow the fields');
+		expect(await p.locator('#ntfPv.ntfPv-warning').count() === 1, 'preview level');
+		expect(/^1\D/.test(await p.textContent('#ntfSsN')) && (await p.textContent('#ntfSsNames')).trim() !== '', 'summary: ' + await p.textContent('#ntfSsN') + ' / ' + await p.textContent('#ntfSsNames'));
+		await p.locator('label.ntfOpt:has(#ntf_confirm)').click();
+		expect(await p.textContent('#ntfSsConfirm') === await p.evaluate(() => document.getElementById('ntfSide').getAttribute('data-yes')), 'summary: must confirm');
+		await Promise.all([p.waitForNavigation(), p.click('#ntfDraftSide')]);
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_nunext_notification WHERE title = 'E2E wide preview' AND status = 'draft'") === '1', 'side button did not save a draft');
+		await p.setViewportSize({width: 1300, height: 900});
+		await open(p, 'index.php?p=notifications&id=new');
+		expect(!(await vis('#ntfSide')) && await vis('#ntfBar'), 'below 1400 px: bar expected, no side column');
+		expect(p.errors.length === 0, p.errors.join(' | '));
+	} finally {
+		sql("DELETE nu FROM zzzzsys_nunext_notification_user nu JOIN zzzzsys_nunext_notification n ON n.zzzzsys_nunext_notification_id = nu.notification_id WHERE n.title = 'E2E wide preview'");
+		sql("DELETE FROM zzzzsys_nunext_notification WHERE title = 'E2E wide preview'");
+		await p.setViewportSize({width: 1300, height: 900});
+	}
+};
+
+T.lighter_greys = async (s) => {                      // 0.8.1299: grey badges light, a chosen grey button light blue, an open toggle light grey
+	const p = s.ga;
+	const st = (sel) => p.$eval(sel, (e) => { const c = getComputedStyle(e); return c.backgroundColor + '|' + c.color; });
+	await open(p, 'index.php?p=accesslevel&id=sample_editor');
+	if (await p.locator('label[for=accUf_all]').count() === 0) { s.skip = 'no sample users'; return; }
+	await p.click('label[for=accUf_all]'); await p.waitForTimeout(250);
+	expect(await st('label[for=accUf_all]') === 'rgb(231, 241, 255)|rgb(10, 88, 202)', 'chosen filter not light blue: ' + await st('label[for=accUf_all]'));
+	expect((await st('label[for=accUf_active]')).startsWith('rgba(0, 0, 0, 0)') || (await st('label[for=accUf_active]')).startsWith('rgb(255, 255, 255)'), 'not chosen filter: ' + await st('label[for=accUf_active]'));
+	expect(await st('.js-rights-count, #accessTabFormsBtn .badge, .card-header .badge.text-bg-secondary') === 'rgb(236, 239, 242)|rgb(73, 80, 87)', 'count badge not light grey');
+	await open(p, 'index.php?p=users');
+	await p.click('.nuLvMenuBtn'); await p.waitForTimeout(250);
+	expect((await st('.nuLvMenuBtn')).startsWith('rgb(233, 236, 239)'), 'open dropdown toggle not light grey: ' + await st('.nuLvMenuBtn'));
+	await p.keyboard.press('Escape');
+	await open(p, 'index.php?p=help');
+	const kb = await p.$$eval('kbd', (e) => e.slice(0, 1).map((x) => getComputedStyle(x).backgroundColor));
+	expect(!kb.length || kb[0] === 'rgb(241, 243, 245)', 'kbd not light: ' + kb.join());
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
+T.save_target_label = async (s) => {                   // 0.8.1300: the code side panels name where Save goes – Live / Live, draft open / Draft (rev n)
+	const p = s.ga;
+	if (sql("SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id = 'sampleorder'") !== '1') { s.skip = 'no sample data'; return; }
+	const rec = sql('SELECT sample_order_id FROM sample_order LIMIT 1');
+	const api = (body) => p.evaluate((b) => fetch(window.nuNext.base + '?p=builderapi', {method: 'POST', credentials: 'same-origin',
+		headers: {'Content-Type': 'application/json', 'X-CSRF-Token': window.nuNext.csrf, 'Accept': 'application/json'}, body: JSON.stringify(b)}).then((r) => r.json()), body);
+	const badge = async () => {
+		await open(p, 'index.php?p=form&f=sampleorder&r=' + encodeURIComponent(rec));
+		await p.keyboard.press('Control+Shift+B'); await p.waitForSelector('#nuEcpPane .nuSaveTarget');
+		const b = await p.$eval('#nuEcpPane .nuSaveTarget', (e) => [e.getAttribute('data-mode'), e.textContent.trim(), e.getAttribute('aria-label') || '']);
+		await p.keyboard.press('Escape');
+		return b;
+	};
+	sql("DELETE FROM zzzzsys_nunext_form_draft WHERE form_id = 'sampleorder'");
+	try {
+		let b = await badge();
+		expect(b[0] === 'live' && b[1] !== '' && b[2].length > b[1].length, 'live label: ' + JSON.stringify(b));
+		const st = await api({action: 'draft.start', form_id: 'sampleorder', note: 'e2e save target'});
+		expect(st.ok, 'draft.start: ' + JSON.stringify(st).slice(0, 200));
+		b = await badge();
+		expect(b[0] === 'open', 'open draft not shown: ' + JSON.stringify(b));
+		const id = sql("SELECT zzzzsys_nunext_form_draft_id FROM zzzzsys_nunext_form_draft WHERE form_id = 'sampleorder' AND status = 'open'");
+		await api({action: 'draft.discard', form_id: 'sampleorder', draft_id: id});
+		await api({action: 'draft.start', form_id: 'sampleorder', note: 'e2e save target', preview: true});
+		b = await badge();
+		expect(b[0] === 'draft' && /\d/.test(b[1]), 'previewed draft not shown: ' + JSON.stringify(b));
+		await open(p, 'index.php?p=form&f=sampleorder');
+		await p.keyboard.press('Control+Shift+B'); await p.waitForSelector('#nuBsqPane .nuSaveTarget');
+		expect(await p.$eval('#nuBsqPane .nuSaveTarget', (e) => e.getAttribute('data-mode')) === 'draft', 'list pane: label missing');
+		await p.keyboard.press('Escape');
+		const id2 = sql("SELECT zzzzsys_nunext_form_draft_id FROM zzzzsys_nunext_form_draft WHERE form_id = 'sampleorder' AND status = 'open'");
+		if (id2) await api({action: 'draft.discard', form_id: 'sampleorder', draft_id: id2});
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		sql("DELETE FROM zzzzsys_nunext_form_draft WHERE form_id = 'sampleorder'");
+	}
+};
+
+T.design_order_by_pos = async (s) => {                // 0.8.1301: design mode "Set order by position" – tab order follows the positions, one Undo step
+	const p = s.ga;
+	if (sql("SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id = 'samplecustomer'") !== '1') { s.skip = 'no sample data'; return; }
+	const keep = sql("SELECT GROUP_CONCAT(CONCAT(zzzzsys_object_id, ':', sob_all_order)) FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id = 'samplecustomer'");
+	sql("DELETE FROM zzzzsys_nunext_form_draft WHERE form_id = 'samplecustomer'");
+	// Country (top 164) before Code (top 20) – out of position
+	sql("UPDATE zzzzsys_object SET sob_all_order = 5 WHERE zzzzsys_object_id = 'sample_customer_o5'");
+	try {
+		await open(p, 'index.php?p=form&f=samplecustomer&r=-1&design=1');
+		await p.waitForSelector('#nuDsOrderPos');
+		await p.locator('label[for=nuDsTabOrder]').click(); await p.waitForTimeout(400);
+		expect(await p.locator('#nuDsOrderFloat #nuDsOrderPosFloat').isVisible(), 'floating button missing while the numbers are shown');
+		const nums = () => p.$$eval('#nuEditForm .tab-pane.active .nuWrap', (ws) => ws.filter((w) => w.querySelector(':scope > .nuDesignOrder')).map((w) => [w.id, +w.querySelector(':scope > .nuDesignOrder').textContent]));
+		const before = await nums();
+		expect(before[0] && before[0][0] === 'nuw_cus_country', 'set-up: country first – ' + JSON.stringify(before));
+		await p.click('#nuDsOrderPosFloat'); await p.waitForTimeout(1500);
+		const after = await nums();
+		expect(after.map((x) => x[0]).join() === 'nuw_cus_code,nuw_cus_name,nuw_cus_email,nuw_cus_phone,nuw_cus_country,nuw_cus_active', 'order not by position: ' + JSON.stringify(after));
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_nunext_form_draft WHERE form_id = 'samplecustomer' AND status = 'open'") === '1', 'change not in a draft');
+		await p.click('#nuDsOrderPos'); await p.waitForTimeout(600);
+		expect((await p.textContent('#nuDsMsg')).trim() !== '', 'second click: no message');
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		sql("DELETE FROM zzzzsys_nunext_form_draft WHERE form_id = 'samplecustomer'");
+		keep.split(',').forEach((x) => { const [id, o] = x.split(':'); sql(`UPDATE zzzzsys_object SET sob_all_order = ${+o} WHERE zzzzsys_object_id = '${id}'`); });
+	}
+};
+
+T.design_box_select = async (s) => {                  // 0.8.1302: a selected content box stays behind its objects, tints them and moves them along
+	const p = s.ga, F = 'samplecustomer';
+	if (sql(`SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id = '${F}'`) !== '1') { s.skip = 'no sample data'; return; }
+	const meta = ['zzzzsys_object', 'zzzzsys_form', 'zzzzsys_nunext_form_history', 'zzzzsys_nunext_form_draft'];
+	const keep = path.join(require('os').tmpdir(), 'nunext-e2e-boxsel.sql');
+	execSync('mysqldump ' + DB + ' ' + meta.join(' ') + ' > ' + keep);
+	const q = (id) => sql(`SELECT sob_all_left FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id = '${F}' AND sob_all_id = '${id}'`);
+	try {
+		sql(`CREATE TEMPORARY TABLE e2e_bx AS SELECT * FROM zzzzsys_object WHERE zzzzsys_object_id = 'sample_customer_o1';
+			UPDATE e2e_bx SET zzzzsys_object_id = 'e2e_box1', sob_all_id = 'e2e_box', sob_all_type = 'contentbox', sob_all_label = 'Box', sob_all_top = 5, sob_all_left = 20, sob_all_width = 620, sob_all_height = 230, sob_all_order = 1;
+			INSERT INTO zzzzsys_object SELECT * FROM e2e_bx; UPDATE zzzzsys_form SET sfo_status = '0' WHERE zzzzsys_form_id = '${F}'; DELETE FROM zzzzsys_nunext_form_draft WHERE form_id = '${F}'`);
+		const n0 = q('cus_name');
+		await open(p, 'index.php?p=form&f=' + F + '&r=-1&design=1'); await p.waitForSelector('#nuw_e2e_box .nuDesignEdgeL'); await p.waitForTimeout(700);
+		const r = await (await p.$('#nuw_e2e_box .nuDesignEdgeL')).boundingBox();
+		await p.mouse.click(r.x + 3, r.y + r.height / 2); await p.waitForTimeout(400);
+		const st = await p.evaluate(() => { const n = document.getElementById('nuw_cus_name').getBoundingClientRect(), el = document.elementFromPoint(n.x + n.width / 2, n.y + n.height / 2);
+			return {sel: document.getElementById('nuw_e2e_box').classList.contains('nuBuilderSelected'), top: el && el.closest('.nuWrap') ? el.closest('.nuWrap').id : '', tint: document.querySelectorAll('.nuDesignInBox').length}; });
+		expect(st.sel, 'box not selected');
+		expect(st.top === 'nuw_cus_name', 'a field inside the selected box is hidden: ' + st.top);
+		expect(st.tint === 6, 'objects of the box not tinted: ' + st.tint);
+		await p.locator('body').press('ArrowRight'); await p.waitForTimeout(1500);
+		expect(q('e2e_box') === '25' && +q('cus_name') === +n0 + 5, 'arrow did not move the box with its objects: ' + q('e2e_box') + ' / ' + q('cus_name'));
+		await p.click('#nuw_cus_email .nuDesignOverlay', {position: {x: 6, y: 6}}); await p.waitForTimeout(300);
+		expect(await p.locator('#nuw_cus_email.nuBuilderSelected').count() === 1 && await p.locator('.nuDesignInBox').count() === 0, 'a field inside the box is not selectable');
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		execSync('mysql ' + DB + ' < ' + keep);
+	}
+};
+
+T.design_discard_empty = async (s) => {               // 0.8.1303: Discard enabled only with changes; an empty draft goes away with Done
+	const p = s.ga, F = 'samplecustomer';
+	if (sql(`SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id = '${F}'`) !== '1') { s.skip = 'no sample data'; return; }
+	const desc0 = sql(`SELECT sfo_description FROM zzzzsys_form WHERE zzzzsys_form_id = '${F}'`), st0 = sql(`SELECT sfo_status FROM zzzzsys_form WHERE zzzzsys_form_id = '${F}'`);
+	const api = (body) => p.evaluate((b) => fetch(window.nuNext.base + '?p=builderapi', {method: 'POST', credentials: 'same-origin',
+		headers: {'Content-Type': 'application/json', 'X-CSRF-Token': window.nuNext.csrf, 'Accept': 'application/json'}, body: JSON.stringify(b)}).then((r) => r.json()), body);
+	sql(`DELETE FROM zzzzsys_nunext_form_draft WHERE form_id = '${F}'; UPDATE zzzzsys_form SET sfo_status = '1' WHERE zzzzsys_form_id = '${F}'`);
+	try {
+		await open(p, 'index.php?p=form&f=' + F + '&r=-1&design=1'); await p.waitForSelector('#nuDsBar');
+		const d = await api({action: 'draft.start', form_id: F, preview: true});
+		const id = sql(`SELECT zzzzsys_nunext_form_draft_id FROM zzzzsys_nunext_form_draft WHERE form_id = '${F}' AND status = 'open'`);
+		expect(d.ok && id, 'draft.start');
+		await open(p, 'index.php?p=form&f=' + F + '&r=-1&design=1'); await p.waitForSelector('#nuDsDiscard');
+		expect(await p.isVisible('#nuDsDiscard') && await p.isDisabled('#nuDsDiscard'), 'empty draft: Discard should be shown but disabled');
+		const sv = await api({action: 'form.save', form_id: F, draft_id: id, rev: +sql(`SELECT rev FROM zzzzsys_nunext_form_draft WHERE zzzzsys_nunext_form_draft_id = '${id}'`), fields: {sfo_description: desc0 + ' e2e'}});
+		expect(sv.ok, 'form.save in the draft: ' + JSON.stringify(sv).slice(0, 200));
+		await open(p, 'index.php?p=form&f=' + F + '&r=-1&design=1'); await p.waitForSelector('#nuDsDiscard');
+		expect(!(await p.isDisabled('#nuDsDiscard')) && /1/.test(await p.getAttribute('#nuDsDiscard', 'title')), 'with a change Discard should be enabled (tooltip with the number)');
+		// 0.8.1304: "Leave preview" of the draft preview bar explains itself on hover
+		await open(p, 'index.php?p=form&f=' + F + '&r=-1');
+		expect((await p.getAttribute('#nuDraftLeave', 'title') || '').length > 10, 'Leave preview without a tooltip');
+		await api({action: 'draft.undo', form_id: F, draft_id: id});
+		await open(p, 'index.php?p=form&f=' + F + '&r=-1&design=1'); await p.waitForSelector('#nuDsDiscard');
+		expect(await p.isDisabled('#nuDsDiscard'), 'after Undo back to the live form: Discard disabled');
+		await Promise.all([p.waitForNavigation(), p.click('#nuDsDone')]);
+		expect(sql(`SELECT COUNT(*) FROM zzzzsys_nunext_form_draft WHERE form_id = '${F}' AND status IN ('open', 'review')`) === '0', 'empty draft left behind after Done');
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		sql(`DELETE FROM zzzzsys_nunext_form_draft WHERE form_id = '${F}'; UPDATE zzzzsys_form SET sfo_status = '${st0}' WHERE zzzzsys_form_id = '${F}'`);
+	}
+};
+
+T.design_panel_chips = async (s) => {                 // 0.8.1305: properties panel – section chips jump and mark, fold all, one-line summaries
+	const p = s.ga, F = 'samplecustomer';
+	if (sql(`SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id = '${F}'`) !== '1') { s.skip = 'no sample data'; return; }
+	await open(p, 'index.php?p=form&f=' + F + '&r=-1&design=1'); await p.waitForSelector('#nuDsChips');
+	await p.click('#nuw_cus_name .nuDesignOverlay', {position: {x: 6, y: 6}}); await p.waitForTimeout(500);
+	const chips = await p.$$eval('#nuDsChips .nuDsChip', (x) => x.map((c) => c.getAttribute('data-chip')));
+	expect(chips.length >= 4 && chips.includes('layout') && chips.includes('style'), 'chips: ' + chips.join());
+	await p.click('#nuDsChips [data-chip=style]'); await p.waitForTimeout(400);
+	const st = await p.evaluate(() => { const pn = document.getElementById('nuDsPanel'), sec = pn.querySelector('section[data-sec-key=style]'), bar = document.getElementById('nuDsChips');
+		return {active: (pn.querySelector('.nuDsChip.active') || {}).getAttribute && pn.querySelector('.nuDsChip.active').getAttribute('data-chip'), barTop: Math.round(bar.getBoundingClientRect().top - pn.getBoundingClientRect().top),
+			secTop: Math.round(sec.getBoundingClientRect().top - bar.getBoundingClientRect().bottom), open: !!sec.querySelector('.nuDsSecBody')}; });
+	expect(st.active === 'style' && st.barTop <= 1 && st.open && st.secTop > -4, 'jump to Style: ' + JSON.stringify(st));
+	await p.click('#nuDsFoldAll'); await p.waitForTimeout(300);
+	const folded = await p.$$eval('#nuDsPanel section[data-sec-key]', (x) => x.map((sec) => [sec.getAttribute('data-sec-key'), !!sec.querySelector('.nuDsSecBody'), (sec.querySelector('.nuDsSecSum') || {}).textContent || '']));
+	expect(folded.every((x) => !x[1]), 'fold all: ' + JSON.stringify(folded));
+	const lay = folded.find((x) => x[0] === 'layout');
+	expect(lay && /\d/.test(lay[2]), 'folded Layout without a summary: ' + JSON.stringify(lay));
+	await p.click('#nuDsChips [data-chip=behaviour]'); await p.waitForTimeout(300);
+	expect(await p.locator('#nuDsPanel section[data-sec-key=behaviour] .nuDsSecBody').count() === 1, 'a chip opens a folded section');
+	await p.click('#nuDsFoldAll'); await p.waitForTimeout(300);           // one open: the button folds all …
+	await p.click('#nuDsFoldAll'); await p.waitForTimeout(300);           // … all folded: it unfolds all
+	expect(await p.locator('#nuDsPanel section[data-sec-key] .nuDsSecBody').count() >= 4, 'unfold all');
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
 T.external_user = async (s) => {                     // 0.8.1273: nuexternal.php – own PHP apps in a sub-folder use nuBuilder Next's sign-in
 	if (!SITE) return 'skip';
 	const dir = path.join(SITE, 'e2etools', 'extapp');
@@ -19402,6 +19617,58 @@ T.design_publish_old_problems = async (s) => {
 	} finally {
 		execSync('mysql ' + DB + ' < ' + keep); fs.unlinkSync(keep);
 	}
+};
+
+T.lookup_dialog_fit = async (s) => {
+	// 0.8.1293: the lookup dialog is titled with the list's name, fits the list, marks the chosen record, has Clear, and works by keyboard
+	const p = s.ga, fr = () => p.frames().find((x) => /[?&]lookup=/.test(x.url()));
+	await open(p, 'index.php?p=form&f=sampleorder&r=sample_ord_1');
+	const code0 = await p.inputValue('#ord_sample_customer_idcode');
+	await p.click('.nuLookupButton[data-nu-target="ord_sample_customer_id"]');
+	await p.waitForSelector('#nuLookupModal.show'); await p.waitForTimeout(1500);
+	const desc = sql("SELECT sfo_description FROM zzzzsys_form WHERE zzzzsys_form_id = 'samplecustomer'");
+	expect((await p.textContent('#nuLookupTitle')).trim() === desc, 'title: ' + await p.textContent('#nuLookupTitle'));
+	const f = fr();
+	expect(f && await f.locator('.nuFormHeader').isHidden(), 'second title row still shown');
+	expect(await f.locator('.nuListSearch #nuOptions').count() === 1, '⋮ not in the search row');
+	// 0.8.1294: a narrow lookup window of a wide screen shows the table, not the phone cards
+	expect(!(await f.evaluate(() => document.documentElement.classList.contains('nuPhoneCards'))) && await f.locator('#nuBrowseTable thead').isVisible(), 'lookup list shown as cards on a wide screen');
+	expect(await f.locator('tr.nuLookupCur .nuLookupCurMark').count() === 1, 'chosen record not marked');
+	expect(await f.locator('#nuLookupClear').count() === 1 && (await f.textContent('.nuLookupKeys')).length > 5, 'foot missing');
+	const m = await p.evaluate(() => { const fe = document.querySelector('#nuLookupModal iframe'), d = fe.contentDocument; return { h: fe.getBoundingClientRect().height, doc: d.getElementById('main').scrollHeight, w: document.querySelector('#nuLookupModal .modal-dialog').getBoundingClientRect().width }; });
+	expect(Math.abs(m.h - m.doc) < 40 && m.w >= 560, 'not fitted: ' + JSON.stringify(m));
+	// keyboard: ↓ from the search to the first row, ↓ to the second, Enter chooses it
+	await f.locator('#nuSearchField').focus();
+	await p.keyboard.press('ArrowDown'); await p.keyboard.press('ArrowDown'); await p.keyboard.press('Enter');
+	await p.waitForTimeout(1500);
+	expect(await p.locator('#nuLookupModal.show').count() === 0, 'Enter did not choose');
+	const code1 = await p.inputValue('#ord_sample_customer_idcode');
+	expect(code1 !== '' && code1 !== code0, 'code not changed: ' + code1);
+	// Esc: first the search, then the dialog
+	await p.click('.nuLookupButton[data-nu-target="ord_sample_customer_id"]'); await p.waitForSelector('#nuLookupModal.show'); await p.waitForTimeout(1200);
+	await fr().locator('#nuSearchField').fill('zz'); await fr().locator('#nuSearchField').press('Enter'); await p.waitForTimeout(1200);
+	await fr().locator('#nuSearchField').press('Escape'); await p.waitForTimeout(1200);
+	expect(await p.locator('#nuLookupModal.show').count() === 1 && await fr().locator('#nuSearchField').inputValue() === '', 'first Esc did not clear the search');
+	await fr().locator('#nuSearchField').press('Escape'); await p.waitForTimeout(600);
+	expect(await p.locator('#nuLookupModal.show').count() === 0, 'second Esc did not close');
+	// Clear empties the field
+	await p.click('.nuLookupButton[data-nu-target="ord_sample_customer_id"]'); await p.waitForSelector('#nuLookupModal.show'); await p.waitForTimeout(1200);
+	await fr().locator('#nuLookupClear').click(); await p.waitForTimeout(800);
+	expect(await p.inputValue('#ord_sample_customer_idcode') === '' && await p.inputValue('#ord_sample_customer_id') === '', 'Clear did not empty the lookup');
+	p.errors.length = 0;   // the record is left unsaved: the next test opens a page anew
+};
+
+T.notes_text_fill = async (s) => {
+	// 0.8.1295: the Notes form's text on the tab Additional fills the window's free height, no page scrolling
+	const p = s.ga;
+	await open(p, 'index.php?p=form&f=nunotes&r=-1');
+	await p.click('.nuTab:has-text("Additional")'); await p.waitForTimeout(600);
+	const m = await p.evaluate(() => { const t = document.getElementById('not_text').getBoundingClientRect(); return { b: t.bottom, h: t.height, wh: innerHeight, sh: document.documentElement.scrollHeight }; });
+	expect(m.h > 500 && m.wh - m.b < 90 && m.sh <= m.wh + 2, 'text area does not fill the height: ' + JSON.stringify(m));
+	// 0.8.1296: as wide as the editor on the tab Notes (same right edge)
+	const r = await p.evaluate(() => { const e = document.getElementById('nuw_not_content'), t = document.getElementById('nuw_not_text'); return [parseFloat(e.style.left) + parseFloat(e.style.width), parseFloat(t.style.left) + document.getElementById('not_text').offsetWidth]; });
+	expect(Math.abs(r[0] - r[1]) < 4, 'text area not as wide as the editor: ' + JSON.stringify(r));
+	s.result = m;
 };
 
 T.access_delete_expired = async (s) => {

@@ -272,7 +272,7 @@
 		push(document.getElementById('nuDsSafe'), D.safe ? t('ds_safe_off') : t('ds_safe'), 'bi-shield-check');
 		push(document.getElementById('nuDsMaint'), t('fms_title'), 'bi-cone-striped');
 		push(bMsgs, t('ds_form_msgs'), 'bi-chat-left-text');
-		if (!bDiscard.hidden) { list.push(el('li', {}, [el('hr', {'class': 'dropdown-divider'})])); push(bDiscard, t('builder_draft_discard'), 'bi-trash'); }
+		if (!bDiscard.hidden && !bDiscard.disabled) { list.push(el('li', {}, [el('hr', {'class': 'dropdown-divider'})])); push(bDiscard, t('builder_draft_discard'), 'bi-trash'); }
 		var last = list[list.length - 1];
 		if (last && last.querySelector('button[data-ph-for="nuDsDiscard"]')) last.querySelector('button').classList.add('text-danger');
 		return list;
@@ -290,6 +290,7 @@
 		placeQuick();
 	}, {passive: true});
 
+	function draftEmpty() { return !!DR && +DR.changes === 0 && !(+DR.ddl > 0); }
 	function renderBar() {
 		if (D.unpublished) status.textContent = t('ds_status_unpublished');
 		else if (DR) status.textContent = DR.mine === false ? fmt(t('ds_status_draft_by'), DR.created_by, DR.changes) : fmt(t(+DR.changes === 1 ? 'ds_status_draft_1' : 'ds_status_draft'), DR.changes);
@@ -300,7 +301,11 @@
 		bUndo.disabled = D.unpublished ? false : !(DR && DR.undo_count > 0);
 		bRedo.disabled = !(DR && DR.redo_count > 0);
 		bRedo.hidden = !DR;
+		// Discard (0.8.1303): shown while a draft exists, enabled only while it differs from the live form (the bar's "n changes") or holds
+		// table changes; the number in the tooltip
 		bDiscard.hidden = !DR;
+		bDiscard.disabled = !!DR && draftEmpty();
+		bDiscard.title = !DR ? '' : draftEmpty() ? t('ds_discard_none') : fmt(t('ds_discard_tip'), DR.changes);
 		bChanges.hidden = !DR;
 		bPubGrp.hidden = !D.can_publish || (!D.unpublished && !DR);      // publishing needs the admin right formpublish
 		bPublish.textContent = D.unpublished ? t('builder_draft_publish_new') : t('builder_draft_publish_btn');
@@ -349,6 +354,12 @@
 	// Done (0.8.797): with unpublished changes ask Publish now / Leave as draft / Cancel
 	var doneDlg = null;
 	function done(e) {
+		// an empty draft of your own (no change left, no table changes) is removed on the way out – nothing to lose (0.8.1303)
+		if (!D.unpublished && DR && DR.mine !== false && draftEmpty()) {
+			e.preventDefault();
+			api('draft.discard', {}).then(function () { window.location.href = D.exit; }, function () { window.location.href = D.exit; });
+			return;
+		}
 		var pending = D.unpublished || (DR && +DR.changes > 0);
 		if (!pending || !(window.nuBs && window.nuBs.ready())) return;      // plain link
 		e.preventDefault();
@@ -1277,8 +1288,63 @@
 				if (adv[s.key]) s.adv.forEach(function (r) { body.appendChild(r); });
 			}
 		}
-		return el('section', {'class': 'nuDsSec' + (tabbed ? ' nuDsSecTabbed' : '')}, [head, isOpen ? body : null]);
+		// a folded section shows its values in one line (0.8.1305, option A of the canvas "Design mode properties panel")
+		if (!isOpen && head) { var sm = secSummary(s); if (sm) head.insertBefore(el('span', {'class': 'nuDsSecSum', text: sm, title: sm}), head.lastChild); }
+		return el('section', {'class': 'nuDsSec' + (tabbed ? ' nuDsSecTabbed' : ''), 'data-sec-key': s.key}, [head, isOpen ? body : null]);
 	}
+	/** One line of a folded section: the values of its fields (selected option texts, typed values, ticked boxes), first ones only. */
+	function secSummary(s) {
+		var out = [];
+		s.rows.forEach(function (r) {
+			if (!r || !r.querySelectorAll || out.length >= 4) return;
+			r.querySelectorAll('select, input, textarea').forEach(function (f) {
+				if (out.length >= 4 || f.type === 'hidden' || f.type === 'button') return;
+				var v = '';
+				if (f.tagName === 'SELECT') { var o = f.options[f.selectedIndex]; v = o && f.value !== '' ? o.textContent.trim() : ''; }
+				else if (f.type === 'checkbox' || f.type === 'radio') { if (f.checked) { var l = f.id ? r.querySelector('label[for="' + f.id + '"]') : null; v = l ? l.textContent.trim() : ''; } }
+				else v = String(f.value || '').trim().split('\n')[0];
+				if (v && v !== '—' && v !== '–') out.push(v.length > 28 ? v.slice(0, 27) + '…' : v);
+			});
+		});
+		return out.join(' · ');
+	}
+	// chips above the sections (0.8.1305): stay at the top of the panel, a click opens the section and scrolls to it, the chip of the
+	// section in view is marked while scrolling; the last button folds / unfolds all sections
+	var chipBar = null;
+	function drawChips() {
+		if (sections.length < 2) { chipBar = null; return null; }
+		var anyOpen = sections.some(function (s) { return open[s.key] !== false; });
+		chipBar = el('nav', {'class': 'nuDsChips', id: 'nuDsChips', 'aria-label': t('ds_sections')}, sections.map(function (s) {
+			return el('button', {type: 'button', 'class': 'nuDsChip', 'data-chip': s.key, text: s.title, onclick: function () { jumpTo(s.key); }});
+		}).concat([el('button', {type: 'button', 'class': 'nuDsChipAll', id: 'nuDsFoldAll', title: anyOpen ? t('ds_fold_all') : t('ds_unfold_all'), 'aria-label': anyOpen ? t('ds_fold_all') : t('ds_unfold_all'),
+			onclick: function () { sections.forEach(function (x) { open[x.key] = !anyOpen; }); renderPanel(); }}, [icon(anyOpen ? 'bi-arrows-collapse' : 'bi-arrows-expand')])]));
+		return chipBar;
+	}
+	function jumpTo(key) {
+		if (open[key] === false) { open[key] = true; renderPanel(); }
+		var sec = panel.querySelector('section[data-sec-key="' + key + '"]');
+		if (!sec) return;
+		var off = sec.getBoundingClientRect().top - panel.getBoundingClientRect().top - (chipBar ? chipBar.offsetHeight : 0);
+		panel.scrollTop += off;
+		jumped = {key: key, top: panel.scrollTop};               // the chip clicked stays marked while nothing else scrolls (end of the panel)
+		spy(key);
+		var h = sec.querySelector('.nuDsSecHead');
+		if (h) h.focus({preventScroll: true});
+	}
+	var jumped = null;
+	function spy(force) {
+		if (!chipBar) return;
+		var key = force || (jumped && Math.abs(panel.scrollTop - jumped.top) < 2 ? jumped.key : '');
+		if (!force && key === '') jumped = null;
+		if (!key) {
+			var lim = chipBar.getBoundingClientRect().bottom + 6;
+			panel.querySelectorAll('section[data-sec-key]').forEach(function (sec) { if (sec.getBoundingClientRect().top <= lim) key = sec.getAttribute('data-sec-key'); });
+			if (!key && sections[0]) key = sections[0].key;
+			if (panel.scrollHeight > panel.clientHeight + 2 && panel.scrollTop > 0 && panel.scrollTop + panel.clientHeight >= panel.scrollHeight - 2) { var all = panel.querySelectorAll('section[data-sec-key]'); if (all.length) key = all[all.length - 1].getAttribute('data-sec-key'); }
+		}
+		chipBar.querySelectorAll('.nuDsChip').forEach(function (c) { var on = c.getAttribute('data-chip') === key; c.classList.toggle('active', on); if (on) c.setAttribute('aria-current', 'true'); else c.removeAttribute('aria-current'); });
+	}
+	panel.addEventListener('scroll', function () { if (!phone.matches) spy(); }, {passive: true});
 	var fieldNo = 0;
 	/** A field of the panel: kind text | number | textarea | select | check | ro; save(value) is called on change. */
 	// department / team of the form (0.8.1020) and the datalist of the values already used on other forms
@@ -1434,7 +1500,12 @@
 					onclick: function () { phoneSec = s.key; renderPanel(); }});
 			})));
 			sections.filter(function (s) { return s.key === phoneSec; }).forEach(function (s) { panel.appendChild(drawSection(s, true)); });
-		} else sections.forEach(function (s) { panel.appendChild(drawSection(s, false)); });
+		} else {
+			var chips = drawChips();
+			if (chips) panel.insertBefore(chips, panel.querySelector('.nuDsSec, section') || null);
+			sections.forEach(function (s) { panel.appendChild(drawSection(s, false)); });
+			spy();
+		}
 		if (footEl) panel.appendChild(footEl);
 		if (phone.matches) panel.insertBefore(sheetHandle, panel.firstChild);
 		setSheet(sheet);
@@ -1551,7 +1622,8 @@
 				else change('form.save', {fields: {layout: v}}, true).catch(function () { /* said */ });
 			}, {key: 'layout', options: [['absolute', t('form_layout_absolute')], ['auto', t('form_layout_auto')], ['grid', t('form_layout_grid')]]}),
 			el('div', {'class': 'form-check form-switch nuDsField'}, [el('input', {type: 'checkbox', 'class': 'form-check-input', role: 'switch', id: 'nuDsTabOrder', checked: tabOrderOn ? true : null,
-				onchange: function (e) { tabOrderOn = e.target.checked; post({nuBuilderTabOrder: tabOrderOn}); }}), el('label', {'class': 'form-check-label', 'for': 'nuDsTabOrder', text: t('builder_taborder')})])
+				onchange: function (e) { tabOrderOn = e.target.checked; post({nuBuilderTabOrder: tabOrderOn}); orderFloat(); }}), el('label', {'class': 'form-check-label', 'for': 'nuDsTabOrder', text: t('builder_taborder')})]),
+			orderByPosButton('nuDsOrderPos')
 		]);
 		var tools = [];
 		if (D.ai) tools.push(el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsAi', onclick: function () { askAi(); }}, [icon('bi-stars me-1'), t('fai_ask')]));
@@ -2507,6 +2579,81 @@
 	function lookupExtra(o) {
 		if (o.sob_all_type !== 'lookup') return 0;
 		return (o.sob_lookup_description_width === '' || o.sob_lookup_description_width === null || o.sob_lookup_description_width === undefined ? 150 : +o.sob_lookup_description_width || 0) + 34;
+	}
+	// Set the tab order by position (0.8.1301, absolute layout only – in auto / grid layouts the order IS the position): every tab sorted
+	// on its own, row by row (tops within 10 px = one row, then left) or column by column (lefts within 10 px = one column, then top);
+	// a content box keeps its objects together (sorted inside it, placed by its own position); words, HTML, images sorted like the rest.
+	// One object.order call = one Undo step. The way (rows / columns) is remembered (localStorage nunext-ds-order-mode).
+	var ORDER_KEY = 'nunext-ds-order-mode';
+	function orderMode() { try { return localStorage.getItem(ORDER_KEY) === 'cols' ? 'cols' : 'rows'; } catch (e) { return 'rows'; } }
+	function posOrder(mode) {
+		var rect = function (o) { var l = +o.sob_all_left || 0, tp = +o.sob_all_top || 0; return {l: l, t: tp, r: l + (+o.sob_all_width || 0) + lookupExtra(o), b: tp + (+o.sob_all_height || 0)}; };
+		var tol = 10;
+		var sortItems = function (items) {
+			var a = items.slice().sort(function (x, y) { return mode === 'cols' ? x.r.l - y.r.l || x.r.t - y.r.t : x.r.t - y.r.t || x.r.l - y.r.l; });
+			var lines = [], line = null, first = 0;
+			a.forEach(function (it) {
+				var v = mode === 'cols' ? it.r.l : it.r.t;
+				if (!line || v - first > tol) { line = []; lines.push(line); first = v; }
+				line.push(it);
+			});
+			var out = [];
+			lines.forEach(function (ln) { ln.sort(function (x, y) { return mode === 'cols' ? x.r.t - y.r.t || x.r.l - y.r.l : x.r.l - y.r.l || x.r.t - y.r.t; }); out = out.concat(ln); });
+			return out;
+		};
+		var byTab = {};
+		S.objects.forEach(function (o) { var k = o.sob_all_zzzzsys_tab_id || ''; (byTab[k] = byTab[k] || []).push(o); });
+		var sorted = {};
+		Object.keys(byTab).forEach(function (k) {
+			var items = byTab[k].map(function (o) { return {o: o, r: rect(o), kids: []}; });
+			var boxes = items.filter(function (it) { return it.o.sob_all_type === 'contentbox'; });
+			var roots = [];
+			items.forEach(function (it) {          // the smallest box holding the object's centre is its box
+				var cx = (it.r.l + it.r.r) / 2, cy = (it.r.t + it.r.b) / 2, best = null;
+				boxes.forEach(function (bx) {
+					if (bx === it || cx < bx.r.l || cx > bx.r.r || cy < bx.r.t || cy > bx.r.b) return;
+					if (it.o.sob_all_type === 'contentbox' && (it.r.r - it.r.l) * (it.r.b - it.r.t) >= (bx.r.r - bx.r.l) * (bx.r.b - bx.r.t)) return;
+					if (!best || (bx.r.r - bx.r.l) * (bx.r.b - bx.r.t) < (best.r.r - best.r.l) * (best.r.b - best.r.t)) best = bx;
+				});
+				(best ? best.kids : roots).push(it);
+			});
+			var flat = function (list) { var out = []; sortItems(list).forEach(function (it) { out.push(it.o.zzzzsys_object_id); out = out.concat(flat(it.kids)); }); return out; };
+			sorted[k] = flat(roots);
+		});
+		var at = {};
+		return S.objects.map(function (o) { var k = o.sob_all_zzzzsys_tab_id || ''; at[k] = at[k] || 0; return sorted[k][at[k]++]; });
+	}
+	function orderByPos(mode) {
+		if (layout() !== 'absolute' || !S || !S.objects) return;
+		try { localStorage.setItem(ORDER_KEY, mode); } catch (e) { /* no storage */ }
+		var ids = posOrder(mode), now = S.objects.map(function (x) { return x.zzzzsys_object_id; });
+		if (ids.join('|') === now.join('|')) { say(t('ds_ord_same')); return; }
+		var n = ids.filter(function (id, i) { return id !== now[i]; }).length;
+		change('object.order', {ids: ids}, false).then(function () {
+			post({nuBuilderOrder: S.objects.map(function (x) { return x.sob_all_id; })});
+			say(t('ds_ord_done').replace('%d', String(n)));
+		}).catch(function () { /* said */ });
+	}
+	function orderByPosButton(id) {
+		if (layout() !== 'absolute') return el('div', {'class': 'nuDsField small text-body-secondary nuDsOrderNote'}, [t('ds_ord_auto')]);
+		var mode = orderMode();
+		var item = function (m, label) {
+			return el('li', {}, [el('button', {type: 'button', 'class': 'dropdown-item' + (m === mode ? ' active' : ''), 'data-mode': m, 'aria-current': m === mode ? 'true' : null,
+				onclick: function () { orderByPos(m); renderPanel(); orderFloat(); }}, [label])]);
+		};
+		return el('div', {'class': 'btn-group nuDsField nuDsOrderPos' + (id === 'nuDsOrderPosFloat' ? ' dropup' : ''), id: id + 'Grp'}, [
+			el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: id, title: t('ds_ord_tip'), onclick: function () { orderByPos(orderMode()); }},
+				[icon('bi-sort-numeric-down me-1'), t('ds_ord_pos')]),
+			el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary dropdown-toggle dropdown-toggle-split', 'data-bs-toggle': 'dropdown', 'aria-expanded': 'false', 'aria-label': t('ds_ord_how')}),
+			el('ul', {'class': 'dropdown-menu'}, [item('rows', t('ds_ord_rows')), item('cols', t('ds_ord_cols'))])]);
+	}
+	// the same button floating over the form while the tab order numbers are shown
+	var orderFloatEl = null;
+	function orderFloat() {
+		if (orderFloatEl) { orderFloatEl.remove(); orderFloatEl = null; }
+		if (!tabOrderOn || layout() !== 'absolute' || BROWSE) return;
+		orderFloatEl = el('div', {'class': 'nuDsOrderFloat', id: 'nuDsOrderFloat'}, [orderByPosButton('nuDsOrderPosFloat')]);
+		document.body.appendChild(orderFloatEl);
 	}
 	// Arrange panel Up / Down: the selected objects move one place in the order of their tab (as the builder, 0.8.606)
 	function order(m) {

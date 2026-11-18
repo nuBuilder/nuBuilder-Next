@@ -15,11 +15,12 @@ page) for how to use it.
 - **Lists by keyboard** – search, ↓ into the rows, ↑ / ↓ / Page Down to move, Enter to open, Esc back to the search; the row is kept when you come back,
   shown with a soft rounded highlight and always scrolled into view.
 - **Export** – every list as print page, CSV or Excel; copy rows straight into Excel or Word.
-- **Comfortable editing** – sub-forms, lookups and file uploads; required and unique fields marked; unsaved changes shown;
+- **Comfortable editing** – sub-forms, lookups (a window sized to its list, the current value marked, Clear, keyboard) and file uploads; required and unique fields marked; unsaved changes shown;
   Clone opens an unsaved copy; fields you cannot change look quiet (soft fill, a small lock) but stay fully readable.
 - **Start page** – tiles, favourites, recently used and one search over everything (also Ctrl+K); dashboards with KPI tiles,
   charts and tables.
-- **Notification centre** – a bell with unread messages, optionally also by e-mail.
+- **Notification centre** – a bell with unread messages, optionally also by e-mail; on wide screens the editor shows everything at once
+  with a live preview of the notification and a summary of who gets it.
 - **Keyboard shortcuts** for save, clone, delete, search, print and more; *Back* returns to the page you came from; success messages close by themselves, warnings stay.
 - **Recently used** – the start page row and the side bar, optionally without the pages that are already favourites.
 - **Secure sign-in** – two-step login (authenticator app or e-mail code), passkeys, single sign-on (OpenID Connect: Microsoft
@@ -33,10 +34,14 @@ page) for how to use it.
 
 - **Form designer** – design a form where it runs: drag and arrange objects, a properties panel for every object type, the
   list's columns and settings right on the list, responsive layouts for phones (grid rows that always fit), tabs (with unique names), events and code in one place;
-  *Properties…* in an object's right-click menu opens it selected in design mode.
+  *Properties…* in an object's right-click menu opens it selected in design mode; the properties panel has section chips that stay
+  at the top (jump, fold / unfold all, one-line summaries of folded sections); *Set order by position* sorts the tab order by where
+  the objects are (rows or columns, content boxes kept together); a selected content box keeps its objects visible and moves them
+  along; *Discard* only while the draft holds changes.
 - **A list's design in a side pane** – browse SQL, PHP (Before Browse), JavaScript, columns with all their settings, row details and list settings next to the running list;
   *As run* shows the SQL the list really ran, hash variables filled in and unset ones marked.
-- **A form's code beside the record** – every JavaScript, CSS and PHP event of a form in a side pane on the record (Ctrl+Shift+B), grouped in cards, saved in one go.
+- **A form's code beside the record** – every JavaScript, CSS and PHP event of a form in a side pane on the record (Ctrl+Shift+B), grouped in cards, saved in one go;
+  a label in the pane's title says where Save goes (Live, Draft, Not published yet, Live – draft open, Draft needed).
 - **Form info** – the form's details in section cards (form, data, list, record), description and code changed right in the panel.
 - **Forms grouped** by group, department and team – shown and filtered in the forms list; forms, procedures, reports and SQL queries sorted by *Last opened*.
 - **Drafts and history** – changes go into a draft that you publish when ready; every published version can be compared

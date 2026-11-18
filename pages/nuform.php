@@ -332,6 +332,7 @@ $client = [
 		'm' => ['title' => t('builder_browse_sql'), 'hint' => t('bsq_hint'),
 		'save' => t('save'), 'close' => t('close'), 'unsaved' => t('bsq_unsaved'), 'pin' => t('bsq_pin'), 'error' => t('form_error'), 'resize' => t('bsq_resize')]
 		+ array_combine(NU_BSQ_TEXTS, array_map('t', NU_BSQ_TEXTS))] : null,
+	'save_target' => $codeEdit || $browseSqlEdit ? NuFormDraft::saveTarget($meta->id) : null,   // 0.8.1300: label in the title of the code side panels
 	'code_pane' => $codeEdit ? $codePane() : null,                            // 0.8.1197: Design ▾ → Code on edit forms
 	'base' => 'index.php', 'csrf' => nu_csrf_token(), 'bt' => $bt, 'mode' => $mode, 'iframe' => $iframe, 'lookup' => $lookupTo,
 	'form' => [
@@ -456,7 +457,7 @@ $client = [
 	] : null,
 	'messages' => [
 		'mask_incomplete' => t('fmt_err_incomplete'), 'saved' => t('saved'), 'deleted' => t('form_deleted'), 'cloned' => t('form_cloned'), 'clone_badge' => t('form_clone_badge'), 'unsaved' => t('form_unsaved'), 'report_running' => t('rpt_running'), 'report_emailed' => t('rpt_emailed'), 'delete_confirm' => t('form_delete_confirm'), 'no_results' => t('eff_none'), 'delete_title' => t('form_delete_title'), 'delete_named' => t('form_delete_named'), 'delete_with' => t('form_delete_with'), 'delete_undo' => t('form_delete_undo'), 'error' => t('form_error'),
-		'ok' => t('ok'), 'cancel' => t('cancel'), 'code_fullscreen' => t('form_code_fullscreen'), 'code_hint' => t('form_code_hint'), 'code_readonly' => t('form_code_readonly'), 'code_discard' => t('form_code_discard'), 'code_dblclick' => t('form_code_dblclick'), 'delete' => t('delete'), 'lookup' => t('form_lookup_title'), 'js_errors' => t('form_js_errors'),
+		'ok' => t('ok'), 'cancel' => t('cancel'), 'code_fullscreen' => t('form_code_fullscreen'), 'code_hint' => t('form_code_hint'), 'code_readonly' => t('form_code_readonly'), 'code_discard' => t('form_code_discard'), 'code_dblclick' => t('form_code_dblclick'), 'delete' => t('delete'), 'lookup' => t('form_lookup_title'), 'lk_clear' => t('lk_clear'), 'lk_clear_tip' => t('lk_clear_tip'), 'lk_keys' => t('lk_keys'), 'js_errors' => t('form_js_errors'),
 		'not_supported' => t('form_not_supported'), 'saving' => t('form_saving'), 'all' => t('all'), 'close' => t('close'), 'help' => t('sc_help'), 'chart_no_data' => t('chart_no_data'), 'chart_load_failed' => t('chart_load_failed'), 'chart_no_type' => t('chart_no_type'),
 		'hash_name' => t('hash_name'), 'hash_value' => t('hash_value'), 'hash_source' => t('hash_source'), 'hash_filter' => t('hash_filter'), 'hash_locked' => t('hash_locked'),
 		'hash_src' => ['system' => t('hash_src_system'), 'user' => t('hash_src_user'), 'record' => t('hash_src_record'), 'property' => t('hash_src_property'), 'global' => t('hash_src_global'), 'caller' => t('hash_src_caller')],
@@ -727,7 +728,7 @@ $foot = '<script>window.nuNext = ' . json_encode($client, JSON_HEX_TAG | JSON_HE
 		. '<script src="' . nu_asset('assets/js/nuaiask.js') . '"></script><script src="' . nu_asset('assets/js/nu/nudesign.js') . '"></script>' : '')
 	;
 
-nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategroy' ? 'notes' : 'forms', ['head' => $head, 'bare' => $bare, 'nu_form' => [$mode, (string)$meta->form['sfo_code']], 'container' => 'container-fluid nuFormContainer', 'body_class' => 'nuForm nuForm-' . $mode . (!empty($printMode) ? ' nuPrintView' : '') . ($design ? ' nuDesignMode' : '')]);
+nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategroy' ? 'notes' : 'forms', ['head' => $head, 'bare' => $bare, 'nu_form' => [$mode, (string)$meta->form['sfo_code']], 'container' => 'container-fluid nuFormContainer', 'body_class' => 'nuForm nuForm-' . $mode . ($lookupTo !== '' ? ' nuLookupPage' : '') . (!empty($printMode) ? ' nuPrintView' : '') . ($design ? ' nuDesignMode' : '')]);
 ?>
 <div class="nuFormHeader nuTitleBar mb-3">
 	<?php if (!$bare): // phones (0.8.1003, the owner picked mockup B): "‹ <parent>" + the title instead of the breadcrumb and Back; the buttons sit right of the title
@@ -1032,7 +1033,7 @@ if (!$bare && in_array($formStatus, [NuFormStatus::MAINT, NuFormStatus::ARCHIVED
 <?php endif; ?>
 
 <div class="modal fade" id="nuLookupModal" tabindex="-1" aria-hidden="true" aria-labelledby="nuLookupTitle">
-	<div class="modal-dialog modal-xl modal-dialog-scrollable">
+	<div class="modal-dialog modal-xl nuLookupDialog"><?php /* width / height fitted to the list by nuruntime.js lookupFit (0.8.1293) */ ?>
 		<div class="modal-content">
 			<div class="modal-header py-2"><h2 class="modal-title fs-6" id="nuLookupTitle"><?= h(t('form_lookup_title')) ?></h2>
 				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?= h(t('close')) ?>"></button></div>

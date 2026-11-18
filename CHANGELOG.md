@@ -3,6 +3,77 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.1306 – Release gate
+- Release gate: documentation brought up to date (FEATURES lookup window, notification editor, design mode panel,
+  tab order by position, content boxes, Discard, Save target; tutorial lookup / panel chips / order by position; TODO
+  please-verify 0.8.1293–0.8.1305).
+
+## 0.8.1305 – Properties panel chips
+- Design mode, properties panel: chips of the sections (Content, Behaviour, Layout, Style, Tools, Help) stay at the top –
+  a click opens the section and jumps to it, the section in view is marked; a button folds / unfolds all sections; a
+  folded section shows its values in one line.
+
+## 0.8.1304 – Leave preview tooltip
+- Draft preview bar: "Leave preview" shows a tooltip "Show published form – the draft stays as it is".
+
+## 0.8.1303 – Discard only with changes
+- Design mode: Discard is greyed out while the draft holds no change (for example after undoing back to the published
+  form); its tooltip names the number of changes. An empty draft of your own is removed by itself when you click Done.
+
+## 0.8.1302 – Content boxes in design mode
+- Design mode, content boxes: a selected box stays behind its objects (they no longer disappear and stay clickable), the
+  objects inside it are tinted, and in absolute layout they move with the box – dragging and arrow keys.
+- Design mode: arrow keys move the selected objects also right after opening (the form's first field had the focus and took
+  the keys).
+
+## 0.8.1301 – Tab order by position
+- Design mode: "Set order by position" below "Show tab order" (and floating at the bottom left while the numbers are shown)
+  sets the tab order of every tab from where the objects are – row by row or, with its ▾, column by column; a content box
+  keeps its objects together; one Undo step. Absolute layout only – in auto and grid layouts the order is the position.
+
+## 0.8.1300 – Save target in the code panels
+- Code side panels of forms (Design ▾ → Code on a record, and the list's pane): a label in the title says where Save goes –
+  Live, Draft (rev n) while a draft is previewed, Not published yet, Live – draft open (Save asks first) or Draft needed;
+  its tooltip explains the rule.
+
+## 0.8.1299 – Lighter greys
+- Lighter greys everywhere: grey count and state badges (e.g. Form rights, Users, Archived) are light grey with dark text;
+  a chosen grey button (Active / Archived / All and other filter toggles) is light blue like the active tab; an open
+  dropdown button and the Close / Cancel buttons of dialogues are light grey; keys in the help (Ctrl, F1 …) look like light
+  key caps. Dark mode gets the matching softer shades.
+
+## 0.8.1298 – Notification editor on wide screens
+- Notification editor on wide screens (from 1400 px): Message on the left, Recipients and Delivery on the right, and a third
+  column with a live preview of the notification as recipients see it, the summary (reach, from, until, must confirm,
+  pinned, the first names) and Save as draft / Publish – the whole notification fits on one screen. Narrower screens keep
+  the single column with the bar at the bottom.
+
+## 0.8.1297 – Search in the users card of access levels
+- Access level form, Users card: a search field next to Active / Archived / All narrows the list by login name
+  or name (every word must match); Esc clears it.
+
+## 0.8.1296 – Notes text as wide as the editor
+- Notes: the text field on the tab Additional is as wide as the editor on the tab Notes.
+
+## 0.8.1295 – Notes text fills the height
+- Notes: the text field on the tab Additional fills the free height of the window (like the editor on the tab
+  Notes) and follows when the window changes size.
+
+## 0.8.1294 – Lookup list as a table on wide screens
+- Lookup window: on wide screens the list is shown as a table again; the cards are used only when the
+  screen itself is a phone (a lookup window narrower than 576 px switched to cards before).
+
+## 0.8.1293 – Lookup window fits its list
+- Lookup window: named after the list (was "Search"), as wide as the list's columns and as tall as its rows (at most the window) –
+  no large empty area below a short list. The list's own title row is gone; its buttons (Add, ⋮) sit in the search row.
+- The record already chosen is marked with a tick; Clear at the bottom empties the lookup field.
+- Keyboard: the cursor starts in the search, ↓ / ↑ and Enter pick a row, Esc first clears the search, then closes the window; a
+  line at the bottom names the keys. Rows show the pointer.
+- Phones: search, filter, Add and ⋮ in one row.
+
+## 0.8.1292 – Notes
+- Development notes only: v0.8.1291 recorded as the last published GitHub release.
+
 ## 0.8.1291 – Release gate
 - Release gate: full test run (smoke, end-to-end, cross-tests against nuBuilder Forte, OWASP ZAP); documentation brought up to date
   (feature list: Reset database in steps; open points to verify).

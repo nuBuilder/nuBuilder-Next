@@ -346,3 +346,26 @@ html.nuDsWorkOpen body { overflow: hidden; }
 .nuDsGrid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; }
 .nuDesignMode .nuHideSm, .nuDesignMode .nuHideMd, .nuDesignMode .nuHideLg { display: block !important; opacity: .45; }
 .nuDesignMode .nuStack { outline: 1px dashed var(--bs-border-color); outline-offset: 2px; }
+
+/* Set the tab order by position (0.8.1301): in the form's Layout section and floating over the form while the numbers are shown */
+.nuDsOrderPos { align-self: flex-start; }
+.nuDsOrderFloat { position: fixed; left: calc(3.25rem + 1.25rem); bottom: 1.25rem; z-index: 1013; background: var(--bs-body-bg); border-radius: var(--bs-border-radius); box-shadow: 0 4px 16px rgba(20, 30, 50, .18); }
+.nuDsOrderFloat .nuDsField { margin: 0; }
+.nuDsOrderNote { max-width: 22rem; }
+@media (max-width: 767.98px) { .nuDsOrderFloat { left: 1rem; bottom: calc(var(--nu-ds-sheet-h, 0px) + 1rem); } }
+
+/* properties panel (0.8.1305, option A of the canvas "Design mode properties panel"): chips of the sections stay at the top, a click
+   jumps there, the section in view is marked; folded sections show their values in one line */
+.nuDsChips { position: sticky; top: 0; z-index: 3; display: flex; flex-wrap: wrap; align-items: center; gap: .3rem; padding: .45rem .75rem .55rem;
+	background: var(--bs-body-bg); border-top: 1px solid var(--bs-border-color); box-shadow: 0 4px 8px rgba(20, 30, 50, .05); }
+.nuDsChip { border: 1px solid transparent; border-radius: 999px; background: var(--bs-tertiary-bg); color: var(--bs-secondary-color); font-size: .78rem; padding: .15rem .6rem; line-height: 1.4; }
+.nuDsChip:hover { color: var(--bs-body-color); background: var(--bs-secondary-bg); }
+.nuDsChip.active { background: #e7f1ff; color: #0a58ca; border-color: #9ec5fe; font-weight: 600; }
+[data-bs-theme="dark"] .nuDsChip.active { background: rgba(13, 110, 253, .2); color: #9ec5fe; border-color: #3d6fb5; }
+.nuDsChipAll { margin-left: auto; border: 0; background: none; color: var(--bs-secondary-color); padding: .1rem .3rem; border-radius: .3rem; }
+.nuDsChipAll:hover { color: var(--bs-body-color); background: var(--bs-tertiary-bg); }
+.nuDsChips + .nuDsSec { border-top: 0; }
+.nuDsSecHead { gap: .6rem; }
+.nuDsSecHead > span:first-child { flex: none; }
+.nuDsSecSum { flex: 1; min-width: 0; text-align: end; font-weight: 400; font-size: .78rem; color: var(--bs-secondary-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nuDsChip:focus-visible, .nuDsChipAll:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 1px; }

@@ -243,7 +243,7 @@ $phpCount = $existing ? (int)$db->value('SELECT COUNT(*) FROM zzzzsys_access_php
 	: ($cloneId !== '' ? (int)$db->value('SELECT COUNT(*) FROM zzzzsys_access_php WHERE slp_zzzzsys_access_id = ?', [$cloneId]) : 0);
 $rptCount = $db->tableExists('zzzzsys_access_report') && ($existing || $cloneId !== '') ? (int)$db->value('SELECT COUNT(*) FROM zzzzsys_access_report WHERE sre_zzzzsys_access_id = ?', [$existing ? $id : $cloneId]) : 0;
 // Users card (0.8.583): up to 500 users with their state – archived = "Valid until" in the past (nu_is_expired, as the users list);
-// filter Active (default) · Archived · All in assets/js/nuaccesslevel.js
+// filter Active (default) · Archived · All and a search over login + name (0.8.1297) in assets/js/nuaccesslevel.js
 $users = $existing ? $db->page('SELECT zzzzsys_user_id, sus_login_name, sus_name, sus_first_name, sus_last_name, sus_expires_on FROM zzzzsys_user WHERE sus_zzzzsys_access_id = ?', [$id], 'sus_login_name', 500, 0) : [];
 foreach ($users as &$us) { $us['archived'] = nu_is_expired($us['sus_expires_on'] ?? null); $us['extra'] = null; }
 unset($us);
@@ -398,7 +398,8 @@ nu_layout_start($title, 'access', ['head' => '<link rel="stylesheet" href="' . n
 				<?php if (!$users): ?>
 					<div class="card-body small text-body-secondary"><?= h(t('access_no_users')) ?></div>
 				<?php else: ?>
-					<div class="card-body py-2 border-bottom">
+					<div class="card-body py-2 border-bottom d-flex flex-wrap align-items-center gap-2" data-nu-noguard>
+						<input type="search" class="form-control form-control-sm accUserSearch" id="accUserSearch" placeholder="<?= h(t('search_ph')) ?>" aria-label="<?= h(t('search')) ?>" autocomplete="off">
 						<div class="d-flex flex-wrap gap-2" id="accUserFilter" role="radiogroup" aria-label="<?= h(t('access_users_filter')) ?>">
 							<?php foreach (['active' => [t('user_active'), count($users) - $usArchived], 'archived' => [t('access_users_archived'), $usArchived], 'all' => [t('all'), count($users)]] as $v => [$lbl, $n]): ?>
 								<input type="radio" class="btn-check" name="accUserFilter" id="accUf_<?= $v ?>" value="<?= $v ?>" autocomplete="off"<?= $v === 'active' ? ' checked' : '' ?>>
@@ -408,7 +409,7 @@ nu_layout_start($title, 'access', ['head' => '<link rel="stylesheet" href="' . n
 					</div>
 					<ul class="list-group list-group-flush small nu-scroll" id="accUserList">
 						<?php foreach ($users as $us): $nm = trim((string)($us['sus_name'] ?? '')) ?: trim($us['sus_first_name'] . ' ' . $us['sus_last_name']);   // the full name (sus_name), first + last only when it is empty (0.8.693) ?>
-							<li class="list-group-item d-flex justify-content-between gap-2" data-st="<?= $us['archived'] ? 'archived' : 'active' ?>"<?= $us['archived'] ? ' hidden' : '' ?>>
+							<li class="list-group-item d-flex justify-content-between gap-2" data-st="<?= $us['archived'] ? 'archived' : 'active' ?>" data-q="<?= h(mb_strtolower($us['sus_login_name'] . ' ' . $nm)) ?>"<?= $us['archived'] ? ' hidden' : '' ?>>
 								<?php if (NuAcl::can(NuAcl::FORM_USER)): ?>
 									<a class="text-decoration-none<?= $us['archived'] ? ' text-body-secondary' : '' ?>" href="<?= h(nu_url('user', ['id' => $us['zzzzsys_user_id']])) ?>"><?= h($us['sus_login_name']) ?></a>
 								<?php else: ?><span><?= h($us['sus_login_name']) ?></span><?php endif; ?>

@@ -61,6 +61,7 @@ return [
 	'form_err_subform_missing' => 'Unterformular «%s» nicht gefunden.',
 	'form_delete_named' => '«%s» löschen?',
 	'form_delete_with' => 'Ebenfalls gelöscht: %s Zeilen von «%s»',
+	'lk_keys' => '↑ ↓ auswählen · Enter übernehmen · Esc Suche leeren / schliessen',
 	'fi_sql_view' => 'Grösser anzeigen',
 	'builder_attr_result' => 'Ergebnis (Feld «HTML-Attribute»)',
 	'ecp_hint' => 'Strg+S speichern · Esc schliessen · ↑ / ↓ nächster Teil',

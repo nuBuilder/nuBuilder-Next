@@ -4,13 +4,29 @@
 (function () {
 	'use strict';
 	// Users card (0.8.583): Active (default) · Archived · All
-	var uf = document.getElementById('accUserFilter'), ul = document.getElementById('accUserList');
-	if (uf && ul) uf.addEventListener('change', function () {
+	// + search over login and name (0.8.1297): every word must occur; Enter does not send the form, Esc clears
+	var uf = document.getElementById('accUserFilter'), ul = document.getElementById('accUserList'), us = document.getElementById('accUserSearch');
+	var apply = function () {
 		var v = (uf.querySelector('input:checked') || {}).value || 'active', n = 0;
-		Array.prototype.forEach.call(ul.querySelectorAll('li[data-st]'), function (li) { li.hidden = v !== 'all' && li.getAttribute('data-st') !== v; if (!li.hidden) n++; });
+		var words = us ? us.value.toLowerCase().trim().split(/\s+/).filter(Boolean) : [];
+		Array.prototype.forEach.call(ul.querySelectorAll('li[data-st]'), function (li) {
+			var q = li.getAttribute('data-q') || '';
+			li.hidden = (v !== 'all' && li.getAttribute('data-st') !== v) || words.some(function (w) { return q.indexOf(w) < 0; });
+			if (!li.hidden) n++;
+		});
 		var none = ul.querySelector('.accUserNone');
 		if (none) none.hidden = n > 0;
-	});
+	};
+	if (uf && ul) {
+		uf.addEventListener('change', apply);
+		if (us) {
+			us.addEventListener('input', apply);
+			us.addEventListener('keydown', function (e) {
+				if (e.key === 'Enter') e.preventDefault();
+				else if (e.key === 'Escape' && us.value !== '') { e.preventDefault(); e.stopPropagation(); us.value = ''; apply(); }
+			});
+		}
+	}
 })();
 (function () {
 	'use strict';

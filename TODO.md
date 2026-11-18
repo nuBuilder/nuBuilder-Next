@@ -119,6 +119,8 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       protect_fields is off.
 
 ## Forms and design mode
+- [ ] **Design mode improvements** (0.8.1300–0.8.1305) – please verify on a real form: the label where Save goes in the code side panels (Live / Draft / Live – draft open), *Set order by position* (rows / columns, content boxes kept together, one Undo), a selected content box (fields stay visible and clickable, move along with drag and arrow keys), *Discard* greyed while the draft holds no change and an empty draft gone after Done, the panel's section chips (jump, marked while scrolling, fold all, summaries)
+- [ ] **Lookup window** (0.8.1293 / 0.8.1294) – please verify on lookups of real forms: title, width / height fitted to the list, current value marked, Clear, keyboard, table on wide screens and cards on phones
 - [ ] **Publishing with old problems** (0.8.1285 / 0.8.1286) – Done → Publish now publishes at once; problems in parts the draft did not change (a run button to a deleted form) only warn – please verify on other older forms of the live database
 - [ ] **Phone cards two lines, notification editor** (0.8.1271 / 0.8.1275) – please verify on a phone: long values in list cards end after two lines with …; the new notification editor (sections, rule rows, summary bar)
 - [ ] **Record check per form** (0.8.1234) – please verify: design mode → Form → Data "Any record may be opened" lets a link to a record outside the list open; `nuNextRecordCheck(false)` in Before Edit does the same for one record.
@@ -258,6 +260,7 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **Procedures list: search in code** (0.8.1254) – please verify: tick *Code* next to the search of the procedures list; procedures whose PHP or JavaScript contains the text are found.
 
 ## Users, access levels and permissions
+- [ ] **Access level Users search, notification editor on wide screens, lighter greys** (0.8.1297–0.8.1299) – please verify: the search in an access level's Users card, the notification editor from 1400 px (preview, summary, buttons in the side column), the light grey badges and the light blue chosen filter buttons on the pages used every day (also dark mode)
 - [ ] **Start pages at a glance** (0.8.1264–0.8.1283) – please verify: the button right of Customise on the start page (right-click / long press on Home elsewhere) – tabs Home forms / Tile pages, rows on one line, User Home in the head; an empty tile page is not kept (the level uses the default); the user menu order (own items · tools · help · System info)
 - [ ] **Delete access level with expired users** (0.8.1250) – a level used only by expired users can be deleted; check that those users show an empty access level and that nuBuilder Forte's user form handles them
 - [ ] **User form layout** (0.8.1230–0.8.1245) – please verify on the live server: summary on the left (jumps to login / code / status / level, no keyboard on phones), sections capped in width, compact summary on phones.

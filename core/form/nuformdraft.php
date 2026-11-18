@@ -71,6 +71,7 @@ final class NuFormDraft
 			'note' => (string)($d['note'] ?? ''), 'created_by' => (string)$d['created_by'], 'created_at' => (string)$d['created_at'],
 			'updated_by' => (string)($d['updated_by'] ?? ''), 'updated_at' => (string)($d['updated_at'] ?? ''), 'preview_saves' => (int)($d['preview_saves'] ?? 0) === 1,
 			'changes' => $live && $snap ? NuFormSnapshot::diff($live, $snap)['counts']['total'] : 0,
+			'ddl' => count(json_decode((string)($d['ddl'] ?? '[]'), true) ?: []),   // table changes waiting in the draft (0.8.1303: an empty draft = 0 changes and no ddl)
 			'conflict' => $live === null || ($base && NuFormSnapshot::hash($live, $base) !== (string)$d['base_hash']),
 			'undo_count' => count($undo), 'undo_label' => (string)($undo[0]['label'] ?? ''),
 			'redo_count' => count(json_decode((string)($d['redo_list'] ?? '[]'), true) ?: []),
@@ -354,6 +355,27 @@ final class NuFormDraft
 		return null;
 	}
 
+	/**
+	 * Where a Save of the form's code side panels goes (0.8.1300: label in their title) – the same rules as the builder API's form.save:
+	 * draft = the draft shown in the preview · unpub = a form never published (changed directly) · open = live while a draft is open
+	 * (the globeadmin confirms, others are refused) · need = "changes only through drafts" for non-globeadmins · live = the live form.
+	 * @return array{mode: string, label: string, tip: string}
+	 */
+	public static function saveTarget(string $formId): array
+	{
+		$mk = static fn(string $m, string $label, string $tip): array => ['mode' => $m, 'label' => $label, 'tip' => $tip];
+		$d = self::previewInfo($formId);
+		if ($d) return $mk('draft', t('svt_draft', $d['rev']), t('svt_draft_tip'));
+		if (!self::ready() || (string)nu_db()->value('SELECT sfo_status FROM zzzzsys_form WHERE zzzzsys_form_id = ?', [$formId]) === '0') {
+			return self::ready() ? $mk('unpub', t('svt_unpub'), t('svt_unpub_tip')) : $mk('live', t('svt_live'), t('svt_live_tip'));
+		}
+		$ga = !empty(NuAuth::user()['globeadmin']);
+		$open = self::openFor($formId);
+		if ($open) return $mk('open', t('svt_open'), $ga ? t('svt_open_tip_ga', (string)$open['created_by']) : t('builder_draft_open', (string)$open['created_by']));
+		if (NuSecurity::get('form_drafts_required') && !$ga) return $mk('need', t('svt_need'), t('builder_draft_required'));
+		return $mk('live', t('svt_live'), t('svt_live_tip'));
+	}
+
 	// ---------------------------------------------------------------- preview session
 	/** Starts the preview of a draft in this session (plus the open drafts of the same author for the forms it shows inside). */
 	public static function startPreview(string $id): void
@@ -459,7 +481,7 @@ final class NuFormDraft
 			. '<i class="bi bi-cone-striped" aria-hidden="true"></i><span class="me-auto"><strong>' . h(t('draft_preview_banner', $desc, (string)$d['created_by'], (string)($info['changes'] ?? 0))) . '</strong> '
 			. h(t($saves ? 'draft_preview_saves_on' : 'draft_preview_saves_off')) . (count($drafts) > 1 ? ' (+' . (count($drafts) - 1) . ')' : '') . '</span>'
 			. (NuAcl::can(NuAcl::FORM_FORM, 'view') ? '<a class="btn btn-sm btn-outline-dark" href="' . h(nu_url('builder', ['f' => $formId, 'draft' => '1'])) . '"><i class="bi bi-tools me-1" aria-hidden="true"></i>' . h(t('draft_preview_builder')) . '</a>' : '')
-			. '<a class="btn btn-sm btn-dark" id="nuDraftLeave" href="' . h(nu_url('form', ['f' => $formId, 'draft' => 'off'])) . '"><i class="bi bi-box-arrow-right me-1" aria-hidden="true"></i>' . h(t('draft_preview_leave')) . '</a>'
+			. '<a class="btn btn-sm btn-dark" id="nuDraftLeave" title="' . h(t('draft_preview_leave_tip')) . '" href="' . h(nu_url('form', ['f' => $formId, 'draft' => 'off'])) . '"><i class="bi bi-box-arrow-right me-1" aria-hidden="true"></i>' . h(t('draft_preview_leave')) . '</a>'
 			. '</div></div>';
 	}
 }

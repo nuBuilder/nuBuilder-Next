@@ -1456,10 +1456,43 @@
 		});
 	});
 
+	// lookup dialog (0.8.1293): titled with the list's name, as wide as its columns and as tall as its rows (at most the window) –
+	// the list in the frame calls nuNextLookupFit after it is drawn, swapped in place or when one of its menus opens
+	var LK = {target: ''};
+	function lookupFit() {
+		var m = g('nuLookupModal'), fr = m && m.querySelector('iframe'), dlg = m && m.querySelector('.modal-dialog');
+		if (!fr || !dlg) return;
+		try {
+			var d = fr.contentDocument, w = fr.contentWindow, nn = w.nuNext || {};
+			if (!d || !d.body || !nn.lookup) return;
+			var ttl = g('nuLookupTitle');
+			if (ttl && nn.form && nn.form.description) ttl.textContent = String(nn.form.description).replace(/<[^>]*>/g, '');
+			var t = d.getElementById('nuBrowseTable'), sum = 0;
+			if (t) Array.prototype.forEach.call(t.querySelectorAll('thead > tr > th'), function (th) { if (th.style.display !== 'none') sum += parseFloat(th.style.width) || th.offsetWidth; });
+			var wide = t && !t.classList.contains('nuBrowseAutoFit') ? Math.ceil(sum) + 48 : 760;
+			dlg.style.maxWidth = Math.min(window.innerWidth - 24, Math.max(560, wide)) + 'px';
+			var main = d.getElementById('main') || d.body, bottom = main.getBoundingClientRect().top + main.scrollHeight + w.scrollY;
+			Array.prototype.forEach.call(d.querySelectorAll('.dropdown-menu.show'), function (dm) { bottom = Math.max(bottom, dm.getBoundingClientRect().bottom + w.scrollY + 8); });
+			var head = m.querySelector('.modal-header');
+			var room = window.innerHeight - 56 - (head ? head.offsetHeight : 48);
+			fr.style.height = Math.max(240, Math.min(room, Math.ceil(bottom))) + 'px';
+		} catch (x) { /* another origin */ }
+	}
+	window.nuNextLookupFit = lookupFit;
+	window.nuNextLookupCurrent = function () { var h = LK.target && g(LK.target); return h ? String(h.value || '') : ''; };
+	window.nuNextLookupClear = function () {
+		var t = LK.target;
+		nuBs.modal(g('nuLookupModal')).hide();
+		if (t && g(t)) { window.nuLOOKUPCLEARING = true; setLookup(t, {pk: '', code: '', description: ''}); window.nuLOOKUPCLEARING = false; }
+	};
+
 	api('nuBuildLookup', function (target, search) {
 		var info = lookupInfo(target);
 		if (!info || !info.form) return;
-		var modal = g('nuLookupModal');
+		var modal = g('nuLookupModal'), fr = modal.querySelector('iframe'), ttl = g('nuLookupTitle');
+		LK.target = target;
+		if (ttl) { if (!ttl.hasAttribute('data-nu-title')) ttl.setAttribute('data-nu-title', ttl.textContent); ttl.textContent = ttl.getAttribute('data-nu-title'); }
+		if (fr && !fr.hasAttribute('data-nu-fit')) { fr.setAttribute('data-nu-fit', '1'); fr.addEventListener('load', lookupFit); }
 		go(function () { return formUrl(info.form, '', {lookup: target, lo: info.object, q: search || ''}); }, function (url) { $(modal).find('iframe').attr('src', url); });
 		nuBs.modal(modal).show();
 	});
@@ -3366,12 +3399,44 @@
 		phoneStack();
 		if (window.nuStickyHeadCheck) window.nuStickyHeadCheck();
 	});
+	// a textarea that is the lowest object of its tab fills the window's free height (250 px at least) – on load, when its tab is
+	// shown and when the window changes size; the wrapper and the absolute area of the tab follow (0.8.1295, the Notes form)
+	// like (0.8.1296): a wrapper whose right edge the textarea takes over (the Notes form: as wide as the editor on Notes)
+	function fitTextToWindow(ta, like) {
+		if (!ta || ta.tagName !== 'TEXTAREA') return;
+		var own = ta.closest('.nuWrap');
+		if (like && own && like.style.width && own.style.left && !document.documentElement.classList.contains('nuDesigning')) {
+			var w = parseFloat(like.style.left) + parseFloat(like.style.width) - parseFloat(own.style.left);
+			if (w > ta.offsetWidth || !ta.offsetWidth) { own.style.width = w + 'px'; ta.style.width = w + 'px'; }
+		}
+		var fit = function () {
+			if (ta.offsetParent === null || document.documentElement.classList.contains('nuDesigning')) return;
+			var wrap = ta.closest('.nuWrap') || ta, pane = ta.closest('.nuTabPane') || document;
+			var rect = wrap.getBoundingClientRect(), below = false;
+			pane.querySelectorAll('.nuWrap').forEach(function (w) {
+				if (w !== wrap && !wrap.contains(w) && w.offsetParent !== null && w.getBoundingClientRect().top >= rect.bottom - 2) below = true;
+			});
+			if (below) return;
+			var main = document.querySelector('main') || document.body, tr = ta.getBoundingClientRect();
+			var rest = Math.max(0, main.getBoundingClientRect().bottom - Math.max(rect.bottom, tr.bottom));
+			var h = Math.max(250, Math.floor(window.innerHeight - tr.top - rest - 8));
+			var delta = h - ta.offsetHeight;
+			if (Math.abs(delta) < 2) return;
+			ta.style.height = h + 'px';
+			if (wrap !== ta && wrap.style.height) wrap.style.height = (wrap.offsetHeight + delta) + 'px';
+			var area = wrap.offsetParent;
+			if (area && area !== document.body && area.style.height) area.style.height = Math.max(0, area.offsetHeight + delta) + 'px';
+		};
+		fit();
+		document.addEventListener('shown.bs.tab', function () { setTimeout(fit, 0); });
+		var tm; window.addEventListener('resize', function () { clearTimeout(tm); tm = setTimeout(fit, 120); });
+	}
 	function phoneStack() {
 		var html = document.documentElement;
 		var phone = !!(phoneMq && phoneMq.matches) && !phoneOff && !html.classList.contains('nuDesigning');
 		var forced = portrait && !phoneOff && !html.classList.contains('nuDesigning');
-		// a form in a dialog (iframe) of a wide window keeps the desktop layout – a narrow dialog is not a phone (0.8.965)
-		if (phone && N.iframe) { try { if (window.top !== window && window.top.innerWidth >= 576) phone = false; } catch (x) { /* another origin */ } }
+		// a form in a dialog (iframe, also a lookup window) of a wide window keeps the desktop layout – a narrow dialog is not a phone (0.8.965 / 0.8.1294)
+		if (phone && (N.iframe || N.lookup)) { try { if (window.top !== window && window.top.innerWidth >= 576) phone = false; } catch (x) { /* another origin */ } }
 		// browse rows as cards (F2) – unless the user chose the table with the ▦ / ☰ button (0.8.992, per form on this device)
 		var cards = phone && !!document.getElementById('nuBrowseTable') && !document.body.classList.contains('nuPrintView') && phoneListPref() !== 'table';
 		html.classList.toggle('nuPhoneCards', cards);
@@ -4309,6 +4374,8 @@
 			pane.querySelector('.nuBsqPin').setAttribute('aria-label', T.pin);
 			pane.querySelector('.nuBsqPin').addEventListener('click', function () { setPin(!pinned()); drawPin(); });
 			drawPin();
+			var stb = saveTargetBadge();                                   // where Save goes (0.8.1300)
+			if (stb) { stb.insertBefore(pane.querySelector('.nuBsqPin')); saveTargetTip(stb[0]); }
 			pane.querySelector('.nuBsqSave').innerHTML = '<i class="bi bi-floppy me-1" aria-hidden="true"></i>';
 			pane.querySelector('.nuBsqSave').appendChild(document.createTextNode(T.save));
 			document.body.appendChild(pane);
@@ -4358,6 +4425,17 @@
 		window.addEventListener('beforeunload', function (e) { if (dirty()) { e.preventDefault(); e.returnValue = ''; } });
 	})();
 
+	// where a Save of the side panels goes (0.8.1300): a small label in their title – Live / Draft (rev n) / Not published yet /
+	// Live, draft open / Draft needed – with the rule as tooltip (NuFormDraft::saveTarget)
+	function saveTargetBadge() {
+		var t = N.save_target;
+		if (!t) return null;
+		var ic = {live: 'bi-broadcast', draft: 'bi-pencil-square', unpub: 'bi-file-earmark', open: 'bi-exclamation-triangle', need: 'bi-lock'}[t.mode] || 'bi-broadcast';
+		return $('<span class="nuSaveTarget" tabindex="0" role="note" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide"></span>')
+			.addClass('nuSaveTarget-' + t.mode).attr({title: t.tip, 'aria-label': t.label + ' – ' + t.tip, 'data-mode': t.mode})
+			.append($('<i class="bi" aria-hidden="true"></i>').addClass(ic), document.createTextNode(t.label));
+	}
+	function saveTargetTip(el) { if (el && window.nuBs) try { nuBs.tooltip(el); } catch (x) { /* no tooltip */ } }
 	// The edit form's code in a side pane (0.8.1197, the owner picked mockup B of the canvas "Edit form code pane"): the parts of design
 	// mode's Code tab as a grouped list on the left (a dot = has code; the list's parts greyed at the end), one editor per part made when
 	// it is first shown, all changes saved in ONE builder API form.save (fields + php) and the page reloaded. Design ▾ → Code, Ctrl+Shift+B.
@@ -4477,6 +4555,8 @@
 			pane.setAttribute('aria-label', T.title);
 			var head = $('<div class="nuBsqHead"><h2 class="h6 m-0 me-auto nuEcpTitle"></h2><button type="button" class="btn-close nuBsqClose"></button></div>');
 			head.find('.nuEcpTitle').text(T.title + ' – ' + (N.form.description || N.form.code || ''));
+			var stb = saveTargetBadge();
+			if (stb) { stb.insertAfter(head.find('.nuEcpTitle')); saveTargetTip(stb[0]); }
 			head.find('.nuBsqClose').attr('aria-label', T.close).on('click', function () { close(); });
 			var list = $('<div class="nuEcpList" role="tablist" aria-orientation="vertical"></div>').attr('aria-label', T.title), main = $('<div class="nuEcpMain"></div>');
 			var grp = '', card = null;
@@ -5813,6 +5893,57 @@
 	}
 	N.showHash = showHash;
 
+	// the list inside the lookup dialog (0.8.1293): the buttons of the title row go into the search row (one title – the dialog's),
+	// the record already chosen gets a ✓, a foot with Clear + the keys, Esc clears the search / closes, the dialog fits the list
+	function lookupFrame() {
+		var P = window.parent;
+		if (!P || P === window) return;
+		var fit = function () { try { if (P.nuNextLookupFit) P.nuNextLookupFit(); } catch (x) { /* ignore */ } };
+		var cur = '';
+		try { cur = P.nuNextLookupCurrent ? P.nuNextLookupCurrent() : ''; } catch (x) { /* ignore */ }
+		var place = function () {
+			var row = document.querySelector('.nuBrowseSearch .nuListSearch'), ah = g('nuActionHolder');
+			if (row && ah && ah.parentNode !== row) { ah.classList.add('nuLookupActs'); row.appendChild(ah); }
+			Array.prototype.forEach.call(document.querySelectorAll('#nuBrowseTable tr.nuBrowseRow'), function (tr) {
+				var on = cur !== '' && tr.getAttribute('data-nu-primary-key') === cur;
+				tr.classList.toggle('nuLookupCur', on);
+				if (on) tr.setAttribute('aria-current', 'true'); else tr.removeAttribute('aria-current');
+				var td = on && !tr.querySelector('.nuLookupCurMark') ? Array.prototype.find.call(tr.querySelectorAll('td.nuCellTd'), function (c) { return c.style.display !== 'none'; }) : null;
+				if (td) (td.querySelector('.nuCell') || td).insertAdjacentHTML('afterbegin', '<i class="bi bi-check-lg nuLookupCurMark" aria-hidden="true"></i>');
+			});
+			var card = document.querySelector('.nuBrowseCard');
+			if (card && !g('nuLookupFoot')) {
+				var foot = $('<div class="nuLookupFoot" id="nuLookupFoot"></div>');
+				if (cur !== '') {
+					$('<button type="button" class="btn btn-sm btn-outline-secondary" id="nuLookupClear"></button>').text(M.lk_clear || 'Clear').attr('title', M.lk_clear_tip || '')
+						.on('click', function () { try { P.nuNextLookupClear(); } catch (x) { /* ignore */ } }).appendTo(foot);
+				}
+				$('<span class="nuLookupKeys"></span>').text(M.lk_keys || '').appendTo(foot);
+				foot.insertAfter(card);
+			}
+		};
+		place();
+		document.documentElement.classList.add('nuLookupReady');
+		fit();
+		document.addEventListener('nu:listrefresh', function () { place(); fit(); });
+		$(document).on('shown.bs.dropdown hidden.bs.dropdown shown.bs.collapse hidden.bs.collapse', function () { setTimeout(fit, 0); });
+		window.addEventListener('load', fit);
+		document.addEventListener('keydown', function (e) {
+			if (e.key !== 'Escape' || e.defaultPrevented || document.querySelector('.dropdown-menu.show, .modal.show')) return;
+			var t = e.target, sf = g('nuSearchField');
+			if (t === sf && sf.value !== '') {                     // first Esc: the search goes (the list again without it)
+				e.preventDefault();
+				sf.value = '';
+				var f = sf.form;
+				if (f) { if (f.requestSubmit) f.requestSubmit(); else f.submit(); }
+				return;
+			}
+			if (t && t.closest && t.closest('tr.nuBrowseRow')) return;   // a row: Esc goes to the search first (nuapp.js)
+			e.preventDefault();
+			try { P.nuNextCloseLookup(); } catch (x) { /* ignore */ }
+		});
+	}
+
 	function buildOptionsMenu() {
 		var holder = g('nuActionHolder');
 		if (!holder || g('nuOptions')) return;
@@ -5930,6 +6061,8 @@
 				var tb = pane && g(pane.getAttribute('aria-labelledby'));
 				if (tb && !tb.classList.contains('active') && empty(nuGetValue(only[0])) && !empty(nuGetValue(only[1]))) { N.autoTab = true; nuSelectTab(tb); }
 			}
+			// the Notes form's text on the tab Additional takes the free height of the window like the editor on Notes (0.8.1295)
+			if (N.form.id === 'nunotes') fitTextToWindow(g('not_text'), g('nuw_not_content'));
 			try {
 				var pending = JSON.parse(sessionStorage.getItem('nuNextPendingJs') || '[]');
 				sessionStorage.removeItem('nuNextPendingJs');
@@ -5948,6 +6081,7 @@
 			if (nt) nuToast(nt[0], nt[1]);
 		} catch (x) { /* ignore */ }
 		if (N.mode === 'browse' && N.lookup && (!window.nuHasKeyboard || window.nuHasKeyboard())) $('#nuSearchField').trigger('focus');   // no on-screen keyboard on touch screens
+		if (N.mode === 'browse' && N.lookup) lookupFrame();
 		if (N.mode === 'browse') applyNoSearchMarks(currentNoSearch());
 		if (N.mode === 'edit') markCodeFields(document);
 		buildOptionsMenu();

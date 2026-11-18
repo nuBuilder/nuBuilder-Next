@@ -69,7 +69,9 @@
 		return isNaN(d) ? v : d.toLocaleString(document.documentElement.lang || undefined, {dateStyle: 'medium', timeStyle: 'short'});
 	}
 	function fill1(t, x) { return String(t).replace(/%[sd]/, x); }
+	var sideHook = null;                                   // the side column of wide screens (0.8.1298)
 	function summary() {
+		if (sideHook) sideHook();
 		if (!sumBox) return;
 		var parts = [], pub = document.getElementById('ntf_pub'), exp = document.getElementById('ntf_exp');
 		if (lastN !== null) parts.push(fill1(sumBox.getAttribute('data-users'), lastN));
@@ -107,6 +109,7 @@
 				countBox.className = 'alert py-2 mb-0 ' + (j.n ? 'alert-success' : 'alert-warning');
 				people = j.people || [];
 				showBtn.hidden = !people.length;
+				if (sideHook) sideHook();                      // names of the side column
 				if (dlg && dlg.classList.contains('show')) fill();
 			}).catch(function () { /* keep */ });
 	}
@@ -146,6 +149,46 @@
 		});
 	});
 	showBtn.addEventListener('click', function () { if (!dlg) return; fill(); nuBs.modal(dlg).show(); });
+	// side column of wide screens (0.8.1298): preview of the notification as the bell shows it, the summary, a few names
+	var side = document.getElementById('ntfSide');
+	function side_() {
+		if (!side) return;
+		var d = function (k) { return side.getAttribute('data-' + k) || ''; }, icons = {};
+		try { icons = JSON.parse(d('icons')) || {}; } catch (x) { /* keep */ }
+		var lv = (form.querySelector('input[name="level"]:checked') || {}).value || 'info';
+		var pv = document.getElementById('ntfPv'), title = document.getElementById('ntf_title'), body = document.getElementById('ntf_body');
+		pv.className = 'ntfPv ntfPv-' + lv;
+		document.getElementById('ntfPvIcon').className = 'bi ' + (icons[lv] || 'bi-info-circle') + ' ntfPvIcon';
+		var t = title && title.value.trim();
+		document.getElementById('ntfPvTitle').textContent = t || d('empty');
+		document.getElementById('ntfPvTitle').classList.toggle('ntfPvNone', !t);
+		var txt = body ? body.value : '';
+		var fmt = document.getElementById('ntf_format');
+		if (fmt && fmt.checked) {                                   // formatted text: shown as plain text (never parsed into this page)
+			try { txt = new DOMParser().parseFromString(txt, 'text/html').body.textContent || ''; } catch (x) { txt = ''; }
+		}
+		txt = txt.replace(/\s+/g, ' ').trim();
+		document.getElementById('ntfPvBody').textContent = txt.length > 400 ? txt.slice(0, 400) + '…' : txt;
+		var pub = document.getElementById('ntf_pub'), exp = document.getElementById('ntf_exp');
+		var conf = !!(confirmSw && confirmSw.checked), pin = document.getElementById('ntf_pinned');
+		var from = pub && pub.value ? when(pub.value) : d('now');
+		document.getElementById('ntfPvMeta').textContent = from + (conf ? ' · ' + d('confirm') : '');
+		document.getElementById('ntfSsN').textContent = lastN === null ? '…' : fill1(d('users'), lastN);
+		document.getElementById('ntfSsFrom').textContent = from;
+		document.getElementById('ntfSsUntil').textContent = exp && exp.value ? when(exp.value) : d('no-end');
+		document.getElementById('ntfSsConfirm').textContent = conf ? d('yes') : d('no');
+		document.getElementById('ntfSsPinned').textContent = pin && pin.checked ? d('yes') : d('no');
+		var names = people.slice(0, 4).map(function (p) { return p[0]; }), rest = people.length - names.length;
+		document.getElementById('ntfSsNames').textContent = names.join(' · ') + (rest > 0 ? ' · ' + fill1(d('more'), rest) : '');
+		document.getElementById('ntfSsShow').hidden = !people.length;
+	}
+	if (side) {
+		form.addEventListener('input', side_);
+		form.addEventListener('change', side_);
+		document.getElementById('ntfSsShow').addEventListener('click', function () { showBtn.click(); });
+		sideHook = side_;                                       // the count answer and the date fields call summary()
+		side_();
+	}
 	lockAudience();
 	lockMode();
 	summary();

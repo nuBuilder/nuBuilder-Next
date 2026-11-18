@@ -68,10 +68,30 @@
 		if (document.documentElement.classList.contains('nuShowTabOrder')) showTabOrder(true);
 	};
 
+	// the objects of a content box (0.8.1302, absolute layout): those of the same canvas whose centre lies inside the box – they move with
+	// it and are tinted while it is selected
+	function isBox(w) { return w.classList.contains('nuWrap_contentbox'); }
+	function contentsOf(box) {
+		if (!absolute || !isBox(box)) return [];
+		var bt = box.offsetTop, bl = box.offsetLeft, bb = bt + box.offsetHeight + 22, br = bl + box.offsetWidth;   // the frame reaches 22 px below (Forte's title bar)
+		return wraps.filter(function (w) {
+			if (w === box || w.parentElement !== box.parentElement) return false;
+			var cx = w.offsetLeft + w.offsetWidth / 2, cy = w.offsetTop + w.offsetHeight / 2;
+			return cx > bl && cx < br && cy > bt && cy < bb;
+		});
+	}
+	function withContents(list) {
+		var out = list.slice();
+		list.forEach(function (w) { contentsOf(w).forEach(function (k) { if (out.indexOf(k) < 0) out.push(k); }); });
+		return out;
+	}
 	function paint() {
+		var inBox = [];
+		sel.forEach(function (w) { if (isBox(w)) inBox = inBox.concat(contentsOf(w)); });
 		wraps.forEach(function (w) {
 			w.classList.toggle('nuBuilderSelected', w === selected);
 			w.classList.toggle('nuDesignSelected', sel.indexOf(w) >= 0 && w !== selected);
+			w.classList.toggle('nuDesignInBox', inBox.indexOf(w) >= 0 && sel.indexOf(w) < 0);
 		});
 		panelState();
 		send({nuDesignerSel: sel.map(idOf)});   // the builder page's Delete key deletes the whole selection (0.8.661)
@@ -167,10 +187,12 @@
 		if (items.length) send({nuDesignerBatch: items});
 	}
 	var batchT = null;
-	function sendLater() {
+	var laterList = [];
+	function sendLater(list0) {
 		clearTimeout(batchT);
-		var list = sel.slice();
-		batchT = setTimeout(function () { sendBatch(list); }, 400);
+		(list0 || sel).forEach(function (w) { if (laterList.indexOf(w) < 0) laterList.push(w); });
+		var list = laterList;
+		batchT = setTimeout(function () { laterList = []; sendBatch(list); }, 400);
 	}
 
 	// ----------------------------------------------------------------- move
@@ -178,12 +200,15 @@
 		if (e.button !== 0) return;
 		e.preventDefault();
 		window.focus();                                               // preventDefault keeps the focus outside: arrow keys need it here
+		// a field of the form that has the focus (the form focuses its first field on load) would swallow the arrow keys (0.8.1302)
+		var ae = document.activeElement;
+		if (ae && ae !== document.body && ae.closest && ae.closest('#nuEditForm') && ae.blur) ae.blur();
 		if (mod(e)) { toggle(w); return; }                            // Ctrl / ⌘ + click: add / remove (0.8.606; auto / grid layouts too, 0.8.959)
 		if (!absolute || sel.indexOf(w) < 0) select(w, true);
 		else { selected = w; paint(); send({nuBuilderPick: idOf(w)}); }
 		var sx = e.clientX, sy = e.clientY, moved = false;
 		if (absolute) {
-			var group = sel.slice(), start = group.map(function (x) { return [x.offsetTop, x.offsetLeft]; });
+			var group = withContents(sel), start = group.map(function (x) { return [x.offsetTop, x.offsetLeft]; });   // a box takes its objects along (0.8.1302)
 			drag(function (ev) {
 				var dx = ev.clientX - sx, dy = ev.clientY - sy;
 				if (!moved && Math.abs(dx) + Math.abs(dy) < 3) return;
@@ -355,7 +380,8 @@
 		var step = e.altKey ? 1 : (mod(e) ? 4 * GRID : GRID);       // Ctrl / ⌘: 20 px (0.8.671), Alt: 1 px
 		var dx = e.key === 'ArrowRight' ? step : e.key === 'ArrowLeft' ? -step : 0;
 		var dy = e.key === 'ArrowDown' ? step : e.key === 'ArrowUp' ? -step : 0;
-		sel.forEach(function (w) {
+		var moving = e.shiftKey ? sel : withContents(sel);             // arrows move a content box with its objects (0.8.1302)
+		moving.forEach(function (w) {
 			if (e.shiftKey) {                                             // Shift: size, as nuBuilder Forte (0.8.606)
 				setSize(w, dx ? Math.max(10, w.offsetWidth + dx) : null, dy && w.style.height ? Math.max(10, w.offsetHeight + dy) : null);
 			} else {
@@ -363,7 +389,7 @@
 				w.style.left = Math.max(0, w.offsetLeft + dx) + 'px';
 			}
 		});
-		sendLater();
+		sendLater(moving);
 	}
 	document.addEventListener('keydown', onKey, true);   // capture: before the form runtime's own keys (Esc …)
 

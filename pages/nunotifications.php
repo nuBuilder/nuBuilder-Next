@@ -226,6 +226,28 @@ if ($tab === 'manage' && $id !== '' && !isset($_GET['receipts'])) {
 					<?php if ($mailed): ?><input type="hidden" name="email" value="1"><?php endif; ?></label>
 			</div>
 		</section>
+		<?php // wide screens (0.8.1298, option C of the canvas "Notification editor on wide screens"): a side column with a live preview,
+		// the summary and the buttons – shown from 1400 px on, the bottom bar is hidden there (assets/js/nunotifications.js side()) ?>
+		<aside class="ntfSide" id="ntfSide" aria-label="<?= h(t('ntf_pv_head')) ?>" data-icons="<?= h((string)json_encode(NuNotify::LEVELS)) ?>"
+			data-empty="<?= h(t('ntf_pv_empty')) ?>" data-now="<?= h(t('ntf_sum_now')) ?>" data-no-end="<?= h(t('ntf_ss_no_end')) ?>" data-confirm="<?= h(t('ntf_f_must_confirm')) ?>"
+			data-users="<?= h(t('ntf_sum_users')) ?>" data-more="<?= h(t('ntf_ss_more')) ?>" data-yes="<?= h(t('yes')) ?>" data-no="<?= h(t('no')) ?>" data-all="<?= h(t('ntf_aud_all')) ?>">
+			<h2 class="ntfSideHead"><?= h(t('ntf_pv_head')) ?></h2>
+			<div class="ntfPv ntfPv-info" id="ntfPv"><i class="bi bi-info-circle ntfPvIcon" id="ntfPvIcon" aria-hidden="true"></i>
+				<div class="ntfPvText"><b id="ntfPvTitle"></b><div id="ntfPvBody"></div><small id="ntfPvMeta"></small></div></div>
+			<h2 class="ntfSideHead"><?= h(t('ntf_ss_head')) ?></h2>
+			<dl class="ntfSs">
+				<div><dt><?= h(t('ntf_ss_reaches')) ?></dt><dd id="ntfSsN">…</dd></div>
+				<div><dt><?= h(t('ntf_ss_from')) ?></dt><dd id="ntfSsFrom"></dd></div>
+				<div><dt><?= h(t('ntf_ss_until')) ?></dt><dd id="ntfSsUntil"></dd></div>
+				<div><dt><?= h(t('ntf_f_must_confirm')) ?></dt><dd id="ntfSsConfirm"></dd></div>
+				<div><dt><?= h(t('ntf_f_pinned')) ?></dt><dd id="ntfSsPinned"></dd></div>
+			</dl>
+			<div class="ntfSsNames"><span id="ntfSsNames"></span> <button type="button" class="btn btn-link btn-sm p-0 align-baseline" id="ntfSsShow" hidden><?= h(t('ntf_show_names')) ?></button></div>
+			<div class="ntfSideBtns">
+				<?php if (!$published): ?><button type="submit" class="btn nuBtnAct" name="publish" value="0" id="ntfDraftSide"><i class="bi bi-floppy me-1"></i><?= h(t('ntf_save_draft')) ?></button><?php endif; ?>
+				<button type="submit" class="btn btn-primary" name="publish" value="1" id="ntfPublishSide" data-nu-save><i class="bi <?= $published ? 'bi-floppy' : 'bi-send' ?> me-1"></i><?= h($published ? t('save') : t('ntf_publish')) ?></button>
+			</div>
+		</aside>
 		</div>
 	</div>
 	<div class="ntfBar" id="ntfBar">
