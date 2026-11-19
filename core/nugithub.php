@@ -215,7 +215,7 @@ final class NuGitHub
 		$body = curl_exec($ch);
 		$status = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
 		$err = curl_error($ch);
-		curl_close($ch);
+		unset($ch);                                         // the handle closes itself (curl_close() does nothing since PHP 8.0, deprecated in 8.5)
 		if ($fh) fclose($fh);
 		if ($body === false) throw new RuntimeException($size > $max ? t('gh_err_big') : t('gh_err_connect', $err));
 		if ($status >= 300 && $status < 400 && $location !== '') $location = self::absolute($url, $location);

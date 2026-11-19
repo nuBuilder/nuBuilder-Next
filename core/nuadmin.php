@@ -36,6 +36,7 @@ final class NuAdmin
 		'import'        => ['data', 'imp_title', false, 'c', []],
 		'dataexport'    => ['data', 'dxp_title', true, 'vc', [NuAcl::FORM_EXPORT]],   // data export (0.8.758): any table / query leaves the server – full access; view = run, change = edit
 		'appcloner'     => ['data', 'ac_title', true, 'c', []],
+		'recyclebin'    => ['data', 'rb_title', false, 'vc', [NuAcl::FORM_RECYCLE]],   // recycle bin (0.8.1325): view = all forms' entries, change = restore / delete them
 		'sample'        => ['data', 'smp_title', false, 'vc', []],
 		'forms'         => ['dev', 'adm_r_forms', true, 'vc', [NuAcl::FORM_FORM, NuAcl::FORM_ITEM, NuAcl::FORM_FILE, NuAcl::FORM_FORMAT, NuAcl::FORM_TRANSLATE, 'nucodesnippet']],
 		'formpublish'   => ['dev', 'adm_r_formpublish', true, 'c', []],   // form drafts (0.8.386): publishing puts PHP / JavaScript live – full access
@@ -69,7 +70,7 @@ final class NuAdmin
 	public const PAGES = [
 		'update' => ['update', []], 'configfile' => ['configfile', []], 'settings' => ['settings', []], 'globalcode' => ['globalcode', []],
 		'securitycheck' => ['securitycheck', []], 'setupwizard' => ['setupwizard', []], 'status' => ['vendor', []], 'filemanager' => ['filemanager', []],
-		'import' => ['import', []], 'dataexport' => ['dataexport', []], 'appcloner' => ['appcloner', []], 'sample' => ['sample', []], 'forms' => ['forms', []], 'procedures' => ['procedures', []],
+		'import' => ['import', []], 'dataexport' => ['dataexport', []], 'appcloner' => ['appcloner', []], 'sample' => ['sample', []], 'recyclebin' => ['recyclebin', []], 'forms' => ['forms', []], 'procedures' => ['procedures', []],
 		'reports' => ['reports', []], 'dashboards' => ['dashboards', []], 'prompts' => ['prompts', []], 'projects' => ['projects', []], 'codesearch' => ['codesearch', []], 'users' => ['users', []], 'access' => ['access', []],
 		'userfields' => ['userfields', []], 'sessions' => ['sessions', []], 'adminroles' => ['adminroles', []], 'branding' => ['branding', []],
 		'homelayout' => ['home', ['customize' => '1']], 'email' => ['email', []], 'notifications' => ['notifications', ['tab' => 'manage']],
@@ -105,6 +106,13 @@ final class NuAdmin
 		$u = NuAuth::user();
 		if (!$u || $u['globeadmin'] || !empty($u['demo'])) return null;
 		$id = (string)$u['id'];
+		$test = NuImpersonate::testRole();                 // testing an admin role (0.8.1318): that role, for this session only
+		if ($test) {
+			$key = $id . '|test:' . $test['role'];
+			if (self::$mineFor === $key) return self::$mine;
+			self::$mineFor = $key;
+			return self::$mine = self::get((string)$test['role']);
+		}
 		if (self::$mineFor === $id) return self::$mine;
 		self::$mineFor = $id;
 		return self::$mine = self::roleOfUser($id);
@@ -130,7 +138,7 @@ final class NuAdmin
 		if (!$u) return false;
 		if ($u['globeadmin']) return true;
 		$r = self::role();
-		if (!$r || NuImpersonate::active()) return false;
+		if (!$r || (NuImpersonate::active() && !NuImpersonate::testRole())) return false;
 		$have = $r['rights'][$right] ?? '';
 		return $have === 'change' || ($have === 'view' && $level === 'view');
 	}
@@ -156,14 +164,14 @@ final class NuAdmin
 		if (!$u) return false;
 		if ($u['globeadmin']) return true;
 		$r = self::role();
-		return $r !== null && $r['rights'] !== [] && !NuImpersonate::active();
+		return $r !== null && $r['rights'] !== [] && (!NuImpersonate::active() || NuImpersonate::testRole());
 	}
 
 	/** Rights on a nuBuilder system form granted by the role: '' / 'view' / 'change'. */
 	public static function formLevel(string $formId): string
 	{
 		$r = self::role();
-		if (!$r || NuImpersonate::active()) return '';
+		if (!$r || (NuImpersonate::active() && !NuImpersonate::testRole())) return '';
 		$best = '';
 		foreach (self::RIGHTS as $k => $def) {
 			if (!in_array($formId, $def[4], true)) continue;

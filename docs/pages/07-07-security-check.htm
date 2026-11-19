@@ -70,11 +70,19 @@ gzip on; gzip_types text/css application/javascript text/javascript application/
 <p><code>nucron.php</code> removes expired tokens and sessions, old API counters, log entries beyond <em>Keep the log</em>, PDFs of the REST API whose download link expired and temporary files older than a day, and sends the waiting <a href="#webhooks">webhook</a> calls again (every 5 minutes is a good interval when you use webhooks). Run it as the web server's user, e.g. every 15 minutes:</p>
 <pre><code>*/15 * * * *  sudo -u www-data php /var/www/html/nunext/nucron.php &gt; /dev/null</code></pre>
 <p>Without cron a page view does it now and then; once cron has run in the last 25 hours, page views leave it to cron. The web server never runs <code>nucron.php</code>.</p>
+<h3 id="security-secrets">Encrypted secrets</h3>
+<p>Secrets nuBuilder Next stores in the database are encrypted with <code>$nuConfigSecretKey</code> from <code>nuconfig.php</code>: authenticator secrets, the OAuth e-mail login, the single sign-on client secret, webhook secrets, AI provider keys and nuBuilder Next's copy of the SMTP password. Without the key they are stored as plain text; once the key is set, they are encrypted from then on.</p>
+<ul>
+<li>The Security check line <em>Stored secrets encrypted</em> lists what is still plain text or can no longer be decrypted; <em>Encrypt now</em> encrypts the plain ones with the key.</li>
+<li><strong>SMTP password:</strong> the password in <em>E-mail → Settings</em> is also kept in the shared settings table, where nuBuilder Forte (4.x) reads it as plain text to send its mails. Switch on <em>Keep the password only in nuBuilder Next (encrypted)</em> to empty that field – nuBuilder Forte on the same database can then no longer send e-mail. Switching it off writes the password back.</li>
+<li><strong>A new key</strong> (for example after a leak): <code>php nucron.php secrets rekey --new=generate --yes</code> decrypts every secret, encrypts it with a new key and writes the key into <code>nuconfig.php</code> – all or nothing. Already changed the key by hand? Use <code>--old=&lt;old key&gt;</code>. <code>--dry-run</code> only checks. API client secrets and auto-login links are signed with the key: give the clients new secrets afterwards. An AI provider key protected by a password must be entered again.</li>
+<li data-level="detail">The editor of <code>nuconfig.php</code> keeps a copy of the previous file in the backup folder – it holds the old key. Delete it after a key change if the old key must not be found.</li>
+</ul>
 <h3 id="security-checklist">Checklist for a live server</h3>
 <ol>
 <li>HTTPS only; <code>$nuConfigBaseURL</code> set; <code>$nuConfigTrustProxy</code> only behind your own proxy.</li>
 <li>A long globeadmin password, <code>$nuConfig2FAAdmin = true</code> and a globeadmin e-mail, authenticator or passkey.</li>
-<li><code>$nuConfigSecretKey</code> set (API clients page → <em>Generate key</em>).</li>
+<li><code>$nuConfigSecretKey</code> set (API clients page → <em>Generate key</em>); <a href="#security-secrets">secrets</a> all encrypted.</li>
 <li>Only reachable from your networks? <a href="#ip-access">IP access</a> (behind a proxy with <code>$nuConfigTrustProxy = true</code>).</li>
 <li><code>$nuConfigDebug = false</code>, PHP <code>display_errors = Off</code>, PHP 8.2 or newer.</li>
 <li><em>Files on the web</em> all green; backups outside the web root.</li>

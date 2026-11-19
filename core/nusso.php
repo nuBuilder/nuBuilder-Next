@@ -429,7 +429,7 @@ final class NuSso
 		$body = curl_exec($ch);
 		$code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
 		$err = curl_error($ch);
-		curl_close($ch);
+		unset($ch);                                         // the handle closes itself (curl_close() does nothing since PHP 8.0, deprecated in 8.5)
 		if ($body === false) throw new RuntimeException(t('sso_err_fetch', (string)parse_url($url, PHP_URL_HOST), $err ?: '0'));
 		return [$code, (string)$body];
 	}
@@ -447,24 +447,14 @@ final class NuSso
 		return $d === false ? '' : $d;
 	}
 
-	/** Secret storage as the OAuth mail login (libsodium with $nuConfigSecretKey, else "plain:"). */
 	private static function seal(string $s): string
 	{
-		$key = (string)nu_cfg('nuConfigSecretKey');
-		if ($key === '' || !function_exists('sodium_crypto_secretbox')) return 'plain:' . $s;
-		$nonce = random_bytes(SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
-		return 'enc:' . base64_encode($nonce . sodium_crypto_secretbox($s, $nonce, hash('sha256', $key, true)));
+		return NuSecret::seal($s, '');   // 0.8.1326: one implementation (core/nusecret.php)
 	}
 
 	private static function open(string $s): string
 	{
-		if (str_starts_with($s, 'plain:')) return substr($s, 6);
-		if (!str_starts_with($s, 'enc:')) return $s;
-		$key = (string)nu_cfg('nuConfigSecretKey');
-		$raw = base64_decode(substr($s, 4), true);
-		if ($key === '' || $raw === false || !function_exists('sodium_crypto_secretbox_open') || strlen($raw) <= SODIUM_CRYPTO_SECRETBOX_NONCEBYTES) return '';
-		$out = sodium_crypto_secretbox_open(substr($raw, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES), substr($raw, 0, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES), hash('sha256', $key, true));
-		return $out === false ? '' : $out;
+		return NuSecret::open($s, '');
 	}
 
 	public static function plainStored(): bool

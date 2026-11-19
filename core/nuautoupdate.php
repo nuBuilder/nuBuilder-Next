@@ -209,7 +209,7 @@ final class NuAutoUpdate
 				nu_curl_progress_opt() => static function ($c, $dlTotal, $dl) use (&$size): int { $size = $dl; return $dl > self::MAX_DOWNLOAD ? 1 : 0; }]);
 			$ok = curl_exec($ch);
 			$err = curl_error($ch);
-			curl_close($ch);
+			unset($ch);                                         // the handle closes itself (curl_close() does nothing since PHP 8.0, deprecated in 8.5)
 			fclose($fh);
 			if (!$ok) { @unlink($tmp); throw new RuntimeException('Download failed: ' . ($size > self::MAX_DOWNLOAD ? 'larger than 64 MB' : $err)); }
 			return $tmp;

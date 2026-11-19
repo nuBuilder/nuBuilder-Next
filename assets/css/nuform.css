@@ -142,10 +142,23 @@ html.tox-fullscreen .nuAbsoluteCanvas { isolation: auto; }
 /* ---------------------------------------------------------------- messages, calendar */
 .nuMessage {
 	position: fixed; top: 14%; left: 50%; transform: translateX(-50%); z-index: 2000;
-	min-width: 280px; max-width: min(560px, 92vw); padding: 1rem 2.5rem 1rem 1.1rem;
+	min-width: 320px; max-width: min(560px, 92vw); overflow: hidden; outline: 0;
 	background: var(--bs-body-bg); color: var(--bs-body-color); border: 1px solid var(--bs-border-color); border-radius: .75rem;
+	box-shadow: 0 12px 32px rgba(16, 24, 40, .16);
 }
-.nuMessageClose { position: absolute; top: .75rem; right: .75rem; }
+.nuMessageHead {
+	display: flex; align-items: center; gap: .6rem; padding: .55rem .5rem .55rem 1rem;
+	background: color-mix(in srgb, var(--bs-primary) 7%, var(--bs-body-bg)); border-bottom: 1px solid var(--bs-border-color-translucent);
+}
+.nuMessageIcon { color: var(--bs-primary); font-size: 1.15rem; line-height: 1; flex: 0 0 auto; }
+.nuMessageTitle { flex: 1 1 auto; min-width: 0; font-weight: 600; font-size: .95rem; }
+.nuMessageHead .nuMessageClose { position: static; flex: 0 0 auto; }
+.nuMessageClose { position: absolute; top: .75rem; right: .75rem; width: 2rem; height: 2rem; padding: 0; border-radius: .5rem; background-size: .75rem; }
+.nuMessageClose:hover { background-color: var(--bs-tertiary-bg); }
+.nuMessageClose:focus { box-shadow: none; }
+.nuMessageClose:focus-visible { box-shadow: 0 0 0 .2rem rgba(13, 110, 253, .35); }
+.nuMessageBody { padding: .85rem 1rem 1rem; font-size: .875rem; line-height: 1.45; }
+.nuMessage:not(.nuMessageHasHead) .nuMessageBody { padding-right: 3rem; }
 .nuMessageLine + .nuMessageLine { margin-top: .35rem; }
 .nuCalendarPicker { position: absolute; width: 1px; height: 1px; opacity: 0; border: 0; padding: 0; pointer-events: none; }
 
@@ -1014,3 +1027,20 @@ body.nuLookupPage main#main { padding: .75rem 1rem .25rem !important; }
 .nuDesigning .nuAbsoluteCanvas > .nuAbs.nuWrap_contentbox, .nuDesigning .nuAbsoluteCanvas > .nuAbs.nuWrap_contentbox.nuBuilderSelected,
 .nuDesigning .nuAbsoluteCanvas > .nuAbs.nuWrap_contentbox.nuDesignSelected { z-index: -1 !important; }
 .nuDesigning .nuDesignInBox > .nuDesignOverlay { background: rgba(var(--bs-primary-rgb), .08); outline: 1px solid rgba(var(--bs-primary-rgb), .35); }
+
+/* row details 0.8.1316: tabs of the detail form / related lists, the frame of the detail form, Expand all, the detail form itself (html.nuRdView) */
+.nuDetParts { flex: 1 1 32rem; min-width: 0; max-width: 100%; }
+.nuDetTabs { display: flex; flex-wrap: wrap; gap: .25rem; margin-bottom: .5rem; border-bottom: 1px solid var(--bs-border-color); }
+.nuDetTab { border: 0; background: none; padding: .3rem .6rem; font-size: .8125rem; color: var(--bs-secondary-color); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.nuDetTab:hover { color: var(--bs-body-color); }
+.nuDetTab.active { color: var(--bs-primary); border-bottom-color: var(--bs-primary); font-weight: 500; }
+.nuDetTab:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: -2px; border-radius: .25rem; }
+.nuDetFrame { display: block; width: 100%; min-height: 120px; border: 1px solid var(--bs-border-color); border-radius: .5rem; background: var(--bs-body-bg); }
+.nuDetOwn { min-width: 0; max-width: 100%; font-size: .875rem; }
+#nuBrowseTable th.nuDetCol .nuDetAllBtn { padding: .1rem .3rem; color: var(--bs-secondary-color); line-height: 1; }
+#nuBrowseTable th.nuDetCol .nuDetAllBtn:hover, #nuBrowseTable th.nuDetCol .nuDetAllBtn:focus-visible { color: var(--bs-primary); }
+#nuBrowseTable th.nuDetCol .nuDetAllBtn > .bi { display: inline-block; transition: transform .15s; }
+#nuBrowseTable th.nuDetCol .nuDetAllBtn.nuDetAllOn > .bi { transform: rotate(90deg); }
+html.nuRdView #nuActionHolder, html.nuRdView .nuFormHeader, html.nuRdView #nuBreadcrumbHolder, html.nuRdView .nuStickyBar { display: none !important; }
+html.nuRdView body { background: var(--bs-body-bg); }
+html.nuRdView #main { padding-top: .25rem !important; padding-bottom: .25rem !important; }

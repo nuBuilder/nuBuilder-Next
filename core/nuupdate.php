@@ -569,7 +569,7 @@ final class NuUpdate
 		try {
 			fwrite($fp, '[');
 			if (!$empty) {
-				if ($db->type === 'mysql') { try { $buffered = $pdo->getAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY); $pdo->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, false); } catch (Throwable) { $buffered = null; } }
+				if ($db->type === 'mysql') { try { $buffered = $pdo->getAttribute(nu_pdo_mysql_buffered()); $pdo->setAttribute(nu_pdo_mysql_buffered(), false); } catch (Throwable) { $buffered = null; } }
 				$st = $db->run('SELECT * FROM ' . NuDB::ident($table));
 				try {
 					while (($row = $st->fetch(PDO::FETCH_ASSOC)) !== false) {
@@ -584,7 +584,7 @@ final class NuUpdate
 			if (fwrite($fp, $n ? "\n]" : ']') === false) throw new RuntimeException(t('upd_err_backup'));
 		} finally {
 			fclose($fp);
-			if ($buffered !== null) { try { $pdo->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, $buffered); } catch (Throwable) {} }
+			if ($buffered !== null) { try { $pdo->setAttribute(nu_pdo_mysql_buffered(), $buffered); } catch (Throwable) {} }
 		}
 		return $n;
 	}
@@ -948,6 +948,7 @@ final class NuMigrate
 			'0042-opened' => ['"Last opened" of forms, procedures, reports and SQL queries (zzzzsys_nunext_opened)', static fn() => NuSchema::create()],
 			'0043-code-replace' => ['Search and replace of the code search: undo data (zzzzsys_nunext_code_replace)', static fn() => NuSchema::create()],
 			'0044-start-page-forte' => ['Start page of access levels: on a database from nuBuilder Forte every level with a Home form starts on it, as in Forte', static fn() => NuHome::startFromForte()],
+			'0045-recycle' => ['Recycle bin for records (zzzzsys_nunext_recycle): forms that keep their deleted records for a number of days', static fn() => NuSchema::create()],
 		];
 	}
 
@@ -1007,6 +1008,7 @@ final class NuMigrate
 		'0042-opened' => [['zzzzsys_nunext_opened', 'table', 'created when missing']],
 		'0043-code-replace' => [['zzzzsys_nunext_code_replace', 'table', 'created when missing']],
 		'0044-start-page-forte' => [['zzzzsys_nunext_setting', 'data', 'row start_page: access levels with a Home form start on it (database from nuBuilder Forte only)']],
+		'0045-recycle' => [['zzzzsys_nunext_recycle', 'table', 'created when missing']],
 	];
 
 	/** 0.8.438: the start page hook procedures got the codes nu_home / nu_home_user – existing ones are renamed once (not when the new code is taken). */

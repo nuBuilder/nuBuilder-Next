@@ -11,7 +11,7 @@ page) for how to use it.
 - **Fast lists** – search, filters, sorting and paging; an advanced search with conditions per column and saved searches;
   coloured status badges; cells that open a form, a filtered list, a procedure or a report.
 - **Totals and groups** – a row of totals below a list (sum, average, minimum, maximum, count) over everything the search matches, the totals of ticked rows, and lists grouped by a column with a heading and subtotals per group.
-- **Row details** – a ▸ on each row of a list shows hidden columns, cut text and a related list (e.g. the items of an order) below the row.
+- **Row details** – a ▸ on each row of a list shows hidden columns, cut text, a read-only detail form and related lists as tabs (sub-forms and child tables, e.g. the items and invoices of an order) below the row; one or several open, Expand all, kept while paging, hooks for own content.
 - **Lists by keyboard** – search, ↓ into the rows, ↑ / ↓ / Page Down to move, Enter to open, Esc back to the search; the row is kept when you come back,
   shown with a soft rounded highlight and always scrolled into view.
 - **Export** – every list as print page, CSV or Excel; copy rows straight into Excel or Word.
@@ -62,7 +62,9 @@ page) for how to use it.
   editor, exports the hits and can replace in ticked lines – checked again before saving, with history and undo.
 - **Code where you need it** – PHP procedures, JavaScript hooks and hash variables as in nuBuilder Forte; a code editor with
   syntax check, formatting, search / replace and an Insert menu with every documented function.
+- **Names while typing** – the code editors suggest tables (after FROM / JOIN), the columns of an alias and `#` hash variables, in SQL and in the strings of PHP / JavaScript.
 - **Reports and queries** – a visual report designer (text, HTML or Markdown fields), an SQL builder, PDF output.
+- **Reports as Excel** – any report also downloads as an Excel file: groups and totals as in the PDF on one sheet, all rows on a second.
 - **Reports with AI** – describe a report, paste the AI chat's answer: the layout is checked, previewed as PDF and applied; optionally
   with a query written by the AI; earlier layouts are kept and can be restored.
 - **AI providers** – configurations for Claude, OpenAI-compatible services (also local models) and Gemini; the AI dialogues then offer
@@ -80,6 +82,8 @@ page) for how to use it.
   views and queries to Excel or CSV, streamed for any size.
 - **Integration** – a REST API (OAuth 2.0 client credentials) with a playground, webhooks to n8n, Zapier, Teams or your own
   service (signed, with retries and a log), e-mail via SMTP or OAuth 2 (Google, Microsoft 365) with templates.
+- **Records over the API** – read, create, change and delete the records of your forms (with sub-form rows, filters, lookups)
+  exactly as the form does it – rights, validation, Before / After Save; an OpenAPI description per client for Postman or Power Automate.
 - **Docker** – an image with every PHP extension (also SQL Server) and compose files: one command starts nuBuilder Next with
   MariaDB, optionally with the sample application; a newer image updates the program and keeps the data.
 - **System info** – user menu → System info…: versions of nuBuilder Next, PHP, database and browser at a glance, copied as text for support
@@ -88,6 +92,7 @@ page) for how to use it.
 - **Installable app** – install on phones and computers with its own icon and window, the branding's name and colour,
   favourites as shortcuts, a faster start and a clear page when offline.
 - **Procedures by cron** – one command runs a procedure from the server's cron, as a chosen user, with a log entry and an
+- **Health check** – `?p=health` answers monitoring tools in JSON: database, free disk space, age of the newest backup and of the last cron run; details only with a key, limits in Settings → Data & logs, also `php nucron.php health`.
   e-mail when it fails.
 - **Procedures list searches the code** – tick *Code* in the search field to find procedures by their PHP or JavaScript.
 - **Suggestions while typing** – a text input offers a list (fixed, or the rows of a query with the typed text as a bound value) and a choice can fill other fields too; `nuNextAutocomplete()` in code, and a stand-in for jQuery UI's `autocomplete`.
@@ -101,10 +106,12 @@ page) for how to use it.
 
 - **Users and rights** – access levels (also extra ones per user, with an end date; a level whose users have all expired can be deleted), admin roles, permission items, custom
   user fields with worked-out defaults (dates, counters, templates, SQL, procedures); user import from CSV or Excel; welcome e-mails; password reset by the administrator without ever seeing a
-  password; *Act as user* to see the application as a user does.
+  password; *Act as user* to see the application as a user does, and *Test role* to try an admin role on a chosen user before handing it out.
 - **Security** – login rate limit, password policy with a leaked-password check, sign-in only from allowed networks, field
   access per user group, records reachable only through a form's list (switchable per form), and a built-in Security check.
 - **Audit trail and log** – every change per field, with history and restore; a log of logins, exports and admin changes (older entries can be deleted).
+- **Encrypted secrets** – stored secrets (2FA, OAuth mail, single sign-on, webhooks, AI keys, SMTP password copy) encrypted with the key of nuconfig.php; the SMTP password can be kept only encrypted; key rotation on the command line.
+- **Recycle bin** – forms can keep deleted records (with their sub-form rows) for n days: Undo right after the delete, a page to look at and restore them.
 - **Tile pages per access level** – users get their own tiles and can personalise them; or, per access level, the Home form opens
   after sign-in as in nuBuilder Forte – set on the access level's tab *Start page*, with a preview of the tiles.
 - **Start pages at a glance** – the globeadmin lists every Home form and every tile page with their access levels from the button right of
@@ -116,6 +123,9 @@ page) for how to use it.
 - **Library packs** – install, update, roll back and remove older versions of the bundled libraries (TCPDF 7, PHPMailer, TinyMCE …) from the browser.
 - **Easy start** – installer, setup wizard, a tutorial (basic, in depth, coming from nuBuilder Forte) and built-in
   documentation.
+- **Getting ready checklist** – after the installation a bar and a start page card lead through 30 points in eight steps (security,
+  server, database, backups, e-mail, people, look, next steps); most check themselves, the rest are ticked by hand; hide for 7 days
+  or for good – new red security or backup points bring it back.
 - **Branding and demo mode** – logo, title, environment label; read-only demo users.
 
 ## For nuBuilder Forte users

@@ -6,6 +6,7 @@ defined('NU_ROOT') || exit;
  * Runs a report and sends the PDF (nuBuilder's core/nurunpdf.php):
  *   GET  ?i=<token>                   a run prepared by the form API (nuRunReport: report + the form's hash variables)
  *   GET  ?c=<code or id>[&dl=1]       a run without a form (reports list, run objects outside a form) – hash: user and date variables
+ *   GET  …&fmt=xlsx                   the same run as an Excel file (0.8.1324, NuReportXlsx)
  *   POST action=save, i=<token>, tag, file_name   nuRunReportSave: writes the PDF to the temp folder → JSON {filename, id}
  *   POST action=email, i=<token>, to, subject, body, file_name   nuEmailReportPDF: sends the PDF as attachment → JSON {ok, message}
  */
@@ -36,6 +37,19 @@ if ($token !== '') {
 	$hash = NuHash::plain();
 }
 if (!NuReport::canRun($report)) $fail(t('rpt_err_denied', (string)$report['sre_code']), 403);
+
+// Excel (0.8.1324): ?fmt=xlsx – the same run as a workbook (core/nureportxlsx.php: sheets Report + Data)
+if (!$json && ($_GET['fmt'] ?? '') === 'xlsx') {
+	try {
+		$xlsx = NuReportXlsx::build($report, $hash);
+	} catch (Throwable $e) {
+		error_log('nuBuilder Next report xlsx ' . $report['sre_code'] . ': ' . $e->getMessage() . ' ' . $e->getFile() . ':' . $e->getLine());
+		$u = NuAuth::user();
+		$fail(t('rpt_err_run', (string)$report['sre_code']) . ($u['globeadmin'] || nu_debug() ? ' ' . $e->getMessage() : ''), 500);
+	}
+	NuLog::write('report_xlsx', NuReport::TABLE, (string)$report['zzzzsys_report_id'], ['code' => (string)$report['sre_code'], 'bytes' => strlen($xlsx)]);
+	NuReportXlsx::send($xlsx, (string)($report['sre_code'] ?: 'report'));
+}
 
 try {
 	$pdf = NuReport::pdf($report, $hash);

@@ -3,6 +3,214 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.1339 – Release gate
+- Release gate: full test run (smoke, end-to-end, compatibility with nuBuilder Forte, OWASP ZAP).
+
+## 0.8.1338 – Lookup window fit, documentation
+- Lookup window: the dialogue fits the list again when the list was loaded while the dialogue was still opening (it stayed at its
+  smallest height now and then).
+- Documentation: tutorial tips for the health check, names while typing in the code editors and the records of forms over the
+  REST API; README integration line; TODO points to verify for 0.8.1316–0.8.1337.
+- Tests: adjusted to the sample's new phone mask, the Excel button of the reports list, the health check's key buttons and a
+  cron run of earlier tests.
+
+## 0.8.1337 – Records of forms over the REST API, OpenAPI
+- REST API: records of the application's forms – `GET /v1/forms` (the forms the client may use), `GET /v1/forms/{form}` (fields
+  and sub-forms), `GET / POST /v1/forms/{form}/records` and `GET / PATCH / DELETE /v1/forms/{form}/records/{id}`. Reading and
+  writing go the form's own way: the access level's rights on the form, field data access (hidden fields left out, masked ones
+  masked), validation and validation rules, the global hooks and the form's Before / After Save, Before Edit, Before Browse and
+  Delete PHP, audit trail, webhooks and recycle bin.
+- Lists return the rows the form's list shows, with `q` (the list's search), filters per field (`field=value`,
+  `field[gte]=…`, `like`, `starts`, `in`, `null` …), `sort`, `limit` / `offset`, `fields`, `include` (sub-form rows) and `expand`
+  (lookups as id, code and description). PATCH changes only the fields sent; sub-form rows with an id are changed, without one
+  added, with `"_delete": true` deleted. Errors of the form answer 422 with its messages; warnings of validation rules too, unless
+  `?accept_warnings=1`. PATCH and DELETE need the record's ETag.
+- New scopes `records:read` and `records:write`. nuBuilder Forte's own forms, forms on system tables, custom pages, launch forms
+  and drafts are not served; forms in maintenance answer 503.
+- `GET /v1/openapi.json`: an OpenAPI 3.1 description for the client – the endpoints of its scopes and, per form it may use, the
+  paths its rights allow with the fields as JSON schema (for Postman, Insomnia, Swagger UI, Power Automate custom connectors).
+- API playground: endpoints for forms, records and the OpenAPI description (variable `{{form}}`).
+
+## 0.8.1336 – Code editors suggest tables, columns and hash variables
+- Code editors suggest names while typing: in SQL editors and inside strings of PHP, JavaScript and HTML the tables after FROM /
+  JOIN / INTO / UPDATE, the columns of a table after `alias.` (aliases are read from the code), and elsewhere the columns of the
+  tables the code names – the form's own table first – then the tables. Views are marked, columns show their type.
+- Typing `#` in any code editor offers the hash variables and the form's fields; the chosen one is inserted with its closing `#`.
+  Ctrl+Space in a string or in SQL shows the names for any word.
+- Tables and columns are only offered to users who may design forms or write SQL queries; everyone else gets the hash variables.
+
+## 0.8.1335 – Health check endpoint
+- Health check for monitoring tools: `index.php?p=health` answers in JSON and is never cached. Without a key it only says whether
+  the database answers (`ok` / `fail`); with the key (header `X-Health-Key`, `Authorization: Bearer` or `?key=`) it lists the
+  database, free disk space of the program and backup folders, the age of the newest backup and of the last cron run, maintenance
+  mode and the version. HTTP 503 when the database is down, with `&strict=1` also on warnings; a wrong key gets 401.
+- Settings → Data & logs → Health check: create or remove the key (shown once, only its hash is stored) and set the warning limits
+  (backup age, cron age, free disk space; 0 = off).
+- `php nucron.php health [--json]` runs the same checks on the command line (exit code 0 ok, 1 warning, 2 database down).
+
+## 0.8.1334 – Sample: phone mask
+- Sales sample (version 25): the customer's phone mask matches the stored numbers, so a phone number shows as stored
+  (+1 555 110 2000) – it was regrouped before. The point to decide about masked values is closed.
+
+## 0.8.1333 – Decision: list SQL kept as written
+- Decision: nuBuilder Forte's newer wrapping of complex list SQL (its own ORDER BY dropped, table aliases in columns lost) is
+  not imitated – nuBuilder Next keeps the list SQL as written. Open point closed.
+
+## 0.8.1332 – Date fields in the language's format
+- Date fields of nuBuilder Next's own pages (user form, extra access levels, filters, dialogues) are shown and typed in the
+  format of the language (e.g. 24.12.2026 in German, 24/12/2026 in British English, 12/24/2026 in American English) instead of
+  the device's format; a calendar button opens the browser's picker; an impossible date is marked; the stored value is unchanged.
+
+## 0.8.1331 – Compatibility check: places open the code
+- Compatibility check: every place a function is used is a link that opens its code – the form's code part or the object in
+  design mode (for an object event with its events dialog open), the procedure, or the header of the form pages.
+- Events of an object that no longer exists are no longer listed (they never run); they showed up as a bare id before.
+
+## 0.8.1330 – Compatibility check: supported features folded
+- Compatibility check: the card "nuBuilder Forte 4.9 features" lists only the features not supported yet; the supported
+  ones the application uses are folded away below the table (one click shows them, Show all opens them).
+
+## 0.8.1329 – Sub-form event beforeinsertrow
+- Sub-form event beforeinsertrow (as nuBuilder Forte): runs on a change in a sub-form row before a new row is added; code that
+  sets nuCancel = true stops the new row. Offered in design mode next to afterinsertrow and clickdelete.
+
+## 0.8.1328 – Unsaved changes dialog
+- Unsaved changes dialog: "Discard changes and leave" is now a red text link in its own row above Keep editing and Save,
+  on the left and set apart by a line – on every screen width.
+
+## 0.8.1327 – Documentation updated
+- Documentation: tutorial tips for testing an admin role, reports as Excel and encrypted secrets; open points to verify
+  brought up to date.
+
+## 0.8.1326 – Encrypted secrets
+- Encrypted secrets: every secret nuBuilder Next stores (authenticator secrets, OAuth e-mail login, single sign-on, webhooks,
+  AI provider keys) goes through one encryption with $nuConfigSecretKey; stored formats are unchanged.
+- SMTP password: nuBuilder Next now keeps its own encrypted copy and sends with it. New switch in E-mail → Settings "Keep the
+  password only in nuBuilder Next (encrypted)" empties the shared settings field – nuBuilder Forte on the same database can
+  then no longer send e-mail (off by default; switching it off writes the password back).
+- Security check: line "Stored secrets encrypted" (plain text, unreadable, shared SMTP password) with "Encrypt now"; setting
+  the key encrypts every secret stored as plain text.
+- Command line: php nucron.php secrets status | seal | rekey --new=generate --yes (re-encrypts everything and writes the new
+  key into nuconfig.php, all or nothing; --old=<key> when the key was already changed; --dry-run).
+
+## 0.8.1325 – Recycle bin for records
+- Recycle bin for records: a form can keep its deleted records for a number of days (design mode → Form → Data,
+  "Recycle bin (days)"; off by default). A deleted record goes to the recycle bin with its sub-form rows.
+- After a delete a message with Undo appears; the form's ⋮ menu has "Recycle bin", and the new page (Settings → Data & logs)
+  lists the deleted records with Restore and Delete for good. Users see the forms they may delete in; the new admin right
+  "Recycle bin" shows all.
+- A record is restored only when its key is free; sub-form rows whose key is taken are skipped. Old entries are removed by
+  the housekeeping.
+
+## 0.8.1324 – Reports as Excel
+- Reports as Excel: next to the PDF button in the reports list, on the launch form of a report and in the designer's preview,
+  "Excel" downloads the same run as an Excel file. The sheet "Report" has the report's columns with the titles of the page
+  header, a row per group header and the group totals (SUM / AVERAGE of the footer bands) plus the grand total; the sheet
+  "Data" has every column of the data source with filters. Numbers and dates stay numbers and dates in the layout's formats.
+  In form code: nuRunReportXlsx('code'); as a link: index.php?p=report&c=code&fmt=xlsx.
+
+## 0.8.1323 – Admin roles: changed rights highlighted
+- Admin roles: while you change the rights of an existing role, each changed row is highlighted and shows its level before
+  ("was: …") until the role is saved. The head of the Rights card counts the changes and offers "Show changed only" and
+  "Undo changes".
+
+## 0.8.1322 – Ticket sample with row details
+- Ticket sample (version 11): the tickets list has row details – ▸ in front of a ticket shows its description, channel and
+  creation time below the row. Refresh the sample on Admin tools → Sample data to get it.
+
+## 0.8.1321 – Notification editor colours
+- Notification editor in calmer colours: indigo for the step numbers, the add buttons, ticked options and Publish; the chosen
+  level gets its own light tint with a coloured border (Warning in orange instead of yellow); the preview is a white card with
+  a small tinted icon; "Reaches … users" is a small pill instead of a yellow or green box. Dark mode included.
+
+## 0.8.1320 – New look of nuMessage
+- Messages of forms (nuMessage) have a new look: a card with a lightly tinted header holding an icon, the title and the close
+  button, and the lines below, aligned left. Messages without a title show only the lines. The close button no longer shows a
+  focus ring as soon as the message opens; Esc still closes it.
+
+## 0.8.1319 – nuPrompt focuses its input
+- nuPrompt() puts the cursor into its input field as soon as the dialogue opens, with the default value selected – also when
+  other code of the form takes the focus away right after it opened.
+- A prompt opened while the one before is still closing (for example from its callback) now opens properly once the first has gone.
+
+## 0.8.1318 – Admin roles: test a role as a user
+- Admin roles: Test role. On the role form (or the new button in its row of the Admin roles list) you choose a user and work
+  as that user with the role added – for this session only, nothing is saved to the user. Their access level, permission items
+  and hash variables apply as usual and the role's admin rights come on top, so you see exactly what a holder of the role will
+  see – also for a new role nobody has yet. View only or Full access (after a confirmation) as with Act as user; the coloured
+  bar names the role, Back returns to the role form. The users who already have the role are listed first. The test uses the
+  saved role; unsaved changes are pointed out.
+- Who may test: the globeadmin, and users whose own role has Act as another user and Admin roles (change) – only roles whose
+  rights they have themselves, never as another admin. Start and end are logged with the role.
+
+## 0.8.1317 – PHP 8.5: no deprecated calls
+- PHP 8.5: no more "Deprecated" messages from nuBuilder Next's own code (seen in the installer's Libraries step on a server
+  showing PHP's messages): curl_close() is no longer called (it does nothing since PHP 8.0), and the MySQL attribute for
+  unbuffered reads (App cloner, backups, data export) uses PHP 8.4's new constant when it exists. A unit test now refuses
+  the functions, constants and casts PHP 8.5 deprecates.
+
+## 0.8.1316 – Row details: detail form, several lists, Expand all, hooks
+- Row details of form lists extended (design mode → Browse list → Row details, or the list's side pane → Columns):
+  - Detail form: any form with an edit screen shown read only in the strip with the row's record – its rights, field access and
+    code apply, no buttons. A user who may not open that form does not get it.
+  - Several related lists as tabs: sub-forms of the form and child tables found in the database (a foreign key to the form's table,
+    or a column named like its primary key or ending in _ + its name); each tab loads once, up to 10 rows with the number of all rows.
+    Tables of nuBuilder are never offered; a child table shows its first six columns without the link column.
+  - One row open at a time or several; with several, Expand all / Collapse all in the title of the ▸ column. Open rows stay open
+    when paging, sorting or coming back to the list in the same tab; after Expand all the next pages open expanded too.
+  - Form code: nuNextRowDetails(function (pk, element, row) { … }) fills the strip with own content (HTML, a string or a Promise),
+    "Content from the form's code" switches the ▸ on for it; hooks nuOnRowExpand(pk, element) and nuOnRowCollapse(pk).
+  - The setting of 0.8.1027 (one related list) is read as before.
+
+## 0.8.1315 – File Manager: globeadmin starts in the web root
+- File Manager: the globeadmin starts in the web root when the File Manager opens; other users still start in the share they used last.
+
+## 0.8.1314 – File Manager: ticking several files
+- File Manager: ticking several files no longer loses the selection. A click next to a checkbox (anywhere in its cell) ticks or
+  unticks that row only – before, it counted as a click on the row, which selects only that row, so a near miss of the 4th box
+  unticked the other three. On touch screens, while files are ticked, a tap on another row or tile adds it (a second tap takes
+  it out), as in a phone's own file app; with a mouse a plain click on a row still selects only that row (Ctrl+click adds).
+  The File Manager build for nuBuilder Forte too.
+
+## 0.8.1313 – Report designer: layer order prints as shown
+- Report designer: Send to back and Bring to front now decide what prints on top. The PDF prints a band's objects in their order
+  (as in nuBuilder Forte – the layer number is not read there), so the buttons also move the objects to the start / end of their
+  band: a coloured box sent to back prints behind the fields instead of covering them.
+- Report designer: an object sent to back is no longer hidden behind the band in the designer.
+- Help: Getting ready – "until the next sign-in" is not cancelled by new red points (only "for 7 days" and "for good" are).
+
+## 0.8.1312 – Getting ready: hide until next sign-in
+- Getting ready: the Hide menu (bar, start page card and the checklist page) has a new first entry "Hide until next sign-in" – the bar and the card stay away for this session only and come back at the next sign-in; nothing is stored.
+
+## 0.8.1311 – Getting ready: Hide menu above the search row
+- Getting ready: the Hide menu of the start page card was half covered by the start page's search row (it stays on top while scrolling) – the menus of the card and the bar now lie above it.
+
+## 0.8.1310 – Getting ready checklist after the installation
+- Getting ready: a checklist for the globeadmin after the installation. A slim bar below the top bar ("Getting ready – 9 of 30
+  done", red count to fix) and a card on the start page (progress ring and the next three points) lead to the new page
+  Settings → General → Getting ready. It walks through eight steps – Security, Server, Database, Backups and updates, E-mail,
+  People and rights, Look, Next steps – with 30 points such as the globeadmin password, two-step sign-in, HTTPS, the secret key,
+  the red points of the Security check, PHP extensions, writable folders, cron, a recent backup, the clean-up rule, the look for
+  new versions, library packs, the mail server, access levels, users, title / logo and languages.
+- Most points check themselves each time the page opens (green / yellow / red); the others are ticked by hand. "Open" leads to
+  the page where the point is done, "Not needed" takes it out of the count.
+- Hide (× on the bar or the card): for 7 days or for good. New red security or backup points bring the bar back in both cases.
+- Help: Install → Getting ready checklist; tutorial lesson "The start page and navigation".
+
+## 0.8.1309 – File Manager toolbar on phones follows the selection
+- File Manager on phones: the toolbar follows the selection. Without a selection it shows Upload, New folder, New file and the
+  view buttons – Download, Copy, Move, Zip and Delete are hidden instead of greyed out. With files or folders selected it shows
+  "× <count>" (clears the selection) plus Download, Copy, Move, Zip and Delete (Delete at the right); Upload, New folder,
+  New file and the view buttons are hidden meanwhile. Wider screens unchanged. The File Manager build for nuBuilder Forte too.
+
+## 0.8.1308 – DeepSource secrets report
+- DeepSource secrets report (SCT-A000) assessed – no real secret: a storage key name of design mode's
+  "Set order by position" (variable renamed so it no longer reads as a credential), and names of files, settings and the
+  HMAC algorithm in the release texts. CHANGELOG.md and nunext-manifest.json are no longer scanned (.deepsource.toml).
+
+## 0.8.1307 – Notes
+- Notes: v0.8.1306 published on GitHub (dev/release-notes.md updated).
+
 ## 0.8.1306 – Release gate
 - Release gate: documentation brought up to date (FEATURES lookup window, notification editor, design mode panel,
   tab order by position, content boxes, Discard, Save target; tutorial lookup / panel chips / order by position; TODO

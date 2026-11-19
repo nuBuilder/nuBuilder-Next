@@ -387,9 +387,13 @@ final class NuRecord
 		if (!NuPhp::run($meta->php('BD'), $hash, 'Before Delete')) return ['ok' => false] + NuPhp::result();
 
 		NuAudit::begin();
+		$recycleId = null;
+		$recycle = NuRecycle::days($meta) > 0 && !NuDemo::active();             // recycle bin (0.8.1325): a copy of the record + sub-form rows
+		if ($recycle) NuSchema::ensure();                                      // no DDL inside the transaction
 		try {
-		nu_db()->transaction(function (NuDB $db) use ($meta, $recordId, $row) {
+		nu_db()->transaction(function (NuDB $db) use ($meta, $recordId, $row, $recycle, &$recycleId) {
 			$ctx = ['form_id' => $meta->id, 'form_code' => $meta->code(), 'source' => 'form'];
+			$kept = [];
 			foreach ($meta->objects as $o) {
 				if ($o['sob_all_type'] !== 'subform') continue;
 				$sub = NuFormMeta::load((string)$o['sob_subform_zzzzsys_form_id']);
@@ -397,14 +401,18 @@ final class NuRecord
 				$fk  = trim((string)$o['sob_subform_foreign_key']);
 				if ($t !== '' && $fk !== '' && self::column($db->columns($t), $fk) !== null) {
 					$spk = $sub ? self::column($db->columns($t), $sub->primaryKey()) : null;
-					if ($spk !== null && NuAudit::on() && NuAudit::audited($t)) {          // audit trail: the sub-form rows go with the record
-						foreach ($db->all('SELECT * FROM ' . NuDB::ident($t) . ' WHERE ' . NuDB::ident($fk) . ' = ?', [$recordId]) as $sr) {
+					$audit = $spk !== null && NuAudit::on() && NuAudit::audited($t);
+					if ($audit || $recycle) {          // audit trail / recycle bin: the sub-form rows go with the record
+						$srs = $db->all('SELECT * FROM ' . NuDB::ident($t) . ' WHERE ' . NuDB::ident($fk) . ' = ?', [$recordId]);
+						if ($recycle) $kept[] = [$t, $fk, (string)($spk ?? ''), $srs];
+						if ($audit) foreach ($srs as $sr) {
 							NuAudit::record('delete', $t, (string)$sr[$spk], $sr, [], $ctx + ['source' => 'subform', 'parent_table' => $meta->table(), 'parent_id' => $recordId]);
 						}
 					}
 					$db->run('DELETE FROM ' . NuDB::ident($t) . ' WHERE ' . NuDB::ident($fk) . ' = ?', [$recordId]);
 				}
 			}
+			if ($recycle) $recycleId = NuRecycle::keep($meta, $recordId, $row, $kept);
 			$db->delete(NuDB::ident($meta->table()), NuDB::ident($meta->primaryKey()), $recordId);
 			NuAudit::record('delete', $meta->table(), $recordId, $row, [], $ctx);
 			NuWebhook::queue($meta->id, $meta->code(), $meta->table(), 'delete', $recordId, $row);   // webhooks (0.8.715)
@@ -418,7 +426,7 @@ final class NuRecord
 			NuLog::write('record_deleted', $meta->code(), $recordId, ['table' => $meta->table(), 'fields' => NuLog::diff([], $row)]);
 		}
 		NuPhp::run($meta->php('AD'), $hash, 'After Delete');
-		return ['ok' => true] + NuPhp::result();
+		return ['ok' => true] + ($recycleId !== null ? ['recycle' => $recycleId] : []) + NuPhp::result();
 	}
 
 	// ================================================================= helpers

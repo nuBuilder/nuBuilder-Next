@@ -43,8 +43,8 @@ if (nu_is_post() && nu_post('action') === 'enable' && isset(NuConfigFile::SWITCH
 if (nu_is_post() && nu_post('action') === 'secretkey') {
 	$err = NuConfigFile::setSecretKey(nu_post('key'));
 	if ($err === '') {
-		$sealed = NuTwoFA::sealPlain(nu_post('key'));     // authenticator secrets stored before the key existed: encrypt them now
-		NuLog::write('secret_key_set', 'nuconfig.php', '', ['length' => strlen(nu_post('key')), 'encrypted_2fa' => $sealed]);   // never the key itself
+		$sealed = NuSecret::sealPlain(nu_post('key'));     // secrets stored before the key existed (2FA, OAuth mail, SSO, webhooks, AI, SMTP copy): encrypt them now (0.8.1326)
+		NuLog::write('secret_key_set', 'nuconfig.php', '', ['length' => strlen(nu_post('key')), 'encrypted' => $sealed]);   // never the key itself
 		nu_flash('success', t('key_saved'));
 	} else {
 		nu_flash('danger', t('set_use_db_failed') . ' ' . $err);

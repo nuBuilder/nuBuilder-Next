@@ -194,7 +194,7 @@ final class NuMailOAuth
 		$body = curl_exec($ch);
 		$code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
 		$err = curl_error($ch);
-		curl_close($ch);
+		unset($ch);                                         // the handle closes itself (curl_close() does nothing since PHP 8.0, deprecated in 8.5)
 		if ($body === false) throw new RuntimeException('OAuth 2: ' . ($err ?: 'no answer from ' . parse_url($url, PHP_URL_HOST)));
 		$j = json_decode((string)$body, true);
 		if (!is_array($j)) throw new RuntimeException('OAuth 2: unexpected answer (HTTP ' . $code . ')');
@@ -216,21 +216,12 @@ final class NuMailOAuth
 
 	private static function seal(string $s): string
 	{
-		$key = (string)nu_cfg('nuConfigSecretKey');
-		if ($key === '' || !function_exists('sodium_crypto_secretbox')) return 'plain:' . $s;
-		$nonce = random_bytes(SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
-		return 'enc:' . base64_encode($nonce . sodium_crypto_secretbox($s, $nonce, hash('sha256', $key, true)));
+		return NuSecret::seal($s, '');   // 0.8.1326: one implementation (core/nusecret.php)
 	}
 
 	private static function open(string $s): string
 	{
-		if (str_starts_with($s, 'plain:')) return substr($s, 6);
-		if (!str_starts_with($s, 'enc:')) return $s;
-		$key = (string)nu_cfg('nuConfigSecretKey');
-		$raw = base64_decode(substr($s, 4), true);
-		if ($key === '' || $raw === false || !function_exists('sodium_crypto_secretbox_open') || strlen($raw) <= SODIUM_CRYPTO_SECRETBOX_NONCEBYTES) return '';
-		$out = sodium_crypto_secretbox_open(substr($raw, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES), substr($raw, 0, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES), hash('sha256', $key, true));
-		return $out === false ? '' : $out;
+		return NuSecret::open($s, '');
 	}
 
 	/** The secrets are stored without encryption ($nuConfigSecretKey empty) – Security check. */

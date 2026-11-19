@@ -469,7 +469,7 @@ final class NuDataExport
 		return $db->readOnly(static function (NuDB $db) use ($sql, $params, $tableCols, $d, $row, $limit): array {
 			$pdo = $db->pdo();
 			$buffered = null;
-			if ($db->type === 'mysql') { try { $buffered = $pdo->getAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY); $pdo->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, false); } catch (Throwable) { $buffered = null; } }
+			if ($db->type === 'mysql') { try { $buffered = $pdo->getAttribute(nu_pdo_mysql_buffered()); $pdo->setAttribute(nu_pdo_mysql_buffered(), false); } catch (Throwable) { $buffered = null; } }
 			$st = null;
 			try {
 				$st = $db->run($sql, $params);
@@ -504,7 +504,7 @@ final class NuDataExport
 				return ['cols' => $cols, 'rows' => $n, 'sample' => $sample];
 			} finally {
 				if ($st) { try { $st->closeCursor(); } catch (Throwable) {} }   // an open unbuffered cursor would block the ROLLBACK of readOnly()
-				if ($buffered !== null) { try { $pdo->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, $buffered); } catch (Throwable) {} }
+				if ($buffered !== null) { try { $pdo->setAttribute(nu_pdo_mysql_buffered(), $buffered); } catch (Throwable) {} }
 			}
 		}, self::QUERY_SECONDS);
 	}

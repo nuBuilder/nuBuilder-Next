@@ -217,6 +217,7 @@ if ($tutBanner): ?>
 </div>
 <?php endif; ?>
 
+<?= $editorPage ? '' : NuReady::homeCard() /* Getting ready checklist (0.8.1310) */ ?>
 <?php foreach ($homeDash as $hd): ?>
 <div class="mb-4" data-nu-dashboard="<?= h((string)$hd['code']) ?>"></div>
 <?php endforeach; ?>

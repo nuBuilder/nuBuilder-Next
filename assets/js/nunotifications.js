@@ -106,7 +106,7 @@
 				countBox.textContent = j.text;
 				lastN = j.n;
 				summary();
-				countBox.className = 'alert py-2 mb-0 ' + (j.n ? 'alert-success' : 'alert-warning');
+				countBox.className = 'ntfReach ' + (j.n ? 'ntfReachSome' : 'ntfReachNone');
 				people = j.people || [];
 				showBtn.hidden = !people.length;
 				if (sideHook) sideHook();                      // names of the side column

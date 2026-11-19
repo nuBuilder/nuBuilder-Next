@@ -123,7 +123,7 @@ try {
 			nu_api_out(NuRecord::delete($meta, $record, $props, $in));
 
 		case 'details':                                    // row details of the list (0.8.1027): the related list of one record – reading only
-			nu_api_out(['ok' => true] + NuRowDetails::related($meta, $record));
+			nu_api_out(['ok' => true] + NuRowDetails::related($meta, $record, is_string($in['list'] ?? null) ? $in['list'] : ''));
 
 		case 'presence':                                   // concurrent edits (0.8.401): "also open by …" (passive – see index.php)
 			if (!NuConflict::presenceEnabled()) nu_api_out(['ok' => true, 'others' => []]);

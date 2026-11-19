@@ -42,6 +42,9 @@ if ($meta->type() === 'page') NuPage::wrapper($meta);
 $u        = NuAuth::user();
 $rights   = NuAcl::rights($meta->id);
 $iframe   = ($_GET['iframe'] ?? '') === '1';
+// the detail form of a list's row details (0.8.1316, core/form/nurowdetails.php): read only in a frame – no save, delete, clone or new
+$rdView   = $iframe && ($_GET['rdv'] ?? '') === '1';
+if ($rdView) foreach (['save', 'delete', 'clone', 'new', 'create', 'add'] as $k) $rights[$k] = false;
 $lookupTo = preg_replace('/[^\w]/', '', (string)($_GET['lookup'] ?? ''));
 NuHash::$state = ['iframe' => $iframe ? '1' : '0', 'lookup_id' => $lookupTo];   // nuBuilder Forte's breadcrumb keys in nuHash() (0.8.984)
 $psIn    = is_string($_GET['ps'] ?? null) ? $_GET['ps'] : '';
@@ -297,7 +300,7 @@ const NU_BSQ_TEXTS = ['ds_list_settings', 'builder_rows_per_page', 'ds_list_rowh
 	'ds_col_action', 'ds_col_action_tip', 'ds_act_none', 'ds_act_form', 'ds_act_list', 'ds_act_proc', 'ds_act_report', 'ds_act_js', 'ds_act_target_form', 'ds_act_target_list',
 	'builder_run_procedure', 'builder_run_report', 'ds_act_fn', 'ds_act_fn_tip', 'ds_act_rec', 'ds_act_rec_row', 'ds_act_rec_value', 'ds_act_rec_new', 'ds_act_open',
 	'ds_act_open_same', 'ds_act_open_tab', 'ds_act_open_popup', 'ds_act_pass', 'ds_act_pass_tip', 'ds_act_look', 'ds_act_look_link', 'ds_act_look_button', 'ds_act_look_icon',
-	'ds_act_icon', 'ds_act_icon_tip', 'ds_act_label', 'ds_act_label_tip', 'ds_act_need_target', 'ds_rd_title', 'ds_rd_cols', 'ds_rd_cols_tip', 'ds_rd_sub', 'ds_rd_sub_tip', 'ds_rd_none',
+	'ds_act_icon', 'ds_act_icon_tip', 'ds_act_label', 'ds_act_label_tip', 'ds_act_need_target', 'ds_rd_title', 'ds_rd_cols', 'ds_rd_cols_tip', 'ds_rd_none', 'ds_rd_lists', 'ds_rd_no_lists', 'ds_rd_own', 'ds_rd_own_tip', 'ds_rd_form', 'ds_rd_form_tip', 'ds_rd_mode', 'ds_rd_mode_many', 'ds_rd_mode_one',
 	'fmt_type_date', 'fmt_type_number', 'fmt_type_text', 'ds_col_total', 'ds_col_total_tip', 'ds_tot_none', 'ds_tot_sum', 'ds_tot_avg', 'ds_tot_min', 'ds_tot_max', 'ds_tot_count', 'ds_col_group', 'ds_col_group_tip',
 	'bsq_written', 'bsq_as_run', 'bsq_run_mode', 'bsq_run_note', 'bsq_run_vars', 'bsq_run_none', 'bsq_run_filled', 'bsq_run_unset', 'fi_hash_unset', 'copy'];
 $bsqList = static function () use ($meta, $browseSqlEdit): array {
@@ -322,7 +325,8 @@ $bsqList = static function () use ($meta, $browseSqlEdit): array {
 		'redirect' => (string)($f['sfo_browse_redirect_form_id'] ?? ''), 'multi' => (string)($f['sfo_browse_title_multiline'] ?? '') === '1',
 		'autofit' => (string)($f['sfo_browse_autoresize_columns'] ?? '') === '1', 'table' => (string)($f['sfo_table'] ?? ''), 'forms' => $forms, 'cols' => $cols,
 		'targets' => ['forms' => $allForms, 'procs' => $procs, 'reports' => $reports], 'formats' => NuFormat::choices(), 'subs' => $subs,
-		'details' => ['cols' => !empty($det['cols']), 'sub' => (string)($det['sub'] ?? '')], 'access' => $meta->isSystem() ? '' : nu_url('dataaccess', ['f' => $meta->id]),
+		'details' => ['cols' => !empty($det['cols']), 'own' => !empty($det['own']), 'subs' => $det['subs'] ?? [], 'form' => (string)($det['form'] ?? ''), 'mode' => $det['mode'] ?? 'many'],
+		'detail_lists' => NuRowDetails::candidates($meta), 'access' => $meta->isSystem() ? '' : nu_url('dataaccess', ['f' => $meta->id]),
 		'php' => (string)($meta->php('BB') ?? ''), 'js' => (string)($f['sfo_browse_javascript'] ?? '')];
 };
 $client = [
@@ -334,7 +338,7 @@ $client = [
 		+ array_combine(NU_BSQ_TEXTS, array_map('t', NU_BSQ_TEXTS))] : null,
 	'save_target' => $codeEdit || $browseSqlEdit ? NuFormDraft::saveTarget($meta->id) : null,   // 0.8.1300: label in the title of the code side panels
 	'code_pane' => $codeEdit ? $codePane() : null,                            // 0.8.1197: Design ▾ → Code on edit forms
-	'base' => 'index.php', 'csrf' => nu_csrf_token(), 'bt' => $bt, 'mode' => $mode, 'iframe' => $iframe, 'lookup' => $lookupTo,
+	'base' => 'index.php', 'csrf' => nu_csrf_token(), 'bt' => $bt, 'mode' => $mode, 'iframe' => $iframe, 'rdv' => $rdView, 'lookup' => $lookupTo,
 	'form' => [
 		'id' => $meta->id, 'code' => $meta->code(), 'description' => $meta->description(), 'type' => $meta->type(),
 		'table' => $meta->table(), 'primary_key' => $meta->primaryKey(), 'layout' => $layout,
@@ -401,6 +405,7 @@ $client = [
 		'tfm' => NuFileManager::visible(),                                      // File Manager = the page nuFiles (0.8.479)
 		'sessions' => NuAdmin::can('sessions'),
 		'browsesql' => $mode === 'browse' && NuDesign::allowed($meta) ? nu_url('form', ['f' => $meta->id, 'design' => '1', 'dswork' => 'code', 'dsitem' => 'sfo_browse_sql']) : '',   // ⋮ → Browse SQL (0.8.818)
+		'recycle' => NuRecycle::days($meta) > 0 && $rights['delete'] ? nu_url('recyclebin', ['form' => $meta->id]) : '',   // ⋮ → Recycle bin (0.8.1325)
 		'formaccess' => !$meta->isPage() && NuAcl::can(NuAcl::FORM_ACCESS) && empty($u['demo']),   // ⋮ → Access levels… (0.8.683, assets/js/nu/nuformaccess.js)
 		// ⋮ → Find in this form's code (0.8.1172): the code search with this form as filter
 		'codesearch' => NuCodeSearch::allowed() ? nu_url('codesearch', ['f' => [$meta->id], 'go' => '1', 'sys' => $meta->isSystem() ? '1' : null, 'drafts' => '1', 'pages' => '1']) : '',
@@ -456,14 +461,14 @@ $client = [
 			'geo_top' => t('builder_top'), 'geo_left' => t('builder_left'), 'geo_width' => t('builder_width'), 'geo_height' => t('builder_height')],
 	] : null,
 	'messages' => [
-		'mask_incomplete' => t('fmt_err_incomplete'), 'saved' => t('saved'), 'deleted' => t('form_deleted'), 'cloned' => t('form_cloned'), 'clone_badge' => t('form_clone_badge'), 'unsaved' => t('form_unsaved'), 'report_running' => t('rpt_running'), 'report_emailed' => t('rpt_emailed'), 'delete_confirm' => t('form_delete_confirm'), 'no_results' => t('eff_none'), 'delete_title' => t('form_delete_title'), 'delete_named' => t('form_delete_named'), 'delete_with' => t('form_delete_with'), 'delete_undo' => t('form_delete_undo'), 'error' => t('form_error'),
+		'mask_incomplete' => t('fmt_err_incomplete'), 'saved' => t('saved'), 'deleted' => t('form_deleted'), 'cloned' => t('form_cloned'), 'clone_badge' => t('form_clone_badge'), 'unsaved' => t('form_unsaved'), 'report_running' => t('rpt_running'), 'report_emailed' => t('rpt_emailed'), 'delete_confirm' => t('form_delete_confirm'), 'no_results' => t('eff_none'), 'delete_title' => t('form_delete_title'), 'delete_named' => t('form_delete_named'), 'delete_with' => t('form_delete_with'), 'delete_undo' => NuRecycle::days($meta) > 0 ? t('rb_delete_note', NuRecycle::days($meta)) : t('form_delete_undo'), 'rb_undo' => t('rb_undo'), 'rb_in_bin' => t('rb_in_bin'), 'error' => t('form_error'),
 		'ok' => t('ok'), 'cancel' => t('cancel'), 'code_fullscreen' => t('form_code_fullscreen'), 'code_hint' => t('form_code_hint'), 'code_readonly' => t('form_code_readonly'), 'code_discard' => t('form_code_discard'), 'code_dblclick' => t('form_code_dblclick'), 'delete' => t('delete'), 'lookup' => t('form_lookup_title'), 'lk_clear' => t('lk_clear'), 'lk_clear_tip' => t('lk_clear_tip'), 'lk_keys' => t('lk_keys'), 'js_errors' => t('form_js_errors'),
 		'not_supported' => t('form_not_supported'), 'saving' => t('form_saving'), 'all' => t('all'), 'close' => t('close'), 'help' => t('sc_help'), 'chart_no_data' => t('chart_no_data'), 'chart_load_failed' => t('chart_load_failed'), 'chart_no_type' => t('chart_no_type'),
 		'hash_name' => t('hash_name'), 'hash_value' => t('hash_value'), 'hash_source' => t('hash_source'), 'hash_filter' => t('hash_filter'), 'hash_locked' => t('hash_locked'),
 		'hash_src' => ['system' => t('hash_src_system'), 'user' => t('hash_src_user'), 'record' => t('hash_src_record'), 'property' => t('hash_src_property'), 'global' => t('hash_src_global'), 'caller' => t('hash_src_caller')],
 		'file_too_large' => t('file_too_large'), 'empty' => t('form_filter_empty'),
 		// concurrent edits (0.8.401)
-		'rd_show' => t('rd_show'), 'rd_hide' => t('rd_hide'), 'rd_open' => t('rd_open'), 'rd_more' => t('rd_more'), 'rd_empty' => t('rd_empty'), 'rd_loading' => t('uh_loading'), 'rd_error' => t('rd_error'), 'rd_none_rows' => t('rd_none_rows'),
+		'rd_show' => t('rd_show'), 'rd_hide' => t('rd_hide'), 'rd_open' => t('rd_open'), 'rd_more' => t('rd_more'), 'rd_empty' => t('rd_empty'), 'rd_loading' => t('uh_loading'), 'rd_error' => t('rd_error'), 'rd_none_rows' => t('rd_none_rows'), 'rd_form' => t('rd_form'), 'rd_expand_all' => t('rd_expand_all'), 'rd_collapse_all' => t('rd_collapse_all'),
 		'cc_title' => t('form_cc_title'), 'cc_by' => t('form_cc_by'), 'cc_anon' => t('form_cc_anon'), 'cc_field' => t('form_cc_field'), 'cc_original' => t('form_cc_original'), 'cc_yours' => t('form_cc_yours'), 'cc_theirs' => t('form_cc_theirs'), 'cc_keep_mine' => t('form_cc_keep_mine'), 'cc_keep_theirs' => t('form_cc_keep_theirs'), 'cc_row' => t('form_cc_row'), 'cc_row_gone' => t('form_cc_row_gone'), 'cc_row_changed' => t('form_cc_row_changed'), 'cc_delete_row' => t('form_cc_delete_row'), 'cc_keep_row' => t('form_cc_keep_row'), 'cc_kept' => t('form_cc_kept'), 'cc_save' => t('form_cc_save'), 'cc_reload' => t('form_cc_reload'), 'cc_record_gone' => t('form_cc_record_gone'), 'cc_delete_by' => t('form_cc_delete_by'), 'cc_delete_anon' => t('form_cc_delete_anon'), 'cc_empty' => t('form_cc_empty'), 'pr_open' => t('form_pr_open'), 'pr_editing' => t('form_pr_editing'),
 	],
 ];
@@ -789,6 +794,7 @@ nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategro
 			<?php endif; ?>
 			<?php if (!empty($client['report'])): ?>
 				<button type="button" class="btn btn-primary nuActionButton" id="nuRunReportButton" data-nu-report="<?= h($client['report']['code']) ?>"><i class="bi bi-file-earmark-pdf me-1"></i><?= h(t('rpt_run')) ?></button>
+				<button type="button" class="btn btn-outline-secondary nuActionButton" id="nuRunReportXlsx" data-nu-report="<?= h($client['report']['code']) ?>" title="<?= h(t('rpt_xlsx_tip')) ?>"><i class="bi bi-file-earmark-excel me-1"></i><?= h(t('rpt_xlsx')) ?></button>
 			<?php endif; ?>
 			<?php if (!$client['is_new'] && $rights['clone'] && $meta->type() !== 'launch'): ?>
 				<button type="button" class="btn nuBtnAct nuActionButton" id="nuCloneButton"><i class="bi bi-copy me-1"></i><?= h(t('clone')) ?></button>

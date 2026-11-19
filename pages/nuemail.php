@@ -78,6 +78,8 @@ if (nu_is_post()) {
 			];
 			if (nu_check('clear_password') === '1') $data['set_smtp_password'] = '';
 			elseif ($pw !== '') $data['set_smtp_password'] = $pw;
+			$onlyBefore = NuSecret::smtp()['only'];
+			$data['smtp_only'] = nu_check('smtp_only') === '1';   // 0.8.1326: password only in nuBuilder Next's encrypted copy
 			$before = NuMailer::setupRow(true);
 			try {
 				$oldAuth = NuMailer::authType();
@@ -85,6 +87,8 @@ if (nu_is_post()) {
 				$after = NuMailer::setupRow(true);
 				$diff = NuLog::diff(array_diff_key($before, ['set_smtp_password' => 1]), array_diff_key(array_intersect_key($after, $data), ['set_smtp_password' => 1]));
 				if (array_key_exists('set_smtp_password', $data)) $diff['set_smtp_password'] = ['***', $data['set_smtp_password'] === '' ? '' : '***'];
+				unset($diff['smtp_only']);
+				if ($onlyBefore !== NuSecret::smtp()['only']) $diff['smtp_only'] = [$onlyBefore ? '1' : '0', NuSecret::smtp()['only'] ? '1' : '0'];
 				if (NuMailer::setAuthType(nu_post('auth_type'))) $diff['auth_type'] = [$oldAuth ?: 'auto', NuMailer::authType() ?: 'auto'];   // 0.8.342
 				if (isset($_POST['oauth_provider'])) {           // OAuth 2 client (0.8.445) – secrets never in the log
 					$oc = NuMailOAuth::save(['provider' => nu_post('oauth_provider'), 'tenant' => nu_post('oauth_tenant'), 'client_id' => nu_post('oauth_client_id'),
@@ -162,6 +166,8 @@ $row     = NuMailer::setupRow(true);
 $setupOk = $db->tableExists('zzzzsys_setup');
 $pmDir   = NuMailer::loadPHPMailer();
 $val = static fn(string $k, string $post) => nu_is_post() && nu_post('action') === 'save' ? nu_post($post) : NuMailer::setupValue($k);
+$smtpOnly = NuSecret::smtp()['only'];
+$smtpHasPw = NuSecret::smtpPassword(NuMailer::setupValue('set_smtp_password')) !== '';
 $placeholders = array_filter(['set_smtp_host', 'set_smtp_username', 'set_smtp_password', 'set_smtp_from_address', 'set_smtp_from_name'],
 	static fn($k) => trim((string)($row[$k] ?? '')) === '1');
 
@@ -262,14 +268,20 @@ nu_layout_start(t('nav_email'), 'email', ['head' => NuListView::head(), 'setting
 						<div class="col-sm-6">
 							<label class="form-label" for="m_pw"><?= h(t('mail_password')) ?></label>
 							<input type="password" class="form-control<?= isset($errors['password']) ? ' is-invalid' : '' ?>" id="m_pw" name="password" maxlength="255" autocomplete="new-password"
-								placeholder="<?= h(NuMailer::setupValue('set_smtp_password') !== '' ? t('mail_password_unchanged') : '') ?>">
+								placeholder="<?= h($smtpHasPw ? t('mail_password_unchanged') : '') ?>">
 							<div class="invalid-feedback"><?= h($errors['password'] ?? '') ?></div>
-							<?php if (NuMailer::setupValue('set_smtp_password') !== ''): ?>
+							<?php if ($smtpHasPw): ?>
 								<div class="form-check mt-1 small">
 									<input class="form-check-input" type="checkbox" id="m_pwclear" name="clear_password" value="1">
 									<label class="form-check-label" for="m_pwclear"><?= h(t('mail_password_clear')) ?></label>
 								</div>
 							<?php endif; ?>
+							<div class="form-check form-switch mt-1 small" id="m_onlyWrap">
+								<input class="form-check-input" type="checkbox" role="switch" id="m_only" name="smtp_only" value="1"<?= $smtpOnly ? ' checked' : '' ?><?= NuSecret::available() ? '' : ' disabled' ?>>
+								<label class="form-check-label" for="m_only"><?= h(t('mail_pw_only_next')) ?></label>
+								<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('mail_pw_only_next_tip')) ?>" title="<?= h(t('mail_pw_only_next_tip')) ?>"><i class="bi bi-info-circle"></i></span>
+								<?php if (!NuSecret::available()): ?><div class="text-body-secondary" id="m_onlyNoKey"><?= h(t('mail_pw_only_nokey')) ?></div><?php elseif ($smtpOnly): ?><div class="text-body-secondary" id="m_onlyOn"><i class="bi bi-lock me-1"></i><?= h(t('mail_pw_only_on')) ?></div><?php endif; ?>
+							</div>
 						</div>
 						<div class="col-sm-6">
 							<label class="form-label" for="m_from"><?= h(t('mail_from_address')) ?></label>

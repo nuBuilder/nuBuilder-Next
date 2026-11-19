@@ -9,7 +9,7 @@ defined('NU_ROOT') || exit;
  */
 final class NuSchema
 {
-	public const VERSION = 35;
+	public const VERSION = 36;
 
 	private const TABLES = [
 		'zzzzsys_nunext_log' => [
@@ -200,6 +200,12 @@ final class NuSchema
 			'cols' => [['created_at', 'datetime'], ['login', 'text', '50'], ['search', 'text', '1000'], ['replace_with', 'text', '1000'], ['part_count', 'int'], ['line_count', 'int'],
 				['changes', 'longtext'], ['undone_at', 'datetime'], ['undone_by', 'text', '50']],
 			'index' => ['created_at'],
+		],
+		'zzzzsys_nunext_recycle' => [                             // recycle bin (0.8.1325, core/nurecycle.php): deleted records of forms that keep them
+			'pk' => 'zzzzsys_nunext_recycle_id',
+			'cols' => [['form_id', 'text', '25'], ['form_code', 'text', '100'], ['table_name', 'text', '100'], ['record_id', 'text', '100'], ['title', 'text', '300'],
+				['data', 'longtext'], ['sub_rows', 'int'], ['deleted_by', 'text', '25'], ['deleted_by_name', 'text', '100'], ['deleted_at', 'datetime'], ['expires_at', 'datetime']],
+			'index' => ['form_id', 'expires_at'],
 		],
 		'zzzzsys_nunext_opened' => [                              // "Last opened" of the code lists (0.8.1117, core/nuopened.php): one row per person and object
 			'pk' => 'zzzzsys_nunext_opened_id',

@@ -172,6 +172,18 @@ body.nuf { margin: 0; background: var(--bs-body-bg); color: var(--bs-body-color)
 	.nuf-tools > .btn-group > .dropdown-toggle-split { padding-left: .2rem; padding-right: .2rem; }
 }
 
+/* phones: the toolbar follows the selection – none: Upload, New folder, New file, view buttons; some: × n + Download … Delete */
+.nuf-selclear { display: none; }
+@media (max-width: 575.98px) {
+	.nuf-app:not(.nuf-has-sel) #nufTools [data-sel] { display: none !important; }
+	.nuf-app.nuf-has-sel #nufTools > .btn-group[data-need="upload"],
+	.nuf-app.nuf-has-sel #nufMkdirBtn, .nuf-app.nuf-has-sel #nufNewFileBtn,
+	.nuf-app.nuf-has-sel #nufColToggle, .nuf-app.nuf-has-sel #nufLayoutBtn, .nuf-app.nuf-has-sel #nufRefreshBtn { display: none !important; }
+	.nuf-app.nuf-has-sel .nuf-selclear { display: inline-flex; align-items: center; gap: .3rem; }
+	.nuf-app.nuf-has-sel #nufTools [data-sel] { flex: 1 1 0; max-width: 3.25rem; }
+	.nuf-app.nuf-has-sel #nufDeleteBtn { margin-left: auto; }
+}
+
 /* grid view (tiles with thumbnails) */
 #nufLayoutBtn .nuf-ic-list, .nuf-layout-grid #nufLayoutBtn .nuf-ic-grid { display: none; }
 .nuf-layout-grid #nufLayoutBtn .nuf-ic-list { display: inline-block; }

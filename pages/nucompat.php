@@ -88,7 +88,8 @@ nu_layout_start(t('compat_title'), 'home');
 							echo implode(', ', $links);
 							?>
 							<details class="d-inline ms-1"><summary class="text-body-secondary"><?= count($r['where']) ?> <?= h(t(count($r['where']) === 1 ? 'compat_place' : 'compat_places')) ?></summary>
-								<ul class="mb-0 ps-3"><?php foreach (array_slice($r['where'], 0, 40) as $w): $pid = $r['procs'][$w] ?? ''; ?><li><?php if ($pid !== '' && $canProc): ?><a href="<?= h($procUrl($pid)) ?>" target="_blank" rel="noopener"><?= h($w) ?></a><?php else: ?><?= h($w) ?><?php endif; ?></li><?php endforeach; ?></ul></details>
+								<ul class="mb-0 ps-3"><?php foreach (array_slice($r['where'], 0, 40) as $w): $pid = $r['procs'][$w] ?? ''; $wu = (string)($r['urls'][$w] ?? '');   // 0.8.1331: every place opens its code
+									if ($pid !== '' && !$canProc) $wu = ''; ?><li><?php if ($wu !== ''): ?><a href="<?= h($wu) ?>" target="_blank" rel="noopener" class="nuCompatPlace"><?= h($w) ?></a><?php else: ?><?= h($w) ?><?php endif; ?></li><?php endforeach; ?></ul></details>
 						</td>
 					</tr>
 				<?php endforeach; ?>
@@ -105,29 +106,44 @@ nu_layout_start(t('compat_title'), 'home');
 		<?php $open = count(array_filter(array_keys($fnd), static fn($id) => (NuCompat::SINCE[$id] ?? null) === null && !in_array($id, NuCompat::PREP, true))); ?>
 		<span class="badge <?= $open ? 'text-bg-danger' : 'text-bg-success' ?>"><?= h(t('compat_f_open', $open)) ?></span>
 	</div>
+	<?php // 0.8.1330: only the features not supported yet (and preparation points) are shown; the supported ones fold away below
+	$fRow = static function (string $id, array $places) use ($forms): string {
+		$since = NuCompat::SINCE[$id] ?? null;
+		$prep = in_array($id, NuCompat::PREP, true);
+		$links = [];
+		foreach ($places as $pl) { $fid = $pl['form']; if ($fid !== '' && isset($forms[$fid]) && !in_array($fid, $links, true)) $links[$fid] = !str_starts_with($fid, 'nu') ? '<a href="' . h(nu_url('builder', ['f' => $fid])) . '" target="_blank" rel="noopener">' . h($forms[$fid]['code']) . '</a>' : h($forms[$fid]['code']); }
+		$li = '';
+		foreach (array_slice($places, 0, 60) as $pl) $li .= '<li>' . h($pl['where']) . ($pl['detail'] !== '' ? ' – <code class="text-break">' . h($pl['detail']) . '</code>' : '') . '</li>';
+		return '<tr class="compat-' . ($since ? 'ok' : ($prep ? 'prep' : 'missing')) . '" data-finding="' . h($id) . '"><td><code>' . h($id) . '</code></td>'
+			. '<td class="small">' . h(t('compat_f_' . strtolower($id))) . '</td><td>'
+			. ($since ? '<span class="badge text-bg-success">' . h(t('compat_f_since', $since)) . '</span>' : ($prep ? '<span class="badge text-bg-secondary">' . h(t('compat_f_prep')) . '</span>' : '<span class="badge text-bg-danger">' . h(t('compat_f_not_yet')) . '</span>'))
+			. '</td><td class="small">' . implode(', ', array_slice($links, 0, 6))
+			. '<details class="d-inline ms-1"><summary class="text-body-secondary">' . count($places) . ' ' . h(t(count($places) === 1 ? 'compat_place' : 'compat_places')) . '</summary><ul class="mb-0 ps-3">' . $li . '</ul></details></td></tr>';
+	};
+	$fHead = '<thead><tr><th>ID</th><th>' . h(t('compat_f_feature')) . '</th><th>' . h(t('compat_status')) . '</th><th>' . h(t('compat_where')) . '</th></tr></thead>';
+	$fOpen = array_filter($fnd, static fn($id) => (NuCompat::SINCE[$id] ?? null) === null, ARRAY_FILTER_USE_KEY);
+	$fDone = array_diff_key($fnd, $fOpen); ?>
 	<div class="table-responsive">
-		<table class="table table-sm align-middle mb-0 nu-table" data-nu-phcards>
-			<thead><tr><th>ID</th><th><?= h(t('compat_f_feature')) ?></th><th><?= h(t('compat_status')) ?></th><th><?= h(t('compat_where')) ?></th></tr></thead>
+		<table class="table table-sm align-middle mb-0 nu-table" data-nu-phcards id="compatFOpen">
+			<?= $fHead ?>
 			<tbody>
-			<?php foreach ($fnd as $id => $places): $since = NuCompat::SINCE[$id] ?? null; ?>
-				<?php $prep = in_array($id, NuCompat::PREP, true); ?>
-				<tr class="compat-<?= $since ? 'ok' : ($prep ? 'prep' : 'missing') ?>" data-finding="<?= h($id) ?>">
-					<td><code><?= h($id) ?></code></td>
-					<td class="small"><?= h(t('compat_f_' . strtolower($id))) ?></td>
-					<td><?= $since ? '<span class="badge text-bg-success">' . h(t('compat_f_since', $since)) . '</span>' : ($prep ? '<span class="badge text-bg-secondary">' . h(t('compat_f_prep')) . '</span>' : '<span class="badge text-bg-danger">' . h(t('compat_f_not_yet')) . '</span>') ?></td>
-					<td class="small">
-						<?php $links = [];
-						foreach ($places as $pl) { $fid = $pl['form']; if ($fid !== '' && isset($forms[$fid]) && !in_array($fid, $links, true)) $links[$fid] = !str_starts_with($fid, 'nu') ? '<a href="' . h(nu_url('builder', ['f' => $fid])) . '" target="_blank" rel="noopener">' . h($forms[$fid]['code']) . '</a>' : h($forms[$fid]['code']); }
-						echo implode(', ', array_slice($links, 0, 6)); ?>
-						<details class="d-inline ms-1"><summary class="text-body-secondary"><?= count($places) ?> <?= h(t(count($places) === 1 ? 'compat_place' : 'compat_places')) ?></summary>
-							<ul class="mb-0 ps-3"><?php foreach (array_slice($places, 0, 60) as $pl): ?><li><?= h($pl['where']) ?><?php if ($pl['detail'] !== ''): ?> – <code class="text-break"><?= h($pl['detail']) ?></code><?php endif; ?></li><?php endforeach; ?></ul></details>
-					</td>
-				</tr>
-			<?php endforeach; ?>
-			<?php if (!$fnd): ?><tr><td colspan="4" class="text-center text-success py-4"><i class="bi bi-check-circle me-1"></i><?= h(t('compat_f_none')) ?></td></tr><?php endif; ?>
+			<?php foreach ($fOpen as $id => $places) echo $fRow((string)$id, $places); ?>
+			<?php if (!$fnd): ?><tr><td colspan="4" class="text-center text-success py-4"><i class="bi bi-check-circle me-1"></i><?= h(t('compat_f_none')) ?></td></tr>
+			<?php elseif (!$fOpen): ?><tr><td colspan="4" class="text-center text-success py-4" id="compatFAllOk"><i class="bi bi-check-circle me-1"></i><?= h(t('compat_f_all_supported')) ?></td></tr><?php endif; ?>
 			</tbody>
 		</table>
 	</div>
+	<?php if ($fDone): ?>
+	<details class="card-footer compatFDone" id="compatFSupported"<?= $all ? " open" : "" ?>>
+		<summary class="small text-body-secondary"><i class="bi bi-check-circle text-success me-1"></i><?= h(t('compat_f_supported_n', count($fDone))) ?></summary>
+		<div class="table-responsive mt-2">
+			<table class="table table-sm align-middle mb-0 nu-table" data-nu-phcards>
+				<?= $fHead ?>
+				<tbody><?php foreach ($fDone as $id => $places) echo $fRow((string)$id, $places); ?></tbody>
+			</table>
+		</div>
+	</details>
+	<?php endif; ?>
 </div>
 <?php // MySQL-only SQL (0.8.791): only while nuBuilder Next runs on SQL Server (developer mode: ?mssql=1 shows it on MySQL too, for tests)
 if (nu_db()->type === 'sqlsrv' || (NuHash::devMode() && isset($_GET['mssql']))):

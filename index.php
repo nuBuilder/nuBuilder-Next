@@ -27,6 +27,15 @@ if (($_GET['p'] ?? '') === 'pwa' && !NuInstall::needed()) {
 	exit;
 }
 
+// Health / status for monitoring tools (0.8.1335, NuHealth): JSON WITHOUT nu_boot's session – a monitor calling every minute must not
+// create sessions or get a cookie; the details only with the key (header X-Health-Key, Authorization: Bearer or ?key=)
+if (($_GET['p'] ?? '') === 'health' && !NuInstall::needed()) {
+	nu_config();
+	nu_security_headers();
+	NuHealth::serve();   // the time zone only once the database answers (nu_timezone may read the shared settings)
+	exit;
+}
+
 // Reset database in steps (0.8.1290, NuDbReset::step): WITHOUT nu_boot's session and sign-in – the job's random token is the right;
 // between the steps the database has no sessions table, and a step must not wait for the session lock of the page's other requests
 if (($_GET['p'] ?? '') === 'dbresetstep' && !NuInstall::needed()) {
@@ -68,6 +77,7 @@ $routes = [
 	'palette'     => ['json' => true],
 	'security'    => [],
 	'securitycheck' => [],
+	'gettingready' => [],   // Getting ready checklist after the installation (0.8.1310, NuReady)
 	'ipaccess'    => [],   // IP access (0.8.722, pages/nuipaccess.php)
 	'sso'         => ['public' => true],   // single sign-on (0.8.863, pages/nusso.php: settings, start, return from the provider)
 	'passkey'     => ['public' => true, 'json' => true],   // passkeys (0.8.877, pages/nupasskey.php): add, second factor, sign-in, confirmation
@@ -90,7 +100,8 @@ $routes = [
 	'apiclients'  => [],
 	'aiproviders' => [],   // AI providers (0.8.1099, pages/nuaiproviders.php)
 	'aiask'       => ['json' => true],   // "Ask AI" of the AI dialogues (pages/nuaiask.php)
-	'webhooks'    => [],   // webhooks (0.8.715, pages/nuwebhooks.php)
+	'webhooks'    => [],
+	'recyclebin'  => [],   // recycle bin for records (0.8.1325, pages/nurecyclebin.php)   // webhooks (0.8.715, pages/nuwebhooks.php)
 	'helppages'   => [],   // user help pages: list / editor (0.8.1023, pages/nuhelppages.php)
 	'codesearch'  => [],   // code search (0.8.1172, pages/nucodesearch.php)
 	'projects'    => [],   // projects: list, project page, export / import (0.8.1035, pages/nuprojects.php)
@@ -150,6 +161,7 @@ $routes = [
 	'translations' => [],
 	'formatapi'   => ['json' => true],
 	'fnlist'      => ['json' => true],
+	'codenames'   => ['json' => true],             // tables, columns, hash variables for the code editors' suggestions (0.8.1336)
 	'sysinfo'     => ['json' => true],
 	'homeforms'   => ['json' => true],   // Home forms of the access levels, ▾ next to Home (0.8.1264, NuHomeForms)   // System info dialog (0.8.1237)
 	'codecheck'   => ['json' => true],             // PHP syntax check of the code editors (0.8.781)

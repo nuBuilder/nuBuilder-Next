@@ -427,6 +427,9 @@
 				+ '</div></div>';
 			document.body.appendChild(m);
 		}
+		if (m.classList.contains('nuPromptHiding')) { // the last prompt is still closing – open this one once it is gone
+			var args = arguments; $(m).one('hidden.bs.modal', function () { window.nuPrompt.apply(window, args); }); return;
+		}
 		$('#nuPromptTitle').html(caption || '');
 		$('#nuPromptText').html(text || '');
 		$('#nuPromptOk').text(M.ok || 'OK');
@@ -434,11 +437,19 @@
 		var input = g('prompt_value1');
 		input.value = defaultValue === undefined || defaultValue === null ? '' : defaultValue;
 		var done = false, modal = nuBs.modal(m);
-		var finish = function (ok) { if (done) return; done = true; modal.hide(); try { cb(ok ? input.value : null, ok); } catch (e) { console.error(e); } };
+		var finish = function (ok) { if (done) return; done = true; if (m.classList.contains('show')) { m.classList.add('nuPromptHiding'); $(m).one('hidden.bs.modal', function () { m.classList.remove('nuPromptHiding'); }); } modal.hide(); try { cb(ok ? input.value : null, ok); } catch (e) { console.error(e); } };
 		$('#nuPromptOk').off('click').on('click', function () { finish(true); });
 		$(input).off('keydown.nuPrompt').on('keydown.nuPrompt', function (e) { if (e.key === 'Enter') { e.preventDefault(); finish(true); } });
 		$(m).off('hidden.bs.modal.nuPrompt').on('hidden.bs.modal.nuPrompt', function () { finish(false); });
-		$(m).off('shown.bs.modal.nuPrompt').on('shown.bs.modal.nuPrompt', function () { input.focus(); input.select(); });
+		// focus the input when shown; when other code takes the focus away while the dialogue is open (the click that opened
+		// it, the page's first-field focus after load), Bootstrap's focus trap hands it to the dialogue's first control –
+		// pass it on to the input until the user clicks or presses a key in the dialogue
+		var touched = false;
+		var grab = function () { if (!done && document.activeElement !== input) { input.focus(); input.select(); } };
+		$(m).off('shown.bs.modal.nuPrompt').on('shown.bs.modal.nuPrompt', grab);
+		$(m).off('pointerdown.nuPrompt keydown.nuPrompt').on('pointerdown.nuPrompt keydown.nuPrompt', function () { touched = true; });
+		$(m).off('focusin.nuPrompt').on('focusin.nuPrompt', function (e) { if (!touched && e.target !== input && m.classList.contains('show')) grab(); });
+		if (m.classList.contains('show')) { modal.show(); grab(); return; }
 		modal.show();
 	});
 

@@ -13,6 +13,7 @@ defined('NU_ROOT') || exit;
 final class NuHousekeeping
 {
 	public const SETTING = 'housekeeping';
+	public const CRON_SETTING = 'housekeeping_cron';
 
 	/** @return array{time: int, source: string}|null */
 	public static function last(): ?array
@@ -60,6 +61,7 @@ final class NuHousekeeping
 		$step('project_tasks', static fn() => NuProject::dueHousekeeping());   // to-dos of projects due today or earlier: one notification each (0.8.1035)
 		$step('notifications', static fn() => NuNotify::housekeeping());   // due e-mails of scheduled notifications, old ones deleted (0.8.357)               // audit trail beyond "Keep" (0.8.350)
 		$step('ai_calls', static fn() => NuAiProvider::purge());            // usage rows of AI requests older than 400 days (0.8.1099)
+		$step('recycle', static fn() => NuRecycle::purge());                // recycle bin entries past their date (0.8.1325)
 		$step('opened', static fn() => NuOpened::purge());                  // "Last opened" rows not touched for 400 days (0.8.1117)
 		$step('webhooks', static fn() => NuWebhook::housekeeping());       // due retries of webhook calls, old calls deleted (0.8.715)
 		$step('report_files', static fn() => NuReportApi::purge());
@@ -86,8 +88,22 @@ final class NuHousekeeping
 		try {
 			$row = ['setting_value' => json_encode(['time' => time(), 'source' => $source, 'done' => $done]), 'updated_at' => $now, 'updated_by' => $source];
 			nu_setting_save(self::SETTING, $row, $db);
+			if ($source === 'cron') nu_setting_save(self::CRON_SETTING, ['setting_value' => (string)time(), 'updated_at' => $now, 'updated_by' => 'cron'], $db);   // health check (0.8.1335)
 		} catch (Throwable) {
 		}
 		return $done;
+	}
+
+	/** Unix time of the last run of nucron.php (page views do the housekeeping too – only cron counts here), null = never. */
+	public static function lastCron(): ?int
+	{
+		try {
+			$v = nu_setting_value(self::CRON_SETTING);
+		} catch (Throwable) {
+			return null;
+		}
+		if (is_string($v) && ctype_digit($v)) return (int)$v;
+		$l = self::last();
+		return $l && $l['source'] === 'cron' ? $l['time'] : null;
 	}
 }

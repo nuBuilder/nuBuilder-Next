@@ -18,6 +18,7 @@ $copy = (string)($_GET['copy'] ?? '');
 $errors = [];
 $role = $id !== '' && $id !== 'new' ? NuAdmin::get($id) : null;
 if ($id !== '' && $id !== 'new' && !$role) { http_response_code(404); nu_fatal(t('record_not_found'), '', true); }
+$stored = $role ? ($role['rights'] ?? []) : null;          // saved rights: changed rows are marked until saved (0.8.1323)
 $mine = NuAdmin::role();
 $own = $role && $mine && $mine['id'] === $role['id'];       // nobody edits his own role
 
@@ -64,7 +65,8 @@ $isNew = $role['id'] === '';
 $users = $isNew ? [] : NuAdmin::usersOf($role['id']);
 $grant = NuAdmin::grantable();
 $title = $isNew ? t('adm_new') : $role['name'];
-nu_layout_start(t('adm_title'), 'home');
+$canTest = !$isNew && NuImpersonate::canTest($role);       // test the role as a chosen user (0.8.1318)
+nu_layout_start(t('adm_title'), 'home', $canTest ? ['head' => nu_ts_head()] : []);
 ?>
 <nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2">
 	<li class="breadcrumb-item"><a href="<?= h(nu_url('home')) ?>"><?= h(t('nav_home')) ?></a></li>
@@ -80,6 +82,7 @@ nu_layout_start(t('adm_title'), 'home');
 			<?php if (!$own): ?><button data-nu-save class="btn nuBtnAct nuBtnSave" type="submit" id="admSave"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button><?php endif; ?>
 			<?php if (!$isNew): ?>
 				<a class="btn nuBtnAct" href="<?= h(nu_url('adminroles', ['id' => 'new', 'copy' => $role['id']])) ?>"><i class="bi bi-copy me-1"></i><?= h(t('clone')) ?></a>
+				<?php if ($canTest): ?><button class="btn nuBtnAct" type="button" id="admTestOpen" data-bs-toggle="modal" data-bs-target="#admTestDlg"<?= ($_GET['test'] ?? '') === '1' ? ' data-nu-autoopen="1"' : '' ?>><i class="bi bi-person-fill-gear me-1"></i><?= h(t('adm_test')) ?></button><?php endif; ?>
 				<?php if (!$users && !$own): ?><button class="btn nuBtnAct nuBtnDel" type="submit" form="admDelete"><i class="bi bi-trash me-1"></i><?= h(t('delete')) ?></button><?php endif; ?>
 				<?= NuFormInfo::record(NuAdmin::ROLE_TABLE, (string)$role['id'], ['code' => (string)($role['code'] ?? '')]) /* (i) record info (0.8.501) */ ?>
 			<?php endif; ?>
@@ -99,10 +102,15 @@ nu_layout_start(t('adm_title'), 'home');
 	</div></div>
 
 	<div class="card shadow-sm mb-3">
-		<div class="card-header d-flex flex-wrap align-items-center gap-2"><span class="fw-semibold"><?= h(t('adm_rights')) ?></span><?= $tip(t('adm_rights_tip')) ?></div>
+		<div class="card-header d-flex flex-wrap align-items-center gap-2"><span class="fw-semibold"><?= h(t('adm_rights')) ?></span><?= $tip(t('adm_rights_tip')) ?>
+			<?php if ($stored !== null): ?><span class="admChg ms-auto d-flex flex-wrap align-items-center gap-2" id="admChanges" hidden>
+				<span class="badge admChgCount" id="admChgCount" data-text="<?= h(t('adm_changed_n')) ?>"></span>
+				<button type="button" class="btn btn-sm btn-outline-secondary" id="admChgOnly" aria-pressed="false" data-on="<?= h(t('adm_changes_all')) ?>" data-off="<?= h(t('adm_changes_only')) ?>"><?= h(t('adm_changes_only')) ?></button>
+				<button type="button" class="btn btn-sm btn-outline-secondary" id="admChgUndo"><i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i><?= h(t('adm_changes_undo')) ?></button>
+			</span><?php endif; ?></div>
 		<?php if (isset($errors['rights'])): ?><div class="alert alert-danger m-3 mb-0"><?= h($errors['rights']) ?></div><?php endif; ?>
 		<div id="admRightsWrap">
-			<table class="table nu-table mb-0 align-middle" id="admRights">
+			<table class="table nu-table mb-0 align-middle" id="admRights"<?= $stored !== null ? ' data-track="1" data-was="' . h(t('adm_was')) . '" data-lv-none="' . h(t('adm_none')) . '" data-lv-view="' . h(t('adm_view')) . '" data-lv-change="' . h(t('adm_change')) . '"' : '' ?>>
 				<?php // own columns (0.8.1022): Right · Area · Full access · None · View · Change – one flat list in the order of the groups;
 				      // sortable titles (assets/js/nuadminroles.js), the third click goes back to that order ?>
 				<?php $sortTh = static fn(string $key, string $label, string $cls = '') => '<th class="admSort' . $cls . '" data-sort="' . h($key) . '"><button type="button" class="btn btn-link p-0 userPermSortBtn" title="' . h(t('adm_sort_tip')) . '">' . h($label) . '</button></th>'; ?>
@@ -114,7 +122,7 @@ nu_layout_start(t('adm_title'), 'home');
 						$cur = $role['rights'][$k] ?? '';
 						$may = $grant[$k] ?? '';                       // what the editing user may give
 						$dis = static fn(string $lvl) => $own || ($lvl !== '' && $may !== 'change' && !($may === 'view' && $lvl === 'view') && $cur !== $lvl) ? ' disabled' : ''; ?>
-						<tr class="nuAdmRight" data-group="<?= h($g) ?>" data-area="<?= sprintf('%02d', $gi) ?>" data-full="<?= $full ? '1' : '0' ?>" data-name="<?= h(t($label)) ?>">
+						<tr class="nuAdmRight" data-group="<?= h($g) ?>" data-area="<?= sprintf('%02d', $gi) ?>" data-full="<?= $full ? '1' : '0' ?>" data-name="<?= h(t($label)) ?>"<?= $stored !== null ? ' data-orig="' . h($stored[$k] ?? '') . '"' : '' ?>>
 							<td class="admName"><?php if (isset(NuAdmin::PAGES[$k])): [$pr, $pp] = NuAdmin::PAGES[$k]; ?><a href="<?= h(nu_url($pr, $pp)) ?>" target="_blank" rel="noopener" class="admRightLink" title="<?= h(t('adm_open_page')) ?>"><?= h(t($label)) ?><i class="bi bi-box-arrow-up-right ms-1 small" aria-hidden="true"></i></a><?php else: ?><?= h(t($label)) ?><?php endif; ?></td>
 							<td class="admArea text-body-secondary small"><?= h(t($gLabel)) ?></td>
 							<td class="admFull"><?php if ($full): ?><span class="nuAdmFull" title="<?= h(t('adm_full_tip')) ?>"><i class="bi bi-shield-fill-exclamation" aria-hidden="true"></i><span class="admFullTxt"><?= h(t('adm_full')) ?></span></span><?php else: ?><span class="text-body-tertiary" aria-hidden="true">–</span><?php endif; ?></td>
@@ -134,6 +142,35 @@ nu_layout_start(t('adm_title'), 'home');
 <form method="post" action="<?= h(nu_url('adminroles', ['id' => $role['id']])) ?>" id="admDelete" data-confirm="<?= h(t('adm_delete_confirm', $role['name'])) ?>" data-confirm-ok="<?= h(t('delete')) ?>" data-confirm-class="btn btn-danger">
 	<?= nu_csrf_field() ?><input type="hidden" name="action" value="delete">
 </form>
+<?php if ($canTest):
+	$tu = NuImpersonate::testUsers($role);
+	$opt = static fn(array $u) => '<option value="' . h($u['id']) . '" data-sub="' . h($u['name']) . '">' . h($u['login']) . '</option>'; ?>
+<div class="modal fade" id="admTestDlg" tabindex="-1" aria-labelledby="admTestTitle" aria-hidden="true"><div class="modal-dialog"><div class="modal-content">
+	<form method="post" action="<?= h(nu_url('impersonate')) ?>" id="admTestForm" data-full-confirm="<?= h(t('adm_test_full_confirm', $role['name'])) ?>" data-full-ok="<?= h(t('adm_test_start')) ?>">
+		<?= nu_csrf_field() ?><input type="hidden" name="action" value="start"><input type="hidden" name="role" value="<?= h($role['id']) ?>">
+		<input type="hidden" name="back" value="<?= h(nu_url('adminroles', ['id' => $role['id']])) ?>"><input type="hidden" name="mode" value="view" id="admTestMode">
+		<div class="modal-header"><h2 class="modal-title h5" id="admTestTitle"><i class="bi bi-person-fill-gear me-2"></i><?= h(t('adm_test_title', $role['name'])) ?></h2>
+			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?= h(t('close')) ?>"></button></div>
+		<div class="modal-body d-flex flex-column gap-3">
+			<p class="small text-body-secondary mb-0"><?= h(t('adm_test_intro')) ?></p>
+			<div class="alert alert-warning small mb-0 d-none" id="admTestDirty"><i class="bi bi-exclamation-triangle me-1"></i><?= h(t('adm_test_dirty')) ?></div>
+			<div><label class="form-label" for="admTestUser"><?= h(t('adm_test_user')) ?></label>
+				<select class="nuListTomSelect" id="admTestUser" name="id" data-placeholder="<?= h(t('adm_test_user_ph')) ?>" required>
+					<option value=""></option>
+					<?php $has = array_filter($tu, static fn($u) => $u['has']); $oth = array_filter($tu, static fn($u) => !$u['has']); ?>
+					<?php if ($has): ?><optgroup label="<?= h(t('adm_test_group_has')) ?>"><?php foreach ($has as $u) echo $opt($u); ?></optgroup><?php endif; ?>
+					<?php if ($oth): ?><optgroup label="<?= h(t('adm_test_group_other')) ?>"><?php foreach ($oth as $u) echo $opt($u); ?></optgroup><?php endif; ?>
+				</select>
+				<div class="form-text"><?= h(t('adm_test_user_hint')) ?></div></div>
+		</div>
+		<div class="modal-footer flex-wrap gap-2">
+			<button type="button" class="btn btn-secondary me-auto" data-bs-dismiss="modal"><?= h(t('cancel')) ?></button>
+			<button type="submit" class="btn btn-outline-primary" data-mode="view" id="admTestView"><i class="bi bi-eye me-1"></i><?= h(t('imp_mode_view')) ?></button>
+			<button type="submit" class="btn btn-danger" data-mode="full" id="admTestFull"><i class="bi bi-pencil-square me-1"></i><?= h(t('imp_mode_full')) ?></button>
+		</div>
+	</form>
+</div></div></div>
+<?php endif; ?>
 <div class="card shadow-sm">
 	<div class="card-header fw-semibold"><?= h(t('nav_users')) ?> <span class="badge text-bg-secondary ms-1"><?= count($users) ?></span><?= $tip(t('adm_users_tip')) ?></div>
 	<ul class="list-group list-group-flush" id="admUsers">
@@ -143,4 +180,4 @@ nu_layout_start(t('adm_title'), 'home');
 </div>
 <?php endif; ?>
 <?php
-nu_layout_end('<script src="' . nu_asset('assets/js/nuadminroles.js') . '"></script>');
+nu_layout_end(($canTest ? nu_ts_foot() : '') . '<script src="' . nu_asset('assets/js/nuadminroles.js') . '"></script>');

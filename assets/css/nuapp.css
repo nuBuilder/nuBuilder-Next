@@ -485,6 +485,8 @@ mark.nuHighlight { padding: 0 .05em; margin: 0 -.05em; border-radius: .2em; back
 li.CodeMirror-hint { color: var(--bs-body-color); max-width: 34rem; overflow: hidden; text-overflow: ellipsis; }
 li.CodeMirror-hint-active { background: var(--bs-primary); color: #fff; }
 .nuHintSig { opacity: .65; }
+.nuHintIcon { opacity: .6; font-size: .8em; }   /* tables / columns / # variables (0.8.1336) */
+li.CodeMirror-hint-active .nuHintIcon { opacity: .9; }
 .nuHintTip { position: fixed; z-index: 2001; max-width: 26rem; background: var(--bs-body-bg); color: var(--bs-body-color); border: 1px solid var(--bs-border-color); border-radius: var(--bs-border-radius); padding: .4rem .55rem; font-size: .8rem; }
 .nuHashVarsMenu .form-control { margin-bottom: .35rem; }
 .nuHashVarsList { max-height: 50vh; overflow-y: auto; }
@@ -2038,12 +2040,13 @@ body:has(.nuRecHead) main .nuRecHead.mb-3 { margin-bottom: .625rem !important; }
 }
 .impTplList { width: min(380px, 90vw); }   /* Data import → Templates (0.8.870) */
 
-/* leave dialog (0.8.904): Discard changes away from Save – left on wide screens, alone in its own row below on phones */
-#nuLeave .modal-footer .nuLeaveDiscard { margin-right: auto; }
-@media (max-width: 575.98px) {
-	#nuLeave .modal-footer::after { content: ""; order: 2; flex-basis: 100%; }
-	#nuLeave .modal-footer .nuLeaveDiscard { order: 3; margin-top: .75rem; }
-}
+/* leave dialog (0.8.1328, the owner picked B of the canvas "Unsaved changes dialog"): Discard as a red text link in its own row
+   above Keep editing / Save (left), a line between them; the same on every width */
+#nuLeave .modal-footer.nuLeaveFoot { display: block; padding: .5rem .75rem .75rem; }
+#nuLeave .nuLeaveDiscardRow { padding-bottom: .5rem; margin-bottom: .75rem; border-bottom: 1px solid var(--bs-border-color); }
+#nuLeave .nuLeaveDiscard { color: var(--bs-danger); padding-left: 0; padding-right: 0; text-decoration: none; }
+#nuLeave .nuLeaveDiscard:hover, #nuLeave .nuLeaveDiscard:focus-visible { text-decoration: underline; }
+#nuLeave .nuLeaveActs { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; }
 
 /* sticky list titles (0.8.910, nuapp.js): the moved title cells cover the rows below them */
 table.nuHeadFloat > thead > tr > th, table.nuHeadFloat > thead > tr > td { position: relative; z-index: 4; background-color: var(--bs-body-bg); box-shadow: inset 0 -1px 0 var(--bs-border-color), 0 2px 4px -2px rgba(0, 0, 0, .18); }
@@ -2961,3 +2964,129 @@ kbd { background: #f1f3f5; color: #212529; border: 1px solid #dee2e6; border-bot
 	--bs-btn-hover-border-color: #ced4da; --bs-btn-active-bg: #ced4da; --bs-btn-active-color: #212529; --bs-btn-active-border-color: #ced4da; --bs-btn-disabled-bg: #e9ecef; --bs-btn-disabled-color: #6c757d; --bs-btn-disabled-border-color: #dee2e6; }
 [data-bs-theme="dark"] .btn.btn-secondary { --bs-btn-bg: #343a40; --bs-btn-color: #e9ecef; --bs-btn-border-color: #495057; --bs-btn-hover-bg: #3d444b; --bs-btn-hover-color: #fff;
 	--bs-btn-hover-border-color: #5c636a; --bs-btn-active-bg: #495057; --bs-btn-active-color: #fff; --bs-btn-active-border-color: #5c636a; --bs-btn-disabled-bg: #343a40; --bs-btn-disabled-color: #adb5bd; --bs-btn-disabled-border-color: #495057; }
+
+/* Getting ready checklist (0.8.1310, core/nuready.php): slim bar below the top bar, start page card, the page ?p=gettingready */
+.nuGrBar { background: var(--bs-primary-bg-subtle); border-bottom: 1px solid var(--bs-primary-border-subtle); color: var(--bs-body-color); font-size: .875rem; }
+.nuGrBarIn { display: flex; align-items: center; gap: .6rem; max-width: 1600px; margin: 0 auto; padding: .3rem 1rem; }
+.nuGrBarIn > .bi { color: var(--bs-primary-text-emphasis); }
+.nuGrBarText { color: inherit; text-decoration: none; min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nuGrBarText:hover { text-decoration: underline; }
+.nuGrBarCount { color: var(--bs-secondary-color); }
+.nuGrBarOpen { --bs-btn-padding-y: .1rem; --bs-btn-font-size: .8rem; flex: 0 0 auto; }
+.nuGrHideBtn { --bs-btn-padding-y: .1rem; --bs-btn-padding-x: .4rem; color: var(--bs-secondary-color); }
+.nuGrHideBtn:hover { color: var(--bs-body-color); }
+@media (max-width: 575.98px) { .nuGrBarCount { display: none; } .nuGrBarIn { padding-inline: .6rem; } }
+.nuGrRing .nuGrRingBg { stroke: var(--bs-secondary-bg); }
+.nuGrRing .nuGrRingFg { stroke: var(--bs-success); }
+.nuGrRing .nuGrRingTxt { font-size: 9px; font-weight: 600; fill: var(--bs-body-color); }
+.nuGrCard { border-color: var(--bs-primary-border-subtle); }
+.nuGrNextList { list-style: none; padding: 0; margin: .3rem 0 0; display: flex; flex-wrap: wrap; gap: .25rem 1rem; font-size: .875rem; }
+.nuGrNext { display: inline-flex; align-items: center; gap: .4rem; text-decoration: none; }
+.nuGrNext:hover { text-decoration: underline; }
+.nuGrDot { width: .55rem; height: .55rem; border-radius: 50%; background: var(--bs-secondary-color); flex: 0 0 auto; }
+.nuGrDot.nuGrSt-bad { background: var(--bs-danger); }
+.nuGrDot.nuGrSt-warn { background: var(--bs-warning); }
+.nuGrProgress { width: 100%; max-width: 28rem; height: .5rem; accent-color: var(--bs-success); }
+.nuGrWrap { display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: 1.25rem; align-items: start; }
+.nuGrSteps ol { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: .15rem; }
+.nuGrStep { display: flex; align-items: center; gap: .6rem; padding: .45rem .7rem; border-radius: .5rem; color: var(--bs-body-color); text-decoration: none; }
+.nuGrStep:hover { background: var(--bs-tertiary-bg); }
+.nuGrStep.active { background: var(--bs-primary-bg-subtle); color: var(--bs-primary-text-emphasis); font-weight: 600; }
+.nuGrStep.nuGrStepDone > .bi { color: var(--bs-success); }
+.nuGrStepName { flex: 1 1 auto; min-width: 0; }
+.nuGrStepCount { font-size: .75rem; color: var(--bs-secondary-color); font-weight: 400; }
+.nuGrStepCount.nuGrStepRed { color: var(--bs-danger-text-emphasis); font-weight: 600; }
+.nuGrPane { background: var(--bs-body-bg); border: 1px solid var(--bs-border-color); border-radius: .75rem; padding: 1rem 1.25rem; min-width: 0; }
+.nuGrItems { display: flex; flex-direction: column; gap: .5rem; }
+.nuGrItem { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: .75rem; align-items: start; padding: .7rem .8rem; border: 1px solid var(--bs-border-color-translucent); border-radius: .6rem; }
+.nuGrIcon { font-size: 1.15rem; line-height: 1.3; color: var(--bs-secondary-color); }
+.nuGrSt-ok .nuGrIcon { color: var(--bs-success); }
+.nuGrSt-warn .nuGrIcon { color: var(--bs-warning); }
+.nuGrSt-bad .nuGrIcon { color: var(--bs-danger); }
+.nuGrItem.nuGrSt-bad { border-color: var(--bs-danger-border-subtle); background: var(--bs-danger-bg-subtle); }
+.nuGrItem.nuGrSt-ok, .nuGrItem.nuGrNa { opacity: .8; }
+.nuGrDetail { margin-top: .2rem; color: var(--bs-body-color); overflow-wrap: anywhere; }
+.nuGrActs { display: flex; flex-wrap: wrap; gap: .25rem; justify-content: flex-end; align-items: center; }
+.nuGrKind { font-weight: 500; font-size: .7rem; vertical-align: middle; }
+.nuGrNav { border-top: 1px solid var(--bs-border-color-translucent); padding-top: .75rem; }
+@media (max-width: 767.98px) {
+	.nuGrWrap { grid-template-columns: minmax(0, 1fr); gap: .75rem; }
+	.nuGrSteps ol { flex-direction: row; overflow-x: auto; gap: .25rem; padding-bottom: .25rem; }
+	.nuGrStep { white-space: nowrap; padding: .35rem .6rem; }
+	.nuGrStep:not(.active) .nuGrStepName { display: none; }
+	.nuGrPane { padding: .75rem; }
+	.nuGrItem { grid-template-columns: auto minmax(0, 1fr); }
+	.nuGrActs { grid-column: 2; justify-content: flex-start; }
+}
+/* hide menus of the bar / card above the start page's sticky search row (1005) and sticky title bars (1010), below the top bar (1020) */
+.nuGrBar .dropdown-menu, .nuGrCard .dropdown-menu { z-index: 1015; }
+
+/* notification editor colours (0.8.1321, the owner picked 1 "Indigo & slate" of the canvas "Notification editor colours"): indigo accents,
+   chosen level = its own soft tint + border (warning orange, not yellow), preview = neutral card with a tinted icon tile, reach = pill */
+.ntfEdit { --ntf-ac: #4f46e5; --ntf-ac-text: #3730a3; --ntf-ac-soft: #eef2ff; --ntf-ac-line: #c7d2fe; --ntf-page: #f6f7fb;
+	--ntf-info: #2563eb; --ntf-info-bg: #eff4ff; --ntf-success: #059669; --ntf-success-bg: #ecfdf5; --ntf-warning: #c2410c; --ntf-warning-bg: #fff4ec;
+	--ntf-danger: #dc2626; --ntf-danger-bg: #fef2f2; }
+[data-bs-theme="dark"] .ntfEdit { --ntf-ac: #818cf8; --ntf-ac-text: #c7d2fe; --ntf-ac-soft: rgba(129, 140, 248, .14); --ntf-ac-line: rgba(129, 140, 248, .4); --ntf-page: var(--bs-tertiary-bg);
+	--ntf-info: #6ea8fe; --ntf-info-bg: rgba(110, 168, 254, .12); --ntf-success: #34d399; --ntf-success-bg: rgba(52, 211, 153, .12);
+	--ntf-warning: #fb923c; --ntf-warning-bg: rgba(251, 146, 60, .13); --ntf-danger: #f87171; --ntf-danger-bg: rgba(248, 113, 113, .12); }
+.ntfEdit .ntfBody { background: var(--ntf-page); }
+.ntfEdit .ntfSec, .ntfEdit .ntfSide { border-color: var(--bs-border-color); box-shadow: 0 1px 2px rgba(16, 24, 40, .05); }
+.ntfEdit .ntfNum { background: var(--ntf-ac-soft); color: var(--ntf-ac-text); font-weight: 700; }
+.ntfEdit .ntfAddRule { border: 1px solid var(--ntf-ac-line); color: var(--ntf-ac-text); background: var(--bs-body-bg); }
+.ntfEdit .ntfAddRule:hover { border-style: solid; background: var(--ntf-ac-soft); }
+.ntfEdit .ntfAddRule.ntfAddEx { border-color: var(--bs-border-color); color: var(--bs-secondary-color); }
+.ntfReach { display: inline-flex; align-items: center; gap: .5rem; padding: .4rem .85rem; border-radius: .6rem; font-weight: 600; font-size: .9rem;
+	background: var(--bs-tertiary-bg); color: var(--bs-body-color); border: 1px solid var(--bs-border-color-translucent); }
+.ntfReach::before { content: ""; width: .5rem; height: .5rem; border-radius: 50%; background: var(--bs-secondary-color); flex: none; }
+.ntfEdit .ntfReachNone { background: var(--ntf-ac-soft); color: var(--ntf-ac-text); border-color: var(--ntf-ac-line); }
+.ntfEdit .ntfReachNone::before { background: var(--ntf-ac); }
+.ntfEdit .ntfReachSome { background: var(--ntf-success-bg); color: var(--bs-success-text-emphasis); border-color: color-mix(in srgb, var(--ntf-success) 30%, transparent); }
+.ntfEdit .ntfReachSome::before { background: var(--ntf-success); }
+.ntfEdit .ntfLv .nuBellIcon { width: 1.15rem; height: 1.15rem; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: .75rem; }
+.ntfEdit .ntfLv-info .nuBellIcon { color: var(--ntf-info); background: var(--ntf-info-bg); }
+.ntfEdit .ntfLv-success .nuBellIcon { color: var(--ntf-success); background: var(--ntf-success-bg); }
+.ntfEdit .ntfLv-warning .nuBellIcon { color: var(--ntf-warning); background: var(--ntf-warning-bg); }
+.ntfEdit .ntfLv-danger .nuBellIcon { color: var(--ntf-danger); background: var(--ntf-danger-bg); }
+.ntfEdit .btn-check:checked + .ntfLv { border-width: 1.5px; padding: calc(.55rem - .5px) calc(.75rem - .5px); }
+.ntfEdit .btn-check:checked + .ntfLv-info { border-color: var(--ntf-info); background: var(--ntf-info-bg); }
+.ntfEdit .btn-check:checked + .ntfLv-success { border-color: var(--ntf-success); background: var(--ntf-success-bg); }
+.ntfEdit .btn-check:checked + .ntfLv-warning { border-color: var(--ntf-warning); background: var(--ntf-warning-bg); }
+.ntfEdit .btn-check:checked + .ntfLv-danger { border-color: var(--ntf-danger); background: var(--ntf-danger-bg); }
+.ntfEdit .btn-check:checked + .ntfLv .nuBellIcon { background: var(--bs-body-bg); }
+.ntfEdit .btn-check:focus-visible + .ntfLv { outline-color: var(--ntf-ac); }
+.ntfEdit .ntfOpt:has(.form-check-input:checked) { border-color: var(--ntf-ac-line); background: var(--ntf-ac-soft); }
+.ntfEdit .form-check-input:checked { background-color: var(--ntf-ac); border-color: var(--ntf-ac); }
+.ntfEdit .form-check-input:focus { border-color: var(--ntf-ac-line); box-shadow: 0 0 0 .2rem color-mix(in srgb, var(--ntf-ac) 22%, transparent); }
+.ntfEdit .btn-primary { --bs-btn-bg: var(--ntf-ac); --bs-btn-border-color: var(--ntf-ac); --bs-btn-hover-bg: #4338ca; --bs-btn-hover-border-color: #4338ca;
+	--bs-btn-active-bg: #3730a3; --bs-btn-active-border-color: #3730a3; --bs-btn-disabled-bg: var(--ntf-ac); --bs-btn-disabled-border-color: var(--ntf-ac); }
+[data-bs-theme="dark"] .ntfEdit .btn-primary { --bs-btn-color: #11122a; --bs-btn-hover-color: #11122a; --bs-btn-active-color: #11122a; --bs-btn-hover-bg: #a5b4fc; --bs-btn-hover-border-color: #a5b4fc; }
+.ntfEdit .ntfPv, .ntfEdit .ntfPv-info, .ntfEdit .ntfPv-success, .ntfEdit .ntfPv-warning, .ntfEdit .ntfPv-danger { background: var(--bs-body-bg); border-color: var(--bs-border-color); border-radius: .75rem; }
+.ntfEdit .ntfPvIcon { width: 1.9rem; height: 1.9rem; flex: none; border-radius: .5rem; display: inline-flex; align-items: center; justify-content: center; font-size: 1rem; line-height: 1;
+	color: var(--ntf-info); background: var(--ntf-info-bg); }
+.ntfEdit .ntfPv-success .ntfPvIcon { color: var(--ntf-success); background: var(--ntf-success-bg); }
+.ntfEdit .ntfPv-warning .ntfPvIcon { color: var(--ntf-warning); background: var(--ntf-warning-bg); }
+.ntfEdit .ntfPv-danger .ntfPvIcon { color: var(--ntf-danger); background: var(--ntf-danger-bg); }
+.ntfEdit .form-control:focus, .ntfEdit .form-select:focus { border-color: var(--ntf-ac-line); box-shadow: 0 0 0 .2rem color-mix(in srgb, var(--ntf-ac) 18%, transparent); }
+
+/* admin role form: changed rights until saved (0.8.1323, assets/js/nuadminroles.js) */
+#admRights tr.admChanged > td { background-color: var(--bs-warning-bg-subtle); }
+#admRights tr.admChanged > td:first-child { box-shadow: inset 3px 0 0 var(--bs-warning); }
+#admRights td.admLvlNew .admLvl { outline: 2px solid var(--bs-warning); outline-offset: 2px; border-radius: .4rem; }
+#admRights td.admLvlOld .form-check-input { border-style: dashed; border-color: var(--bs-warning-text-emphasis); }
+#admRights .admWas { display: block; font-size: .78rem; color: var(--bs-warning-text-emphasis); font-weight: 500; }
+#admChanges .admChgCount { background: var(--bs-warning-bg-subtle); color: var(--bs-warning-text-emphasis); border: 1px solid var(--bs-warning-border-subtle); font-weight: 600; }
+
+/* date fields in the format of the language (0.8.1332, nuapp.js nuDateLocal): text field + calendar button, the browser's date input
+   hidden behind them (its picker opens from the button) */
+.nuDateWrap { position: relative; display: flex; align-items: stretch; width: 100%; min-width: 0; }
+.nuDateWrap > .nuDateText { flex: 1 1 auto; min-width: 0; padding-right: 2.25rem; }
+.nuDateWrap > .nuDateBtn { position: absolute; top: 0; right: 0; bottom: 0; z-index: 3; width: 2.25rem; padding: 0; border: 0; color: var(--bs-secondary-color); background: transparent; }
+.nuDateWrap > .nuDateBtn:hover:not(:disabled) { color: var(--bs-body-color); }
+.nuDateWrap > .nuDateText.is-invalid ~ .nuDateBtn { right: 1.5rem; }
+.nuDateWrap > .nuDateNative { position: absolute; left: 0; bottom: 0; width: 100%; height: 1px; opacity: 0; pointer-events: none; border: 0; padding: 0; }
+.input-group > .nuDateWrap { flex: 1 1 auto; width: 1%; }
+.input-group > .nuDateWrap:not(:last-child) > .nuDateText { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.input-group > .nuDateWrap:not(:first-child) > .nuDateText { margin-left: calc(var(--bs-border-width) * -1); border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.xaRow > .nuDateWrap { flex: 0 0 auto; width: 9.25rem; }
+@media (max-width: 575.98px) { .xaRow > .nuDateWrap { width: 7.75rem; } .xaRow > .nuDateWrap > .nuDateText { padding-left: .35rem; padding-right: 1.6rem; font-size: .8125rem; } .xaRow > .nuDateWrap > .nuDateBtn { width: 1.6rem; } }
+.userGrid .nuDateWrap:has(#sus_expires_on) { max-width: 200px; }

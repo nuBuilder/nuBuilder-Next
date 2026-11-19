@@ -27,6 +27,15 @@
 </ul>
 </div>
 	<div class="doc-sub" data-acl="nudebug">
+<h3 id="recycle-bin">Recycle bin</h3>
+<p>A form can keep the records deleted through it for a number of days: design mode → form → <em>Data</em> → <em>Recycle bin (days)</em> (empty = off). The delete stays a real delete in the table – nuBuilder Forte and your reports no longer see the record – and a copy of the record and its sub-form rows goes into the recycle bin.</p>
+<ul>
+<li><b>Undo</b>: right after a delete, the message <em>Record deleted</em> has an <em>Undo</em> button for ten seconds; it puts the record back and opens it.</li>
+<li><b>The recycle bin</b> (<em>Settings → Logs and integrations</em>, or <em>⋮ → Recycle bin</em> on the form's list): the deleted records with form, deleted when and by whom, number of sub-form rows and the date they are removed. A row opens the record's stored fields and sub-form rows; <em>Restore</em> puts it back with its key, <em>Delete for good</em> removes it now.</li>
+<li><b>Restore</b> works while no other record has taken the key. Columns that no longer exist are left out, new columns get their defaults; sub-form rows whose key is taken are skipped (the message says how many).</li>
+<li><b>Who</b>: users with the delete right of the form see and restore its records; the admin right <em>Recycle bin</em> sees every form (view) and restores or removes (change).</li>
+<li data-level="detail">Kept: the table <code>zzzzsys_nunext_recycle</code> (one row per deleted record, the data as JSON; at most 8 MB per record). Housekeeping removes entries after their days. Deletes made in nuBuilder Forte, by SQL or by procedures are not kept. With the <a href="#audit-trail">audit trail</a> on, the restore is recorded as an insert.</li>
+</ul>
 <h3 id="debug">Debug results</h3>
 <p><em>Log → Debug</em>: messages written by <code>nuDebug()</code> in PHP code (hooks, procedures). Newest first; filter by flag, user, text and date; long messages are collapsed; copy button; delete selected or all; optional auto refresh.</p>
 </div>

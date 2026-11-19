@@ -62,23 +62,25 @@ final class NuCompat
 
 	/**
 	 * All code of the application.
-	 * @return array<int, array{lang: string, where: string, form: string, code: string, proc?: string}>
+	 * @return array<int, array{lang: string, where: string, form: string, code: string, proc?: string, url?: string}>
 	 */
 	public static function sources(bool $withSystem): array
 	{
 		$db = nu_db();
 		$sys = static fn(string $id) => !$withSystem && str_starts_with($id, 'nu');
 		$out = [];
-		$add = static function (string $lang, string $where, string $form, ?string $code, string $proc = '') use (&$out) {
-			if ($code !== null && trim($code) !== '') $out[] = ['lang' => $lang, 'where' => $where, 'form' => $form, 'code' => $code] + ($proc !== '' ? ['proc' => $proc] : []);
+		// url (0.8.1331): where the code is opened – design mode of the form (code part / object / its events), the procedure, Global code
+		$add = static function (string $lang, string $where, string $form, ?string $code, string $proc = '', string $url = '') use (&$out) {
+			if ($code !== null && trim($code) !== '') $out[] = ['lang' => $lang, 'where' => $where, 'form' => $form, 'code' => $code] + ($proc !== '' ? ['proc' => $proc] : []) + ($url !== '' ? ['url' => $url] : []);
 		};
+		$design = static fn(string $fid, array $x = []): string => $fid === '' ? '' : nu_url('builder', ['f' => $fid] + $x);
 		$cols = static fn(string $t) => $db->tableExists($t) ? $db->columns($t) : [];
 
 		$fc = $cols('zzzzsys_form');
 		foreach ($db->all('SELECT * FROM zzzzsys_form') as $f) {
 			if ($sys((string)$f['zzzzsys_form_id'])) continue;
 			foreach (['sfo_javascript' => 'JavaScript', 'sfo_browse_javascript' => 'Browse JS', 'sfo_edit_javascript' => 'Edit JS'] as $c => $lbl) {
-				if (isset($fc[$c])) $add('js', $f['sfo_code'] . ' · ' . $lbl, (string)$f['zzzzsys_form_id'], $f[$c]);
+				if (isset($fc[$c])) $add('js', $f['sfo_code'] . ' · ' . $lbl, (string)$f['zzzzsys_form_id'], $f[$c], '', $design((string)$f['zzzzsys_form_id'], ['open' => 'code', 'dsitem' => $c]));
 			}
 		}
 		$oc = $cols('zzzzsys_object');
@@ -87,35 +89,46 @@ final class NuCompat
 		$objects = $db->all('SELECT ' . implode(', ', $sel) . ' FROM zzzzsys_object o LEFT JOIN zzzzsys_form f ON f.zzzzsys_form_id = o.sob_all_zzzzsys_form_id');
 		$byId = [];
 		foreach ($objects as $o) {
-			$byId[(string)$o['zzzzsys_object_id']] = $o;
-			if ($sys((string)$o['sob_all_zzzzsys_form_id'])) continue;
+			$byId[strtolower(trim((string)$o['zzzzsys_object_id']))] = $o;   // MySQL compares ids without case / trailing spaces
+			$fid = (string)$o['sob_all_zzzzsys_form_id'];
+			if ($sys($fid)) continue;
 			$w = ($o['sfo_code'] ?? '?') . ' · ' . $o['sob_all_id'];
-			$add('js', $w . ' · lookup JS', (string)$o['sob_all_zzzzsys_form_id'], $o['sob_lookup_javascript'] ?? null);
-			$add('php', $w . ' · lookup PHP', (string)$o['sob_all_zzzzsys_form_id'], $o['sob_lookup_php'] ?? null);
+			$u = $design($fid, ['obj' => (string)$o['zzzzsys_object_id']]);
+			$add('js', $w . ' · lookup JS', $fid, $o['sob_lookup_javascript'] ?? null, '', $u);
+			$add('php', $w . ' · lookup PHP', $fid, $o['sob_lookup_php'] ?? null, '', $u);
 			if ($o['sob_all_type'] === 'html') {
 				$html = (string)($o['sob_html_code'] ?? '');
-				if (preg_match_all('#<script[^>]*>(.*?)</script>#is', $html, $m)) $add('js', $w . ' · HTML', (string)$o['sob_all_zzzzsys_form_id'], implode("\n", $m[1]));
-				if (preg_match_all('/\son\w+\s*=\s*"([^"]*)"/i', $html, $m)) $add('js', $w . ' · HTML', (string)$o['sob_all_zzzzsys_form_id'], implode("\n", $m[1]));
-				$add('js', $w . ' · HTML JS', (string)$o['sob_all_zzzzsys_form_id'], $o['sob_html_javascript'] ?? null);
+				if (preg_match_all('#<script[^>]*>(.*?)</script>#is', $html, $m)) $add('js', $w . ' · HTML', $fid, implode("\n", $m[1]), '', $u);
+				if (preg_match_all('/\son\w+\s*=\s*"([^"]*)"/i', $html, $m)) $add('js', $w . ' · HTML', $fid, implode("\n", $m[1]), '', $u);
+				$add('js', $w . ' · HTML JS', $fid, $o['sob_html_javascript'] ?? null, '', $u);
 			}
 		}
 		if ($db->tableExists('zzzzsys_event')) {
 			foreach ($db->all('SELECT sev_zzzzsys_object_id, sev_event, sev_javascript FROM zzzzsys_event') as $e) {
-				$o = $byId[(string)$e['sev_zzzzsys_object_id']] ?? null;
-				if ($o && $sys((string)$o['sob_all_zzzzsys_form_id'])) continue;
-				$w = $o ? ($o['sfo_code'] ?? '?') . ' · ' . $o['sob_all_id'] : (string)$e['sev_zzzzsys_object_id'];
-				$add('js', $w . ' · ' . $e['sev_event'], (string)($o['sob_all_zzzzsys_form_id'] ?? ''), $e['sev_javascript']);
+				$o = $byId[strtolower(trim((string)$e['sev_zzzzsys_object_id']))] ?? null;
+				// 0.8.1331: events of an object that no longer exists never run (not in nuBuilder Forte either) – left out
+				if (!$o || $sys((string)$o['sob_all_zzzzsys_form_id'])) continue;
+				$fid = (string)$o['sob_all_zzzzsys_form_id'];
+				$add('js', ($o['sfo_code'] ?? '?') . ' · ' . $o['sob_all_id'] . ' · ' . $e['sev_event'], $fid, $e['sev_javascript'], '', $design($fid, ['obj' => (string)$o['zzzzsys_object_id'], 'ev' => '1']));
 			}
 		}
-		if ($db->tableExists('zzzzsys_setup')) $add('js', 'Setup · Header', '', (string)$db->value('SELECT set_header FROM zzzzsys_setup'));
+		if ($db->tableExists('zzzzsys_setup')) $add('js', 'Setup · Header', '', (string)$db->value('SELECT set_header FROM zzzzsys_setup'), '', nu_url('globalcode', ['tab' => 'header']));
 		if ($db->tableExists('zzzzsys_php')) {
 			$pc = $cols('zzzzsys_php');
 			foreach ($db->all('SELECT * FROM zzzzsys_php') as $p) {
 				if ($sys((string)$p['zzzzsys_php_id'])) continue;
 				// a procedure (not a form's hook) can be opened from the report (0.8.693)
-				$pid = in_array(substr((string)$p['zzzzsys_php_id'], -3), NuProcedure::HOOKS, true) ? '' : (string)$p['zzzzsys_php_id'];
-				$add('php', 'Procedure · ' . $p['sph_code'], (string)($p['sph_zzzzsys_form_id'] ?? ''), $p['sph_php'], $pid);
-				if (isset($pc['sph_javascript'])) $add('js', 'Procedure JS · ' . $p['sph_code'], '', $p['sph_javascript'], $pid);
+				$id = (string)$p['zzzzsys_php_id'];
+				$pid = in_array(substr($id, -3), NuProcedure::HOOKS, true) ? '' : $id;
+				// a form's hook (<form id>_BB …): its code part in design mode; the After Browse PHP of an object (<object id>_AB): the object
+				$pu = $pid !== '' ? nu_url('procedures', ['id' => $pid]) : '';
+				if ($pid === '') {
+					$base = substr($id, 0, -3);
+					$ob = $byId[strtolower($base)] ?? null;
+					$pu = $ob ? $design((string)$ob['sob_all_zzzzsys_form_id'], ['obj' => (string)$ob['zzzzsys_object_id']]) : $design($base, ['open' => 'code', 'dsitem' => 'php:' . substr($id, -2)]);
+				}
+				$add('php', 'Procedure · ' . $p['sph_code'], (string)($p['sph_zzzzsys_form_id'] ?? ''), $p['sph_php'], $pid, $pu);
+				if (isset($pc['sph_javascript'])) $add('js', 'Procedure JS · ' . $p['sph_code'], '', $p['sph_javascript'], $pid, $pu);
 			}
 		}
 		return $out;
@@ -253,10 +266,11 @@ final class NuCompat
 				if ($isMethod && $lang === 'js' && !isset($js[$name])) continue;   // someObject.nuSomething(): not ours
 				$status = isset($custom[$lang][$key]) ? 'custom'
 					: ($lang === 'js' ? ($js[$name] ?? 'missing') : ($php[$key] ?? 'missing'));
-				$r = $res[$lang][$name] ?? ['status' => $status, 'count' => 0, 'where' => [], 'forms' => [], 'procs' => []];
+				$r = $res[$lang][$name] ?? ['status' => $status, 'count' => 0, 'where' => [], 'forms' => [], 'procs' => [], 'urls' => []];
 				$r['count']++;
 				if (!in_array($s['where'], $r['where'], true)) $r['where'][] = $s['where'];
 				if (!empty($s['proc'])) $r['procs'][$s['where']] = $s['proc'];   // where → procedure id (link on the report, 0.8.693)
+				if (!empty($s['url'])) $r['urls'][$s['where']] = $s['url'];      // where → the page that opens the code (0.8.1331)
 				if ($s['form'] !== '' && !in_array($s['form'], $r['forms'], true)) $r['forms'][] = $s['form'];
 				$res[$lang][$name] = $r;
 			}

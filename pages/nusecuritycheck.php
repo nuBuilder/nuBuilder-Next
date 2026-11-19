@@ -19,6 +19,15 @@ if (nu_is_post() && nu_post('action') === 'clear_tokens') {
 	nu_redirect(nu_url('securitycheck') . '#sec_logintoken');
 }
 
+// secrets stored as plain text: encrypt them with $nuConfigSecretKey (0.8.1326)
+if (nu_is_post() && nu_post('action') === 'seal_secrets') {
+	NuSecurity::requireRecentAuth(nu_url('securitycheck'));
+	$n = NuSecret::sealPlain();
+	NuLog::write('secrets_sealed', 'zzzzsys_nunext_setting', '', ['count' => $n]);
+	nu_flash('success', t('secchk_secrets_sealed', $n));
+	nu_redirect(nu_url('securitycheck') . '#sec_secrets');
+}
+
 if (nu_is_post() && nu_post('action') === 'save') {
 	NuSecurity::requireRecentAuth(nu_url('securitycheck'));
 	$in = [];
@@ -64,6 +73,12 @@ nu_layout_start(t('secchk_title'), 'home', ['container' => 'nuContainer', 'setti
 					<?php if ($c['detail'] !== ''): ?><div class="small text-body-secondary text-break"><?= h($c['detail']) ?></div><?php endif; ?>
 				</div>
 				<?php if ($c['link'] !== '' && $c['status'] !== 'ok'): ?><a class="btn btn-sm btn-outline-secondary text-nowrap" href="<?= h($c['link']) ?>"><?= h(t('secchk_fix')) ?> <i class="bi bi-chevron-right"></i></a><?php endif; ?>
+				<?php if ($c['id'] === 'secrets' && $c['status'] !== 'ok' && NuSecret::available() && NuSecret::status()['total']['plain'] > 0 && empty($u['demo'])): ?>
+					<form method="post" action="<?= h(nu_url('securitycheck')) ?>" id="secSealForm">
+						<?= nu_csrf_field() ?><input type="hidden" name="action" value="seal_secrets">
+						<button class="btn btn-sm btn-outline-primary text-nowrap" type="submit" id="secSealBtn"><i class="bi bi-lock me-1"></i><?= h(t('secchk_secrets_seal')) ?></button>
+					</form>
+				<?php endif; ?>
 				<?php if ($c['id'] === 'logintoken' && $c['status'] === 'info' && empty($u['demo'])): ?>
 					<form method="post" action="<?= h(nu_url('securitycheck')) ?>" data-confirm="<?= h(t('secchk_logintoken_clear_confirm')) ?>" data-confirm-ok="<?= h(t('secchk_logintoken_clear')) ?>" data-confirm-class="btn btn-danger">
 						<?= nu_csrf_field() ?><input type="hidden" name="action" value="clear_tokens">

@@ -16,9 +16,10 @@ defined('NU_ROOT') || exit;
  */
 final class NuSample
 {
-	public const VERSION = 24;   // what each version changed: CHANGES (shown on the Sample data page, 0.8.1256)
+	public const VERSION = 25;   // what each version changed: CHANGES (shown on the Sample data page, 0.8.1256)
 	/** Change history of the sample, newest first (English, like the changelog; shown on the Sample data page – 0.8.1256). Add a line with every new VERSION. */
 	public const CHANGES = [
+		25 => 'Customers: the phone mask matches the stored numbers (+1 555 110 2000).',
 		24 => 'Three shared pivots of the orders list.',
 		23 => 'Orders: the customer\'s name no longer runs into the label Status.',
 		22 => 'The PHP code of the procedures and form hooks is formatted (one statement per line).',
@@ -486,7 +487,7 @@ PHP],
 					['type' => 'input', 'id' => 'cus_code', 'label' => 'Code', 'w' => 100, 'validate' => 3],
 					['type' => 'input', 'id' => 'cus_name', 'label' => 'Name', 'w' => 300, 'validate' => 1],
 					['type' => 'input', 'input' => 'email', 'id' => 'cus_email', 'label' => 'E-mail', 'w' => 300],
-					['type' => 'input', 'id' => 'cus_phone', 'label' => 'Phone', 'w' => 180, 'format' => 'T|+99 99 999 99 99'],
+					['type' => 'input', 'id' => 'cus_phone', 'label' => 'Phone', 'w' => 180, 'format' => 'T|+9 999 999 9999'],
 					['type' => 'select', 'id' => 'cus_country', 'label' => 'Country', 'w' => 180, 'options' => $countries,
 						'events' => ['onchange' => "nuToast('Country: ' + nuGetText('cus_country'));"]],
 					['type' => 'input', 'input' => 'checkbox', 'id' => 'cus_active', 'label' => 'Active', 'w' => 20, 'h' => 20],
@@ -985,7 +986,7 @@ PHP],
 			$f('sample_fmt_dlong', 'Date', 'dddd, dd mmmm yyyy', null),
 			$f('sample_fmt_dtime', 'Date', 'dd.mm.yyyy hh:nn', null),
 			$f('sample_fmt_iban', 'Text', 'AA99 9999 9999 9', null, ['store' => 'raw', 'complete' => true]),
-			$f('sample_fmt_phone', 'Text', '+99 99 999 99 99', null, ['store' => 'masked', 'complete' => false]),
+			$f('sample_fmt_phone', 'Text', '+9 999 999 9999', null, ['store' => 'masked', 'complete' => false]),
 		];
 	}
 

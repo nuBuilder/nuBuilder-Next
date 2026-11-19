@@ -883,7 +883,7 @@
 			if (tb) tb.click();
 		}
 		var ts = el.tomselect;
-		var vis = ts ? ts.wrapper : el;
+		var vis = ts ? ts.wrapper : (el.closest('.nuDateWrap') || el);   // a date field in the language's format (0.8.1332)
 		var box = vis.closest('.input-group') || vis;
 		box.scrollIntoView({ block: 'center', behavior: 'smooth' });
 		setTimeout(function () {

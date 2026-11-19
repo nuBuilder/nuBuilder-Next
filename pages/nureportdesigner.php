@@ -27,6 +27,10 @@ if (nu_is_post() && nu_post('action') === 'preview') {
 		if ($launch !== '') foreach ($db->all('SELECT sob_all_id FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id = ?', [$launch]) as $o) $hash[(string)$o['sob_all_id']] ??= '';
 		$crit = json_decode((string)($_POST['criteria'] ?? '{}'), true);
 		if (is_array($crit)) foreach ($crit as $k => $v) if (is_string($k) && preg_match('/^\w{1,100}$/', $k) && is_scalar($v)) $hash[$k] = (string)$v;
+		if (nu_post('fmt') === 'xlsx') {                     // Excel of this layout (0.8.1324)
+			$xlsx = NuReportXlsx::build($report, $hash, $layout);
+			NuReportXlsx::send($xlsx, (string)($report['sre_code'] ?: 'report'));
+		}
 		$pdf = NuReport::pdf($report, $hash, $layout);
 	} catch (Throwable $e) {
 		error_log('nuBuilder Next report preview ' . $report['sre_code'] . ': ' . $e->getMessage());
@@ -97,12 +101,13 @@ nu_layout_start(t('rd_title') . ' · ' . $report['sre_code'], 'forms', ['head' =
 	<div class="rdLoading text-body-secondary small p-3"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span><?= h(t('loading')) ?></div>
 </div>
 <form method="post" action="<?= h(nu_url('reportdesigner', ['id' => $id])) ?>" target="rdPreviewFrame" id="rdPreviewForm" class="d-none">
-	<?= nu_csrf_field() ?><input type="hidden" name="action" value="preview"><input type="hidden" name="layout" value=""><input type="hidden" name="criteria" value="{}">
+	<?= nu_csrf_field() ?><input type="hidden" name="action" value="preview"><input type="hidden" name="layout" value=""><input type="hidden" name="criteria" value="{}"><input type="hidden" name="fmt" value="">
 </form>
 <div class="modal fade" id="rdPreviewModal" tabindex="-1" aria-hidden="true" aria-labelledby="rdPreviewTitle">
 	<div class="modal-dialog modal-xl modal-dialog-scrollable">
 		<div class="modal-content">
 			<div class="modal-header py-2"><h2 class="modal-title fs-6 me-auto" id="rdPreviewTitle"><i class="bi bi-file-earmark-pdf me-1"></i><?= h(t('rd_preview_title')) ?></h2>
+				<button type="button" class="btn btn-sm btn-outline-secondary me-2" id="rdXlsx" title="<?= h(t('rpt_xlsx_tip')) ?>"><i class="bi bi-file-earmark-excel me-1"></i><?= h(t('rpt_xlsx')) ?></button>
 				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?= h(t('close')) ?>"></button></div>
 			<div class="modal-body p-0"><iframe name="rdPreviewFrame" class="rdPreviewFrame" title="<?= h(t('rd_preview_title')) ?>"></iframe></div>
 		</div>

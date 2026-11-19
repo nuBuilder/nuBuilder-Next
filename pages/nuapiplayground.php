@@ -54,6 +54,14 @@ $clients = array_map(static fn(array $c) => [
 $J = static fn(array $a) => json_encode($a, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 $endpoints = [                                   // [method, path, scope, label key, sample body]
 	['GET', '/v1/me', '', 'apg_ep_me', null],
+	['GET', '/v1/openapi.json', '', 'apg_ep_openapi', null],
+	['GET', '/v1/forms', 'records:read', 'apg_ep_forms', null],
+	['GET', '/v1/forms/{{form}}', 'records:read', 'apg_ep_form', null],
+	['GET', '/v1/forms/{{form}}/records?limit=20&sort=-id', 'records:read', 'apg_ep_records', null],
+	['GET', '/v1/forms/{{form}}/records/{{last_id}}', 'records:read', 'apg_ep_record', null],
+	['POST', '/v1/forms/{{form}}/records', 'records:write', 'apg_ep_record_create', $J(['field_id' => 'value'])],
+	['PATCH', '/v1/forms/{{form}}/records/{{last_id}}', 'records:write', 'apg_ep_record_patch', $J(['field_id' => 'new value'])],
+	['DELETE', '/v1/forms/{{form}}/records/{{last_id}}', 'records:write', 'apg_ep_record_delete', null],
 	['GET', '/v1/users?limit=20&state=active', 'users:read', 'apg_ep_users', null],
 	['GET', '/v1/users/{{last_id}}', 'users:read', 'apg_ep_user', null],
 	['POST', '/v1/users', 'users:write', 'apg_ep_user_create', $J(['login' => 'jdoe', 'name' => 'Jane Doe', 'email' => 'jane.doe@example.com', 'access_level_id' => '{{access_level_id}}', 'change_password' => true])],

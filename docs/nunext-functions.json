@@ -845,7 +845,10 @@
     "e": "$name = nuNextSaveValue('cus_name');\n$qty  = nuNextSaveValue('ite_qty', 'items', 2);   // third row of the sub-form items",
     "o": "next",
     "x": "'Bluepeak Systems'",
-    "a": ["nuNextSetSaveValue", "nuGetNuDataValue"]
+    "a": [
+     "nuNextSetSaveValue",
+     "nuGetNuDataValue"
+    ]
    },
    {
     "g": "form",
@@ -862,7 +865,10 @@
     "e": "nuNextSetSaveValue('cus_name', trim(nuNextSaveValue('cus_name')));\nnuNextSetSaveValue('ite_note', 'checked', 'items', 0);",
     "o": "next",
     "x": "true",
-    "a": ["nuNextSaveValue", "nuSetNuDataValue"]
+    "a": [
+     "nuNextSaveValue",
+     "nuSetNuDataValue"
+    ]
    },
    {
     "g": "form",
@@ -1634,7 +1640,11 @@
      "$phpid": "id of the zzzzsys_php row (zzzzsys_php_id) – not the code",
      "$returnOutput": "true: return what the code prints instead of printing it"
     },
-    "a": ["nuRunProcedure", "nuProcedure", "nuRunPHPHidden"]
+    "a": [
+     "nuRunProcedure",
+     "nuProcedure",
+     "nuRunPHPHidden"
+    ]
    },
    {
     "g": "proc",
@@ -1920,7 +1930,9 @@
     "p": {
      "$l": "language as stored in trl_language, e.g. 'German'"
     },
-    "a": ["nuTranslate"]
+    "a": [
+     "nuTranslate"
+    ]
    },
    {
     "g": "str",
@@ -6151,6 +6163,17 @@
    },
    {
     "g": "browse",
+    "n": "nuNextRowDetails",
+    "s": "nuNextRowDetails(fn)",
+    "d": "Fills the row details strip of a list with own content: fn(pk, element, row) runs each time a row is expanded – put HTML into element, return an HTML string, or return a Promise (for example of a fetch). Row details must be on for the list (design mode → Browse list → Row details, e.g. \"Content from the form's code\"). nuNextRowDetails(null) removes it.",
+    "o": "next",
+    "e": "function nuOnLoad() {\n  nuNextRowDetails(function (pk, el, row) {\n    const total = row.querySelector('[data-nu-column=\"3\"]').textContent;\n    return '<b>Order ' + pk + '</b> – ' + total;\n  });\n}",
+    "p": {
+     "fn": "function (pk, element, row): pk = primary key of the row, element = the strip's own box, row = the list row (tr)"
+    }
+   },
+   {
+    "g": "browse",
     "n": "nuDisableBrowseResize",
     "s": "nuDisableBrowseResize()",
     "d": "Switches off changing the column widths by dragging the column titles of the browse list (as nuBuilder Forte); call it in the form's JavaScript.",
@@ -6906,6 +6929,21 @@
      "code": "report code",
      "iFrame": "iframe object (none = new tab)"
     }
+   },
+   {
+    "g": "server",
+    "n": "nuRunReportXlsx",
+    "s": "nuRunReportXlsx(code)",
+    "d": "Runs a report with this form's values and downloads it as an Excel file: groups and totals on the sheet Report, all rows on the sheet Data.",
+    "r": "Promise",
+    "e": "nuRunReportXlsx('orders_by_customer');",
+    "o": "next",
+    "p": {
+     "code": "report code"
+    },
+    "a": [
+     "nuRunReport"
+    ]
    },
    {
     "g": "server",
@@ -8942,6 +8980,31 @@
     "p": {
      "name": "name of the hash cookie",
      "value": "its new value"
+    }
+   },
+   {
+    "g": "hooks",
+    "k": "hook",
+    "n": "nuOnRowExpand",
+    "s": "nuOnRowExpand(pk, element)",
+    "d": "A row of a list was expanded (row details): called after the strip is drawn; related lists and the detail form load into it afterwards.",
+    "o": "next",
+    "e": "function nuOnRowExpand(pk, el) {\n    console.log('expanded', pk);\n}",
+    "p": {
+     "pk": "primary key of the row",
+     "element": "the strip's content box"
+    }
+   },
+   {
+    "g": "hooks",
+    "k": "hook",
+    "n": "nuOnRowCollapse",
+    "s": "nuOnRowCollapse(pk)",
+    "d": "The row details of a list row were closed.",
+    "o": "next",
+    "e": "function nuOnRowCollapse(pk) {\n    console.log('collapsed', pk);\n}",
+    "p": {
+     "pk": "primary key of the row"
     }
    },
    {

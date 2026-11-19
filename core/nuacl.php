@@ -25,6 +25,7 @@ final class NuAcl
 	public const FORM_WEBHOOK = 'nunextwebhook';     // webhooks + their calls (nuBuilder Next only, 0.8.715) – right through the admin right webhooks
 	public const FORM_DASHBOARD = 'nunextdashboard'; // dashboards list (nuBuilder Next only, 0.8.690) – right through the admin right dashboards
 	public const FORM_PROJECT = 'nunextproject';     // projects list (nuBuilder Next only, 0.8.1035) – admin right projects, or the save right on the Forms form
+	public const FORM_RECYCLE = 'nunextrecycle';     // recycle bin list (0.8.1325) – the admin right recyclebin, or the delete right of a form that keeps deleted records
 	public const FORM_NOTIFY = 'nunextnotify';       // notifications → Manage list (0.8.690) – view / print for everybody NuNotify::canManage() lets in
 	public const FORM_USERFIELD = 'nunextuserfield'; // custom user fields list (nuBuilder Next only, 0.8.546) – right through the admin right userfields
 	public const FORM_SETUP  = 'nusetup';     // nuBuilder setup form (e-mail settings, test mail)
@@ -83,6 +84,7 @@ final class NuAcl
 		elseif (!$r['view'] && !in_array($formId, NuSecurity::ADMIN_FORMS, true) && NuUserHome::isHomeOf($u, $formId)) $r = ['view' => true] + self::FREE + self::none();
 		// notification centre → Manage (0.8.690): senders and viewers (admin right, permission items) see the list – the rows are filtered by NuNotify
 		if (!$r['view'] && $formId === self::FORM_NOTIFY && NuNotify::canManage()) $r = ['view' => true, 'print' => true] + self::none() + self::FREE;
+		if (!$r['view'] && $formId === self::FORM_RECYCLE && NuRecycle::canSeeAny()) $r = ['view' => true, 'print' => true] + self::none() + self::FREE;   // recycle bin (0.8.1325)
 		if (!$r['view'] && $formId === self::FORM_PROJECT && NuProject::canView()) $r = ['view' => true, 'print' => true] + self::none() + self::FREE;   // projects (0.8.1035): form designers too
 		// admin role (0.8.323): rights on nuBuilder's system forms on top of the access level (core/nuadmin.php)
 		$lvl = class_exists('NuAdmin') ? NuAdmin::formLevel($formId) : '';

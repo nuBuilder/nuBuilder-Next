@@ -30,7 +30,7 @@
 	var INPUT_TYPES = ['text', 'nuDate', 'nuNumber', 'number', 'checkbox', 'button', 'date', 'datetime-local', 'time', 'email', 'tel', 'url', 'password', 'month', 'week', 'color', 'range', 'file', 'nuAutoNumber', 'nuScroll'];
 	var TYPES = ['input', 'select', 'textarea', 'editor', 'lookup', 'calc', 'display', 'subform', 'html', 'word', 'run', 'image', 'chart', 'contentbox'];
 	var VALUE_TYPES = ['input', 'select', 'textarea', 'editor', 'lookup', 'calc', 'display'];
-	var EVENTS = ['onchange', 'onclick', 'onblur', 'onfocus', 'oninput', 'onkeydown', 'onkeyup', 'ondblclick', 'afterinsertrow', 'clickdelete'];
+	var EVENTS = ['onchange', 'onclick', 'onblur', 'onfocus', 'oninput', 'onkeydown', 'onkeyup', 'ondblclick', 'beforeinsertrow', 'afterinsertrow', 'clickdelete'];
 	var COLTYPES = ['text', 'longtext', 'int', 'bigint', 'decimal', 'date', 'datetime', 'time', 'bool', 'id', 'uuid'];
 	var ICONS = {input: 'bi-input-cursor-text', select: 'bi-menu-down', textarea: 'bi-textarea-t', editor: 'bi-type', display: 'bi-eye', calc: 'bi-calculator',
 		lookup: 'bi-search', subform: 'bi-table', html: 'bi-code-slash', chart: 'bi-bar-chart', word: 'bi-fonts', contentbox: 'bi-bounding-box', run: 'bi-play-btn', image: 'bi-image'};
@@ -776,21 +776,35 @@
 			{key: 'sfo_browse_redirect_form_id', search: true, options: options(D.forms, ['edit', 'browseedit'])}));
 		box.appendChild(field(t('ds_list_multi'), 'check', String(f.sfo_browse_title_multiline || '0') === '1' ? '1' : '0', listFormSave('sfo_browse_title_multiline', BROWSE), {key: 'sfo_browse_title_multiline'}));
 		box.appendChild(field(t('ds_list_autofit'), 'check', String(f.sfo_browse_autoresize_columns || '0') === '1' ? '1' : '0', listFormSave('sfo_browse_autoresize_columns', BROWSE), {key: 'sfo_browse_autoresize_columns'}));
-		// row details (0.8.1027, core/form/nurowdetails.php): sfo_json nunext.details {cols, sub}
+		// row details (0.8.1027 / 0.8.1316, core/form/nurowdetails.php): sfo_json nunext.details {cols, subs: [sub-form ids | t:<table>.<column>], form, mode}
 		var det = {};
 		try { det = ((JSON.parse(f.sfo_json || '{}') || {}).nunext || {}).details || {}; } catch (x) { det = {}; }
-		var detSave = function (k) {
-			return function (v) {
-				det = {cols: k === 'cols' ? v === '1' : !!det.cols, sub: k === 'sub' ? v : (det.sub || '')};
-				change('form.save', {fields: {details: det.cols || det.sub ? det : null}}, BROWSE).catch(function () { /* said */ });
-			};
+		var detSubs = (det.subs || []).slice();
+		if (det.sub && detSubs.indexOf(det.sub) < 0) detSubs.unshift(det.sub);
+		var detPut = function () {
+			var n = {cols: !!det.cols, own: !!det.own, subs: detSubs, form: det.form || '', mode: det.mode === 'one' ? 'one' : 'many'};
+			det = n;
+			change('form.save', {fields: {details: n.cols || n.own || n.subs.length || n.form ? n : null}}, BROWSE).catch(function () { /* said */ });
 		};
-		var subs = S.objects.filter(function (o) { return o.sob_all_type === 'subform'; })
-			.map(function (o) { return [o.sob_all_id, plain(o.sob_all_label) || o.sob_all_id]; });
+		var detSave = function (k) { return function (v) { det[k] = k === 'cols' || k === 'own' ? v === '1' : v; detPut(); }; };
+		var cands = (D.details_candidates || []).slice();
+		detSubs.forEach(function (k) { if (!cands.some(function (c) { return c[0] === k; })) cands.push([k, k]); });
 		box.appendChild(h(t('ds_rd_title')));
 		box.appendChild(field(t('ds_rd_cols'), 'check', det.cols ? '1' : '0', detSave('cols'), {key: 'details_cols', tip: t('ds_rd_cols_tip')}));
-		box.appendChild(field(t('ds_rd_sub'), 'select', det.sub || '', detSave('sub'), {key: 'details_sub', tip: t('ds_rd_sub_tip'),
-			options: [['', t('ds_rd_none')]].concat(subs)}));
+		box.appendChild(field(t('ds_rd_own'), 'check', det.own ? '1' : '0', detSave('own'), {key: 'details_own', tip: t('ds_rd_own_tip')}));
+		box.appendChild(el('div', {'class': 'small fw-semibold mt-2'}, [t('ds_rd_lists')]));
+		if (!cands.length) box.appendChild(el('div', {'class': 'small text-body-secondary', text: t('ds_rd_no_lists')}));
+		cands.forEach(function (c) {
+			box.appendChild(field(c[1], 'check', detSubs.indexOf(c[0]) >= 0 ? '1' : '0', function (v) {
+				var i = detSubs.indexOf(c[0]);
+				if (v === '1' && i < 0) detSubs.push(c[0]); else if (v !== '1' && i >= 0) detSubs.splice(i, 1);
+				detPut();
+			}, {key: 'details_list_' + c[0]}));
+		});
+		box.appendChild(field(t('ds_rd_form'), 'select', det.form || '', detSave('form'), {key: 'details_form', search: true, tip: t('ds_rd_form_tip'),
+			options: [['', t('ds_rd_none')]].concat(options(D.forms, ['edit', 'browseedit']).filter(function (o) { return o[0] !== ''; }))}));
+		box.appendChild(field(t('ds_rd_mode'), 'select', det.mode === 'one' ? 'one' : 'many', detSave('mode'), {key: 'details_mode',
+			options: [['many', t('ds_rd_mode_many')], ['one', t('ds_rd_mode_one')]]}));
 		// calendar view (0.8.1165, core/form/nucalendar.php): sfo_json nunext.calendar {start, end, title, color, group: column ids, view, allday, edit, drag, min, max}
 		var cal = {};
 		try { cal = ((JSON.parse(f.sfo_json || '{}') || {}).nunext || {}).calendar || {}; } catch (x) { cal = {}; }
@@ -1610,7 +1624,11 @@
 				// "Records only through the form's list" not for this form (0.8.1234): sfo_json nunext.record_check = false
 				field(t('ds_rc_any'), 'check', (function () { try { return ((JSON.parse(f.sfo_json || '{}') || {}).nunext || {}).record_check === false ? '1' : '0'; } catch (x) { return '0'; } })(),
 					function (v) { change('form.save', {fields: {record_check: v === '1' ? '0' : '1'}}, false).catch(function () { /* said */ }); },
-					{key: 'record_check', tip: D.record_check ? t('ds_rc_any_tip') : t('ds_rc_any_tip_off')})
+					{key: 'record_check', tip: D.record_check ? t('ds_rc_any_tip') : t('ds_rc_any_tip_off')}),
+				// recycle bin (0.8.1325): days the form keeps its deleted records – 0 / empty = off (sfo_json nunext.recycle)
+				field(t('ds_recycle_days'), 'number', (function () { try { var r = ((JSON.parse(f.sfo_json || '{}') || {}).nunext || {}).recycle; return r && r.days ? String(r.days) : ''; } catch (x) { return ''; } })(),
+					function (v) { change('form.save', {fields: {recycle_days: String(Math.max(0, parseInt(v, 10) || 0))}}, false).catch(function () { /* said */ }); },
+					{key: 'recycle_days', ph: t('ds_recycle_off'), tip: t('ds_recycle_tip')})
 			]);
 		}
 		if (HASLIST && !D.userhome) section('list', t('ds_sec_list'), [el('div', {'class': 'nuDsField'}, [el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsOpenListFly',
@@ -2584,8 +2602,8 @@
 	// on its own, row by row (tops within 10 px = one row, then left) or column by column (lefts within 10 px = one column, then top);
 	// a content box keeps its objects together (sorted inside it, placed by its own position); words, HTML, images sorted like the rest.
 	// One object.order call = one Undo step. The way (rows / columns) is remembered (localStorage nunext-ds-order-mode).
-	var ORDER_KEY = 'nunext-ds-order-mode';
-	function orderMode() { try { return localStorage.getItem(ORDER_KEY) === 'cols' ? 'cols' : 'rows'; } catch (e) { return 'rows'; } }
+	var ORDER_STORE = 'nunext-ds-order-mode';
+	function orderMode() { try { return localStorage.getItem(ORDER_STORE) === 'cols' ? 'cols' : 'rows'; } catch (e) { return 'rows'; } }
 	function posOrder(mode) {
 		var rect = function (o) { var l = +o.sob_all_left || 0, tp = +o.sob_all_top || 0; return {l: l, t: tp, r: l + (+o.sob_all_width || 0) + lookupExtra(o), b: tp + (+o.sob_all_height || 0)}; };
 		var tol = 10;
@@ -2625,7 +2643,7 @@
 	}
 	function orderByPos(mode) {
 		if (layout() !== 'absolute' || !S || !S.objects) return;
-		try { localStorage.setItem(ORDER_KEY, mode); } catch (e) { /* no storage */ }
+		try { localStorage.setItem(ORDER_STORE, mode); } catch (e) { /* no storage */ }
 		var ids = posOrder(mode), now = S.objects.map(function (x) { return x.zzzzsys_object_id; });
 		if (ids.join('|') === now.join('|')) { say(t('ds_ord_same')); return; }
 		var n = ids.filter(function (id, i) { return id !== now[i]; }).length;
@@ -3576,7 +3594,7 @@
 		if (fid0) (function () {
 			var tries = 0;
 			var go = function () {
-				if (selIds.indexOf(fid0) >= 0) return;
+				if (selIds.indexOf(fid0) >= 0) { if (v0.get('dsev') === '1' && o0) editEvents(o0); return; }   // 0.8.1331: links to an event open its dialog
 				var w = document.getElementById('nuw_' + fid0);
 				if (++tries > 40) {
 					say(fmt(t('ds_obj_not_shown'), fid0), true);

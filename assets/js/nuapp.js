@@ -2298,3 +2298,85 @@ window.nuPageNoGo = function (value) {
 	}, true);
 	window.addEventListener('resize', function () { document.querySelectorAll('.dropdown-menu.nuFormInfo.show').forEach(fit); });
 })();
+
+// Date fields of nuBuilder Next's own pages in the format of the language (0.8.1332): a browser's <input type="date"> shows the
+// device's format, whatever the page's language. Each one gets a text field in the format of <html data-nu-dfmt> (nu_dfmt: d.m.Y,
+// d/m/Y, m/d/Y, d-m-Y, Y-m-d) and a calendar button that opens the browser's picker; the date input itself stays (hidden) and keeps
+// name, id and the ISO value the server reads – code that reads it is unchanged. Not on form pages (the form runtime has its own date
+// fields), not for [data-nu-native-date]; new fields (templates, dialogues) are taken via a MutationObserver. window.nuDateLocal(root)
+(function () {
+	var html = document.documentElement, fmt = html.getAttribute('data-nu-dfmt') || '';
+	if (!/^[dmY][.\/-][dmY][.\/-][dmY]$/.test(fmt) || (document.body && document.body.getAttribute('data-nu-page') === 'form')) return;
+	var T = {}; try { T = JSON.parse(html.getAttribute('data-nu-date-texts') || '{}'); } catch (e) { T = {}; }
+	var sep = fmt.charAt(1), order = fmt.split(sep), tok = (T.ph || 'DD|MM|YYYY').split('|');
+	var ph = order.map(function (k) { return k === 'd' ? tok[0] : (k === 'm' ? tok[1] : tok[2]); }).join(sep);
+	var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+	var show = function (iso) {
+		var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
+		if (!m) return '';
+		var v = {Y: m[1], m: m[2], d: m[3]};
+		return order.map(function (k) { return v[k]; }).join(sep);
+	};
+	var parse = function (txt) {                             // '' = empty, null = not a date, else ISO
+		txt = String(txt || '').trim();
+		if (txt === '') return '';
+		var iso = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(txt), p, v = {};
+		if (iso) { v.Y = +iso[1]; v.m = +iso[2]; v.d = +iso[3]; } else {
+			p = txt.split(/[.\/\- ]+/);
+			if (p.length !== 3 || p.some(function (x) { return !/^\d{1,4}$/.test(x); })) return null;
+			order.forEach(function (k, i) { v[k] = +p[i]; });
+			if (v.Y < 100) v.Y += 2000;
+		}
+		var dt = new Date(v.Y, v.m - 1, v.d);
+		if (v.Y < 1000 || dt.getFullYear() !== v.Y || dt.getMonth() !== v.m - 1 || dt.getDate() !== v.d) return null;
+		return v.Y + '-' + pad(v.m) + '-' + pad(v.d);
+	};
+	function enhance(inp) {
+		if (inp.nuDateLocal || inp.type !== 'date' || inp.hasAttribute('data-nu-native-date') || inp.closest('template, .nuAbs, #nuEditForm')) return;
+		inp.nuDateLocal = true;
+		var wrap = document.createElement('span'), txt = document.createElement('input'), btn = document.createElement('button');
+		wrap.className = 'nuDateWrap';
+		txt.type = 'text'; txt.inputMode = 'numeric'; txt.autocomplete = 'off'; txt.placeholder = ph; txt.title = ph;
+		txt.className = (inp.className.match(/\b(form-control(?:-sm|-lg)?|is-invalid)\b/g) || ['form-control']).join(' ') + ' nuDateText';
+		if (inp.id) { txt.id = inp.id + '_nuText'; document.querySelectorAll('label[for="' + inp.id + '"]').forEach(function (l) { l.htmlFor = txt.id; }); }
+		var al = inp.getAttribute('aria-label'); if (al) txt.setAttribute('aria-label', al);
+		if (inp.required) { txt.required = true; inp.required = false; }
+		txt.disabled = inp.disabled; txt.readOnly = inp.readOnly;
+		btn.type = 'button'; btn.className = 'btn nuDateBtn'; btn.tabIndex = -1; btn.title = T.pick || ''; btn.setAttribute('aria-label', T.pick || '');
+		btn.innerHTML = '<i class="bi bi-calendar3" aria-hidden="true"></i>'; btn.disabled = inp.disabled || inp.readOnly;
+		inp.parentNode.insertBefore(wrap, inp);
+		wrap.appendChild(txt); wrap.appendChild(btn); wrap.appendChild(inp);
+		inp.classList.add('nuDateNative'); inp.tabIndex = -1; inp.setAttribute('aria-hidden', 'true');
+		txt.value = show(inp.value);
+		inp.addEventListener('focus', function () { txt.focus(); });   // code that focuses the field by its id
+		var fire = function (type) { inp.dispatchEvent(new Event(type, {bubbles: true})); };
+		var commit = function (final) {
+			var v = parse(txt.value);
+			if (v === null) { txt.setCustomValidity(final ? (T.bad || '%s').replace('%s', ph) : ''); txt.classList.toggle('is-invalid', final); return; }
+			txt.setCustomValidity(''); txt.classList.remove('is-invalid');
+			if (v !== '' && ((inp.min && v < inp.min) || (inp.max && v > inp.max))) { txt.setCustomValidity((T.bad || '%s').replace('%s', ph)); if (final) txt.classList.add('is-invalid'); }
+			if (inp.value !== v) { inp.value = v; fire('input'); fire('change'); }
+			if (final && v !== '') txt.value = show(v);
+		};
+		txt.addEventListener('input', function () { commit(false); });
+		txt.addEventListener('change', function () { commit(true); });
+		txt.addEventListener('blur', function () { commit(true); });
+		inp.addEventListener('change', function () { var s = show(inp.value); if (txt.value !== s && parse(txt.value) !== inp.value) txt.value = s; txt.setCustomValidity(''); txt.classList.remove('is-invalid'); });
+		btn.addEventListener('click', function () {
+			try { if (typeof inp.showPicker === 'function') { inp.showPicker(); return; } } catch (e) { /* not allowed – fall back */ }
+			txt.focus();
+		});
+		// the value set by code later (dialogues filling the field): keep the text in step
+		var desc = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+		Object.defineProperty(inp, 'value', {configurable: true, get: function () { return desc.get.call(this); },
+			set: function (v) { desc.set.call(this, v); if (document.activeElement !== txt) txt.value = show(desc.get.call(this)); }});
+	}
+	window.nuDateLocal = function (root) { (root || document).querySelectorAll('input[type="date"]').forEach(enhance); };
+	var start = function () {
+		window.nuDateLocal(document);
+		new MutationObserver(function (ms) {
+			ms.forEach(function (m) { m.addedNodes.forEach(function (n) { if (n.nodeType !== 1) return; if (n.matches && n.matches('input[type="date"]')) enhance(n); else if (n.querySelectorAll) window.nuDateLocal(n); }); });
+		}).observe(document.body, {childList: true, subtree: true});
+	};
+	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+})();

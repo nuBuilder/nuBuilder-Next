@@ -112,13 +112,25 @@
 <tr><td><code>php nucron.php</code></td><td>Housekeeping, e.g. every 15 minutes from cron: removes expired tokens and sessions, old API counters, log rows beyond the retention and temporary files, retries webhook calls, finishes an unattended update whose database steps are pending. Without cron, page views do this now and then.</td></tr>
 <tr><td><code>php nucron.php update …</code></td><td>Unattended update from a URL, a zip file or GitHub (<a href="#update-unattended">Unattended update</a>)</td></tr>
 <tr><td><code>php nucron.php run &lt;code&gt; …</code></td><td>Runs a procedure – for jobs the server's cron starts at set times (<a href="#procedure-cron">Procedures by cron</a>)</td></tr>
+<tr><td><code>php nucron.php health [--json]</code></td><td>The <a href="#health-check">health check</a>: database, free disk space, age of the newest backup and of the last cron run; exit code 0 = ok, 1 = a warning, 2 = the database does not answer</td></tr>
 <tr><td><code>php nucron.php integrity [--json]</code></td><td>The <a href="#integrity">integrity check</a> of the database; exit code 1 when it finds problems</td></tr>
 <tr><td><code>php nucron.php iprules off</code></td><td>Switches <a href="#ip-access">IP access</a> off when its rules lock everybody out (the rules stay stored)</td></tr>
+<tr><td><code>php nucron.php secrets status | seal | rekey …</code></td><td>Stored secrets: what is encrypted, encrypt the plain ones, re-encrypt everything with a new key (<a href="#security-secrets">Encrypted secrets</a>)</td></tr>
 <tr><td><code>php nucron.php passkeys off &lt;login name&gt;</code></td><td>Removes every <a href="#passkeys-admin">passkey</a> of a user – lost device; the globeadmin: his login name or <code>globeadmin</code></td></tr>
 <tr><td><code>php nucron.php selftest [--sample] …</code></td><td>Developer mode only: the <a href="#selftest">self-test</a> on the command line; exit code 1 when a check failed</td></tr>
 <tr><td><code>php nucron.php reset --sql=&lt;file&gt; …</code></td><td>Developer mode only: <a href="#db-reset">Reset database</a></td></tr>
 </tbody>
 </table>
+</div>
+<div class="doc-sub"><h3 id="health-check">Health check for monitoring tools</h3>
+<p>Monitoring tools (Uptime Kuma, Zabbix, Nagios, a simple uptime check …) can ask <code>index.php?p=health</code>. The answer is JSON and never cached; no session and no cookie is made.</p>
+<ul>
+<li><strong>Without a key</strong> the answer is only <code>{"status": "ok"}</code> – or <code>"fail"</code> with HTTP 503 when the database does not answer. Nothing else about the installation is shown.</li>
+<li><strong>With the key</strong> every check is listed: the database (and how long it took to answer), free disk space of the program folder and of the backup folder, the age of the newest backup, the age of the last cron run of <code>nucron.php</code>, maintenance mode and the version. <code>status</code> is <code>fail</code> (database), <code>warn</code> (a limit is passed) or <code>ok</code>.</li>
+<li>Send the key as header <code>X-Health-Key: &lt;key&gt;</code>, as <code>Authorization: Bearer &lt;key&gt;</code> or – only when the tool cannot send headers – as <code>?key=</code>. A wrong key gets HTTP 401.</li>
+<li>HTTP 200 for ok and warnings, 503 for fail. Add <code>&amp;strict=1</code> for tools that only look at the status code: then warnings answer 503 too.</li>
+</ul>
+<p><em>Settings → Data &amp; logs → Health check</em> (globeadmin) creates the key – it is shown once, only its hash is stored – and sets the limits: newest backup older than (hours), last cron run older than (hours), free disk space below (MB); 0 switches a warning off. Only the cron run counts – the housekeeping that page views do now and then does not.</p>
 </div>
 	<p class="doc-see">See also: <a href="#configfile">Editing nuconfig.php in the browser</a> · <a href="#settings">Settings</a></p>
 	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>nuconfig-sample.php</code></li><li><code>core/nuapp.php</code></li></ul></details>

@@ -602,6 +602,11 @@
 			eachObject(function (o) { all.push(num(o.zIndex)); });
 			var v = d > 0 ? Math.max.apply(null, all.concat([0])) + 1 : Math.min.apply(null, all.concat([0])) - 1;
 			selected().forEach(function (f) { f.o.zIndex = v; });
+			// the PDF prints the objects of a band in their order (as nuBuilder Forte – the stacking number is not read there):
+			// "to front" moves them to the end of their band, "to back" to its start, so the print matches the designer (0.8.1313)
+			var moved = selected();
+			moved.forEach(function (f) { var list = sec(f.g, f.s).objects, i = list.indexOf(f.o); if (i >= 0) list.splice(i, 1); });
+			(d > 0 ? moved : moved.slice().reverse()).forEach(function (f) { var list = sec(f.g, f.s).objects; if (d > 0) list.push(f.o); else list.unshift(f.o); });
 		});
 	}
 	function nudge(dx, dy) {
@@ -938,6 +943,17 @@
 		if (m && nuBs.ready()) nuBs.modal(m).show();
 		f.submit();
 	}
+	/** Excel of this layout (0.8.1324): the same post with fmt=xlsx – the file downloads, an error page shows in the preview. */
+	function xlsx() {
+		var f = document.getElementById('rdPreviewForm');
+		if (!f) return;
+		f.querySelector('[name=layout]').value = JSON.stringify(L);
+		f.querySelector('[name=fmt]').value = 'xlsx';
+		f.submit();
+		f.querySelector('[name=fmt]').value = '';
+	}
+	var xb = document.getElementById('rdXlsx');
+	if (xb) xb.addEventListener('click', xlsx);
 	function help() {
 		var m = document.getElementById('rdHelpModal');
 		if (!m) {

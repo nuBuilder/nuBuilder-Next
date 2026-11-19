@@ -7,6 +7,9 @@ defined('NU_ROOT') || exit;
  *   mode 'view': only view / print (no save, delete, clone, new, no procedures, no form posts) · mode 'full': everything the user may do.
  * The globeadmin's own login stays in the session ($_SESSION['nu_imp']['orig']) and comes back with "Back to globeadmin".
  * Not allowed while acting: change password, security page (2FA, devices) – they belong to the user.
+ * Test an admin role (0.8.1318): the same, with a role of zzzzsys_nunext_admin_role applied to the chosen user for this session only
+ * ($_SESSION['nu_imp']['role']; NuAdmin::role() returns it and its rights count while acting) – nothing is saved. Who may: the
+ * globeadmin, or a user with the rights impersonate + adminroles (change) for roles whose rights he has himself, never on another admin.
  */
 final class NuImpersonate
 {
@@ -23,6 +26,42 @@ final class NuImpersonate
 		return (self::active()['mode'] ?? '') === 'view';
 	}
 
+	/** The admin role tested while acting (0.8.1318): the session entry with 'role' / 'role_name', or null. */
+	public static function testRole(): ?array
+	{
+		$i = self::active();
+		return $i && (string)($i['role'] ?? '') !== '' ? $i : null;
+	}
+
+	/** May the signed-in user test admin roles – this one ($role) when given? */
+	public static function canTest(?array $role = null): bool
+	{
+		$me = NuAuth::user();
+		if (!$me || self::active() || !empty($me['demo'])) return false;
+		if ($me['globeadmin']) return true;
+		if (!NuAdmin::can('impersonate', 'change') || !NuAdmin::can('adminroles', 'change')) return false;
+		return $role === null || NuAdmin::overGrant($role['rights']) === [];
+	}
+
+	/** Users a role can be tested on: [id, login, name, has (has this role)], the role's users first (the globeadmin only), at most 2000. */
+	public static function testUsers(array $role): array
+	{
+		$me = NuAuth::user();
+		$ga = !empty($me['globeadmin']);
+		$own = [];
+		if ($ga) foreach (NuAdmin::usersOf((string)$role['id']) as $u) $own[(string)$u['id']] = ['id' => (string)$u['id'], 'login' => (string)$u['login'], 'name' => (string)$u['name'], 'has' => true];
+		$db = nu_db();
+		$admins = [];
+		if (!$ga && NuAdmin::ready()) foreach ($db->all('SELECT ' . NuAdmin::USER_TABLE . '_id AS id FROM ' . NuAdmin::USER_TABLE) as $r) $admins[(string)$r['id']] = true;
+		$out = array_values($own);
+		foreach ($db->page("SELECT zzzzsys_user_id AS id, sus_login_name AS login, sus_name AS name FROM zzzzsys_user WHERE zzzzsys_user_id <> 'globeadmin'", [], 'sus_login_name', 2000, 0) as $r) {
+			$id = (string)$r['id'];
+			if (isset($own[$id]) || isset($admins[$id]) || (!$ga && $id === (string)($me['id'] ?? ''))) continue;
+			$out[] = ['id' => $id, 'login' => (string)$r['login'], 'name' => (string)$r['name'], 'has' => false];
+		}
+		return $out;
+	}
+
 	/** Who really acts (for the log): the globeadmin's login, or ''. */
 	public static function by(): string
 	{
@@ -30,11 +69,18 @@ final class NuImpersonate
 	}
 
 	/** @return string|null error key, null = started */
-	public static function start(string $userId, string $mode, string $back = ''): ?string
+	public static function start(string $userId, string $mode, string $back = '', string $roleId = ''): ?string
 	{
 		$me = NuAuth::user();
 		if (!$me || !NuAdmin::can('impersonate', 'change') || self::active()) return 'imp_err_not_allowed';
 		if (!empty($me['demo'])) return 'demo_not_available';     // demo mode: never another user's rights
+		$role = null;
+		if ($roleId !== '') {                                       // test an admin role (0.8.1318)
+			$role = NuAdmin::get($roleId);
+			if (!$role) return 'record_not_found';
+			if (!self::canTest($role)) return 'imp_err_not_allowed';
+			if ($userId === 'globeadmin') return 'imp_err_not_allowed';
+		}
 		if (!in_array($mode, self::MODES, true)) return 'err_invalid';
 		$row = nu_db()->one('SELECT zzzzsys_user_id, sus_login_name, sus_login_password FROM zzzzsys_user WHERE zzzzsys_user_id = ?', [$userId]);
 		if (!$row) return 'record_not_found';
@@ -42,10 +88,10 @@ final class NuImpersonate
 		$orig = $_SESSION['nu_auth'];
 		$target = ['id' => (string)$row['zzzzsys_user_id'], 'globeadmin' => false, 'login' => (string)$row['sus_login_name'],
 			'fp' => NuAuth::fingerprint((string)$row['sus_login_password']), 'via' => 'impersonated'];
-		NuLog::write('impersonate_start', 'zzzzsys_user', $target['id'], ['login' => $target['login'], 'mode' => $mode]);
+		NuLog::write('impersonate_start', 'zzzzsys_user', $target['id'], ['login' => $target['login'], 'mode' => $mode] + ($role ? ['role' => (string)$role['code']] : []));
 		NuAuth::startAs($target);
 		$_SESSION['nu_imp'] = ['orig' => $orig, 'id' => $target['id'], 'login' => $target['login'], 'mode' => $mode, 'by' => (string)$me['login'],
-			'since' => time(), 'back' => self::safeBack($back)];
+			'since' => time(), 'back' => self::safeBack($back)] + ($role ? ['role' => (string)$role['id'], 'role_name' => (string)$role['name'], 'role_code' => (string)$role['code']] : []);
 		unset($_SESSION['nu_hashcookies'], $_SESSION['nu_vendor']);
 		return null;
 	}
@@ -55,7 +101,7 @@ final class NuImpersonate
 	{
 		$i = self::active();
 		if (!$i) return nu_url('home');
-		$details = ['login' => $i['login'], 'mode' => $i['mode'], 'minutes' => (int)round((time() - (int)$i['since']) / 60)] + ($why !== '' ? ['reason' => $why] : []);
+		$details = ['login' => $i['login'], 'mode' => $i['mode'], 'minutes' => (int)round((time() - (int)$i['since']) / 60)] + ((string)($i['role_code'] ?? '') !== '' ? ['role' => (string)$i['role_code']] : []) + ($why !== '' ? ['reason' => $why] : []);
 		unset($_SESSION['nu_imp'], $_SESSION['nu_hashcookies']);
 		NuAuth::startAs($i['orig']);
 		NuLog::write('impersonate_end', 'zzzzsys_user', (string)$i['id'], $details, ['id' => (string)$i['orig']['id'], 'login' => (string)$i['by']]);
@@ -88,7 +134,11 @@ final class NuImpersonate
 		$u = NuAuth::user();
 		$view = $i['mode'] === 'view';
 		return '<div class="nuImpBar ' . ($view ? 'nuImpView' : 'nuImpFull') . '" role="status"><div class="nuContainer d-flex flex-wrap align-items-center gap-2 py-1">'
-			. '<span class="me-auto"><i class="bi ' . ($view ? 'bi-eye' : 'bi-person-fill-gear') . ' me-2"></i>' . t('imp_banner', '<b>' . h($u['display'] ?? $i['login']) . '</b> (' . h($i['login']) . ')') . ' · <span class="badge ' . ($view ? 'text-bg-info' : 'text-bg-danger') . '">'
+			. '<span class="me-auto" id="nuImpText"><i class="bi ' . ($view ? 'bi-eye' : 'bi-person-fill-gear') . ' me-2"></i>'
+			. ((string)($i['role'] ?? '') !== ''
+				? t('imp_banner_role', '<b>' . h((string)$i['role_name']) . '</b>', '<b>' . h($u['display'] ?? $i['login']) . '</b> (' . h($i['login']) . ')')
+				: t('imp_banner', '<b>' . h($u['display'] ?? $i['login']) . '</b> (' . h($i['login']) . ')'))
+			. ' · <span class="badge ' . ($view ? 'text-bg-info' : 'text-bg-danger') . '">'
 			. h(t($view ? 'imp_mode_view' : 'imp_mode_full')) . '</span></span>'
 			. '<form method="post" action="' . h(nu_url('impersonate')) . '" class="m-0">' . nu_csrf_field() . '<input type="hidden" name="action" value="stop">'
 			. '<button class="btn btn-sm btn-light" type="submit"><i class="bi bi-arrow-return-left me-1"></i>' . h(t('imp_back')) . '</button></form>'

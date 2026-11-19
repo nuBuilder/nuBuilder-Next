@@ -168,6 +168,22 @@ foreach (["$tmp/.htaccess", "$tmp/index.html"] as $f) @unlink($f);
 @rmdir($tmp);
 foreach (['core', 'pages', 'lang', 'install', 'docs', 'dev'] as $d) check(".htaccess in $d/", is_file(NU_ROOT . "/$d/.htaccess"));
 
+// ---------------------------------------------------------------- PHP 8.5 deprecations (0.8.1317): calls that print "Deprecated" on PHP 8.5
+$dep85 = [];
+$dep85Files = array_merge(glob(NU_ROOT . '/*.php'), glob(NU_ROOT . '/core/*.php'), glob(NU_ROOT . '/core/form/*.php'), glob(NU_ROOT . '/pages/*.php'),
+	glob(NU_ROOT . '/apps/*/*.php') ?: [], glob(NU_ROOT . '/apps/*/lib/*.php') ?: [], glob(NU_ROOT . '/dev/tests/*.php'));
+foreach ($dep85Files as $f) {
+	$src = (string)file_get_contents($f);
+	foreach (token_get_all($src) as $i => $tk) {
+		if (!is_array($tk)) continue;
+		if ($tk[0] === T_STRING && in_array(strtolower($tk[1]), ['curl_close', 'curl_share_close', 'finfo_close', 'xml_parser_free', 'imagedestroy', 'mhash', 'socket_set_timeout', 'setaccessible'], true)) $dep85[] = basename($f) . ':' . $tk[2] . ' ' . $tk[1];
+		if ($tk[0] === T_STRING && preg_match('/^(MYSQL|PGSQL|SQLITE|FIREBIRD|ODBC|DBLIB)_ATTR_|^MYSQL_/', $tk[1]) && basename($f) !== 'nuapp.php') $dep85[] = basename($f) . ':' . $tk[2] . ' PDO::' . $tk[1];
+		if ($tk[0] === T_VARIABLE && $tk[1] === '$http_response_header') $dep85[] = basename($f) . ':' . $tk[2] . ' $http_response_header';
+		if (in_array($tk[0], [T_BOOL_CAST, T_INT_CAST, T_DOUBLE_CAST, T_STRING_CAST], true) && preg_match('/\((boolean|integer|double|binary)\)/i', $tk[1])) $dep85[] = basename($f) . ':' . $tk[2] . ' ' . $tk[1];
+	}
+}
+check('no functions / constants / casts deprecated in PHP 8.5', !$dep85, implode(', ', array_slice($dep85, 0, 8)));
+
 // ---------------------------------------------------------------- include guards and class loading
 foreach (array_merge(glob(NU_ROOT . '/core/*.php'), glob(NU_ROOT . '/core/form/*.php'), glob(NU_ROOT . '/pages/*.php'), glob(NU_ROOT . '/lang/*.php')) as $f) {
 	if (basename($f) === 'nuapp.php') continue;
@@ -1404,7 +1420,7 @@ if (NuAiProvider::canDerive()) {
 	$aiStored = NuAiProvider::lock('sk-secret-123', $aiK);
 	$aiP = $aiD('anthropic', ['access' => 'password', 'api_key' => $aiStored, 'salt' => base64_encode($aiSalt)]);
 	$aiRef = new ReflectionClass('NuAiProvider');
-	$aiCall = static function (string $m, ...$a) use ($aiRef) { $f = $aiRef->getMethod($m); $f->setAccessible(true); return $f->invoke(null, ...$a); };
+	$aiCall = static function (string $m, ...$a) use ($aiRef) { $f = $aiRef->getMethod($m); return $f->invoke(null, ...$a); };
 	$_SESSION['nu_ai_unlocked'] = [];
 	NuAiProvider::$cookieTest = '';
 	check('AI key behind a password: stored without the key or a hash, locked without the session', str_starts_with($aiStored, 'pw:') && !str_contains($aiStored, 'sk-secret') && !str_contains(base64_decode(substr($aiStored, 3)), 'sk-secret')
@@ -1429,6 +1445,15 @@ if (NuAiProvider::canDerive()) {
 	NuAiProvider::$cookieTest = null;
 	unset($_SESSION['nu_ai_unlocked']);
 }
+
+// ---------------------------------------------------------------- secrets at rest (0.8.1326, NuSecret)
+$sk1 = str_repeat('a', 64); $sk2 = str_repeat('b', 64);
+$sv = NuSecret::seal('smtp-pw', 'smtp|', $sk1);
+check('NuSecret: sealed value opens with its key and context only', str_starts_with($sv, 'enc:') && !str_contains($sv, 'smtp-pw')
+	&& NuSecret::open($sv, 'smtp|', $sk1) === 'smtp-pw' && NuSecret::tryOpen($sv, 'smtp|', $sk2) === null && NuSecret::tryOpen($sv, 'ai|', $sk1) === null);
+$legacy = (static function (string $s, string $k): string { $n = random_bytes(SODIUM_CRYPTO_SECRETBOX_NONCEBYTES); return 'enc:' . base64_encode($n . sodium_crypto_secretbox($s, $n, hash('sha256', 'webhook|' . $k, true))); })('wh-secret', $sk1);
+check('NuSecret: reads the earlier formats (webhook context, plain:, raw 2FA value)', NuSecret::open($legacy, 'webhook|', $sk1) === 'wh-secret'
+	&& NuSecret::open('plain:abc') === 'abc' && NuSecret::open('JBSWY3DP') === 'JBSWY3DP' && NuSecret::seal('x', '', '') === 'plain:x' && NuSecret::seal('x', '', '', true) === 'x');
 
 @unlink($cfg);
 echo ($fails ? "$fails of $n tests FAILED" : "all $n tests passed") . "\n";

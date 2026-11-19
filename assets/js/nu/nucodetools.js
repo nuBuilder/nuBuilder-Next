@@ -316,6 +316,9 @@
 		items.forEach(function (b) { g.appendChild(b); });
 		host.appendChild(g);
 		clipMenu(cm, label || bClip, ro);
+		var fnLang = lang === 'PHP' || lang === 'JS' || lang === 'HTML';
+		var names = ro || opt.noNames ? null : nameHints(cm, lang, {formId: opt.formId, _fnHints: fnLang && !opt.noInsert});   // tables, columns, # (0.8.1336)
+		cm.nuNames = names;
 		var ins = ro || opt.noInsert ? null : insertTools(cm, host, lang, opt);   // Insert menu + suggestions while typing (0.8.593)
 		var chk = CHECKS[lang] && !opt.noCheck ? checkTools(cm, g, lang, opt) : null;   // syntax check (0.8.781)
 		if (!chk && cm.nuChk) cm.nuChk.off(lang);   // one CodeMirror, another language without a check (design mode: Browse SQL after JS)
@@ -391,6 +394,8 @@
 			window.removeEventListener('resize', fit);
 			if (on) { cm.removeOverlay(INVIS); cm.getWrapperElement().classList.remove('nuShowInvisibles'); }
 			if (ins) ins.detach();
+			if (names) names.detach();
+			if (cm.nuNames === names) cm.nuNames = null;
 			if (chk) chk.detach();
 			g.remove();
 		};
@@ -696,13 +701,140 @@
 			}).catch(function () { /* no list: no suggestions */ });
 		}
 		var onInput = function (c, change) { if (change.origin === '+input' && /[A-Za-z_]$/.test(change.text.join(''))) hint(false); };
-		var keys = {'Ctrl-Space': function () { hint(true); }};
+		var keys = {'Ctrl-Space': function () { if (cm.nuNames && cm.nuNames.force()) return; hint(true); }};
 		if (hintOn) { cm.on('inputRead', onInput); cm.addKeyMap(keys); }
 		return {button: btn, detach: function () {
 			close(); tipHide(); btn.remove();
 			window.removeEventListener('resize', place); window.removeEventListener('scroll', place, true);
 			if (hintOn) { cm.off('inputRead', onInput); cm.removeKeyMap(keys); }
 		}};
+	}
+
+	// ------------------------------------------------------------------ suggestions of names (0.8.1336)
+	// Tables, columns and "#" hash variables while typing, from ?p=codenames (pages/nucodenames.php; tables / columns only for users who
+	// may write SQL). Where: the whole editor in SQL, inside strings in PHP / JS / HTML (the SQL of nuRunQuery, db_query …), and "#" in
+	// every language. After FROM / JOIN / INTO / UPDATE / TABLE → tables; after "alias." → the columns of that table (aliases read from the
+	// code); else columns of the tables the code names (the form's table first), then tables. Ctrl+Space in a string or in SQL = all names.
+	var NAMES = {};
+	function namesOf(f) {
+		var k = f || '';
+		if (!NAMES[k]) {
+			NAMES[k] = fetch(BASE + 'index.php?p=codenames' + (f ? '&f=' + encodeURIComponent(f) : ''), {credentials: 'same-origin', headers: {'Accept': 'application/json'}})
+				.then(function (r) { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
+				.then(function (j) {
+					j.lc = {};                                                   // lower-case table name → real name
+					(j.tables || []).forEach(function (t) { j.lc[t[0].toLowerCase()] = t[0]; });
+					Object.keys(j.cols || {}).forEach(function (t) { if (!j.lc[t.toLowerCase()]) j.lc[t.toLowerCase()] = t; });
+					return j;
+				})
+				.catch(function (e) { delete NAMES[k]; throw e; });
+		}
+		return NAMES[k];
+	}
+	var SQL_STOP = /^(on|where|left|right|inner|outer|cross|full|natural|join|set|group|order|limit|using|values|union|having|select|as|and|or|straight_join|use|force|ignore|partition|lateral)$/i;
+	/** Tables the SQL names and their aliases: {alias / table (lower case): table}. */
+	function sqlTables(text, d) {
+		var map = {}, re = /\b(?:from|join|into|update|table)\s+([`"[]?[\w.$]+[`"\]]?)(?:\s+(?:as\s+)?([A-Za-z_]\w*))?/gi, m, re2 = /,\s*([`"[]?[\w$]+[`"\]]?)(?:\s+(?:as\s+)?([A-Za-z_]\w*))?/g;
+		function add(t, a) {
+			t = String(t).replace(/[`"[\]]/g, ''); t = t.slice(t.lastIndexOf('.') + 1);
+			var real = d.lc[t.toLowerCase()];
+			if (!real) return false;
+			map[real.toLowerCase()] = real;
+			if (a && !SQL_STOP.test(a)) map[a.toLowerCase()] = real;
+			return true;
+		}
+		while ((m = re.exec(text))) {
+			if (!add(m[1], m[2])) continue;
+			var rest = text.slice(re.lastIndex), cut = rest.search(/\b(where|join|on|group|order|limit|having|union|set|values|left|right|inner|cross)\b|[;)]/i);   // FROM a x, b y
+			rest = cut < 0 ? rest : rest.slice(0, cut);
+			re2.lastIndex = 0;
+			var m2; while ((m2 = re2.exec(rest))) add(m2[1], m2[2]);
+		}
+		return map;
+	}
+	function nameHints(cm, lang, opt) {
+		if (!cm.showHint) return null;
+		var form = opt.formId !== undefined ? opt.formId : (window.nuNext && window.nuNext.form ? window.nuNext.form.id || '' : '');
+		var sqlAll = lang === 'SQL';
+		function inString(cur) {
+			var tok = cm.getTokenAt(cur);
+			return /string/.test(tok.type || '');
+		}
+		/** What to offer at the cursor: {kind: hash|col|table|any, from, word, qual}, or null. */
+		function context(force) {
+			var cur = cm.getCursor(), before = cm.getLine(cur.line).slice(0, cur.ch), m;
+			if ((m = /#([A-Za-z_]\w*)?$/.exec(before)) && !/#[A-Za-z_]\w*$/.test(before.slice(0, before.length - m[0].length)) && (force || lang !== 'CSS')) {   // not the closing # of #NAME#
+				var after = cm.getLine(cur.line).slice(cur.ch, cur.ch + 1);
+				return {kind: 'hash', from: {line: cur.line, ch: cur.ch - m[0].length}, word: m[1] || '', close: after !== '#', force: force};
+			}
+			if (!sqlAll && !inString(cur)) return null;
+			if ((m = /([A-Za-z_][\w$]*)\.([A-Za-z_]\w*)?$/.exec(before))) return {kind: 'col', qual: m[1], from: {line: cur.line, ch: cur.ch - (m[2] || '').length}, word: m[2] || ''};
+			m = /([A-Za-z_]\w*)?$/.exec(before);
+			var word = m[1] || '', head = before.slice(0, before.length - word.length);
+			if (/\b(from|join|into|update|table)\s+[`"[]?$/i.test(head) || /\bfrom\s+[^;()]*,\s*$/i.test(head)) return {kind: 'table', from: {line: cur.line, ch: cur.ch - word.length}, word: word};
+			if (!force && word.length < 2) return null;
+			return {kind: 'any', from: {line: cur.line, ch: cur.ch - word.length}, word: word};
+		}
+		function item(text, sub, icon, cls, ins) {
+			return {text: ins || text, className: cls, render: function (el) {
+				var i = elt('i', 'bi ' + icon + ' me-1 nuHintIcon'); i.setAttribute('aria-hidden', 'true');
+				el.appendChild(i); el.appendChild(elt('span', 'nuHintName', text)); if (sub) el.appendChild(elt('span', 'nuHintSig', '  ' + sub));
+			}};
+		}
+		function rank(list, w, key, prefixOnly) {
+			w = w.toLowerCase();
+			var a = [], b = [];
+			list.forEach(function (x) { var n = key(x).toLowerCase(), i = n.indexOf(w); if (!w || i === 0) a.push(x); else if (i > 0 && !prefixOnly) b.push(x); });
+			return a.concat(b);
+		}
+		function build(d, c) {
+			var out = [];
+			if (c.kind === 'hash') {
+				var hs = (d.fields || []).map(function (f) { return [f[0], f[1], 1]; }).concat((d.hash || []).map(function (h) { return [h[0], h[1], 0]; }));
+				return rank(hs, c.word, function (x) { return x[0]; }, !c.force).slice(0, 80).map(function (h) {
+					return item('#' + h[0] + '#', h[1], h[2] ? 'bi-input-cursor-text' : 'bi-hash', 'nuHintHash', '#' + h[0] + (c.close ? '#' : ''));
+				});
+			}
+			var text = cm.getValue(), map = sqlTables(text, d);
+			if (d.table && d.lc[d.table.toLowerCase()] && !map[d.table.toLowerCase()]) map[d.table.toLowerCase()] = d.lc[d.table.toLowerCase()];
+			if (c.kind === 'col') {
+				var t = map[c.qual.toLowerCase()] || d.lc[c.qual.toLowerCase()];
+				if (!t) return [];
+				return rank((d.cols[t] || []), c.word, function (x) { return x[0]; }).slice(0, 120).map(function (x) { return item(x[0], x[1], 'bi-layout-three-columns', 'nuHintCol'); });
+			}
+			var tabs = rank(d.tables || [], c.word, function (x) { return x[0]; }).map(function (x) { return item(x[0], '', x[1] === 'v' ? 'bi-eye' : 'bi-table', 'nuHintTable'); });
+			if (c.kind === 'table') return tabs.slice(0, 120);
+			var seen = {}, cols = [];
+			var order = d.table && d.lc[d.table.toLowerCase()] ? [d.lc[d.table.toLowerCase()]] : [];
+			Object.keys(map).forEach(function (k) { if (order.indexOf(map[k]) < 0) order.push(map[k]); });
+			order.forEach(function (t) { (d.cols[t] || []).forEach(function (x) { if (!seen[x[0]]) { seen[x[0]] = 1; cols.push([x[0], x[1] + ' · ' + t]); } }); });
+			out = rank(cols, c.word, function (x) { return x[0]; }).map(function (x) { return item(x[0], x[1], 'bi-layout-three-columns', 'nuHintCol'); });
+			return out.concat(tabs).slice(0, 120);
+		}
+		function hint(force) {
+			var c0 = context(force);
+			if (!c0) return false;
+			namesOf(form).then(function (d) {
+				if (!context(force)) return;
+				if (c0.kind !== 'hash' && !(d.tables || []).length) return;   // no right to see tables: only "#" variables
+				cm.showHint({completeSingle: false, closeCharacters: /[\s()[\]{};:>,='"`]/, hint: function () {
+					var c = context(force);
+					if (!c || c.kind !== c0.kind) return null;
+					var list = build(d, c);
+					return list.length ? {from: c.from, to: cm.getCursor(), list: list} : null;
+				}});
+			}).catch(function () { /* no names: no suggestions */ });
+			return true;
+		}
+		var onInput = function (c, change) {
+			if (change.origin !== '+input') return;
+			var t = change.text.join('');
+			if (/[#.]$/.test(t) || /[A-Za-z_]$/.test(t)) hint(false);
+		};
+		cm.on('inputRead', onInput);
+		var keys = null;
+		if (!opt._fnHints) { keys = {'Ctrl-Space': function () { hint(true); }}; cm.addKeyMap(keys); }
+		return {force: function () { return hint(true); }, detach: function () { cm.off('inputRead', onInput); if (keys) cm.removeKeyMap(keys); }};
 	}
 
 	// ================================================================ syntax check (0.8.781)

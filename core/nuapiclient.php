@@ -15,6 +15,8 @@ final class NuApiClient
 		'users:write'       => 'Create, change, archive and delete users',
 		'users:password'    => 'Set passwords / send welcome e-mails',
 		'users:login_link'  => 'Create one-time login links (nuBuilder Forte\'s LOGIN_TOKEN)',
+		'records:read'      => 'Read records of the forms the service user may open (lists, single records, OpenAPI)',
+		'records:write'     => 'Create, change and delete records of those forms (as the form: rights, validation, Before / After Save)',
 		'reports:run'       => 'Run reports (PDF download links, PDF, e-mail)',
 		'exports:run'       => 'Run saved data exports (Excel / CSV files; the service user needs the admin right Data export)',
 		'notifications:write' => 'Send notifications to users (bell) and read their read receipts',

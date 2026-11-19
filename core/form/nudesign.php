@@ -33,7 +33,7 @@ final class NuDesign
 		$open = (string)($q['open'] ?? '');
 		if (!self::allowed($meta)) return nu_url('form', ['f' => $meta->id, 'r' => $meta->hasBrowse() ? null : '-1']);
 		$extra = ['dsobj' => is_string($q['obj'] ?? null) ? $q['obj'] : null, 'dsfid' => is_string($q['fid'] ?? null) && $q['fid'] !== '' ? mb_substr($q['fid'], 0, 100) : null, 'dscolchg' => is_string($q['colchg'] ?? null) ? $q['colchg'] : null,
-			'dsdelete' => ($q['delete'] ?? '') === '1' ? '1' : null,
+			'dsdelete' => ($q['delete'] ?? '') === '1' ? '1' : null, 'dsev' => ($q['ev'] ?? '') === '1' ? '1' : null,   // 0.8.1331: the object's events dialog
 			'dswork' => in_array($open, ['code', 'history'], true) ? $open : (($q['draft'] ?? '') === '1' && $open === 'compare' ? 'changes' : null),
 			'dsfly' => $open === 'add' ? 'add' : ($open === 'objects' ? 'structure' : ($open === 'rules' ? 'rules' : null))];
 		// code search links (0.8.1172): the code part, its line (cl / ck / cq – assets/js/nu/nucodetools.js) and the list workspace
@@ -115,7 +115,7 @@ final class NuDesign
 			'self' => nu_url('form', ['f' => $meta->id, 'r' => $record, 'design' => '1', 'safe' => self::safe() ? '1' : null]),
 			// what to open / select first (0.8.1194): the parameters of the address as the server got them – form code that rewrites the
 			// address bar while the page loads (a permalink without them) must not lose them
-			'start' => (object)array_filter(array_intersect_key($_GET, array_flip(['dsobj', 'dsfid', 'dsitem', 'dswork', 'dsfly', 'dscolchg', 'dsdelete', 'cl', 'ck', 'cq'])),
+			'start' => (object)array_filter(array_intersect_key($_GET, array_flip(['dsobj', 'dsfid', 'dsev', 'dsitem', 'dswork', 'dsfly', 'dscolchg', 'dsdelete', 'cl', 'ck', 'cq'])),
 				static fn($v): bool => is_string($v) && $v !== '' && strlen($v) <= 200),
 			'safe_url' => nu_url('form', ['f' => $meta->id, 'r' => $record, 'design' => '1', 'safe' => self::safe() ? null : '1']),
 			'exit' => nu_url('form', ['f' => $meta->id, 'r' => $record, 'draft' => 'off']),
@@ -125,6 +125,7 @@ final class NuDesign
 				$db->all('SELECT zzzzsys_file_id, sfi_code, sfi_description FROM zzzzsys_file ORDER BY sfi_code')) : [],
 			'formats_all' => NuFormat::choices(), 'format_designer' => nu_format_designer_data(),
 			'record_check' => (bool)NuSecurity::get('record_check'),     // the global switch, for the tip of "Any record can be opened" (0.8.1234)
+			'details_candidates' => NuRowDetails::candidates($meta),      // row details: sub-forms and child tables to show (0.8.1316)
 			'form_tags' => NuFormMeta::tagValues(),                     // suggestions of Department / Team (0.8.1020)
 			'help_codes' => NuUserHelp::codeList(), 'help_admin' => NuUserHelp::canManage() ? nu_url('helppages') : '', 'help_edit' => NuUserHelp::canEdit(),   // user help pages (0.8.1023)
 			'ai' => $meta->isSystem() ? '' : nu_url('formai', ['f' => $meta->id]),

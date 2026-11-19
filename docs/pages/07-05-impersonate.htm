@@ -8,5 +8,6 @@
 <li><strong>Full access</strong>: work as the user (after a confirmation). Records are saved as this user; nuBuilder Next's log adds <code>acting_globeadmin</code> to every entry written meanwhile.</li>
 </ul>
 <p>A coloured bar (blue = view only, red = full access) stays on top of every page; <em>Back to globeadmin</em> (in the bar or the user menu) returns to the page where you started – no new login. Works for every user, also expired ones and users with two-step login (no code needed). Not available while acting: the user's password and the security page (two-step login, devices). If the user is deleted or gets a new password meanwhile, you are the globeadmin again. A session timeout logs you out completely. Start and end are logged (<code>impersonate_start</code> / <code>impersonate_end</code>).</p>
+<p>To see what an <strong>admin role</strong> gives before handing it out, use <a href="#admin-roles-test">Test role</a> on the role form: the same, with the role added to the chosen user for the session.</p>
 	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nuimpersonate.php</code></li></ul></details>
 </section>

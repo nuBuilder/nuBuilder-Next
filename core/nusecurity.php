@@ -467,8 +467,20 @@ final class NuSecurity
 			$base !== '' ? $base : ($seen !== '' ? t('secchk_chk_baseurl_seen', $seen) : t('secchk_chk_baseurl_none')), nu_url('configfile'));
 		$key = (string)nu_cfg('nuConfigSecretKey') !== '';
 		$add('secretkey', $key ? 'ok' : 'bad', 'secchk_chk_key', $key ? '' : t('secchk_chk_key_none'), $key ? '' : nu_url('apiclients'));
-		$plain = NuTwoFA::plainCount();
-		if ($plain > 0) $add('totp_plain', 'warn', 'secchk_chk_totp_plain', t('secchk_chk_totp_plain_n', $plain), nu_url('apiclients'));
+		// secrets at rest (0.8.1326, NuSecret): encrypted / plain / unreadable, the shared SMTP password
+		try {
+			$ss = NuSecret::status();
+			$sp = [];
+			foreach ($ss['places'] as $pl => $pc) if ($pc['plain'] > 0) $sp[] = t('secchk_secret_' . $pl) . ' (' . $pc['plain'] . ')';
+			$bad = $ss['total']['bad'];
+			$det = [];
+			if ($sp) $det[] = t('secchk_chk_secrets_plain', implode(', ', $sp));
+			if ($bad) $det[] = t('secchk_chk_secrets_bad', $bad);
+			if ($ss['smtp_shared'] && !$ss['smtp_only']) $det[] = t('secchk_chk_secrets_smtp');
+			$st = $bad || ($sp && !$key) ? 'bad' : ($sp || ($ss['smtp_shared'] && !$ss['smtp_only']) ? 'warn' : 'ok');
+			$add('secrets', $st, 'secchk_chk_secrets', $det ? implode(' ', $det) : t('secchk_chk_secrets_ok', $ss['total']['sealed']),
+				$sp && $key ? '' : ($ss['smtp_shared'] && !$ss['smtp_only'] ? nu_url('email', ['tab' => 'settings']) . '#m_onlyWrap' : ''));
+		} catch (Throwable) { /* no tables yet */ }
 		$add('adminpw', self::weakAdminPassword() ? 'bad' : 'ok', 'secchk_chk_adminpw', self::weakAdminPassword() ? t('secchk_chk_adminpw_weak') : '', nu_url('configfile'));
 		$add('admin2fa', nu_cfg('nuConfig2FAAdmin') ? 'ok' : 'warn', 'secchk_chk_admin2fa', nu_cfg('nuConfig2FAAdmin') ? '' : t('secchk_chk_admin2fa_off'), nu_url('configfile'));
 		$ipa = NuIpAccess::settings();   // IP access (0.8.722)

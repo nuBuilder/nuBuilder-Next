@@ -1,10 +1,11 @@
 {
     "key": "ticket",
-    "version": 10,
+    "version": 11,
     "prefix": "tkt_",
     "home": "tkthome",
     "date_ref": "2026-10-29",
     "changes": {
+        "11": "The tickets list has row details: ▸ opens the description, channel and creation time of a ticket (hidden columns of the list).",
         "10": "The subject of a ticket suggests the subjects of earlier tickets while typing.",
         "9": "Calendars: the tickets list has a calendar view by due date, the category form a calendar of its tickets, the support dashboard a \"Due dates\" calendar.",
         "8": "Three shared pivots of the tickets list: by category and status, workload per agent, due tickets per month.",
@@ -372,7 +373,7 @@
                 "sfo_edit_javascript": "// the ticket as the customer sees it: no Handling tab, no internal fields; rating once the ticket is resolved\nif (window.tktLevel === 'tkt_customer') {\n\tnuHideTabByTitle('Handling');\n\tif (['resolved', 'closed'].indexOf(nuGetValue('tic_status')) < 0) nuHide('tic_rating');\n} else if (nuIsNewRecord()) {\n\tnuHide('tic_rating');\n}\n// new ticket: sensible defaults (Before Save sets them as well)\nif (nuIsNewRecord()) {\n\tif (!nuGetValue('tic_priority')) nuSetValue('tic_priority', 'normal');\n\tif (!nuGetValue('tic_status')) nuSetValue('tic_status', 'new');\n\tif (!nuGetValue('tic_channel')) nuSetValue('tic_channel', window.tktLevel === 'tkt_customer' ? 'portal' : 'phone');\n}\n// buttons of the Handling tab: only where they make sense\nif (nuIsNewRecord() || nuGetValue('tic_agent_id') === window.tktMe) nuHide('tic_take');\nif (nuIsNewRecord() || nuGetValue('tic_level') === '2' || !nuUserHasPermission('tkt_escalate')) nuHide('tic_escalate');\n",
                 "sfo_style": null,
                 "sfo_mobile_view": null,
-                "sfo_json": "{\"nunext\":{\"layout\":\"grid\",\"audit\":true,\"help\":\"tkt_help_ticket\",\"help_tabs\":{\"tkt_tab_006\":\"tkt_help_handling\"},\"calendar\":{\"start\":\"tkt_br_016\",\"title\":\"tkt_br_014\",\"group\":\"tkt_br_009\",\"view\":\"month\",\"allday\":false,\"edit\":true,\"drag\":true}}}"
+                "sfo_json": "{\"nunext\":{\"layout\":\"grid\",\"audit\":true,\"help\":\"tkt_help_ticket\",\"help_tabs\":{\"tkt_tab_006\":\"tkt_help_handling\"},\"calendar\":{\"start\":\"tkt_br_016\",\"title\":\"tkt_br_014\",\"group\":\"tkt_br_009\",\"view\":\"month\",\"allday\":false,\"edit\":true,\"drag\":true},\"details\":{\"cols\":true,\"mode\":\"one\"}}}"
             }
         ],
         [
@@ -4075,6 +4076,48 @@
                 "sbr_order": 60,
                 "sbr_width": 80,
                 "sbr_json": "{\"nunext\":{\"filter\":true}}"
+            }
+        ],
+        [
+            "zzzzsys_browse",
+            {
+                "zzzzsys_browse_id": "tkt_br_017",
+                "sbr_zzzzsys_form_id": "tktticket",
+                "sbr_title": "Description",
+                "sbr_display": "tic_description",
+                "sbr_align": "l",
+                "sbr_format": "",
+                "sbr_order": 90,
+                "sbr_width": 0,
+                "sbr_json": null
+            }
+        ],
+        [
+            "zzzzsys_browse",
+            {
+                "zzzzsys_browse_id": "tkt_br_018",
+                "sbr_zzzzsys_form_id": "tktticket",
+                "sbr_title": "Channel",
+                "sbr_display": "CASE tic_channel WHEN 'email' THEN 'E-mail' WHEN 'phone' THEN 'Phone' WHEN 'chat' THEN 'Chat' ELSE 'Portal' END",
+                "sbr_align": "l",
+                "sbr_format": "",
+                "sbr_order": 100,
+                "sbr_width": 0,
+                "sbr_json": null
+            }
+        ],
+        [
+            "zzzzsys_browse",
+            {
+                "zzzzsys_browse_id": "tkt_br_019",
+                "sbr_zzzzsys_form_id": "tktticket",
+                "sbr_title": "Created",
+                "sbr_display": "t.created_at",
+                "sbr_align": "l",
+                "sbr_format": "D|dd.mm.yyyy hh:nn",
+                "sbr_order": 110,
+                "sbr_width": 0,
+                "sbr_json": null
             }
         ],
         [

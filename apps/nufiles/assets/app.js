@@ -449,6 +449,9 @@
 		$('nufColToggle').classList.toggle('nuf-off', grid);
 		$('nufTable2').classList.toggle('d-none', files);
 		$('nufRoBadge').classList.toggle('d-none', !(boot.readonly || (state.share && state.share.rights.length === 1)));
+		// phones: a selection swaps the toolbar – the buttons for the selection plus "× n" to clear it; without one only Upload / New … (CSS)
+		$('nufApp').classList.toggle('nuf-has-sel', state.sel.size > 0);
+		$('nufSelCount').textContent = String(state.sel.size);
 		if (!state.share) return;
 		var nsel = state.sel.size;
 		document.querySelectorAll('#nufTools [data-need]').forEach(function (b) {
@@ -574,7 +577,9 @@
 		});
 		tr.addEventListener('click', function (e) {
 			if (e.target.closest('input, button, a, .dropdown-menu')) return;
-			if (e.ctrlKey || e.metaKey) {
+			// a click next to the checkbox (its cell), or a tap while files are ticked on a touch screen, ticks / unticks this row only –
+			// it used to replace the selection, so a near miss of the 4th checkbox unticked the other three
+			if (e.ctrlKey || e.metaKey || e.target.closest('.nuf-c-check') || addTap()) {
 				chk.checked = !chk.checked;
 			} else {
 				state.sel.clear();
@@ -587,6 +592,9 @@
 		});
 		return tr;
 	}
+
+	/** Touch screen (no mouse) with files ticked: a tap adds to / takes from the selection, as in a phone's own file app. */
+	function addTap() { return state.sel.size > 0 && !window.matchMedia('(any-pointer: fine)').matches; }
 
 	/** Pictures the grid view shows: a server thumbnail (GD) or, for SVG, the file itself. */
 	function thumbable(it) {
@@ -637,7 +645,7 @@
 		});
 		div.addEventListener('click', function (e) {
 			if (e.target.closest('input, button, a, .dropdown-menu')) return;
-			if (e.ctrlKey || e.metaKey) chk.checked = !chk.checked;
+			if (e.ctrlKey || e.metaKey || addTap()) chk.checked = !chk.checked;
 			else { clearOthers(); chk.checked = true; }
 			apply();
 		});
@@ -712,6 +720,8 @@
 		if (on) state.items.forEach(function (i) { state.sel.add(keyOf(i)); });
 		render();
 	});
+
+	$('nufSelClear').addEventListener('click', function () { state.sel.clear(); render(); });
 
 	$('nufAllG').addEventListener('change', function () { $('nufAll').checked = this.checked; $('nufAll').dispatchEvent(new Event('change')); });
 
@@ -1495,7 +1505,9 @@
 	if (!window.location.hash && boot.shares && boot.shares.length) {
 		var last = null;
 		try { last = localStorage.getItem('nufLast'); } catch (e) { last = null; }
-		history.replaceState(null, '', '#/' + encodeURIComponent(shareById(last) ? last : boot.shares[0].id) + '/');
+		// the globeadmin starts in the web root (share "webroot" of the default settings, 0.8.1315); others in the share used last
+		var start = boot.user && boot.user.globeadmin && shareById('webroot') ? 'webroot' : (shareById(last) ? last : boot.shares[0].id);
+		history.replaceState(null, '', '#/' + encodeURIComponent(start) + '/');
 	}
 	window.addEventListener('hashchange', function () { if (state.share) try { localStorage.setItem('nufLast', state.share.id); } catch (e) { /* none */ } });
 	route();

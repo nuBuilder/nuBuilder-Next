@@ -13,14 +13,18 @@ if ($action === 'stop') {
 	nu_redirect($back);
 }
 if ($action === 'start') {
-	if (nu_post('mode') === 'full') NuSecurity::requireRecentAuth(nu_url('user', ['id' => nu_post('id')]));   // full access: password confirmed recently
-	$err = NuImpersonate::start(nu_post('id'), nu_post('mode'), nu_post('back'));
+	$roleId = nu_post('role');                              // test an admin role (0.8.1318)
+	$from = $roleId !== '' ? nu_url('adminroles', ['id' => $roleId]) : nu_url('user', ['id' => nu_post('id')]);
+	if (nu_post('mode') === 'full') NuSecurity::requireRecentAuth($from);   // full access: password confirmed recently
+	if ($roleId !== '' && nu_post('id') === '') { nu_flash('warning', t('imp_test_pick_user')); nu_redirect($from); }
+	$err = NuImpersonate::start(nu_post('id'), nu_post('mode'), nu_post('back'), $roleId);
 	if ($err !== null) {
 		nu_flash('danger', t($err));
-		nu_redirect(nu_url('home'));
+		nu_redirect($roleId !== '' ? $from : nu_url('home'));
 	}
 	$i = NuImpersonate::active();
-	nu_flash('info', t($i['mode'] === 'view' ? 'imp_started_view' : 'imp_started_full', $i['login']));
+	if ($roleId !== '') nu_flash('info', t($i['mode'] === 'view' ? 'imp_test_started_view' : 'imp_test_started_full', (string)$i['role_name'], $i['login']));
+	else nu_flash('info', t($i['mode'] === 'view' ? 'imp_started_view' : 'imp_started_full', $i['login']));
 	nu_redirect(nu_url('home'));
 }
 nu_redirect(nu_url('home'));

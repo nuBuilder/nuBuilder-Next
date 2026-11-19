@@ -26,15 +26,12 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **Audit columns switch** (proposed 3 Nov 2026): created_at / created_by / updated_at / updated_by are stamped only for forms with
       sfo_json nunext.audit = true (set by the New form wizard for a new table). The mark is invisible – proposal: a switch in design
       mode → Form settings with an (i) tip, so it can be seen and turned off (and on for an existing table with the four columns).
-- [ ] **Imitate Forte's wrapping of complex browse SQL?** (0.8.691): nuBuilder Forte (git HEAD) wraps the ticket list's browse SQL as
-      complex SQL – columns may not use the SQL's table aliases and the ORDER BY is ignored (compat-known.json).
-- [ ] **Masked values like Forte?** (compat.js): edit:samplecustomer – nuBuilder Forte shows the stored phone value, nuBuilder Next the
-      masked one; browse:ttcus (Forte git HEAD 23559e7 "complex SQL in Browse Forms" shows no rows) – both in compat-known.json.
 - [ ] **Drawing order of objects** (absolute layout): nuBuilder Forte sorts content boxes first, then sob_all_order, then the tab order,
       run objects last at the same order; nuBuilder Next sorts tab, sob_all_order, top, left. Matters only for objects with the same order
       value (stacking, keyboard Tab order) – align exactly if wanted (0.8.567 fixed the z-index).
 
 ## SQL Server
+- [ ] **Row details child tables** (0.8.1316) – NuRowDetails::candidates finds child tables by column name only (no foreign key query on SQL Server); rows read with OFFSET / FETCH, names in [brackets]; untested there
 - [ ] **Suggestions while typing** (0.8.1212) – NuSuggest::rows wraps the query as `SELECT TOP n * FROM (…) nuS` on SQL Server (falls back to the query as written when that fails, e.g. with ORDER BY); untested there
 - [ ] **Pivot date groups on SQL Server** (0.8.1151) – NuPivot::dimExpr (DATEPART / FORMAT / iso_week, weekday via @@DATEFIRST) untested; open a pivot with a date by month / week / weekday
 - [ ] **Column totals of form lists** (0.8.1127) – SUM / AVG use TRY_CONVERT(DECIMAL(38, 10), column) on SQL Server; untested there. A failing
@@ -66,6 +63,7 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **SQL builder list** (0.8.688): concatenates 'SQL:' + id with +.
 
 ## Live server, e-mail and deployment
+- [ ] **PHP 8.5** (0.8.1317) – curl_close() and PDO::MYSQL_ATTR_USE_BUFFERED_QUERY gave "Deprecated" on PHP 8.5 (WampServer); fixed, and run.php now refuses the known 8.5 deprecations. Not run on PHP 8.5 here (container has 8.3): installer, update page, backups, data export, App cloner on 8.5 with display_errors on.
 - [ ] **Existing nuBuilder Forte database** (0.8.1008, no longer blocked): installer on a copy of the live Forte database – backup
       tick, integrity check, nuBuilder Forte keeps working afterwards; a hand-written nuconfig.php shows the backup note on the sign-in page.
 - [ ] **E-mail → Test → Check connection** with the real SMTP server (also OAuth 2); PHPMailer 7.2.0 (0.8.1257) with that server.
@@ -82,8 +80,10 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **Library packs on a live server** (0.8.865): Update → Libraries status "Installed (pack / nuBuilder Forte's copy / copied by hand)".
 - [ ] **Database tools in an installed app** (0.8.852–0.8.854): phpMyAdmin and Adminer open from the app window (Chrome / Edge "Install").
 - [ ] **Installable app** (0.8.1136) – on HTTPS: install on Android / desktop Chrome, Add to Home Screen on iPhone; icon, name, favourites as shortcuts, offline page in airplane mode, Branding switch off removes the worker; own logo as icon.
+- [ ] **PHP 8.5 and the health check, please verify** (0.8.1317 / 0.8.1335) – the installation on PHP 8.5 without deprecation notices (installer Libraries step, backups, data export); ?p=health with a monitoring tool (key as header), the cron warning gone once the server's cron runs nucron.php.
 
 ## Sign-in and security
+- [ ] **Test an admin role** (0.8.1318) – role form → Test role: view only / full access on a chosen user, the role's tools on the start page and their pages open, nothing saved to the user, Back returns to the role form; as an admin-role user with Act as user + Admin roles only roles within your own rights.
 - [ ] **Own PHP apps with nuexternal.php** (0.8.1273) – please verify on the live server: an app in a sub-folder of nuBuilder Next gets the signed-in user, returns there after the sign-in, loses access after signing out; with $nuConfigSettingsFromDB the timeout of zzzzsys_config counts
 - [ ] **Hardening from the security check of 0.8.1061** (decision: which to build) – no exploitable finding; four optional points:
       1. *Inline styles in list cells*: the cleaner keeps `style` (without `url()` / scripts), so `position: fixed` could draw over the
@@ -223,6 +223,10 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
   focused again), Esc; row details with *Hidden columns and cut text* and a *Related list* on a form with a sub-form (lookups shown by
   their text, fields of a user with field access rules hidden / masked), Space / → / ← on a row, the phone card view. 0.8.1189 / 0.8.1190: the soft
   rounded highlight of the focused / hovered row and scrolling – the row stays visible below the top bar, the floating titles and above a sticky footer.
+- [ ] **Row details: detail form, several lists, Expand all, hooks** (0.8.1316): a compact detail form shown read only in the strip (rights,
+  field access, its code; frame height), two or more related lists as tabs (sub-forms and child tables found by name / foreign key – check
+  the offered tables on a real database), One at a time / Several, Expand all and paging (open rows kept), nuNextRowDetails, nuOnRowExpand /
+  nuOnRowCollapse, phones.
 - [ ] **Back = the page before** (0.8.1017 / 0.8.1018): Back on own pages and form pages after opening them from different places (start
   page, side bar, search, a link in a record); after the browser's own Back.
 - [ ] **Form department / team** (0.8.1020): set in design mode, filter the forms list by them.
@@ -258,8 +262,10 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       and stay 1.–2. after a move), moving on a form with Before Save code or validation rules, a new record from a dragged range, phones (touch drag
       needs a long press). SQL Server not tested (the date range filter compares the list column with 'Y-m-d H:i:s' text).
 - [ ] **Procedures list: search in code** (0.8.1254) – please verify: tick *Code* next to the search of the procedures list; procedures whose PHP or JavaScript contains the text are found.
+- [ ] **Forms, please verify** (0.8.1316 / 0.8.1328 / 0.8.1329 / 0.8.1332) – row details with own content, child-table lists and the record form on a real list (Expand all, mode one, kept after a reload); the leave dialogue (Discard as a red link above); a sub-form whose beforeinsertrow sets nuCancel; date fields of own pages in the language's format (user form Valid until, additional levels) also typed by hand.
 
 ## Users, access levels and permissions
+- [ ] **Admin role form, changed rights marked** (0.8.1323) – change a few rights of an existing role: the rows stay marked (old level shown) until Save; Show changes only / Undo all.
 - [ ] **Access level Users search, notification editor on wide screens, lighter greys** (0.8.1297–0.8.1299) – please verify: the search in an access level's Users card, the notification editor from 1400 px (preview, summary, buttons in the side column), the light grey badges and the light blue chosen filter buttons on the pages used every day (also dark mode)
 - [ ] **Start pages at a glance** (0.8.1264–0.8.1283) – please verify: the button right of Customise on the start page (right-click / long press on Home elsewhere) – tabs Home forms / Tile pages, rows on one line, User Home in the head; an empty tile page is not kept (the level uses the default); the user menu order (own items · tools · help · System info)
 - [ ] **Delete access level with expired users** (0.8.1250) – a level used only by expired users can be deleted; check that those users show an empty access level and that nuBuilder Forte's user form handles them
@@ -286,8 +292,10 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       templates offer only these; Settings → General → *Languages* adds / removes them later.
 - [ ] **Accessibility features switch**: define what `sus_accessibility_features` should do in nuBuilder Next (the switch on the user form
       is hidden – `NU_FEATURE_ACCESSIBILITY` in `core/nuapp.php`; saving a user keeps the stored value).
+- [ ] **Admin roles, please verify** (0.8.1318 / 0.8.1323) – *Test role* as a real user (view only and full access), the banner names the role, ending it brings the globeadmin back; changed rights stay marked until Save.
 
 ## Reports and dashboards
+- [ ] **Reports as Excel, please verify** (0.8.1324) – real reports of the live servers: titles, group rows and totals land in the right columns; COUNT(…) in a footer stays empty as in the PDF; Send to back / Bring to front of the designer now also change the print order (0.8.1313).
 - [ ] **Reports with AI** (0.8.1097) – please verify with a real AI chat: a new report from a table (grouping, totals, page numbers), a
       change to an existing report (ids kept – untouched objects stay as they were), the variant with a query written by the AI, the preview
       of a report with a launch form (criteria are empty), Restore on the History tab; on SQL Server the query check is untested.
@@ -335,6 +343,8 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **Tom Select 2.7.0** (0.8.1131) – searchable selects in light / dark (caret, empty option first, search with ß / umlauts).
 
 ## Update page, backups and admin tools
+- [ ] **File Manager, please verify** (0.8.1309 / 0.8.1314 / 0.8.1315) – on a phone the toolbar follows the selection; ticking several files no longer unticks the others; the globeadmin starts in the share webroot.
+- [ ] **Please verify: Getting ready checklist** (0.8.1310) – on a fresh installation and on the live servers: the points that check themselves show the right state (backup, cron, mail, libraries, HTTPS), the links lead to the right page, hide for 7 days / for good, and a new red security or backup point brings the bar back.
 - [ ] **System info, page width, compact settings, code search on phones** (0.8.1226–0.8.1242) – please verify: System info… in the user menu (Copy for support), Customise → Appearance → page width on a large monitor, Settings → Compact, code search on a phone (Options / Filters sheets, chips).
 - [ ] **Backup memory** (0.8.1209) – please verify a backup before an update on the live server with a large log (the forum report);
       the folded Database steps card (0.8.1207) and no tooltip over the Check & install dialogue on a phone (0.8.1208).
@@ -430,6 +440,7 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       `nuNextSetSaveValue`, `nuGetFormProperties`, `nuGetURLParams`, `nuCreateTableFromSelect` with parameters, `nuAddJavascript` options.
 - [ ] **Shared login** only nuBuilder Forte → nuBuilder Next; the other way would need a change in Forte.
 - [ ] **Compatibility check on the owner's forms** (real data).
+- [ ] **Compatibility check, please verify** (0.8.1330 / 0.8.1331) – on a Forte database: only open features shown, the supported ones folded; the places link to the right code (design mode part, object events, procedures, Setup header).
 
 ## Documentation
 - [ ] **"Where is it now?" page for Forte users** (0.8.985, proposal C of the older user guide, optional) – every button of Forte's Setup / Builders tabs and Options menu with its place in nuBuilder Next.
@@ -532,23 +543,25 @@ Checked against what nuBuilder Next already has (October 2026) – only real gap
 ### Useful (5–6)
 - [ ] **6 · Workflow / approvals** – status field + allowed transitions + who may do them + notification, defined without code.
 - [x] **6 · In-app notifications** – the notification centre (0.8.357).
-- [ ] **6 · Recycle bin for records** – deleted records restorable for n days (soft delete per form, opt-in).
+- [ ] **Recycle bin, please verify** (0.8.1325) – restore on SQL Server (dates, identity keys: an IDENTITY primary key refuses an explicit key without SET IDENTITY_INSERT – not handled yet); very large sub-forms (8 MB limit per record).
 - [x] **6 · Dashboard builder** – built in 0.8.298.
 - [x] **6 · Docker image / docker-compose** – built in 0.8.1137 (docker/, CI matrix MariaDB 10.11 / 11.4 + MySQL 8.4 × PHP 8.2 / 8.3, CI job docker, image to ghcr.io at every published release).
 - [ ] **Docker, please verify** (0.8.1137) – nothing of it could run here (no registry access): the first push runs the CI jobs mysql (6 combinations; MySQL 8.4 with the Forte dump is new) and docker (build + compose + smoke); the first published release runs .github/workflows/docker.yml (amd64 + arm64; check the package is public under the repository's Packages). Then try docker/compose.yml on a computer with Docker.
-- [ ] **6 · Health / status endpoint** – JSON for monitoring tools: database reachable, disk space, age of last backup and cron run.
+- [x] **6 · Health / status endpoint** – built in 0.8.1335 (?p=health, key in Settings → Data & logs, nucron.php health).
 - [ ] **5–6 · The settings marked "Not yet"** on the Settings page – sticky list headers, close after save, user form labels, keep session
       alive, browser tab title, calendar options … Do the ones users ask for.
 - [x] **5 · Branding** – built in 0.8.297.
-- [ ] **5 · Secrets encrypted at rest** – SMTP password, API secrets and similar values in the database encrypted with a key from nuconfig.php.
+- [ ] **Secrets at rest, please verify** (0.8.1326) – rekey on a live server whose nuconfig.php is not writable for the PHP user (then the --old flow); SMTP "only in nuBuilder Next" with a Forte installation on the same database (Forte mail stops – expected); the App cloner's stored target password (zzzzsys_app_cloner, Forte's table) stays plain text.
 - [ ] **5 · E-mail queue** – send in the background with retry; failed mails visible and resendable.
 - [ ] **5 · GDPR helpers** – export / erase all data of one person across tables; retention rules per table.
-- [ ] **5 · Smarter code editor** – autocomplete of tables, columns and hash variables in SQL / PHP / JS (functions done in 0.8.593).
+- [x] **5 · Smarter code editor** – functions 0.8.593; tables, columns and hash variables 0.8.1336.
+- [ ] **Code editor names, please verify** (0.8.1336) – SQL Server (INFORMATION_SCHEMA, schema-qualified names `dbo.x` are matched by the last part); databases with thousands of tables (lists capped at 3000 tables / 60000 columns).
 
 ### Nice to have (1–4)
 - [x] **4 · Installable app (PWA)** – built in 0.8.1136 (manifest, icons, service worker for static files, offline page, switch in Branding). Not built: reading offline (pages stay on the server – option C2 of the proposal, if users ask).
 - [x] **4 · "Who is editing" presence** – built with the concurrent-edit protection (0.8.401).
 - [ ] **3 · File storage on S3 / WebDAV** instead of the server folder / database.
 - [ ] **3 · Multi-tenancy** – see the proposal above.
-- [ ] **2 · GraphQL API** besides REST.
+- [ ] **2 · GraphQL API** besides REST – decided 0.8.1337 (the owner): records over REST + OpenAPI first (built); GraphQL read-only on top of NuApiRecords only when a client asks for it (schema from the forms, depth / cost limits, own scope).
+- [ ] **Records over the API, please verify** (0.8.1337) – SQL Server (paging, IN (list query)); forms whose Before Browse builds #TABLE_ID# (the list runs it once per request); a form whose Before Edit writes output.
 - [ ] **2 · Plugin system** for third-party extensions.

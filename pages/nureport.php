@@ -17,4 +17,4 @@ if ($launch !== '' && NuFormMeta::load($launch) && NuAcl::can($launch)) {
 	nu_redirect(nu_url('form', array_filter(['f' => $launch, 'r' => '-1', 'rpt' => (string)$report['sre_code'], 'iframe' => ($_GET['iframe'] ?? '') === '1' ? '1' : null,
 		'bt' => $_GET['bt'] ?? null], static fn($v) => $v !== null && $v !== '')));
 }
-nu_redirect(nu_url('reportpdf', ['c' => (string)$report['sre_code']]));
+nu_redirect(nu_url('reportpdf', ['c' => (string)$report['sre_code'], 'fmt' => ($_GET['fmt'] ?? '') === 'xlsx' ? 'xlsx' : null]));

@@ -30,7 +30,7 @@
 	border-bottom: 1px solid #c6d0e0; cursor: pointer; user-select: none; }
 .rdBandActive { background: #cfe0fb; }
 .rdBandInfo { color: #667; }
-.rdBandBody { position: relative; overflow: visible;
+.rdBandBody { position: relative; overflow: visible; isolation: isolate;
 	background-image: linear-gradient(to right, rgba(60, 90, 140, .09) 1px, transparent 1px), linear-gradient(to bottom, rgba(60, 90, 140, .09) 1px, transparent 1px); }
 .rdNoGrid .rdBandBody { background-image: none; }
 .rdBandGrip { height: 5px; margin-top: -2px; cursor: ns-resize; position: relative; z-index: 3; }

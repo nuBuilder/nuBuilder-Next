@@ -46,6 +46,7 @@ final class NuSettingsHub
 		} elseif ($section === 'logs') {
 			if (NuAcl::can(NuAcl::FORM_LOG)) $out['log'] = ['bi-journal-text', t('nav_log'), t('sh_log_d'), nu_url('log')];
 			if (NuAdmin::can('audit', 'view')) $out['audit'] = ['bi-clock-history', t('aud_title'), t('sh_audit_d'), nu_url('audit')];
+			if (NuRecycle::canSeeAny()) $out['recyclebin'] = ['bi-trash3', t('rb_title'), t('rb_title_tip'), nu_url('recyclebin')];   // recycle bin (0.8.1325)
 			if (NuAcl::can(NuAcl::FORM_EMAILLOG)) $out['emaillog'] = ['bi-envelope-paper', t('mail_tab_log'), t('sh_emaillog_d'), nu_url('email', ['tab' => 'log'])];
 			if (NuAcl::can(NuAcl::FORM_DEBUG)) $out['debug'] = ['bi-bug', t('sh_debug'), t('sh_debug_d'), nu_url('debug')];
 			foreach (['apiclients', 'webhooks', 'aiproviders'] as $k) if ($x = $tile($k)) $out[$k] = $x;
@@ -73,7 +74,8 @@ final class NuSettingsHub
 		$own = static fn(string $s): string => nu_url('settings', ['s' => $s]);
 		$p = [
 			'general'    => [$can('settings') || $can('setupwizard') ? ['general', t('sh_general'), $own('general'), 'settings', false] : null,
-				NuAdmin::can('setupwizard', 'change') ? ['setupwizard', t('wiz_title'), nu_url('setupwizard'), 'setupwizard', false] : null],
+				NuAdmin::can('setupwizard', 'change') ? ['setupwizard', t('wiz_title'), nu_url('setupwizard'), 'setupwizard', false] : null,
+				NuReady::allowed() ? ['gettingready', t('gr_title'), nu_url('gettingready'), 'settings', false] : null],
 			'look'       => [self::ga() || $can('homelayout') || $can('listviews') || $can('branding') ? ['look', t('sh_look'), $own('look'), 'settings', false] : null,
 				$can('branding') ? ['branding', t('brand_title'), nu_url('branding'), 'branding', true] : null,
 				$can('branding') ? ['themes', t('theme_title'), nu_url('themes'), 'themes', true] : null],

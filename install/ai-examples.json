@@ -88,7 +88,7 @@
 							"type": "input",
 							"label": "Phone",
 							"input": "text",
-							"format": "T|+99 99 999 99 99",
+							"format": "T|+9 999 999 9999",
 							"top": 128,
 							"left": 170,
 							"width": 180,

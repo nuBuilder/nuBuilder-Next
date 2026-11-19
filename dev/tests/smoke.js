@@ -12,7 +12,7 @@ let fails = 0;
 const ok = (name, cond, info = '') => { console.log((cond ? 'ok   ' : 'FAIL ') + name + (info ? '  ' + info : '')); if (!cond) fails++; };
 const ROUTES = ['home', 'security', 'log', 'sessions', 'vendor', 'apiclients', 'settings', 'branding', 'setupwizard', 'dashboards', 'configfile', 'globalcode', 'userfields', 'help', 'tutorial', 'compat', 'update', 'sample', 'procedures',
 	'reports', 'sqlbuilder', 'prompts', 'import', 'email', 'emailtemplates', 'users', 'access', 'forms', 'formats', 'items', 'permissions', 'files',
-	'translations', 'securitycheck', 'audit', 'notifications', 'selftest'];
+	'translations', 'securitycheck', 'audit', 'notifications', 'selftest', 'gettingready'];
 
 async function login(ctx, user, pw) {
 	const p = await ctx.newPage();

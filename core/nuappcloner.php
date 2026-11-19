@@ -515,8 +515,8 @@ final class NuAppCloner
 
 		// one unbuffered SELECT per table (0.8.295, as mysqldump): read once from start to end, constant memory – LIMIT/OFFSET pages
 		// had to skip all earlier rows again and again. Nothing else may run on the source connection until the result is read.
-		$buffered = $this->s->getAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY);
-		$this->s->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, false);
+		$buffered = $this->s->getAttribute(nu_pdo_mysql_buffered());
+		$this->s->setAttribute(nu_pdo_mysql_buffered(), false);
 		$rs = null;
 		if (!$export) $this->t->beginTransaction();                    // the rows of one table in one transaction: much faster on InnoDB
 		try {
@@ -551,13 +551,13 @@ final class NuAppCloner
 				}
 			}
 			if ($rs) { try { $rs->closeCursor(); } catch (PDOException) {} }
-			$this->s->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, $buffered);
+			$this->s->setAttribute(nu_pdo_mysql_buffered(), $buffered);
 			if ($export) throw $e;
 			$this->warn(t('ac_obj_failed', 'rows', $tb, $e->getMessage()));
 			return;
 		}
 		$rs->closeCursor();
-		$this->s->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, $buffered);
+		$this->s->setAttribute(nu_pdo_mysql_buffered(), $buffered);
 		$this->counts[$tb] = $total;
 		if ($total > 0) $this->say(t('ac_n_rows', $tb, $total));
 	}

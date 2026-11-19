@@ -77,6 +77,9 @@ if (nu_is_post()) {
 				$msg[] = t('saved');
 			}
 		}
+		if (in_array('health', $parts, true) && NuSettingsHub::ga()) {   // health check thresholds (0.8.1335)
+			if (NuHealth::saveLimits((int)nu_post('hc_backup_hours'), (int)nu_post('hc_cron_hours'), (int)nu_post('hc_disk_mb'))) $msg[] = t('saved');
+		}
 		if (in_array('cron', $parts, true) && (NuSettingsHub::ga() || NuAdmin::can('procedures', 'change'))) {
 			$was = NuCronRun::settings();
 			if (!NuCronRun::saveSettings((string)nu_post('cron_mail'))) { nu_flash('danger', t('cron_err_mail')); nu_redirect(nu_url('settings', ['s' => 'data']) . '#shCron'); }
@@ -84,6 +87,15 @@ if (nu_is_post()) {
 		}
 		nu_flash('success', $msg ? implode(' ', array_unique($msg)) : t('set_saved_none'));
 		nu_redirect(nu_url('settings', ['s' => 'data']));
+	}
+	if ($action === 'health_key') {                    // health check key (0.8.1335): shown once, only its hash is stored
+		if (!NuSettingsHub::ga()) NuAcl::require('-');
+		NuSecurity::requireRecentAuth(nu_url('settings', ['s' => 'data']) . '#shHealth');
+		$remove = nu_post('key_op') === 'remove';
+		$k = NuHealth::newKey($remove);
+		if (!$remove) $_SESSION['nu_health_key'] = $k;
+		nu_flash('success', t($remove ? 'hc_key_removed' : 'hc_key_saved'));
+		$back('data', 'shHealth');
 	}
 	if ($action === 'audit_set') {                     // audit trail (also on the audit page)
 		NuAdmin::require('audit');
@@ -287,7 +299,33 @@ nu_layout_start($title, 'home', ['container' => 'nuContainer', 'settings' => $se
 		</div>
 		<?= $card('shBackups', 'bi-archive', t('sh_backups'), (string)ob_get_clean()) ?>
 	<?php endif; ?>
+	<?php if (NuSettingsHub::ga()): $hs = NuHealth::settings(); $hUrl = nu_base_url() . 'index.php?p=health'; $hKey = (string)($_SESSION['nu_health_key'] ?? ''); unset($_SESSION['nu_health_key']); ob_start(); // health check (0.8.1335) ?>
+		<input type="hidden" name="parts[]" value="health">
+		<div class="small mb-2"><?= h(t('hc_url')) ?> <code class="text-break" id="shHealthUrl"><?= h($hUrl) ?></code>
+			<a class="ms-1" href="<?= h(nu_url('health')) ?>" target="_blank" rel="noopener" id="shHealthOpen"><?= h(t('hc_open')) ?></a></div>
+		<?php if ($hKey !== ''): ?>
+			<div class="alert alert-success small py-2" id="shHealthNewKey"><?= h(t('hc_key_new')) ?><br><code class="user-select-all text-break"><?= h($hKey) ?></code>
+				<div class="mt-1 text-body-secondary"><?= h(t('hc_key_use')) ?> <code class="text-break"><?= h($hUrl . '&key=' . $hKey) ?></code></div></div>
+		<?php endif; ?>
+		<div class="d-flex flex-wrap gap-2 align-items-center small mb-3" id="shHealthKeyRow">
+			<span id="shHealthKeyState"><?= h(t($hs['key'] !== '' ? 'hc_key_set' : 'hc_key_none')) ?></span>
+			<button type="submit" form="shHealthKeyForm" class="btn btn-sm btn-outline-secondary" id="shHealthKeyNew" name="key_op" value="new"><i class="bi bi-key me-1"></i><?= h(t($hs['key'] !== '' ? 'hc_key_renew' : 'hc_key_create')) ?></button>
+			<?php if ($hs['key'] !== ''): ?><button type="submit" form="shHealthKeyForm" class="btn btn-sm btn-outline-danger" id="shHealthKeyDel" name="key_op" value="remove"><?= h(t('hc_key_remove')) ?></button><?php endif; ?>
+		</div>
+		<div class="row g-3">
+			<div class="col-sm-4"><label class="form-label small mb-1" for="shHealthBackup"><?= h(t('hc_backup_hours')) ?></label><?= $tip(t('hc_zero_off')) ?>
+				<input type="number" class="form-control form-control-sm" name="hc_backup_hours" id="shHealthBackup" min="0" max="8760" value="<?= $hs['backup_hours'] ?>"></div>
+			<div class="col-sm-4"><label class="form-label small mb-1" for="shHealthCron"><?= h(t('hc_cron_hours')) ?></label><?= $tip(t('hc_zero_off')) ?>
+				<input type="number" class="form-control form-control-sm" name="hc_cron_hours" id="shHealthCron" min="0" max="8760" value="<?= $hs['cron_hours'] ?>"></div>
+			<div class="col-sm-4"><label class="form-label small mb-1" for="shHealthDisk"><?= h(t('hc_disk_mb')) ?></label><?= $tip(t('hc_zero_off')) ?>
+				<input type="number" class="form-control form-control-sm" name="hc_disk_mb" id="shHealthDisk" min="0" max="10000000" value="<?= $hs['disk_mb'] ?>"></div>
+		</div>
+		<?= $card('shHealth', 'bi-heart-pulse', t('hc_title'), (string)ob_get_clean(), t('hc_tip')) ?>
+	<?php endif; ?>
 	</form>
+	<?php if (NuSettingsHub::ga()): ?>
+		<form method="post" action="<?= h(nu_url('settings', ['s' => 'data'])) ?>" id="shHealthKeyForm" class="d-none"><?= nu_csrf_field() ?><input type="hidden" name="action" value="health_key"></form>
+	<?php endif; ?>
 	<div class="list-group shadow-sm mb-3">
 		<?php if (NuAdmin::can('securitycheck', 'view')) echo $linkCard('bi-journal-text', t('secchk_set_log_keep_days'), t('secchk_set_log_keep_days_tip'), nu_url('securitycheck') . '#sec_log_keep_days', 'shLogKeep'); ?>
 		<?php if (NuDemo::configured() && NuAdmin::can('status', 'view')) echo $linkCard('bi-easel', t('demo_data_title'), t('demo_data_tip'), nu_url('vendor') . '#demo'); ?>

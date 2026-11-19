@@ -1,6 +1,6 @@
 {
     "format": 1,
-    "version": "0.8.1306",
+    "version": "0.8.1339",
     "steps": [
         {
             "id": "0001-own-tables",
@@ -577,6 +577,17 @@
                     "table": "zzzzsys_nunext_setting",
                     "kind": "data",
                     "what": "row start_page: access levels with a Home form start on it (database from nuBuilder Forte only)"
+                }
+            ]
+        },
+        {
+            "id": "0045-recycle",
+            "description": "Recycle bin for records (zzzzsys_nunext_recycle): forms that keep their deleted records for a number of days",
+            "changes": [
+                {
+                    "table": "zzzzsys_nunext_recycle",
+                    "kind": "table",
+                    "what": "created when missing"
                 }
             ]
         }
@@ -2157,6 +2168,66 @@
             ],
             "index": [
                 "created_at"
+            ]
+        },
+        "zzzzsys_nunext_recycle": {
+            "pk": "zzzzsys_nunext_recycle_id",
+            "cols": [
+                [
+                    "form_id",
+                    "text",
+                    "25"
+                ],
+                [
+                    "form_code",
+                    "text",
+                    "100"
+                ],
+                [
+                    "table_name",
+                    "text",
+                    "100"
+                ],
+                [
+                    "record_id",
+                    "text",
+                    "100"
+                ],
+                [
+                    "title",
+                    "text",
+                    "300"
+                ],
+                [
+                    "data",
+                    "longtext"
+                ],
+                [
+                    "sub_rows",
+                    "int"
+                ],
+                [
+                    "deleted_by",
+                    "text",
+                    "25"
+                ],
+                [
+                    "deleted_by_name",
+                    "text",
+                    "100"
+                ],
+                [
+                    "deleted_at",
+                    "datetime"
+                ],
+                [
+                    "expires_at",
+                    "datetime"
+                ]
+            ],
+            "index": [
+                "form_id",
+                "expires_at"
             ]
         },
         "zzzzsys_nunext_opened": {

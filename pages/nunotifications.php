@@ -192,7 +192,7 @@ if ($tab === 'manage' && $id !== '' && !isset($_GET['receipts'])) {
 				<?php foreach ($ruleKeys as $k => $lk): ?><button type="button" class="ntfAddRule<?= $k === 'exclude' ? ' ntfAddEx' : '' ?>" data-rule="<?= $k ?>"><i class="bi <?= $k === 'exclude' ? 'bi-dash' : 'bi-plus' ?>" aria-hidden="true"></i><?= h(t($lk)) ?></button><?php endforeach; ?>
 			</div>
 			<div class="ntfMeter">
-				<div class="alert alert-secondary py-2 mb-0" id="ntfCount" role="status" aria-live="polite" data-url="<?= h(nu_url('notifications')) ?>">…</div>
+				<div class="ntfReach" id="ntfCount" role="status" aria-live="polite" data-url="<?= h(nu_url('notifications')) ?>">…</div>
 				<button type="button" class="btn btn-link btn-sm p-0" id="ntfCountShow" hidden><?= h(t('ntf_show_names')) ?></button>
 			</div>
 			<fieldset><legend class="form-label fs-6 mb-1"><?= h(t('ntf_f_mode')) ?></legend>

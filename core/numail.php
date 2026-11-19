@@ -203,7 +203,7 @@ final class NuMailer
 			'host'         => self::setupValue('set_smtp_host'),
 			'port'         => $port,
 			'username'     => $user,
-			'password'     => self::setupValue('set_smtp_password'),
+			'password'     => NuSecret::smtpPassword(self::setupValue('set_smtp_password')),   // nuBuilder Next's encrypted copy first (0.8.1326)
 			// nuBuilder: '1' = authenticate. Not set at all → authenticate when a user name is given.
 			'auth'         => $authV === '1' || ($authV === '' && $user !== ''),
 			'secure'       => self::secureForPort($port, $useSsl),
@@ -324,6 +324,12 @@ final class NuMailer
 		foreach (['set_smtp_host', 'set_smtp_port', 'set_smtp_username', 'set_smtp_password', 'set_smtp_from_address',
 			'set_smtp_from_name', 'set_smtp_use_authentication', 'set_smtp_use_ssl'] as $k) {
 			if (array_key_exists($k, $v) && isset($cols[$k])) $data[$k] = $v[$k];
+		}
+		if (array_key_exists('set_smtp_password', $v) || array_key_exists('smtp_only', $v)) {   // 0.8.1326: encrypted copy, opt-in "only in nuBuilder Next"
+			$pw = array_key_exists('set_smtp_password', $v) ? (string)$v['set_smtp_password'] : null;
+			$shared = NuSecret::saveSmtp($pw, !empty($v['smtp_only']), self::setupValue('set_smtp_password'));
+			if ($shared !== null && isset($cols['set_smtp_password'])) $data['set_smtp_password'] = $shared;
+			else unset($data['set_smtp_password']);
 		}
 		$row = self::setupRow(true);
 		if ($row) $db->update('zzzzsys_setup', $data, 'zzzzsys_setup_id', (string)$row['zzzzsys_setup_id']);

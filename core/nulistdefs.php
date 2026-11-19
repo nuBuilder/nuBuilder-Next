@@ -24,7 +24,7 @@ final class NuListDefs
 {
 	/** @return array<string, array> */
 	/** Keys of all lists with views (0.8.329: users, access; 0.8.334: the other system lists). */
-	public const LISTS = ['users', 'access', 'forms', 'procedures', 'reports', 'files', 'items', 'translations', 'permissions', 'prompts', 'log', 'audit', 'emaillog', 'userfields', 'apiclients', 'aiproviders', 'adminroles', 'sqlbuilder', 'emailtemplates', 'notifications', 'dashboards', 'helppages', 'webhooks', 'webhookcalls', 'exports', 'selftest', 'projects'];
+	public const LISTS = ['users', 'access', 'forms', 'procedures', 'reports', 'files', 'items', 'translations', 'permissions', 'prompts', 'log', 'audit', 'emaillog', 'userfields', 'apiclients', 'aiproviders', 'adminroles', 'sqlbuilder', 'emailtemplates', 'notifications', 'dashboards', 'helppages', 'webhooks', 'webhookcalls', 'exports', 'selftest', 'projects', 'recyclebin'];
 
 	public static function get(string $list): ?array
 	{
@@ -33,7 +33,7 @@ final class NuListDefs
 			'files' => self::files(), 'items' => self::items(), 'translations' => self::translations(), 'permissions' => self::permissions(),
 			'prompts' => self::prompts(), 'log' => self::log(), 'audit' => self::audit(), 'emaillog' => self::emailLog(), 'userfields' => self::userFields(), 'apiclients' => self::apiClients(),
 			'adminroles' => self::adminRoles(), 'sqlbuilder' => self::sqlBuilder(), 'emailtemplates' => self::emailTemplates(),
-			'notifications' => self::notifications(), 'dashboards' => self::dashboards(), 'webhooks' => self::webhooks(), 'aiproviders' => self::aiProviders(), 'helppages' => self::helpPages(), 'webhookcalls' => self::webhookCalls(), 'exports' => self::exports(), 'selftest' => self::selftest(), 'projects' => self::projects(),
+			'notifications' => self::notifications(), 'dashboards' => self::dashboards(), 'webhooks' => self::webhooks(), 'aiproviders' => self::aiProviders(), 'helppages' => self::helpPages(), 'webhookcalls' => self::webhookCalls(), 'exports' => self::exports(), 'selftest' => self::selftest(), 'projects' => self::projects(), 'recyclebin' => self::recycleBin(),
 			default => null,
 		};
 	}
@@ -70,6 +70,7 @@ final class NuListDefs
 		'webhookcalls' => ['created' => 'date', 'status' => false, 'attempts' => 'number', 'answer' => 'number', 'next' => 'date', 'source' => false],
 		'exports' => ['format' => false, 'runs' => 'number', 'last_run' => 'date', 'updated' => 'date'],
 		'selftest' => ['status' => false, 'ms' => 'number', 'pos' => 'number'],
+		'recyclebin' => ['deleted' => 'date', 'expires' => 'date', 'rows' => 'number', 'actions' => false],
 		'projects' => ['status' => false, 'items' => 'number', 'tasks' => 'number', 'updated' => 'date'],
 	];
 
@@ -632,7 +633,8 @@ final class NuListDefs
 		$cols = [
 			'actions' => ['label' => '', 'select' => ['sre_code' => 'r.sre_code'], 'sort' => null, 'class' => 'text-nowrap nuRowActions', 'text' => static fn($r) => '', 'noexport' => true,
 				'html' => static fn($r) => '<a class="btn btn-sm btn-outline-secondary" href="' . h(nu_url('reportdesigner', ['id' => $r['__id']])) . '" title="' . h(t('rpt_designer')) . '" aria-label="' . h(t('rpt_designer')) . '"><i class="bi bi-vector-pen"></i></a>'
-					. ' <a class="btn btn-sm btn-outline-secondary nuRowRun" href="' . h(nu_url('report', ['c' => (string)$r['sre_code']])) . '" target="_blank" rel="noopener" title="' . h(t('rpt_run')) . '" aria-label="' . h(t('rpt_run')) . '"><i class="bi bi-file-earmark-pdf"></i></a>'],
+					. ' <a class="btn btn-sm btn-outline-secondary nuRowRun" href="' . h(nu_url('report', ['c' => (string)$r['sre_code']])) . '" target="_blank" rel="noopener" title="' . h(t('rpt_run')) . '" aria-label="' . h(t('rpt_run')) . '"><i class="bi bi-file-earmark-pdf"></i></a>'
+					. ' <a class="btn btn-sm btn-outline-secondary nuRowRun nuRowXlsx" href="' . h(nu_url('report', ['c' => (string)$r['sre_code'], 'fmt' => 'xlsx'])) . '" title="' . h(t('rpt_xlsx_tip')) . '" aria-label="' . h(t('rpt_xlsx')) . '"><i class="bi bi-file-earmark-excel"></i></a>'],
 			'code' => self::col('sre_code', 'r.sre_code', t('rpt_code')) + ['main' => true, 'locked' => true],
 			'description' => self::col('sre_description', 'r.sre_description', t('rpt_description'), 'small text-break'),
 			'group' => array_replace(self::badgeCol('sre_group', 'r.sre_group', t('rpt_group')), ['sort' => 'r.sre_group, r.sre_code']),
@@ -1720,7 +1722,11 @@ final class NuListDefs
 		$mine = (string)(NuAdmin::role()['id'] ?? '');
 		$roleOf = static fn(array $r): array => NuAdmin::get((string)$r['__id']) ?? ['name' => (string)$r['adm_name'], 'rights' => []];
 		$all = count(NuAdmin::RIGHTS);
+		$canTest = NuImpersonate::canTest();                 // test the role as a user (0.8.1318): row button → the role form with its dialogue open
 		$cols = [
+			'test' => ['label' => '', 'select' => ['adm_rights_t' => 'r.rights'], 'sort' => null, 'class' => 'text-nowrap nuRowActions', 'text' => static fn($r) => '', 'noexport' => true,
+				'html' => static fn($r) => $canTest && ($mine === '' || $mine !== (string)$r['__id']) && NuImpersonate::canTest($roleOf($r) + ['id' => (string)$r['__id']])
+					? '<a class="btn btn-sm btn-outline-secondary nuAdmTestRow" href="' . h(nu_url('adminroles', ['id' => $r['__id'], 'test' => '1'])) . '" title="' . h(t('adm_test')) . '" aria-label="' . h(t('adm_test') . ': ' . (string)$roleOf($r)['name']) . '"><i class="bi bi-person-fill-gear"></i></a>' : ''],
 			'name' => ['label' => t('adm_role'), 'main' => true, 'locked' => true, 'select' => ['adm_name' => 'r.name', 'adm_code2' => 'r.code'], 'sort' => 'r.sort_order, r.name',
 				'text' => static fn($r) => (string)$roleOf($r)['name'],
 				'html' => static fn($r) => '<span class="fw-semibold">' . h((string)$roleOf($r)['name']) . '</span>' . ($mine !== '' && $mine === (string)$r['__id'] ? ' <span class="badge text-bg-secondary ms-1">' . h(t('adm_yours')) . '</span>' : '')],
@@ -1739,7 +1745,7 @@ final class NuListDefs
 		$filters = [
 			'has_users' => ['label' => t('lv_has_users'), 'type' => 'bool', 'expr' => 'EXISTS (SELECT 1 FROM zzzzsys_nunext_admin_user au WHERE au.role_id = r.zzzzsys_nunext_admin_role_id)'],
 		];
-		$base = ['columns' => ['name', 'code', 'rights', 'users'], 'card' => ['title' => 'name', 'badge' => '', 'lines' => ['code', 'rights', 'users']],
+		$base = ['columns' => ['test', 'name', 'code', 'rights', 'users'], 'card' => ['title' => 'name', 'badge' => '', 'lines' => ['code', 'rights', 'users']],
 			'sort' => ['name', 'asc'], 'per' => 50, 'filters' => ['shown' => ['has_users'], 'values' => []]];
 		return [
 			'key' => 'adminroles', 'title' => t('adm_title'), 'route' => 'adminroles', 'new_url' => nu_url('adminroles', ['id' => 'new']), 'empty_icon' => 'bi-person-gear', 'form' => NuAcl::FORM_ADMINROLE, 'card_count' => 'users', 'card_join' => true,
@@ -1748,7 +1754,7 @@ final class NuListDefs
 			'search' => ['r.name', 'r.code', 'r.description'], 'columns' => $cols, 'filters' => $filters,
 			'builtin' => [
 				'default' => $base,
-				'compact' => ['columns' => ['name', 'users']] + $base,
+				'compact' => ['columns' => ['test', 'name', 'users']] + $base,
 				'all' => ['columns' => array_keys($cols), 'filters' => ['shown' => array_keys($filters), 'values' => []]] + $base,
 			],
 		];
@@ -1962,4 +1968,58 @@ final class NuListDefs
 		];
 	}
 
+
+	// ------------------------------------------------------------------ recycle bin (0.8.1325, core/nurecycle.php)
+
+	private static function recycleBin(): array
+	{
+		$T = NuRecycle::TABLE;
+		$forms = nu_forms();
+		$vis = NuRecycle::visibleForms();
+		$where = []; $params = [];
+		if ($vis !== null) {
+			if (!$vis) $where[] = '1 = 0';
+			else { $where[] = 'r.form_id IN (' . implode(', ', array_fill(0, count($vis), '?')) . ')'; $params = $vis; }
+		}
+		$cols = [
+			'deleted' => ['label' => t('rb_deleted'), 'select' => ['rb_at' => 'r.deleted_at'], 'sort' => 'r.deleted_at', 'class' => 'small text-nowrap',
+				'text' => static fn($r) => self::date($r['rb_at'] ?? null, true)],
+			'title' => self::col('rb_title', 'r.title', t('rb_record'), 'fw-semibold text-break') + ['main' => true, 'locked' => true],
+			'form' => ['label' => t('rb_form'), 'select' => ['rb_form' => 'r.form_id', 'rb_code' => 'r.form_code'], 'sort' => 'r.form_code', 'class' => 'small',
+				'text' => static fn($r) => trim((string)($forms[$r['rb_form']]['description'] ?? '') ?: (string)$r['rb_code'])],
+			'record' => array_replace(self::col('rb_rec', 'r.record_id', t('rb_key'), 'small font-monospace text-break'), ['sort' => null]),
+			'by' => self::col('rb_by', 'r.deleted_by_name', t('rb_by'), 'small'),
+			'rows' => ['label' => t('rb_rows'), 'select' => ['rb_rows' => 'r.sub_rows'], 'sort' => 'r.sub_rows', 'align' => 'end', 'class' => 'small', 'text' => static fn($r) => (string)(int)$r['rb_rows']],
+			'expires' => ['label' => t('rb_expires'), 'select' => ['rb_exp' => 'r.expires_at'], 'sort' => 'r.expires_at', 'class' => 'small text-nowrap',
+				'text' => static fn($r) => self::date($r['rb_exp'] ?? null)],
+			'actions' => ['label' => '', 'select' => [], 'sort' => null, 'class' => 'text-nowrap nuRowActions', 'noexport' => true, 'text' => static fn($r) => '',
+				'html' => static fn($r) => '<button type="button" class="btn btn-sm btn-outline-secondary rbRestore" data-id="' . h((string)$r['__id']) . '" title="' . h(t('rb_restore')) . '" aria-label="' . h(t('rb_restore')) . '"><i class="bi bi-arrow-counterclockwise"></i></button>'],
+			'table' => self::col('rb_tab', 'r.table_name', t('rb_table'), 'small font-monospace'),
+			'id' => self::idCol('r.zzzzsys_nunext_recycle_id'),
+		];
+		$filters = [
+			'form' => ['label' => t('rb_form'), 'type' => 'select', 'tom' => true, 'options' => static function () use ($forms, $vis) {
+				$db = nu_db(); $o = [];
+				if (!$db->tableExists(NuRecycle::TABLE)) return $o;
+				foreach ($db->all('SELECT form_id, MAX(form_code) AS c, COUNT(*) AS n FROM ' . NuRecycle::TABLE . ' GROUP BY form_id') as $f) {
+					if ($vis !== null && !in_array((string)$f['form_id'], $vis, true)) continue;
+					$o[(string)$f['form_id']] = [trim((string)($forms[$f['form_id']]['description'] ?? '') ?: (string)$f['c']), (string)$f['c'] . ' · ' . (int)$f['n']];
+				}
+				return $o;
+			}, 'where' => static fn(string $v) => $v !== '' ? ['r.form_id = ?', [$v]] : null],
+			'deleted' => ['label' => t('rb_deleted'), 'type' => 'date', 'expr' => 'r.deleted_at', 'presets' => ['d7', 'd30']],
+		];
+		$base = ['columns' => ['deleted', 'title', 'form', 'by', 'rows', 'expires', 'actions'], 'card' => ['title' => 'title', 'badge' => 'form', 'lines' => ['deleted', 'by', 'expires']],
+			'sort' => ['deleted', 'desc'], 'per' => 50, 'filters' => ['shown' => ['form', 'deleted'], 'values' => []]];
+		return [
+			'key' => 'recyclebin', 'title' => t('rb_title'), 'route' => 'recyclebin', 'empty_icon' => 'bi-trash3', 'form' => NuAcl::FORM_RECYCLE,
+			'from' => " FROM $T r", 'where' => $where, 'params' => $params, 'id' => 'r.zzzzsys_nunext_recycle_id',
+			'link' => static fn($r) => nu_url('recyclebin', ['id' => $r['__id']]),
+			'search' => ['r.title', 'r.record_id', 'r.form_code', 'r.deleted_by_name'], 'columns' => $cols, 'filters' => $filters,
+			'builtin' => [
+				'default' => $base,
+				'all' => ['columns' => array_keys($cols), 'filters' => ['shown' => array_keys($filters), 'values' => []]] + $base,
+			],
+		];
+	}
 }

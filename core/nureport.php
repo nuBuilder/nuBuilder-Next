@@ -347,9 +347,10 @@ final class NuReport
 	 * Rows of a data source as associative arrays, with nuBuilder's criteria values: every hash variable that is not a column becomes one
 	 * (so form fields of the launch form can be printed). $forFields: only the columns are needed (designer) – a SQL source is tried without
 	 * its WHERE clause when it fails with empty criteria, as nuBuilder's designer does.
+	 * $source (0.8.1324): set to the columns of the data source alone (without the criteria columns).
 	 * @return array{0: string[], 1: array<int, array>} [columns, rows]
 	 */
-	public static function data(string $parentId, array $hash, bool $forFields = false): array
+	public static function data(string $parentId, array $hash, bool $forFields = false, ?array &$source = null): array
 	{
 		[$kind, $id] = array_pad(explode(':', $parentId, 2), 2, '');
 		$db = nu_db();
@@ -400,6 +401,7 @@ final class NuReport
 			throw new RuntimeException(t('rpt_err_source'));
 		}
 
+		$source = $cols;
 		if ($forFields) return [$cols, []];
 		// criteria: hash variables that are not columns (nuAddCriteriaValues), at most 199 characters as in nuBuilder
 		$lower = array_flip(array_map('strtolower', $cols));

@@ -32,6 +32,21 @@ declare(strict_types=1);
  *   --mail   where the e-mail goes when the run fails (default: the address of Settings → Data & logs; --mail= sends none)
  *   --quiet  no output unless it fails. One log entry per run. Exit code: 0 = done, 1 = failed, 2 = wrong call.
  *
+ * Secrets at rest (0.8.1326, NuSecret – SMTP copy, 2FA, OAuth mail, single sign-on, webhooks, AI providers; encrypted with $nuConfigSecretKey):
+ *     php nucron.php secrets status [--json]       what is encrypted, stored as plain text or cannot be decrypted with the key
+ *     php nucron.php secrets seal                  encrypt the secrets stored as plain text with the key of nuconfig.php
+ *     php nucron.php secrets rekey --new=<key>|--new=generate [--dry-run] [--force] --yes
+ *         decrypts every secret with the key of nuconfig.php, encrypts it with the new key and writes the new key into nuconfig.php –
+ *         all or nothing (the database is put back when nuconfig.php cannot be written)
+ *     php nucron.php secrets rekey --old=<key> [--dry-run] [--force] --yes
+ *         the new key is already in nuconfig.php: decrypts with the old key given here
+ *   --force  also when a value cannot be decrypted with the old key (that value is emptied – enter it again)
+ *   After a new key: API client secrets and auto login links (HMACs with the key) stop working – give the clients new secrets.
+ *   Exit code: 0 = done, 1 = failed / a value cannot be decrypted, 2 = wrong call.
+ *
+ * Health check (0.8.1335) – the same checks as index.php?p=health with the key (database, disk, last backup, last cron run):
+ *     php nucron.php health [--json]      Exit code: 0 = ok, 1 = a warning, 2 = failed (the database does not answer)
+ *
  * IP access (0.8.722) – switched off when the rules lock everybody out (they stay stored):
  *     php nucron.php iprules off
  *
@@ -143,6 +158,76 @@ if (($args[0] ?? '') === 'run') {
 	}
 	if (!$ro['quiet']) echo $ro['code'] . ' done (' . $rr['ms'] . " ms)\n";
 	exit(0);
+}
+if (($args[0] ?? '') === 'health') {
+	$hr = NuHealth::report(true);
+	if (in_array('--json', $args, true)) echo json_encode($hr, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n";
+	else {
+		echo 'status ' . $hr['status'] . "\n";
+		foreach ($hr['checks'] ?? [] as $k => $c) echo str_pad($k, 12) . str_pad($c['status'], 8) . json_encode(array_diff_key($c, ['status' => 1]), JSON_UNESCAPED_SLASHES) . "\n";
+	}
+	exit($hr['status'] === 'ok' ? 0 : ($hr['status'] === 'warn' ? 1 : 2));
+}
+if (($args[0] ?? '') === 'secrets') {
+	$sub = (string)($args[1] ?? '');
+	$so = [];
+	foreach (array_slice($args, 2) as $a) if (preg_match('/^--([a-z-]+)(?:=(.*))?$/s', $a, $m)) $so[$m[1]] = $m[2] ?? true; else { fwrite(STDERR, "Unknown argument: $a\n"); exit(2); }
+	NuAuth::cliGlobeadmin();
+	if ($sub === 'status') {
+		$st = NuSecret::status();
+		if (!empty($so['json'])) { echo json_encode($st, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n"; exit(0); }
+		echo 'key ' . ($st['key'] ? 'set' : 'MISSING') . ', libsodium ' . ($st['sodium'] ? 'yes' : 'NO') . "\n";
+		foreach ($st['places'] as $pl => $c) echo str_pad($pl, 12) . 'encrypted ' . $c['sealed'] . ', plain ' . $c['plain'] . ', unreadable ' . $c['bad'] . ($c['locked'] ? ', behind a password ' . $c['locked'] : '') . "\n";
+		echo str_pad('smtp_shared', 12) . ($st['smtp_shared'] ? 'plain text in zzzzsys_setup (nuBuilder Forte reads it)' : 'empty') . ($st['smtp_only'] ? ' – kept only by nuBuilder Next' : '') . "\n";
+		if ($st['api_clients']) echo str_pad('api_clients', 12) . $st['api_clients'] . " (HMAC with the key – a new key needs new client secrets)\n";
+		exit($st['total']['bad'] ? 1 : 0);
+	}
+	if ($sub === 'seal') {
+		if (!NuSecret::available()) { fwrite(STDERR, "No \$nuConfigSecretKey in nuconfig.php (or no libsodium).\n"); exit(1); }
+		$n = NuSecret::sealPlain();
+		NuLog::write('secrets_sealed', 'zzzzsys_nunext_setting', '', ['count' => $n, 'by' => 'cli'], ['id' => 'cli', 'login' => 'cli']);
+		echo $n . " secret(s) encrypted.\n";
+		exit(0);
+	}
+	if ($sub === 'rekey') {
+		$dry = !empty($so['dry-run']);
+		if (!$dry && empty($so['yes'])) { fwrite(STDERR, "Add --yes (or --dry-run to check only).\n"); exit(2); }
+		$cur = NuSecret::key();
+		if (isset($so['old'])) {
+			$old = (string)$so['old'];
+			$new = $cur;
+			$write = false;
+			if (isset($so['new'])) { fwrite(STDERR, "Use either --old (new key already in nuconfig.php) or --new.\n"); exit(2); }
+		} else {
+			$new = (string)($so['new'] ?? '');
+			if ($new === 'generate') $new = bin2hex(random_bytes(32));
+			$old = $cur;
+			$write = true;
+			if ($new === '') { fwrite(STDERR, "Usage: php nucron.php secrets rekey --new=<key>|--new=generate [--dry-run] --yes  or  --old=<key> --yes\n"); exit(2); }
+		}
+		if (strlen($new) < 32) { fwrite(STDERR, "The new key must have at least 32 characters.\n"); exit(2); }
+		if ($old === $new) { fwrite(STDERR, "The old and the new key are the same.\n"); exit(2); }
+		try {
+			$r = NuSecret::rekey($old, $new, $dry, !empty($so['force']), $write ? static function () use ($new) {
+				$err = NuConfigFile::setVariable('nuConfigSecretKey', var_export($new, true));
+				if ($err !== '') throw new RuntimeException('nuconfig.php: ' . $err);
+			} : null);
+		} catch (Throwable $e) {
+			fwrite(STDERR, 'Nothing changed: ' . $e->getMessage() . "\n");
+			exit(1);
+		}
+		if ($r['bad']) fwrite(STDERR, count($r['bad']) . ' value(s) cannot be decrypted with the old key: ' . implode(', ', $r['bad']) . (!empty($so['force']) && !$dry ? ' – emptied' : '') . "\n");
+		if ($r['locked']) fwrite(STDERR, $r['locked'] . " AI provider key(s) behind a password: enter the API key again after the change.\n");
+		if ($dry) { echo $r['ok'] ? "Check passed – every secret can be decrypted with the old key.\n" : "Check failed.\n"; exit($r['ok'] ? 0 : 1); }
+		if (!$r['ok'] || ($r['bad'] && empty($so['force']))) { fwrite(STDERR, "Nothing changed (use --force to continue anyway).\n"); exit(1); }
+		NuLog::write('secrets_rekeyed', 'nuconfig.php', '', ['count' => $r['changed'], 'emptied' => count($r['bad']), 'by' => 'cli'], ['id' => 'cli', 'login' => 'cli']);   // never a key
+		echo $r['changed'] . ' secret(s) re-encrypted' . ($write ? ', new key written to nuconfig.php' : '') . ".\n";
+		$st = NuSecret::status($new);
+		if ($st['api_clients']) echo 'Give the ' . $st['api_clients'] . " API client(s) new secrets (Settings → API clients); auto login links sent before no longer work.\n";
+		exit(0);
+	}
+	fwrite(STDERR, "Usage: php nucron.php secrets status|seal|rekey …\n");
+	exit(2);
 }
 if (($args[0] ?? '') === 'iprules') {
 	if (($args[1] ?? '') !== 'off') { fwrite(STDERR, "Usage: php nucron.php iprules off\n"); exit(2); }

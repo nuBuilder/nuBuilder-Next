@@ -30,7 +30,7 @@ function nu_head(string $title, string $extraHead = ''): void
 	$pb = NuDB::$connected ? NuSettings::phoneBack() : '';   // shared setting nuPhoneBackButton (0.8.1002): Back on phones as icon / hidden
 	$hc = trim(($env !== '' ? 'nu-env' : '') . ($pb !== '' ? ' nuBack-' . $pb : ''));
 	?><!doctype html>
-<html lang="<?= h(nu_lang_choice()) ?>"<?= nu_lang_rtl() ? ' dir="rtl"' : '' ?> data-bs-theme="light"<?= $hc !== '' ? ' class="' . h($hc) . '"' : '' ?><?= NuPageWidth::htmlAttr() /* page width default (0.8.1226) – nutheme.js */ ?>>
+<html lang="<?= h(nu_lang_choice()) ?>"<?= nu_lang_rtl() ? ' dir="rtl"' : '' ?> data-bs-theme="light"<?= $hc !== '' ? ' class="' . h($hc) . '"' : '' ?><?= NuPageWidth::htmlAttr() /* page width default (0.8.1226) – nutheme.js */ ?> data-nu-dfmt="<?= h(nu_dfmt('d.m.Y')) ?>" data-nu-date-texts="<?= h((string)json_encode(['ph' => t('date_ph_tokens'), 'pick' => t('date_pick'), 'bad' => t('date_invalid')], JSON_UNESCAPED_UNICODE)) ?>">
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
@@ -321,6 +321,7 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 	</div>
 </nav>
 <?= !empty($_SESSION['nu_form_preview']) ? NuFormDraft::banner(false) : '' /* form drafts (0.8.386): preview banner */ ?>
+<?= NuReady::bar($active) /* Getting ready checklist (0.8.1310): slim bar until done or hidden */ ?>
 <?php if ($sidebar) { echo '<div class="nuShell' . (NuSidebar::pinned() ? ' nuSbPinned' : '') . '">'; nu_sidebar(); NuSidebar::$drawn = true; }   // pinned: a column from 992 px (0.8.556) ?>
 <main id="main" class="<?= h($opt['container'] ?? 'nuContainer') ?> py-4<?= $sidebar ? ' nuShellMain' : '' ?><?= isset($opt['settings']) ? ' nuSetPage' : '' ?>">
 	<?php nu_render_flashes(); ?>
@@ -454,10 +455,12 @@ function nu_layout_end(string $extraBody = '', bool $bare = false): void
 				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?= h(t('leave_stay')) ?>"></button>
 			</div>
 			<div class="modal-body js-leave-text"></div>
-			<div class="modal-footer">
-				<button type="button" class="btn btn-outline-danger nuLeaveDiscard" data-nu-leave="discard"><i class="bi bi-x-lg me-1"></i><?= h(t('leave_discard')) ?></button>
-				<button type="button" class="btn btn-outline-secondary ms-auto" data-bs-dismiss="modal" data-nu-leave="stay"><?= h(t('leave_stay')) ?></button>
-				<button type="button" class="btn btn-primary" data-nu-leave="save"><i class="bi bi-check-lg me-1"></i><?= h(t('leave_save')) ?></button>
+			<div class="modal-footer nuLeaveFoot">
+				<div class="nuLeaveDiscardRow"><button type="button" class="btn btn-link nuLeaveDiscard" data-nu-leave="discard"><i class="bi bi-x-lg me-1"></i><?= h(t('leave_discard_leave')) ?></button></div>
+				<div class="nuLeaveActs">
+					<button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" data-nu-leave="stay"><?= h(t('leave_stay')) ?></button>
+					<button type="button" class="btn btn-primary" data-nu-leave="save"><i class="bi bi-check-lg me-1"></i><?= h(t('leave_save')) ?></button>
+				</div>
 			</div>
 		</div>
 	</div>

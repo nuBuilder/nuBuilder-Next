@@ -383,7 +383,7 @@ final class NuWebhook
 			$okRun = curl_exec($ch);
 			$code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
 			$e = $okRun === false ? curl_error($ch) : '';
-			curl_close($ch);
+			unset($ch);                                         // the handle closes itself (curl_close() does nothing since PHP 8.0, deprecated in 8.5)
 		}
 		$ms = (int)round((microtime(true) - $t0) * 1000);
 		$ok = $e === '' && $code >= 200 && $code < 300;
@@ -452,20 +452,11 @@ final class NuWebhook
 
 	private static function seal(string $s): string
 	{
-		$key = (string)nu_cfg('nuConfigSecretKey');
-		if ($key === '' || !function_exists('sodium_crypto_secretbox')) return 'plain:' . $s;
-		$nonce = random_bytes(SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
-		return 'enc:' . base64_encode($nonce . sodium_crypto_secretbox($s, $nonce, hash('sha256', 'webhook|' . $key, true)));
+		return NuSecret::seal($s, 'webhook|');   // 0.8.1326: one implementation (core/nusecret.php)
 	}
 
 	private static function open(string $s): string
 	{
-		if (str_starts_with($s, 'plain:')) return substr($s, 6);
-		if (!str_starts_with($s, 'enc:')) return $s;
-		$key = (string)nu_cfg('nuConfigSecretKey');
-		$raw = base64_decode(substr($s, 4), true);
-		if ($key === '' || $raw === false || !function_exists('sodium_crypto_secretbox_open') || strlen($raw) <= SODIUM_CRYPTO_SECRETBOX_NONCEBYTES) return '';
-		$out = sodium_crypto_secretbox_open(substr($raw, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES), substr($raw, 0, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES), hash('sha256', 'webhook|' . $key, true));
-		return $out === false ? '' : $out;
+		return NuSecret::open($s, 'webhook|');
 	}
 }

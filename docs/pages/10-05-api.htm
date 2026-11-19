@@ -1,8 +1,8 @@
 <section id="api" data-doc="admin">
 	<h2 id="api-h">REST API</h2>
-	<p class="doc-lead">JSON API for users, access levels, permission items, reports (PDF), notifications, data exports and updates.</p>
+	<p class="doc-lead">JSON API for the records of your forms, users, access levels, permission items, reports (PDF), notifications, data exports and updates – with an OpenAPI description.</p>
 	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles)</p>
-	<p>JSON API for users, access levels with their form rights, permission items, reports (PDF), notifications, saved data exports and updates: <code>api.php/v1/…</code> (no URL rewriting needed). Switch it on with <code>$nuConfigApi = true</code> in <code>nuconfig.php</code> and set a long random <code>$nuConfigSecretKey</code>. HTTPS only (localhost excepted; <code>$nuConfigApiAllowHttp = true</code> for tests). Access tokens live <code>$nuConfigApiTokenMinutes</code> minutes (default 15).</p>
+	<p>JSON API for the records of the application's forms, users, access levels with their form rights, permission items, reports (PDF), notifications, saved data exports and updates: <code>api.php/v1/…</code> (no URL rewriting needed). Switch it on with <code>$nuConfigApi = true</code> in <code>nuconfig.php</code> and set a long random <code>$nuConfigSecretKey</code>. HTTPS only (localhost excepted; <code>$nuConfigApiAllowHttp = true</code> for tests). Access tokens live <code>$nuConfigApiTokenMinutes</code> minutes (default 15).</p>
 <h3 class="h6 mt-3" id="api-new-client">Create a client – step by step</h3>
 <ol>
 <li><strong>Switch the API on</strong>: the start page tile <em>API clients</em> shows a notice while it is off – <em>Switch the API on</em> sets <code>$nuConfigApi = true</code> in <code>nuconfig.php</code>. A second notice asks for <code>$nuConfigSecretKey</code>: <em>Generate key</em> makes a long random key and writes it there (without it secrets and tokens are hashed without a key).</li>
@@ -18,7 +18,7 @@
 <li>The list works like the other system lists: list views, search, filters by status (active, inactive, expired) and scope, print and export, cards on phones. The scopes of a client sit behind a small button with their number – a click shows the list.</li>
 <li><strong>Secrets</strong>: only HMAC hashes of secrets and tokens are stored. <em>New secret</em> (the old one stays valid 24 h or ends at once), <em>Revoke all tokens</em>, <em>Delete</em>.</li>
 <li><strong>Service user</strong>: the rights of its access level apply exactly as in the browser (view / save / add / delete on <code>nuuser</code>, <code>nuaccess</code>, <code>nupermissionitem</code>; report rights; admin rights for exports). A service user can no longer log in, and neither it nor its access level can be changed through the API.</li>
-<li><strong>Scopes</strong>: <code>users:read</code>, <code>users:write</code>, <code>users:password</code>, <code>users:login_link</code>, <code>access:read</code>, <code>access:write</code>, <code>permissions:read</code>, <code>permissions:write</code>, <code>reports:run</code>, <code>notifications:write</code>, <code>exports:run</code> (saved data exports), <code>system:update</code> (updates).</li>
+<li><strong>Scopes</strong>: <code>records:read</code>, <code>records:write</code> (the <a href="#api-records">records of the forms</a>), <code>users:read</code>, <code>users:write</code>, <code>users:password</code>, <code>users:login_link</code>, <code>access:read</code>, <code>access:write</code>, <code>permissions:read</code>, <code>permissions:write</code>, <code>reports:run</code>, <code>notifications:write</code>, <code>exports:run</code> (saved data exports), <code>system:update</code> (updates).</li>
 <li><strong>Limits</strong>: requests per minute (default 120, then <code>429</code>). Every token and request is logged (Log: <em>API token issued / refused</em>, <em>API read / change</em>).</li>
 </ul>
 <h3 class="h6 mt-3">Access token (OAuth 2.0 client credentials)</h3>
@@ -33,6 +33,13 @@ curl -H 'Authorization: Bearer nt_…' 'https://example.com/nunext/api.php/v1/us
 <tbody>
 <tr><th colspan="3">Client</th></tr>
 <tr><td><code>GET /v1/me</code></td><td>–</td><td>client, scopes, service user</td></tr>
+<tr><td><code>GET /v1/openapi.json</code></td><td>–</td><td>OpenAPI 3.1 description of the routes this client's scopes allow and of the forms it may use – see <a href="#api-openapi">OpenAPI</a></td></tr>
+<tr><th colspan="3">Records of forms</th></tr>
+<tr><td><code>GET /v1/forms</code></td><td>records:read</td><td>The forms the client may use: id, code, description, table, primary key, <code>rights</code> (list, read, create, update, delete)</td></tr>
+<tr><td><code>GET /v1/forms/{form}</code></td><td>records:read</td><td>The form's fields (name, label, type, column type, required, unique, read only, masked, options of fixed selects, lookup form, format) and sub-forms with their fields; <code>{form}</code> = code or id</td></tr>
+<tr><td><code>GET /v1/forms/{form}/records</code></td><td>records:read</td><td>The rows the form's list shows – see <a href="#api-records">Records of forms</a></td></tr>
+<tr><td><code>POST /v1/forms/{form}/records</code></td><td>records:write</td><td>Creates a record (with sub-form rows); <code>201</code> with the record and <code>Location</code></td></tr>
+<tr><td><code>GET, PATCH, DELETE /v1/forms/{form}/records/{id}</code></td><td>records:read / write</td><td>One record with its sub-form rows; PATCH changes only the fields sent; DELETE answers <code>204</code></td></tr>
 <tr><th colspan="3">Users</th></tr>
 <tr><td><code>GET /v1/users</code></td><td>users:read</td><td><code>q</code>, <code>state</code> (active / expired / all), <code>access_level_id</code>, <code>login</code>, <code>email</code>, <code>sort</code> (login / name / email), <code>limit</code> (max 200), <code>offset</code></td></tr>
 <tr><td><code>GET /v1/users/{id}</code></td><td>users:read</td><td>fields: login, name, first_name, last_name, code, email, position, department, team, additional1, additional2, language, access_level_id, expires_on, change_password, fields (custom user fields as {code: value}; also accepted on POST / PATCH) (+ read only: access_level_code, expired, service_user, password_changed_at). The <em>Created</em> / <em>Last changed</em> stamps of the users list are not returned.</td></tr>
@@ -63,6 +70,29 @@ curl -H 'Authorization: Bearer nt_…' 'https://example.com/nunext/api.php/v1/us
 </tbody>
 </table>
 <p><strong>Rules</strong>: requests and answers are JSON (<code>Content-Type: application/json</code>); unknown fields are an error. Every record has an <code>ETag</code>; <code>PATCH</code>, <code>PUT</code> and <code>DELETE</code> need it in <code>If-Match</code> (<code>428</code> without, <code>412</code> when the record changed meanwhile; <code>*</code> skips the check). Lists: <code>{"data": […], "meta": {"total", "limit", "offset"}}</code>. Errors (RFC 9457): <code>{"type", "title", "status", "errors": [{"field", "message"}]}</code> – <code>401</code> token, <code>403</code> scope or right, <code>404</code>, <code>405</code>, <code>415</code>, <code>422</code> validation, <code>429</code> rate limit. Cross-origin (browser) requests are not allowed.</p>
+<h3 class="h6 mt-3" id="api-records">Records of forms</h3>
+<p>The records of your own forms – customers, orders, tickets … – read and written the way the form does it in the browser: the access level's rights on the form (list, open, add, save, delete, "no changes to existing records"), field data access (hidden fields are left out, masked ones come masked), validation and validation rules, the global hooks and the form's <em>Before / After Save</em> and <em>Delete</em> PHP, the audit trail, webhooks and the recycle bin. Reading a single record runs <em>Before Edit</em>; a list runs <em>Before Browse</em> and the form's list query, so the API returns the rows the list shows.</p>
+<pre class="nuApiExample"><code>GET api.php/v1/forms/sample_order/records?ord_status=open&amp;ord_date[gte]=2026-01-01&amp;sort=-ord_date&amp;limit=20&amp;expand=ord_sample_customer_id
+→ {"data": [{"id": "…", "ord_number": "A-1001", "ord_date": "2026-11-18",
+             "ord_sample_customer_id": {"id": "C001", "code": "MEYER", "description": "Meyer AG"}, …}],
+   "meta": {"total": 57, "limit": 20, "offset": 0}}
+
+POST api.php/v1/forms/sample_order/records
+{"ord_number": "A-1002", "ord_sample_customer_id": "C001", "sample_items": [{"ori_sample_product_id": "P1", "ori_qty": 2}]}
+→ 201, Location: /v1/forms/sample_order/records/…, ETag: "…"
+
+PATCH api.php/v1/forms/sample_order/records/…   (If-Match: "…")
+{"ord_note": "Call before delivery", "sample_items": [{"id": "…", "ori_qty": 3}, {"id": "…", "_delete": true}]}</code></pre>
+<ul>
+<li><strong>Field names</strong> are the object ids of the form (as in its PHP and JavaScript), the primary key is <code>id</code>. Only fields saved to a column of the table count; <code>GET /v1/forms/{form}</code> lists them. Unknown fields, read-only fields (calculations, displays, read-only access) and an <code>id</code> in the body are errors (<code>422</code>).</li>
+<li><strong>Sub-forms</strong> by their object id, as lists of rows. A record read alone comes with its sub-form rows (<code>?include=none</code> leaves them out); lists only with <code>?include=all</code> or <code>?include=sub1,sub2</code>. In POST / PATCH a row with <code>id</code> changes that row (only the fields sent), a row without one is added, <code>"_delete": true</code> deletes it; rows not mentioned stay as they are. The sub-form's own Add / Delete setting applies.</li>
+<li><strong>Lists</strong>: <code>q</code> searches like the list's search field; <code>field=value</code> or <code>field[op]=value</code> filters with <code>eq</code>, <code>ne</code>, <code>gt</code>, <code>gte</code>, <code>lt</code>, <code>lte</code>, <code>like</code> (contains), <code>starts</code>, <code>in</code> (comma-separated, up to 200), <code>null</code> (true / false); <code>sort=field,-field</code>; <code>limit</code> (max 200) and <code>offset</code>; <code>fields=a,b</code> returns only these fields; <code>expand=lookup1,lookup2</code> (or <code>all</code>) turns lookup values into <code>{"id", "code", "description"}</code>. Masked fields cannot be filtered or sorted.</li>
+<li><strong>Errors of the form</strong> (required fields, duplicates, validation rules, a message of Before Save) answer <code>422</code> with the messages in <code>errors</code>. Warnings of validation rules also answer <code>422</code>; add <code>?accept_warnings=1</code> to save anyway.</li>
+<li><strong>Not available</strong>: nuBuilder Forte's own forms (users, access levels, forms … – they have their own endpoints above), forms on <code>zzzzsys_</code> tables, custom pages, launch forms, forms without table or primary key, forms never published (<code>404</code>) and forms in maintenance or archived (<code>503</code>).</li>
+<li>PATCH and DELETE need the record's <code>ETag</code> in <code>If-Match</code> (as everywhere in the API); the ETag covers the record's fields, not its sub-form rows.</li>
+</ul>
+<h3 class="h6 mt-3" id="api-openapi">OpenAPI</h3>
+<p><code>GET /v1/openapi.json</code> describes the API for this client: the endpoints its scopes allow and, for every form it may use, the paths it may call (a client without the delete right gets no DELETE) with the form's fields as JSON schema – field labels as titles, the options of fixed selects as allowed values. Import it into Postman, Insomnia or Swagger UI, or use it as a custom connector in Power Automate or another integration tool; generators make client code from it. It needs a token, as the form structure is not public, and it changes when your forms change.</p>
 <h3 class="h6 mt-3" id="api-reports">Reports and PDF links</h3>
 <pre class="small"><code>POST api.php/v1/reports/sample_orders/run
 {"params": {"customer_id": "C001"}, "filename": "orders-C001.pdf", "expires_minutes": 15, "max_downloads": 1}
@@ -85,5 +115,5 @@ curl -H 'Authorization: Bearer nt_…' 'https://example.com/nunext/api.php/v1/us
 <li><strong>Saved requests</strong> (name, folder, method, path, headers, body, client and scope) are shared by the administrators; client, scope, variables and the If-Match option are kept per login. Table <code>zzzzsys_nunext_api_request</code>.</li>
 <li>Requests are real: they change data, count towards the rate limit and must come from an allowed IP address.</li>
 </ul>
-	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>api.php</code></li><li><code>core/nuapi.php</code></li><li><code>core/nuapiclient.php</code></li><li><code>core/nureportapi.php</code></li></ul></details>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>api.php</code></li><li><code>core/nuapi.php</code></li><li><code>core/nuapiclient.php</code></li><li><code>core/nureportapi.php</code></li><li><code>core/nuapirecords.php</code></li></ul></details>
 </section>

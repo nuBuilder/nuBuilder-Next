@@ -69,6 +69,7 @@
 			<li><kbd>Ctrl</kbd>+<kbd>K</kbd> (or the magnifier in the top bar) opens the same search on <em>every</em> page.</li>
 			<li>The <strong>top bar</strong>: the logo always leads back to the start page; the theme button switches light / dark / automatic; the language menu changes the interface language; the <strong>user menu</strong> (top right) holds the documentation, this tutorial, the database tools, <em>System info…</em> (versions of nuBuilder Next, PHP, the database and your browser – <em>Copy for support</em>) and Sign out (System status and Security are start page tiles).</li>
 			<li><strong>Back</strong> (first button on every page) returns to the page you came from; opened directly, it goes one level up – from a record to its list, from a list to the start page.</li>
+			<li>After a new installation the card <strong>Getting ready</strong> (and a slim bar on the other pages) leads through the points to check – security, server, backups, e-mail, people and look. <a data-open="gettingready">Open the checklist</a>, work through the steps, or hide it for 7 days or for good.</li>
 		</ul>
 		<div class="tut-task">
 			<ol>
@@ -77,7 +78,7 @@
 				<li>Switch the theme to dark and back.</li>
 			</ol>
 		</div>
-		<p><a data-help="navigation">Navigation, language and theme</a> · <a data-help="home-page">Start page of the globeadmin</a></p>
+		<p><a data-help="navigation">Navigation, language and theme</a> · <a data-help="home-page">Start page of the globeadmin</a> · <a data-help="getting-ready">Getting ready checklist</a></p>
 	</section>
 
 	<section class="tut-lesson" id="sample-data" data-right="sample">
@@ -285,6 +286,7 @@
 		<div class="tut-task">
 			<p>Open <a data-open="adminroles">Admin roles</a> and look at the default role <em>User manager</em>. Give <code>tutorial_user</code> this role, then act as that user and look at the start page.</p>
 		</div>
+		<div class="tut-tip">Before you hand a role out, try it: <em>Test role</em> on the role's page acts as a chosen user with that role for this session only – view only or with full access. Changed rights stay marked on the role's page until you save, so you can check them first (<a data-help="admin-roles-test">testing a role</a>).</div>
 		<p><a data-help="admin-roles">Admin roles in the documentation</a></p>
 	</section>
 </article>
@@ -391,7 +393,7 @@
 			<li><strong>PHP events</strong> on the form's <em>Code</em> tab: <em>Before Browse</em>, <em>Before Edit</em>, <em>Before Save</em>, <em>After Save</em>, <em>Before Delete</em>, <em>After Delete</em>. Typical: check values in Before Save and stop with <code>nuDisplayError('…')</code>.</li>
 			<li><strong>JavaScript</strong> of the form and <strong>object events</strong> (onchange, onclick …) run in the browser.</li>
 			<li><strong>Hash variables</strong> such as <code>#RECORD_ID#</code>, <code>#USER_ID#</code> or <code>#cus_name#</code> (a field of the record) are replaced before the code runs. In SQL always put them in quotes: <code>WHERE cus_id = '#RECORD_ID#'</code>.</li>
-			<li>Code fields open the <strong>code editor</strong> with a double-click: colours, search and replace, <em>Format</em>, full screen.</li>
+			<li>Code fields open the <strong>code editor</strong> with a double-click: colours, search and replace, <em>Format</em>, full screen. While you type it suggests functions (<code>nu…</code>), tables after <code>FROM</code> and the columns after <code>alias.</code> in SQL and in the strings of PHP / JavaScript, and the hash variables after <code>#</code> (<a data-help="code-names">names while typing</a>).</li>
 			<li>⋮ → <em>Hash variables</em> on any form shows the values available there.</li>
 		</ul>
 		<div class="tut-tip">Without design mode: on a record, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>B</kbd> (or <em>Design</em> ▾ → <em>Code</em>) opens every JavaScript, CSS and PHP event of the form in a pane beside the record – one <em>Save</em> stores them all. On a list the same keys open its browse SQL; <em>As run</em> there shows the SQL with the hash variables filled in (<a data-help="design-code-pane">code beside the record</a>).</div>
@@ -462,6 +464,7 @@
 		</ul>
 		<p>The <strong>SQL builder</strong> creates queries graphically: add tables, tick columns, drag a column onto another to join, add conditions and sorting. <em>Run</em> shows the first rows.</p>
 		<div class="tut-tip">A field or text can print <strong>HTML</strong> or <strong>Markdown</strong> (<code>**bold**</code>, lists, tables): <em>Content</em> in its properties. It grows to the height it prints (<a data-help="report-rich-text">rich text in reports</a>).</div>
+		<div class="tut-tip">Every report also downloads as <strong>Excel</strong> (the Excel button next to Run, or <em>Excel</em> in the report designer's preview): the groups and totals as in the PDF on one sheet, all rows of the query on a second (<a data-help="report-excel">reports as Excel</a>).</div>
 		<div class="tut-tip"><strong>With AI</strong>: on a report's page, <em>Create with AI…</em> / <em>Change with AI…</em> lets an AI chat write the layout from your description – you paste the answer, see the plan and a preview PDF, then apply it. The layout before is kept on the History tab (<a data-help="report-ai">Reports with AI</a>).</div>
 		<div class="tut-note">The PDF needs the TCPDF library pack (Update → Libraries); nuBuilder Forte's copy is used as a fallback when nuBuilder Next sits in its folder. Without it the report pages say so.</div>
 		<div class="tut-task">
@@ -589,6 +592,7 @@
 			<li><strong>IP access</strong> (<a data-open="ipaccess">Settings → Sign-in &amp; security → IP access</a>, globeadmin only): sign-in only from certain addresses or networks – one list for all access levels, exceptions per level and a rule of its own for the globeadmin. <em>Test an address</em> shows who could work from an address; saving never locks out the address you are using.</li>
 			<li><strong>Single sign-on</strong> (<a data-open="sso">Settings → Sign-in &amp; security → Single sign-on</a>, globeadmin only): users sign in with their company account (Microsoft Entra ID, Google Workspace, Keycloak or another OpenID Connect provider). Access levels can follow the provider's groups, and an access level can be set to single sign-on only. <em>Test sign-in</em> shows what an account would do before you switch it on; you yourself always keep the password of nuconfig.php.</li>
 			<li><strong>Password policy</strong> (<a data-open="pwpolicy">Settings → Sign-in &amp; security → Password policy</a>): minimum length, a check against known leaked passwords (only 5 characters of the hash leave the server) – also at sign-in – and, only where a rule requires it, a regular change; <em>Try a password</em> shows what the rules say.</li>
+			<li><strong>Encrypted secrets</strong>: with <code>$nuConfigSecretKey</code> set, the secrets nuBuilder Next stores (authenticator secrets, e-mail login, single sign-on, webhooks, AI keys, its copy of the SMTP password) are encrypted. The Security check shows anything still in plain text; <em>E-mail → Settings</em> can keep the SMTP password only encrypted (nuBuilder Forte on the same database then cannot send mail). A new key: <code>php nucron.php secrets rekey --new=generate --yes</code> (<a data-help="security-secrets">Encrypted secrets</a>).</li>
 			<li>Built in: a login rate limit, signed update packages, strict security headers, masked secrets in the log.</li>
 		</ul>
 		<div class="tut-task">
@@ -643,6 +647,7 @@
 		<p><code>nucron.php</code> removes expired tokens and sessions, old log entries and temporary files. Run it every 15 minutes as the web server's user:</p>
 		<pre class="small"><code>*/15 * * * * sudo -u www-data php /var/www/html/nunext/nucron.php &gt; /dev/null</code></pre>
 		<p>The same cron can run a procedure of yours on a schedule – <code>php nucron.php run &lt;code&gt;</code>, with an e-mail when it fails (<a data-help="procedure-cron">procedures from cron</a>).</p>
+		<div class="tut-tip">A monitoring tool (Uptime Kuma, Zabbix …) can watch the installation: <code>index.php?p=health</code> answers <code>{"status": "ok"}</code> while the database answers. With the key from <em>Settings → Data &amp; logs → Health check</em> it also reports free disk space and the age of the newest backup and of the last cron run, with warnings at the limits you set (<a data-help="health-check">health check</a>).</div>
 		<p>Before users start working on a live server:</p>
 		<ul>
 			<li>HTTPS only; <code>$nuConfigBaseURL</code> and <code>$nuConfigSecretKey</code> set.</li>
@@ -674,12 +679,13 @@
 
 	<section class="tut-lesson" id="api" data-right="apiclients">
 		<h3>REST API</h3>
-		<p>Other systems (an HR tool, a script) can manage users, access levels and permission items through the REST API (<code>api.php/v1/…</code>):</p>
+		<p>Other systems (an HR tool, a script, an integration platform) can read and write the records of your forms and manage users, access levels and permission items through the REST API (<code>api.php/v1/…</code>):</p>
 		<ul>
 			<li>Switch it on with <code>$nuConfigApi = true</code> (the <a data-open="apiclients">API clients</a> page offers a button) and set a secret key.</li>
 			<li>Create a <strong>client</strong>: it gets a <code>client_id</code> and a secret shown <em>once</em>, a <strong>service user</strong> whose access level decides its rights, and <strong>scopes</strong> (e.g. <code>users:read</code>). Optional: allowed IP addresses, a request limit, an expiry date.</li>
 			<li>The <a data-open="apiplayground">API playground</a> sends requests from the browser – ideal to learn the endpoints and copy a <code>curl</code> command.</li>
 		</ul>
+		<div class="tut-tip">The records of your own forms are there too: with the scopes <code>records:read</code> / <code>records:write</code>, <code>/v1/forms/{form}/records</code> lists, reads, creates, changes and deletes records exactly as the form does it – its rights, validation and Before / After Save apply. <code>/v1/openapi.json</code> describes everything the client may do, for Postman or Power Automate (<a data-help="api-records">records of forms</a>).</div>
 		<p><a data-help="api">REST API in the documentation</a></p>
 	</section>
 

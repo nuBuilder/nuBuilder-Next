@@ -5,7 +5,9 @@ version = 1
 exclude_patterns = [
   "vendor/bundled/**",   # libraries of the package (Bootstrap, jQuery, jQuery Migrate, CodeMirror bundle, …)
   "vendor/packs/**",     # library packs installed on a server (never in the repository, listed for safety)
-  "dev/libsrc/**"        # unchanged sources of the library packs (PHPMailer)
+  "dev/libsrc/**",       # unchanged sources of the library packs (PHPMailer)
+  "CHANGELOG.md",        # release texts: names of files / settings / algorithms read as "hardcoded credentials" (SCT-A000)
+  "nunext-manifest.json" # the same texts in the signed manifest (changes entries)
 ]
 
 test_patterns = [

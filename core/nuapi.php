@@ -3,7 +3,8 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * REST API (api.php/v1/…), phase 1: users, access levels with their form rights, permission items.
+ * REST API (api.php/v1/…): users, access levels with their form rights, permission items, reports, exports, notifications, updates,
+ * and the records of the application's forms (0.8.1337, core/nuapirecords.php NuApiRecords) + an OpenAPI description (/v1/openapi.json).
  *
  * Authentication: OAuth 2.0 client credentials. A client (Admin tools → API clients) has a public client_id and a secret that is
  * shown once; POST /v1/token exchanges them for a short-lived opaque access token, sent as "Authorization: Bearer …".
@@ -153,7 +154,7 @@ final class NuApi
 	}
 
 	/** Request body: JSON (or form fields for the token request). */
-	private static function body(bool $jsonOnly = true): array
+	public static function body(bool $jsonOnly = true): array
 	{
 		$raw = (string)file_get_contents('php://input');
 		$type = strtolower((string)($_SERVER['CONTENT_TYPE'] ?? ''));
@@ -175,7 +176,25 @@ final class NuApi
 	/** @return array{0: int, 1: mixed, 2: array} */
 	private static function route(string $method, string $path): array
 	{
-		$routes = [
+		$routes = self::routes();
+		$allowed = [];
+		foreach ($routes as [$m, $re, $fn, $scope]) {
+			if (!preg_match($re, $path, $mm)) continue;
+			if ($m !== $method) { $allowed[] = $m; continue; }
+			if ($scope !== null && !in_array($scope, self::$ctx['scopes'], true)) throw new NuApiError(403, "Scope '$scope' is required.");
+			$args = array_slice($mm, 1);
+			if (str_starts_with($fn, 'R:')) return NuApiRecords::{substr($fn, 2)}(...$args);   // records of the forms (0.8.1337)
+			if ($fn === 'openapi') return NuApiRecords::openapi($routes, self::$ctx['scopes']);
+			return self::$fn(...$args);
+		}
+		if ($allowed) throw new NuApiError(405, 'Method not allowed.', [], ['Allow' => implode(', ', array_unique($allowed))]);
+		throw new NuApiError(404, 'Not found.');
+	}
+
+	/** [method, path regex, handler (R: = NuApiRecords), scope] */
+	private static function routes(): array
+	{
+		return [
 			['GET',    '#^/v1/users$#',                          'usersList',      'users:read'],
 			['POST',   '#^/v1/users$#',                          'userCreate',     'users:write'],
 			['GET',    '#^/v1/users/([\w\-]+)$#',                'userGet',        'users:read'],
@@ -209,17 +228,16 @@ final class NuApi
 			['POST',   '#^/v1/notifications$#',                  'notifyCreate',   'notifications:write'],
 			['GET',    '#^/v1/notifications/([\w\-]+)$#',        'notifyGet',      'notifications:write'],
 			['DELETE', '#^/v1/notifications/([\w\-]+)$#',        'notifyDelete',   'notifications:write'],
+			['GET',    '#^/v1/forms$#',                          'R:formsList',    'records:read'],
+			['GET',    '#^/v1/forms/([^/]+)$#',                  'R:formGet',      'records:read'],
+			['GET',    '#^/v1/forms/([^/]+)/records$#',          'R:recordsList',  'records:read'],
+			['POST',   '#^/v1/forms/([^/]+)/records$#',          'R:recordCreate', 'records:write'],
+			['GET',    '#^/v1/forms/([^/]+)/records/([^/]+)$#',  'R:recordGet',    'records:read'],
+			['PATCH',  '#^/v1/forms/([^/]+)/records/([^/]+)$#',  'R:recordPatch',  'records:write'],
+			['DELETE', '#^/v1/forms/([^/]+)/records/([^/]+)$#',  'R:recordDelete', 'records:write'],
+			['GET',    '#^/v1/openapi\.json$#',                  'openapi',        null],
 			['GET',    '#^/v1/me$#',                             'me',             null],
 		];
-		$allowed = [];
-		foreach ($routes as [$m, $re, $fn, $scope]) {
-			if (!preg_match($re, $path, $mm)) continue;
-			if ($m !== $method) { $allowed[] = $m; continue; }
-			if ($scope !== null && !in_array($scope, self::$ctx['scopes'], true)) throw new NuApiError(403, "Scope '$scope' is required.");
-			return self::$fn(...array_slice($mm, 1));
-		}
-		if ($allowed) throw new NuApiError(405, 'Method not allowed.', [], ['Allow' => implode(', ', array_unique($allowed))]);
-		throw new NuApiError(404, 'Not found.');
 	}
 
 	// ================================================================= system: unattended update (0.8.301, core/nuautoupdate.php)
@@ -261,7 +279,7 @@ final class NuApi
 		if (!NuAcl::can($form, $right)) throw new NuApiError(403, "The service user's access level has no '$right' right on $form.");
 	}
 
-	private static function etag(array $data): string
+	public static function etag(array $data): string
 	{
 		return '"' . substr(hash('sha256', json_encode($data, JSON_UNESCAPED_UNICODE)), 0, 32) . '"';
 	}
@@ -274,12 +292,20 @@ final class NuApi
 		if ($h !== '*' && !in_array(self::etag($current), array_map('trim', explode(',', $h)), true)) throw new NuApiError(412, 'The record was changed meanwhile (ETag does not match).');
 	}
 
+	/** If-Match against a known ETag (records, 0.8.1337). */
+	public static function ifMatchTag(string $etag): void
+	{
+		$h = trim((string)($_SERVER['HTTP_IF_MATCH'] ?? ''));
+		if ($h === '') throw new NuApiError(428, 'If-Match header with the ETag of the record is required.');
+		if ($h !== '*' && !in_array($etag, array_map('trim', explode(',', $h)), true)) throw new NuApiError(412, 'The record was changed meanwhile (ETag does not match).');
+	}
+
 	private static function one(array $data): array
 	{
 		return [200, $data, ['ETag' => self::etag($data)]];
 	}
 
-	private static function page(): array
+	public static function page(): array
 	{
 		$limit = max(1, min(200, (int)($_GET['limit'] ?? 50)));
 		$offset = max(0, (int)($_GET['offset'] ?? 0));

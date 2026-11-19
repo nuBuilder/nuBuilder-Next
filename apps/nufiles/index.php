@@ -87,6 +87,7 @@ $v = static function (string $c, string $fallback, string $file) use ($nu): stri
 			<button type="button" class="btn btn-sm btn-outline-secondary" id="nufMkdirBtn" data-need="mkdir"><i class="bi bi-folder-plus"></i> <span class="nuf-lbl"><?= $t('new_folder') ?></span></button>
 			<button type="button" class="btn btn-sm btn-outline-secondary" id="nufNewFileBtn" data-need="edit"><i class="bi bi-file-earmark-plus"></i> <span class="nuf-lbl"><?= $t('new_file') ?></span></button>
 			<span class="nuf-sep"></span>
+			<button type="button" class="btn btn-sm btn-outline-secondary nuf-selclear" id="nufSelClear" title="<?= $t('clear_selection') ?>" aria-label="<?= $t('clear_selection') ?>"><i class="bi bi-x-lg"></i> <span id="nufSelCount">0</span></button>
 			<button type="button" class="btn btn-sm btn-outline-secondary" id="nufDownloadBtn" data-sel="1"><i class="bi bi-download"></i> <span class="nuf-lbl"><?= $t('download') ?></span></button>
 			<button type="button" class="btn btn-sm btn-outline-secondary" id="nufCopyBtn" data-sel="1" data-need="view"><i class="bi bi-copy"></i> <span class="nuf-lbl"><?= $t('copy') ?></span></button>
 			<button type="button" class="btn btn-sm btn-outline-secondary" id="nufMoveBtn" data-sel="1" data-need="rename|delete"><i class="bi bi-arrow-right-square"></i> <span class="nuf-lbl"><?= $t('move') ?></span></button>

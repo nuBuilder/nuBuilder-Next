@@ -168,13 +168,9 @@ final class NuTwoFA
 
 	// ================================================================= secret storage
 
-	/** Encrypts the TOTP secret when $nuConfigSecretKey is set (libsodium), otherwise stores it as is. */
-	private static function seal(string $secret): string
+	private static function seal(string $s): string
 	{
-		$key = (string)nu_cfg('nuConfigSecretKey');
-		if ($key === '' || !function_exists('sodium_crypto_secretbox')) return $secret;
-		$nonce = random_bytes(SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
-		return 'enc:' . base64_encode($nonce . sodium_crypto_secretbox($secret, $nonce, hash('sha256', $key, true)));
+		return NuSecret::seal($s, '', null, true);   // 0.8.1326: one implementation (core/nusecret.php)
 	}
 
 	/** Encrypts authenticator secrets stored as plain text (saved while $nuConfigSecretKey was empty) with the new $key. @return int count */
@@ -205,15 +201,9 @@ final class NuTwoFA
 		}
 	}
 
-	private static function open(string $stored): string
+	private static function open(string $s): string
 	{
-		if (!str_starts_with($stored, 'enc:')) return $stored;
-		$key = (string)nu_cfg('nuConfigSecretKey');
-		if ($key === '' || !function_exists('sodium_crypto_secretbox_open')) return '';
-		$raw = base64_decode(substr($stored, 4), true);
-		if ($raw === false || strlen($raw) <= SODIUM_CRYPTO_SECRETBOX_NONCEBYTES) return '';
-		$plain = sodium_crypto_secretbox_open(substr($raw, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES), substr($raw, 0, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES), hash('sha256', $key, true));
-		return $plain === false ? '' : $plain;
+		return NuSecret::open($s, '');
 	}
 
 	// ================================================================= base32
