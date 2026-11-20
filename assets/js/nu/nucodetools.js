@@ -21,7 +21,7 @@
 	'use strict';
 
 	var script = document.currentScript && document.currentScript.src || '';
-	var BASE = script.replace(/assets\/js\/nu\/nucodetools\.js.*$/, '');
+	var BASE = script.replace(/assets\/js\/nu\/nucodetools(\.min)?\.js.*$/, '');
 	var FMT = BASE + 'vendor/bundled/formatter/';
 	var LIBS = {
 		JS: ['beautify.min.js'], CSS: ['beautify-css.js'], HTML: ['beautify.min.js', 'beautify-css.js', 'beautify-html.min.js'],

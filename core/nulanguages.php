@@ -91,12 +91,15 @@ final class NuLanguages
 	// Setting row 'language_variants' {base: [variant codes]} – a base language without an entry (or no row) offers all its variants.
 	public const VAR_KEY = 'language_variants';
 	private static ?array $varCache = null;
+	/** @var array<string, list<string>> base => offered variants, worked out once per request for the stored setting (0.8.1341 – every t() asked) */
+	private static array $varOf = [];
 
 	/** Variant codes offered for a base language (in the order of NU_LANG_VARIANTS); [] = the language has no variants. */
 	public static function variants(string $base): array
 	{
+		if (isset(self::$varOf[$base])) return self::$varOf[$base];
 		$all = array_keys(array_filter(NU_LANG_VARIANTS, static fn($v) => $v[0] === $base));
-		if (!$all) return [];
+		if (!$all) return self::$varOf[$base] = [];
 		if (self::$varCache === null) {
 			self::$varCache = [];
 			if (NuDB::$connected && !NuInstall::needed()) {
@@ -109,7 +112,7 @@ final class NuLanguages
 			}
 		}
 		$on = array_values(array_intersect($all, array_map('strval', (array)(self::$varCache[$base] ?? []))));
-		return $on ?: $all;
+		return self::$varOf[$base] = ($on ?: $all);
 	}
 
 	public static function hasVariant(string $variant): bool
@@ -141,6 +144,7 @@ final class NuLanguages
 		$row = ['setting_value' => json_encode($out), 'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => $by];
 		nu_setting_save(self::VAR_KEY, $row, $db);
 		self::$varCache = null;
+		self::$varOf = [];
 	}
 
 	/** Users per language: code => number of users whose sus_language is that language. */

@@ -730,7 +730,7 @@ final class NuAuth
 				'display' => 'Globeadmin', 'access_id' => '', 'email' => (string)(nu_cfg('nuConfigGlobeadminEmail') ?? ''), 'change_password' => false,
 			];
 		} else {
-			$row = nu_db()->one('SELECT * FROM zzzzsys_user WHERE zzzzsys_user_id = ?', [$s['id']]);
+			$row = self::userRow((string)$s['id']);
 			$acting = ($s['via'] ?? '') === 'impersonated' && NuImpersonate::active();
 			if ($acting && (!$row || !hash_equals((string)$s['fp'], self::fingerprint((string)$row['sus_login_password'])))) {
 				// the user was deleted or got a new password meanwhile: back to the globeadmin instead of a logout
@@ -780,6 +780,17 @@ final class NuAuth
 		}
 		if (!defined('NU_PASSIVE')) $_SESSION['nu_auth']['last'] = time();   // the bell's check does not count as activity (0.8.357)
 		return self::$user = $user;
+	}
+
+	/**
+	 * A user's whole row of zzzzsys_user (null when there is none), read once per request (performance review, 0.8.1341: one page read the
+	 * signed-in user's row up to seven times – whole, and column by column: language, team, department, access level, sus_json).
+	 * A write to the table through NuDB drops it (NuMemo).
+	 */
+	public static function userRow(string $userId): ?array
+	{
+		if ($userId === '') return null;
+		return NuMemo::get('user:' . $userId, ['zzzzsys_user'], static fn(): ?array => nu_db()->one('SELECT * FROM zzzzsys_user WHERE zzzzsys_user_id = ?', [$userId]));
 	}
 
 	/** Call after the current user's hash was changed elsewhere in this request (keeps the session valid). */
@@ -947,7 +958,7 @@ final class NuUserJson
 	public static function all(string $userId): array
 	{
 		if ($userId === '' || !self::available()) return [];
-		$j = json_decode((string)nu_db()->value('SELECT sus_json FROM zzzzsys_user WHERE zzzzsys_user_id = ?', [$userId]), true);
+		$j = json_decode((string)(NuAuth::userRow($userId)['sus_json'] ?? ''), true);
 		return is_array($j) ? $j : [];
 	}
 
@@ -966,8 +977,11 @@ final class NuUserJson
 	{
 		if ($userId === '' || !self::available()) return false;
 		$db = nu_db();
-		if ($db->value('SELECT COUNT(*) FROM zzzzsys_user WHERE zzzzsys_user_id = ?', [$userId]) == 0) return false;
-		$j = self::all($userId);
+		// read-modify-write: the stored JSON as it is NOW (not the row kept for this request – another tab may have written a key meanwhile)
+		$cur = $db->one('SELECT sus_json FROM zzzzsys_user WHERE zzzzsys_user_id = ?', [$userId]);
+		if ($cur === null) return false;
+		$j = json_decode((string)($cur['sus_json'] ?? ''), true);
+		$j = is_array($j) ? $j : [];
 		foreach ($values as $k => $v) $j[(string)$k] = $v;
 		$db->update('zzzzsys_user', ['sus_json' => json_encode($j, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)], 'zzzzsys_user_id', $userId);
 		return true;

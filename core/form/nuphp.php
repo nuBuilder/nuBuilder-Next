@@ -89,10 +89,14 @@ final class NuPhp
 		return $out;
 	}
 
+	/** How many pieces of form / procedure code ran in this request (NuBrowse::dropTempTable: none = no #TABLE_ID# table to drop). */
+	public static int $runs = 0;
+
 	public static function run(?string $code, array $hash, string $label, array $vars = []): bool
 	{
 		self::$hash = $hash;
 		if ($code === null || trim($code) === '') return true;
+		self::$runs++;
 
 		require_once __DIR__ . '/nuphp_api.php';
 		self::includes();
@@ -115,7 +119,7 @@ final class NuPhp
 		});
 		ob_start();
 		try {
-			self::evaluate($code, $vars);
+			nu_db()->native(static fn () => self::evaluate($code, $vars));   // code of the application: server-side prepares (0.8.1342)
 		} catch (NuDemoBlocked $e) {                         // demo mode: the code tried to change data – no line, it is not an error in the code
 			self::$errors[] = ['message' => "$label: " . $e->getMessage(), 'field' => ''];
 		} catch (Throwable $e) {

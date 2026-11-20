@@ -66,6 +66,7 @@ $users = $isNew ? [] : NuAdmin::usersOf($role['id']);
 $grant = NuAdmin::grantable();
 $title = $isNew ? t('adm_new') : $role['name'];
 $canTest = !$isNew && NuImpersonate::canTest($role);       // test the role as a chosen user (0.8.1318)
+nu_body_class('nuRecPage');
 nu_layout_start(t('adm_title'), 'home', $canTest ? ['head' => nu_ts_head()] : []);
 ?>
 <nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2">

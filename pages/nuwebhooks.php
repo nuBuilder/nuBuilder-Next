@@ -109,6 +109,7 @@ if ($call) {
 	if (is_array($pretty)) $body = (string)json_encode($pretty, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 	$stCls = ['sent' => 'text-bg-success', 'failed' => 'text-bg-danger', 'pending' => 'text-bg-warning'];
 	$dt = static fn($v) => $v ? date(nu_dfmt('d.m.Y H:i:s'), (int)strtotime((string)$v)) : '';
+	nu_body_class('nuRecPage');
 	nu_layout_start(t('wh_title'), 'home', ['container' => 'container']);
 	echo $crumbs([[t('wh_calls'), nu_url('webhooks', ['tab' => 'calls'])], [t('wh_call_title')]]); ?>
 	<div class="nuTitleBar nuRecHead mb-3">
@@ -168,6 +169,7 @@ $inv = static fn(string $k) => isset($errors[$k]) ? ' is-invalid' : '';
 $tip = static fn(string $text) => '<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="' . h($text) . '" title="' . h($text) . '"><i class="bi bi-info-circle"></i></span>';
 $formOpts = array_filter(nu_forms(), static fn($f, $fid) => !str_starts_with((string)$fid, 'nu') && in_array($f['type'], ['browseedit', 'edit', 'browse'], true), ARRAY_FILTER_USE_BOTH);
 $title = $hook ? $hook['name'] : t('wh_new');
+nu_body_class('nuRecPage');
 nu_layout_start(t('wh_title'), 'home', ['container' => 'container', 'head' => nu_ts_head()]);
 echo $crumbs([[$title]]); ?>
 <div class="nuTitleBar nuRecHead mb-3">

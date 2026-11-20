@@ -85,6 +85,7 @@ if ($id === '') {
 }
 
 $head = NuBuilderLib::fontAwesomeTag() . '<link rel="stylesheet" href="' . nu_asset(NU_TOMSELECT . '/tom-select.bootstrap5.min.css') . '">';
+if ($id !== '') nu_body_class('nuRecPage');
 nu_layout_start(t('item_title'), 'forms', ['head' => $head]);
 ?>
 <nav aria-label="breadcrumb">

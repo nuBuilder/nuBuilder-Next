@@ -56,6 +56,7 @@ if (($_GET['id'] ?? '') !== '') {
 		$v = (string)($v ?? '');
 		return mb_strlen($v) > 500 ? mb_substr($v, 0, 500) . ' …' : $v;
 	};
+	nu_body_class('nuRecPage');
 	nu_layout_start((string)$e['title'], 'home');
 	echo $crumbs([[(string)$e['title']]]);
 	$buttons = nu_back_button(null, nu_url('recyclebin'));

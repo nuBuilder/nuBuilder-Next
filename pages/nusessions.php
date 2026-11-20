@@ -220,7 +220,7 @@ nu_layout_start(t('sess_title'), 'log', ['head' => nu_ts_head()]);
 	<div class="px-3 py-2 border-bottom fw-semibold small">nuBuilder Next <span class="badge text-bg-secondary ms-1"><?= count($rows) ?></span></div>
 	<div class="table-responsive">
 		<table class="table align-middle mb-0 nu-table" id="sessTable">
-			<thead><tr><?= $th(t('user'), 'user') . $th('IP', 'ip') . $th(t('sess_browser'), 'browser') . $th(t('sess_login_at'), 'login') . $th(t('sess_last'), 'last') ?><th></th></tr></thead>
+			<thead><tr><?= $th(t('user'), 'user') . $th('IP', 'ip') . $th(t('sess_browser'), 'browser') . $th(t('sess_login_at'), 'login') . $th(t('sess_last'), 'last') ?><th><span class="visually-hidden"><?= h(t('actions')) ?></span></th></tr></thead>
 			<tbody>
 			<?php if (!$rows): ?><tr><td colspan="6" class="text-center text-body-secondary py-4"><?= h(t('no_records')) ?></td></tr><?php endif; ?>
 			<?php
@@ -306,7 +306,7 @@ nu_layout_start(t('sess_title'), 'log', ['head' => nu_ts_head()]);
 		<div class="collapse" id="sessForte">
 		<div class="table-responsive">
 			<table class="table align-middle mb-0 nu-table">
-				<thead><tr><?= $th(t('user'), 'user') . $th(t('sess_login_at'), 'login') . $th(t('sess_last'), 'last') ?><th></th></tr></thead>
+				<thead><tr><?= $th(t('user'), 'user') . $th(t('sess_login_at'), 'login') . $th(t('sess_last'), 'last') ?><th><span class="visually-hidden"><?= h(t('actions')) ?></span></th></tr></thead>
 				<tbody>
 				<?php if (!$nb): ?><tr><td colspan="4" class="text-center text-body-secondary py-4"><?= h(t('no_records')) ?></td></tr><?php endif; ?>
 				<?php foreach ($nb as $r): ?>

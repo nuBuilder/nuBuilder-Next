@@ -88,6 +88,7 @@ if ($id === '') {
 
 $title = $id === '' ? t('perm_title') : ($item ? (string)$item['pme_ident'] : t('perm_new'));
 $head = $id !== '' ? '<link rel="stylesheet" href="' . nu_asset(NU_TOMSELECT . '/tom-select.bootstrap5.min.css') . '">' : '';
+if ($id !== '') nu_body_class('nuRecPage');
 nu_layout_start($title, 'users', ['head' => $head]);
 ?>
 <nav aria-label="breadcrumb">

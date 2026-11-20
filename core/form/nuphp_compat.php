@@ -153,7 +153,7 @@ if (!function_exists('db_fetch_value')) {
 	/** Quoted string literal for SQL (prefer parameters: nuRunQuery($sql, [$value])). */
 	function db_quote($s): string
 	{
-		return nu_db()->pdo()->quote((string)$s);
+		return nu_db()->quote((string)$s);
 	}
 
 	function nuDBQuote($s): string

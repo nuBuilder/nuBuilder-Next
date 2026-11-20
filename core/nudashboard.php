@@ -222,22 +222,26 @@ final class NuDashboard
 	/**
 	 * Runs the widget's source with the hash and returns ['columns' => [...], 'rows' => [[...]], 'more' => bool] (values as text or number).
 	 * Results are cached per user for the widget's cache seconds ($force = read again).
+	 * $free (0.8.1341, the dashboard API): the session lock is given up while a query runs, so the widgets of a dashboard are answered
+	 * side by side and the user's other pages do not wait for a slow one. A procedure keeps the session – its code may use it.
 	 */
-	public static function data(array $w, array $hash, bool $force = false): array
+	public static function data(array $w, array $hash, bool $force = false, bool $free = false): array
 	{
 		$ttl = (int)$w['opt']['cache'];
 		$h = $hash;
 		foreach (array_keys(NuHash::now()) as $k) unset($h[$k]);
 		unset($h['TABLE_ID'], $h['SESSION_ID']);
 		$key = md5((string)$w['zzzzsys_nunext_widget_id'] . '|' . md5((string)$w['source'] . (string)$w['query'] . (string)$w['options']) . '|' . json_encode($h));
-		$cache = &$_SESSION['nu_dash_cache'];
-		if (!is_array($cache)) $cache = [];
-		if (!$force && $ttl > 0 && isset($cache[$key]) && $cache[$key][0] > time()) return $cache[$key][1] + ['cached' => true];
+		$hit = $_SESSION['nu_dash_cache'][$key] ?? null;
+		if (!$force && $ttl > 0 && is_array($hit) && $hit[0] > time()) return $hit[1] + ['cached' => true];
+		if ($free && (string)$w['source'] !== 'php') nu_session_release();
 		$res = self::run($w, $hash);
-		if ($ttl > 0) {
+		if ($ttl > 0) nu_session_write(static function () use ($key, $ttl, $res): void {
+			$cache = &$_SESSION['nu_dash_cache'];
+			if (!is_array($cache)) $cache = [];
 			$cache[$key] = [time() + $ttl, $res];
 			if (count($cache) > 60) { uasort($cache, static fn($a, $b) => $a[0] <=> $b[0]); $cache = array_slice($cache, -60, null, true); }
-		}
+		});
 		return $res;
 	}
 

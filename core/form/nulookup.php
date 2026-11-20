@@ -71,12 +71,53 @@ final class NuLookup
 		return trim($col) === '' ? "''" : trim($col);
 	}
 
+	/** Key of a record read by its id: the object, the list SQL as it runs (hash variables filled in) and the id. */
+	private static function memoKey(array $o, string $inner, string $pk): string
+	{
+		return 'lookup:' . (string)($o['zzzzsys_object_id'] ?? $o['sob_all_id'] ?? '') . '|' . hash('sha256', $inner . '|' . (string)$o['sob_lookup_code'] . '|' . (string)$o['sob_lookup_description']) . '|' . $pk;
+	}
+
+	/**
+	 * Reads the records of several ids in ONE statement and keeps them for byId() (performance review, 0.8.1341): the rows of a
+	 * sub-form asked for their lookup one by one – an order with 50 lines ran 50 statements per lookup column. Only what the single
+	 * read would find the same way is kept (same list SQL, the id exactly as stored); everything else is read by byId() as before.
+	 * Dropped by any write of the request (NuMemo '*').
+	 * @param list<string> $pks
+	 */
+	public static function prime(array $o, array $pks, array $hash): void
+	{
+		$pks = array_values(array_unique(array_filter(array_map('strval', $pks), static fn($v) => $v !== '')));
+		if (count($pks) < 2) return;
+		try {
+			$src = self::source($o, $hash, true);
+			if (!$src) return;
+			[$inner, $pkCol] = $src;
+			$pks = array_values(array_filter($pks, static fn($pk) => !NuMemo::has(self::memoKey($o, $inner, $pk))));
+			foreach (array_chunk($pks, 500) as $part) {
+				if (count($part) < 2) continue;
+				$rows = nu_db()->all('SELECT nuT.*, ' . self::expr((string)$o['sob_lookup_code']) . ' AS nu_code, ' . self::expr((string)$o['sob_lookup_description'])
+					. " AS nu_description FROM ($inner) nuT WHERE nuT.$pkCol IN (" . implode(', ', array_fill(0, count($part), '?')) . ')', $part);
+				$want = array_flip($part);
+				foreach ($rows as $row) {
+					$pk = (string)($row[$pkCol] ?? '');
+					if (!isset($want[$pk])) continue;                       // found by the database's own comparison (case, numbers): left to the single read
+					unset($want[$pk]);                                      // the first row of an id counts, as in the single read
+					NuMemo::put(self::memoKey($o, $inner, $pk), ['*'], self::shape($row, $pkCol));
+				}
+			}
+		} catch (Throwable) {
+			/* the list cannot be read this way: byId() reads row by row and reports */
+		}
+	}
+
 	/** @return array{pk:string,code:string,description:string,row:array}|null */
 	public static function byId(array $o, string $pk, array $hash): ?array
 	{
 		$src = self::source($o, $hash, true);
 		if (!$src || $pk === '') return null;
 		[$inner, $pkCol] = $src;
+		$key = self::memoKey($o, $inner, $pk);
+		if (NuMemo::has($key)) return NuMemo::get($key, ['*'], static fn() => null);
 		try {
 			$row = nu_db()->one("SELECT nuT.*, " . self::expr((string)$o['sob_lookup_code']) . " AS nu_code, " . self::expr((string)$o['sob_lookup_description'])
 				. " AS nu_description FROM ($inner) nuT WHERE nuT.$pkCol = ?", [$pk]);
@@ -86,7 +127,10 @@ final class NuLookup
 			$row = self::fromTables($o, $inner, $pkCol, "$pkCol = ?", [$pk])[0] ?? null;
 			if (!$row) { error_log('nuBuilder Next lookup ' . $o['sob_all_id'] . ': ' . $e->getMessage()); return null; }
 		}
-		return $row ? self::shape($row, $pkCol) : null;
+		if (!$row) return null;
+		$rec = self::shape($row, $pkCol);
+		NuMemo::put($key, ['*'], $rec);                             // the same record again in this request (another row, the conflict check): no statement
+		return $rec;
 	}
 
 	/**

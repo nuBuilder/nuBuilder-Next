@@ -204,7 +204,7 @@ body.nuf { margin: 0; background: var(--bs-body-bg); color: var(--bs-body-color)
 .nuf-thumb-img .bi { display: none; }
 .nuf-tname { display: block; margin-top: .35rem; font-size: .85rem; text-align: center; color: var(--bs-body-color); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 a.nuf-tname:hover { text-decoration: underline; }
-.nuf-tsub { font-size: .72rem; text-align: center; color: var(--bs-secondary-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nuf-tsub { font-size: .75rem; text-align: center; color: var(--bs-secondary-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nuf-tcheck { position: absolute; top: .45rem; left: .45rem; z-index: 1; margin: 0; opacity: 0; }
 .nuf-tmenu { position: absolute; top: .15rem; right: .1rem; z-index: 1; opacity: 0; }
 .nuf-tmenu .nuf-more { padding: .1rem .25rem; background: var(--bs-body-bg); border-radius: .35rem; }

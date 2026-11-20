@@ -67,6 +67,11 @@
 			if (!wide) document.documentElement.classList.add('nuPhoneCards');
 		}
 	} catch (e) {}
+	// start page notices (usability review G12): the strip of two or more notices is folded on phones until the user opens it
+	try {
+		var nst = localStorage.getItem('nunext-home-notices');
+		if (nst === 'shut' || (nst !== 'open' && window.matchMedia && matchMedia('(max-width: 767.98px)').matches)) document.documentElement.classList.add('nuNoticesShut');
+	} catch (e) {}
 	// a run button's pivot (0.8.1156): the list page behind the pivot stays hidden from the first paint (nupivot.js)
 	try { if (/[?&]p=form(&|$)/.test(window.location.search) && /[?&]pvonly=1(&|$)/.test(window.location.search)) { document.documentElement.classList.add('nuPvOnly'); setTimeout(function () { if (!document.querySelector('.nuPvDlg')) document.documentElement.classList.remove('nuPvOnly'); }, 5000); } } catch (e) {}
 	// start page (0.8.995): rows Favourites / Recently used folded from the first paint as nuhome.js stripFold() will fold them

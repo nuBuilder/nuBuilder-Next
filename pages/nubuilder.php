@@ -104,7 +104,7 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 		<div class="col-lg-10 col-xl-8">
 			<?= $crumb   // inside the centred column, so it lines up with the card (0.8.249) ?>
 			<div class="d-flex flex-wrap align-items-center gap-2 mb-3"><h1 class="h3 mb-0 me-auto"><i class="bi bi-magic me-2"></i><?= h(t('builder_new_form')) ?></h1></div>
-			<form class="card shadow-sm" id="nbNewForm" novalidate>
+			<form class="card shadow-sm nbIsExisting" id="nbNewForm" novalidate>
 				<div class="card-body p-4">
 					<div class="alert alert-warning nbStale" id="nbStale" role="alert"><i class="bi bi-arrow-clockwise me-1"></i><?= h(t('builder_stale_assets')) ?></div>
 					<?php // three steps (0.8.663): Form · Table and fields · Layout and access – nubuilder.js shows one at a time ?>

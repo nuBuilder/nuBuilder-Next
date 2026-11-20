@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 define('NU_ROOT', dirname(__DIR__));
-define('NU_VERSION', '0.8.1339');
+define('NU_VERSION', '0.8.1345');
 // third-party code (0.8.409): vendor/bundled/ comes with nunext.zip (an update replaces it), vendor/packs/ = library packs (NuLibs,
 // an update never touches them). Bundled paths only through these constants.
 define('NU_VENDOR', 'vendor/bundled');
@@ -167,7 +167,7 @@ function nu_apply_timezone(): void
 function nu_db_timezone(NuDB $db): void
 {
 	if ($db->type !== 'mysql') return;
-	try { $db->pdo()->exec("SET time_zone = '" . date('P') . "'"); } catch (Throwable $e) { error_log('nuBuilder Next time zone: ' . $e->getMessage()); }
+	try { $db->session("SET time_zone = '" . date('P') . "'"); } catch (Throwable $e) { error_log('nuBuilder Next time zone: ' . $e->getMessage()); }
 }
 
 /** A setting: with $nuConfigSettingsFromDB = true the value of nuBuilder's settings table (zzzzsys_config) wins, as in nuBuilder. */
@@ -260,6 +260,41 @@ function nu_ini_set(string $key, string $value): void
 	if (function_exists('ini_set')) @ini_set($key, $value);
 }
 
+/**
+ * Gives up the session lock (0.8.1341) for work that needs no session – a long query, a file being built: PHP keeps the session
+ * file locked while a request has it open, so the user's other pages and the page's own requests would wait for it. $_SESSION can
+ * still be read afterwards; what is written to it is lost – use nu_session_write(). Never before code of the application runs
+ * (procedures, form code: it may write to the session).
+ */
+function nu_session_release(): void
+{
+	if (session_status() !== PHP_SESSION_ACTIVE) return;
+	session_write_close();
+	// opening it again (nu_session_write) must not send the cookie or the cache headers a second time – both also fail once output began,
+	// and so does changing these settings: set them now
+	if (!headers_sent()) {
+		nu_ini_set('session.use_cookies', '0');
+		nu_ini_set('session.cache_limiter', '');
+	}
+}
+
+/**
+ * Runs $fn with the session open for writing – also after nu_session_release(): the session is opened again, $fn changes $_SESSION
+ * (it sees what other requests stored meanwhile) and the lock is given up at once. False when the session could not be opened.
+ */
+function nu_session_write(callable $fn): bool
+{
+	if (session_status() === PHP_SESSION_ACTIVE) { $fn(); return true; }
+	if (PHP_SAPI === 'cli' || session_id() === '' || nu_ini_get('session.use_cookies') === '1') return false;   // never opened, or not released by nu_session_release()
+	if (!@session_start()) return false;
+	try {
+		$fn();
+	} finally {
+		session_write_close();
+	}
+	return true;
+}
+
 function nu_session_timeout(bool $globeadmin = false): int
 {
 	return max(1, (int)nu_cfg($globeadmin ? 'nuConfigSessionTimeoutGlobeadmin' : 'nuConfigSessionTimeout')) * 60;
@@ -315,10 +350,38 @@ function nu_asset(string $path): string
 {
 	static $cache = [];
 	if (!isset($cache[$path])) {
-		$mtime = @filemtime(NU_ROOT . '/' . $path);
-		$cache[$path] = $path . '?v=' . ($mtime ? base_convert((string)$mtime, 10, 36) : NU_VERSION);
+		$use = $path;
+		// the minified copy (0.8.1342, dev/minify.py): listed in assets/min.json with the size of the source it was made from
+		$min = nu_asset_min();
+		if (isset($min[$path]) && @filesize(NU_ROOT . '/' . $path) === $min[$path]) {
+			$copy = (string)preg_replace('/\.(js|css)$/', '.min.$1', $path);
+			if (is_file(NU_ROOT . '/' . $copy)) $use = $copy;
+		}
+		$mtime = @filemtime(NU_ROOT . '/' . $use);
+		$cache[$path] = $use . '?v=' . ($mtime ? base_convert((string)$mtime, 10, 36) : NU_VERSION);
 	}
 	return $cache[$path];
+}
+
+/**
+ * Sources with a minified copy: [path => size of the source] from assets/min.json – empty in developer mode ($nuConfigDevMode: readable
+ * code in the browser's tools). The cookie nunext_assets = min / src chooses either way (tests, a look at a live server's sources).
+ */
+function nu_asset_min(): array
+{
+	static $list = null;
+	if ($list !== null) return $list;
+	$want = (string)($_COOKIE['nunext_assets'] ?? '');
+	$dev = false;
+	if ($want === '') {
+		if (is_file(nu_config_path())) {                     // installer: no nuconfig.php yet (nu_config() would stop the page)
+			try { $dev = !empty(nu_cfg('nuConfigDevMode')); } catch (Throwable) { $dev = false; }
+		}
+	}
+	if ($want === 'src' || ($want !== 'min' && $dev)) return $list = [];
+	$f = NU_ROOT . '/assets/min.json';
+	$j = is_file($f) ? json_decode((string)@file_get_contents($f), true) : null;
+	return $list = is_array($j) ? $j : [];
 }
 
 function nu_url(string $page, array $params = []): string
@@ -341,22 +404,75 @@ function nu_redirect(string $url): never
 	exit;
 }
 
-/** nuBuilder-style primary key: uniqid() + 2-digit counter (15 chars, fits varchar(25)). */
 /**
- * One row of nuBuilder Next's settings table (0.8.827): the value of zzzzsys_nunext_setting <id>, null when there is none. Cached per
- * request and connection – a page used to read the same rows 15–20 times; every write to the table through NuDB clears the cache
- * (NuDB::noteWrite), as does nu_setting_forget(). Callers keep their own JSON decoding and defaults.
+ * One row of nuBuilder Next's settings table: the value of zzzzsys_nunext_setting <id>, null when there is none (or it is NULL).
+ * A page used to read 10–25 rows with one statement each – a quarter of all its statements (performance review, 0.8.1341). Now the
+ * first question of a request loads every row in ONE statement (values up to NU_SETTING_INLINE bytes; a longer one – Global code,
+ * collected jQuery warnings, the SSO key cache – is read when asked for), so a setting that does not exist costs nothing either.
+ * Kept per request and connection for NU_SETTING_TTL seconds (a long task sees another request's change after that at the latest);
+ * every write to the table through NuDB drops it (NuDB::noteWrite), as does nu_setting_forget(). Callers keep their own JSON
+ * decoding and defaults. Throws, as before, while the table does not exist.
  */
+const NU_SETTING_INLINE = 8192;
+const NU_SETTING_TTL = 2.0;
+
 function nu_setting_value(string $id): ?string
 {
 	$db = nu_db();
-	$key = spl_object_id($db);
-	$cache = &nu_setting_cache();
-	if (!array_key_exists($key, $cache) || !array_key_exists($id, $cache[$key])) {
+	$c = &nu_setting_rows($db);
+	if (!array_key_exists($id, $c)) return null;                      // no such row
+	if ($c[$id] === false) {                                          // a long value: read now, once
 		$v = $db->value('SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [$id]);
-		$cache[$key][$id] = $v === null || $v === false ? null : (string)$v;
+		$c[$id] = $v === null || $v === false ? null : (string)$v;
 	}
-	return $cache[$key][$id];
+	return $c[$id];
+}
+
+/** Is there a row <id> (whatever its value)? */
+function nu_setting_has(string $id): bool
+{
+	return array_key_exists($id, nu_setting_rows(nu_db()));
+}
+
+/**
+ * Several rows at once: [id => value or null]. Long values that are not loaded yet come in ONE statement (Global JS + CSS + scope
+ * on every page – NuCustomCode::get).
+ * @param list<string> $ids
+ * @return array<string, ?string>
+ */
+function nu_setting_values(array $ids): array
+{
+	$db = nu_db();
+	$c = &nu_setting_rows($db);
+	$long = array_values(array_filter($ids, static fn($id) => array_key_exists($id, $c) && $c[$id] === false));
+	if (count($long) > 1) {
+		foreach ($long as $id) $c[$id] = null;
+		foreach ($db->all('SELECT zzzzsys_nunext_setting_id AS k, setting_value AS v FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id IN ('
+			. implode(', ', array_fill(0, count($long), '?')) . ')', $long) as $r) $c[(string)$r['k']] = $r['v'] === null ? null : (string)$r['v'];
+	}
+	$out = [];
+	foreach ($ids as $id) $out[$id] = nu_setting_value($id);
+	return $out;
+}
+
+/**
+ * The loaded rows of a connection: id => value, null (NULL in the table) or false (longer than NU_SETTING_INLINE: not loaded yet).
+ * @return array<string, string|false|null>
+ */
+function &nu_setting_rows(NuDB $db): array
+{
+	$cache = &nu_setting_cache();
+	$key = spl_object_id($db);
+	if (!isset($cache[$key]) || microtime(true) - $cache[$key]['t'] > NU_SETTING_TTL) {
+		$len = $db->type === 'sqlsrv' ? 'DATALENGTH(setting_value)' : 'LENGTH(setting_value)';
+		$rows = [];
+		foreach ($db->all("SELECT zzzzsys_nunext_setting_id AS k, CASE WHEN $len <= " . NU_SETTING_INLINE . " THEN setting_value END AS v,
+			CASE WHEN $len > " . NU_SETTING_INLINE . ' THEN 1 ELSE 0 END AS big FROM zzzzsys_nunext_setting') as $r) {
+			$rows[(string)$r['k']] = (int)$r['big'] === 1 ? false : ($r['v'] === null ? null : (string)$r['v']);
+		}
+		$cache[$key] = ['t' => microtime(true), 'v' => $rows];
+	}
+	return $cache[$key]['v'];
 }
 
 /** Writes one settings row (update or insert): the pattern of NuHome::save() / NuUpdate::setKeepSql(), once (0.8.827). */
@@ -374,13 +490,14 @@ function nu_setting_forget(): void
 	$cache = [];
 }
 
-/** @return array<int, array<string, ?string>> */
+/** @return array<int, array{t: float, v: array<string, string|false|null>}> */
 function &nu_setting_cache(): array
 {
 	static $cache = [];
 	return $cache;
 }
 
+/** nuBuilder-style primary key: uniqid() + 2-digit counter (15 chars, fits varchar(25)). */
 function nu_id(): string
 {
 	static $n = 0;
@@ -398,7 +515,13 @@ function nu_id(): string
  */
 function nu_pdo_mysql_buffered(): int
 {
-	return defined('Pdo\\Mysql::ATTR_USE_BUFFERED_QUERY') ? (int)constant('Pdo\\Mysql::ATTR_USE_BUFFERED_QUERY') : (int)constant('PDO::MYSQL_ATTR_USE_BUFFERED_QUERY');
+	return nu_pdo_mysql_attr('USE_BUFFERED_QUERY');
+}
+
+/** An attribute of the MySQL PDO driver by its short name ('MULTI_STATEMENTS' …): Pdo\\Mysql::ATTR_… (PHP 8.4+), else PDO::MYSQL_ATTR_… */
+function nu_pdo_mysql_attr(string $name): int
+{
+	return defined('Pdo\\Mysql::ATTR_' . $name) ? (int)constant('Pdo\\Mysql::ATTR_' . $name) : (int)constant('PDO::MYSQL_ATTR_' . $name);
 }
 
 function nu_uuid(): string
@@ -455,9 +578,34 @@ function nu_flashes(): array
 
 // ----------------------------------------------------------------- CSRF
 
-function nu_csrf_token(): string
+/** The session's form token (64 hex characters) – never printed as it is (see nu_csrf_token). */
+function nu_csrf_secret(): string
 {
 	return $_SESSION['nu_csrf'] ??= bin2hex(random_bytes(32));
+}
+
+/**
+ * The form token for a page or a script (0.8.1342): the session's token XOR fresh random bytes, with those bytes in front – a different
+ * text on every page and every call, so a compressed page gives nothing away about it (BREACH: the size of a compressed answer that
+ * holds a secret and text an attacker chose tells the secret byte by byte). nu_csrf_valid() accepts it and the plain token.
+ */
+function nu_csrf_token(): string
+{
+	$raw = (string)hex2bin(nu_csrf_secret());
+	$mask = random_bytes(strlen($raw));
+	return bin2hex($mask . ($mask ^ $raw));
+}
+
+/** Is $sent the session's form token – masked (nu_csrf_token) or plain? */
+function nu_csrf_valid(mixed $sent): bool
+{
+	if (!is_string($sent) || $sent === '') return false;
+	$secret = nu_csrf_secret();
+	if (strlen($sent) === strlen($secret)) return hash_equals($secret, $sent);
+	if (strlen($sent) !== 2 * strlen($secret) || !ctype_xdigit($sent)) return false;
+	$b = (string)hex2bin($sent);
+	$n = intdiv(strlen($b), 2);
+	return hash_equals($secret, bin2hex(substr($b, 0, $n) ^ substr($b, $n)));
 }
 
 function nu_csrf_field(): string
@@ -468,7 +616,7 @@ function nu_csrf_field(): string
 function nu_csrf_verify(): void
 {
 	$sent = $_POST['_csrf'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
-	if (!is_string($sent) || !hash_equals(nu_csrf_token(), $sent)) {
+	if (!nu_csrf_valid($sent)) {
 		// login page open while the session was gone (idle tab): show it again – with the same page to return to
 		if (($_GET['p'] ?? '') === 'login') {
 			nu_flash('warning', t('login_form_expired'));
@@ -477,6 +625,44 @@ function nu_csrf_verify(): void
 		http_response_code(400);
 		nu_fatal(t('err_csrf'), t('err_csrf_hint'), true);
 	}
+}
+
+// ----------------------------------------------------------------- compression of pages
+
+/**
+ * Pages go to the browser compressed (0.8.1342, review P2): the start page 149 KB → about 30 KB, the help 745 KB → about 120 KB.
+ * Only an HTML page that was written in one go: a page that sends its output in parts (progress, long tasks), downloads (a
+ * Content-Disposition or a Content-Length of their own), JSON and anything a server or PHP already compresses pass through
+ * unchanged. Safe with the form token because every page carries it masked (nu_csrf_token).
+ */
+function nu_compress_start(): void
+{
+	if (PHP_SAPI === 'cli' || !function_exists('gzencode') || headers_sent()) return;
+	if (nu_ini_get('zlib.output_compression') !== '' && !in_array(strtolower((string)nu_ini_get('zlib.output_compression')), ['0', 'off', ''], true)) return;
+	if (!preg_match('/\bgzip\b/i', (string)($_SERVER['HTTP_ACCEPT_ENCODING'] ?? ''))) return;
+	ob_start('nu_compress_output', 4 << 20);   // a larger answer (a download without its own headers) streams on uncompressed
+}
+
+/** Output handler of nu_compress_start(). */
+function nu_compress_output(string $buffer, int $phase): string
+{
+	static $pass = false;
+	if ($pass) return $buffer;
+	$whole = ($phase & PHP_OUTPUT_HANDLER_START) && ($phase & PHP_OUTPUT_HANDLER_FINAL);
+	if (!$whole || ($phase & PHP_OUTPUT_HANDLER_CLEAN) || strlen($buffer) < 1400 || headers_sent()) { $pass = true; return $buffer; }
+	$type = 'text/html';
+	foreach (headers_list() as $h) {
+		$k = strtolower(strstr($h, ':', true) ?: '');
+		if ($k === 'content-type') $type = strtolower(trim(substr($h, 13)));
+		if ($k === 'content-encoding' || $k === 'content-disposition' || $k === 'content-length') return $buffer;
+	}
+	if (!str_starts_with($type, 'text/html')) return $buffer;
+	$gz = gzencode($buffer, 5);
+	if ($gz === false) return $buffer;
+	header('Content-Encoding: gzip');
+	header('Vary: Accept-Encoding', false);
+	header('Content-Length: ' . strlen($gz));
+	return $gz;
 }
 
 // ===================================================================== i18n

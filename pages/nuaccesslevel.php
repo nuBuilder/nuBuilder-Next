@@ -292,6 +292,7 @@ $pickGroups = array_values(array_unique(array_filter(array_column($pick, 'group'
 natcasesort($pickGroups);
 $pickTypes = array_values(array_unique(array_filter(array_column($pick, 'type'))));
 
+nu_body_class('nuRecPage');
 nu_layout_start($title, 'access', ['head' => '<link rel="stylesheet" href="' . nu_asset(NU_TOMSELECT . '/tom-select.bootstrap5.min.css') . '">']);
 ?>
 <nav aria-label="breadcrumb">

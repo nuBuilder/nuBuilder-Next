@@ -191,11 +191,31 @@ final class NuTutorial
 		NuUserJson::set((string)$u['id'], self::JSON_KEY, $p);
 	}
 
+	/**
+	 * The lesson ids of a track in reading order. The start page (tile badge, banner) needs nothing else of the tutorial – they are kept
+	 * in the session for ten minutes, so that page no longer parses the tutorial file on every view (a tenth of its time; performance
+	 * review, 0.8.1341). The key holds the file's time and the reader, so an update or another user reads the file again.
+	 * @return list<string>
+	 */
+	public static function ids(?string $track = null): array
+	{
+		$track = self::cleanTrack($track ?? self::track()) ?: 'basic';
+		if (isset(self::$chapters[$track])) return array_map('strval', array_keys(self::order($track)));
+		$u = NuAuth::user() ?? [];
+		$key = NU_VERSION . '|' . (string)@filemtime(NU_ROOT . '/' . self::FILE) . '|' . (string)($u['id'] ?? '') . '|' . (string)($u['access_id'] ?? '');
+		$live = session_status() === PHP_SESSION_ACTIVE;
+		$c = $live ? ($_SESSION['nu_tut_ids'][$track] ?? null) : null;
+		if (is_array($c) && ($c['k'] ?? '') === $key && (int)($c['t'] ?? 0) > time() - 600 && is_array($c['ids'] ?? null)) return $c['ids'];
+		$ids = array_map('strval', array_keys(self::order($track)));
+		if ($live) $_SESSION['nu_tut_ids'][$track] = ['k' => $key, 't' => time(), 'ids' => $ids];
+		return $ids;
+	}
+
 	/** [done, total] for the lessons this reader sees in a track (null = the reader's track). */
 	public static function counts(?array $p = null, ?string $track = null): array
 	{
 		$p ??= self::progress();
-		$ids = array_keys(self::order($track ?? ($p['track'] ?: null)));
+		$ids = self::ids($track ?? ($p['track'] ?: null));
 		return [count(array_intersect($ids, $p['done'])), count($ids)];
 	}
 
@@ -204,7 +224,7 @@ final class NuTutorial
 	{
 		$p ??= self::progress();
 		if ($p['track'] === '') return '';                                 // not chosen yet: the overview asks first
-		foreach (array_keys(self::order($p['track'])) as $id) if (!in_array($id, $p['done'], true)) return (string)$id;
+		foreach (self::ids($p['track']) as $id) if (!in_array($id, $p['done'], true)) return (string)$id;
 		return '';
 	}
 

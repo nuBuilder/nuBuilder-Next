@@ -74,7 +74,7 @@ final class NuUserAccess
 			$userId = (string)$u['id'];
 		}
 		$db = nu_db();
-		$main = (string)$db->value('SELECT sus_zzzzsys_access_id FROM zzzzsys_user WHERE zzzzsys_user_id = ?', [$userId]);
+		$main = (string)(NuAuth::userRow($userId)['sus_zzzzsys_access_id'] ?? '');
 		$until = [];
 		if (self::ready()) foreach ($db->all('SELECT access_id, valid_until FROM ' . self::TABLE . ' WHERE user_id = ?', [$userId]) as $r) {
 			if (self::active($r['valid_until'] ?? null) && (string)$r['access_id'] !== '') $until[(string)$r['access_id']] = trim((string)($r['valid_until'] ?? '')) ?: null;

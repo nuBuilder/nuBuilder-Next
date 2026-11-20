@@ -18,6 +18,9 @@ defined('NU_ROOT') || exit;
  */
 final class NuRowDetails
 {
+	/** Session key of candidates(): child-table columns found in the catalogue, per table (ten minutes). */
+	public const FOUND = 'nu_rd_found';
+
 	public const ROWS = 10;
 	private const TYPES = ['input', 'select', 'textarea', 'lookup'];
 
@@ -133,13 +136,21 @@ final class NuRowDetails
 		// a column named like the primary key, or ending in _<primary key> (ord_sample_customer_id for sample_customer_id)
 		$like = '%\\_' . str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $pk);
 		$likeMs = '%!_' . str_replace(['!', '%', '_', '['], ['!!', '!%', '!_', '!['], $pk);
-		try {
+		// The catalogue is asked once in ten minutes per table (kept in the session, 0.8.1341): every list page a designer opened ran two
+		// catalogue statements, one of them over the columns of ALL tables of the database. A table change made through nuBuilder Next
+		// in this session drops it (NuDB::noteWrite).
+		$ck = strtolower($table . '|' . $pk);
+		$live = session_status() === PHP_SESSION_ACTIVE;
+		$kept = $live ? ($_SESSION[self::FOUND][$ck] ?? null) : null;
+		if (is_array($kept) && (int)($kept['t'] ?? 0) > time() - 600 && is_array($kept['f'] ?? null)) $found = $kept['f'];
+		else try {
 			if ($db->type === 'mysql') {
 				foreach ($db->all('SELECT TABLE_NAME AS t, COLUMN_NAME AS c FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA = DATABASE() AND REFERENCED_TABLE_NAME = ?', [$table]) as $r) $found[] = [(string)$r['t'], (string)$r['c']];
 				foreach ($db->all('SELECT TABLE_NAME AS t, COLUMN_NAME AS c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (COLUMN_NAME = ? OR COLUMN_NAME LIKE ?)', [$pk, $like]) as $r) $found[] = [(string)$r['t'], (string)$r['c']];
 			} elseif ($db->type === 'sqlsrv') {
 				foreach ($db->all("SELECT TABLE_NAME AS t, COLUMN_NAME AS c FROM INFORMATION_SCHEMA.COLUMNS WHERE COLUMN_NAME = ? OR COLUMN_NAME LIKE ? ESCAPE '!'", [$pk, $likeMs]) as $r) $found[] = [(string)$r['t'], (string)$r['c']];
 			}
+			if ($live) $_SESSION[self::FOUND][$ck] = ['t' => time(), 'f' => $found];
 		} catch (Throwable) { /* catalogue not readable: sub-forms only */ }
 		$subTables = [];
 		foreach ($meta->objects as $o) if ($o['sob_all_type'] === 'subform' && ($sm = NuFormMeta::load((string)$o['sob_subform_zzzzsys_form_id']))) $subTables[strtolower($sm->table())] = true;

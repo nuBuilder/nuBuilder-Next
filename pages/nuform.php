@@ -537,7 +537,7 @@ function nu_script(string $code, string $label): string
 $setupHeader = ''; $setupStyle = '';
 try {
 	if (nu_db()->tableExists('zzzzsys_setup')) {
-		$setup = nu_db()->one('SELECT * FROM zzzzsys_setup') ?? [];
+		$setup = NuMailer::setupRow();                        // the row every page reads once (0.8.1341)
 		$setupHeader = nu_setup_header((string)($setup['set_header'] ?? ''), '');
 		// Setup → Style in the head, as nuBuilder Forte (index.php): <style> elements of HTML objects come later and win (0.8.971 – it
 		// stood after the form, so a grid layout of the Setup style replaced the one an HTML object writes for itself)
@@ -735,7 +735,8 @@ $foot = '<script>window.nuNext = ' . json_encode($client, JSON_HEX_TAG | JSON_HE
 
 nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategroy' ? 'notes' : 'forms', ['head' => $head, 'bare' => $bare, 'nu_form' => [$mode, (string)$meta->form['sfo_code']], 'container' => 'container-fluid nuFormContainer', 'body_class' => 'nuForm nuForm-' . $mode . ($lookupTo !== '' ? ' nuLookupPage' : '') . (!empty($printMode) ? ' nuPrintView' : '') . ($design ? ' nuDesignMode' : '')]);
 ?>
-<div class="nuFormHeader nuTitleBar mb-3">
+<?php if ($design): // design mode hides the header: the page's heading for screen readers (usability review G8) ?><h1 class="visually-hidden"><?= h($title) ?></h1><?php endif; ?>
+<div class="nuFormHeader nuTitleBar mb-3<?= !$bare ? ' nuPhHead' : '' /* holds .nuPhTitle (nuform.css phone header, 0.8.1342) */ ?>">
 	<?php if (!$bare): // phones (0.8.1003, the owner picked mockup B): "‹ <parent>" + the title instead of the breadcrumb and Back; the buttons sit right of the title
 		$phCur = (string)(end($breadcrumbs)['title'] ?? $title); $phBack = null;
 		for ($bi = count($breadcrumbs) - 2; $bi >= 0; $bi--) if (($breadcrumbs[$bi]['url'] ?? '') !== '') { $phBack = $breadcrumbs[$bi]; break; } ?>
@@ -748,6 +749,7 @@ nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategro
 			<?php foreach ($breadcrumbs as $i => $b): ?>
 				<li class="breadcrumb-item<?= $b['url'] === '' ? ' active' : '' ?>">
 					<?php if ($b['url'] !== ''): ?><a class="nuBreadcrumb" id="nuBreadcrumb<?= (int)$i ?>" href="<?= h($b['url']) ?>"><?= h($b['title']) ?></a>
+					<?php elseif ($i === count($breadcrumbs) - 1): /* usability review G8: the page's heading */ ?><h1 class="nuBreadcrumb nuCrumbH1 fw-semibold" id="nuBreadcrumb<?= (int)$i ?>"><?= h($b['title']) ?></h1>
 					<?php else: ?><span class="nuBreadcrumb fw-semibold" id="nuBreadcrumb<?= (int)$i ?>"><?= h($b['title']) ?></span><?php endif; ?>
 				</li>
 			<?php endforeach; ?>

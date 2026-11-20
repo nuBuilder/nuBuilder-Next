@@ -97,6 +97,7 @@ if ($id !== '') {
 	if ($f && nu_db()->tableExists(NuUserFields::EXT)) {
 		try { $values = (int)nu_db()->value('SELECT COUNT(*) FROM ' . NuUserFields::EXT . ' WHERE ' . NuDB::ident((string)$f['code']) . ' IS NOT NULL'); } catch (Throwable) { $values = 0; }
 	}
+	nu_body_class('nuRecPage');
 	nu_layout_start($f ? NuUserFields::label($f) : t('uf_new'), 'users');
 	?>
 	<form method="post" action="<?= h(nu_url('userfields', ['id' => $id])) ?>" id="ufForm" data-nu-guard novalidate>

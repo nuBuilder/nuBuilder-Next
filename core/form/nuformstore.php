@@ -148,6 +148,10 @@ final class NuDraftStore
 			$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($fields['sob_all_json'] ?? $existing['sob_all_json'] ?? null, ['fit' => !empty($fields['nunext_fit']) && $fields['nunext_fit'] !== '0' ? true : null]);
 			unset($fields['nunext_fit']);
 		}
+		if (array_key_exists('nunext_phone_table', $fields)) {     // grid sub-form on phones (usability review G15): rows as cards unless nunext.phone = 'table'
+			$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($fields['sob_all_json'] ?? $existing['sob_all_json'] ?? null, ['phone' => !empty($fields['nunext_phone_table']) && $fields['nunext_phone_table'] !== '0' ? 'table' : null]);
+			unset($fields['nunext_phone_table']);
+		}
 		if (array_key_exists('nunext_run_pivot', $fields)) {       // run object that shows a saved pivot (0.8.1156)
 			$pv = NuRender::cleanRunPivot($fields['nunext_run_pivot']);
 			$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($fields['sob_all_json'] ?? $existing['sob_all_json'] ?? null, ['pivot' => $pv]);

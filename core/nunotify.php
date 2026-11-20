@@ -116,8 +116,18 @@ final class NuNotify
 		if (!$u) return [];
 		if ($u['globeadmin']) return ['id' => 'globeadmin', 'login' => (string)$u['login'], 'name' => 'Globeadmin', 'department' => '', 'team' => '', 'position' => '', 'access' => '',
 			'email' => (string)(nu_cfg('nuConfigGlobeadminEmail') ?? '')];
-		return self::people()[(string)$u['id']] ?? ['id' => (string)$u['id'], 'login' => (string)$u['login'], 'name' => '', 'department' => '', 'team' => '', 'position' => '',
+		$none = ['id' => (string)$u['id'], 'login' => (string)$u['login'], 'name' => '', 'department' => '', 'team' => '', 'position' => '',
 			'access' => (string)($u['access_id'] ?? ''), 'email' => (string)($u['email'] ?? '')];
+		// from the user's own row (0.8.1341) – people() reads EVERY user, and the bell asks on each page and each check (10,000 users = 10,000
+		// rows a minute per open tab). The same person as people() gives: no login name or expired = none of the groups.
+		$r = NuAuth::userRow((string)$u['id']);
+		if (!$r || (string)($r['sus_login_name'] ?? '') === '') return $none;
+		$exp = trim((string)($r['sus_expires_on'] ?? ''));
+		if ($exp !== '' && !str_starts_with($exp, '0000') && strtotime($exp) !== false && strtotime($exp) < strtotime('today')) return $none;
+		$name = trim((string)($r['sus_first_name'] ?? '') . ' ' . (string)($r['sus_last_name'] ?? '')) ?: (string)($r['sus_name'] ?? '');
+		return ['id' => (string)$u['id'], 'login' => (string)$r['sus_login_name'], 'name' => $name, 'department' => trim((string)($r['sus_department'] ?? '')),
+			'team' => trim((string)($r['sus_team'] ?? '')), 'position' => trim((string)($r['sus_position'] ?? '')), 'access' => (string)($r['sus_zzzzsys_access_id'] ?? ''),
+			'email' => trim((string)($r['sus_email'] ?? ''))];
 	}
 
 	public static function matches(array $aud, array $p): bool
@@ -231,10 +241,37 @@ final class NuNotify
 	public static function mine(int $max = 300): array
 	{
 		if (self::$mine !== null) return self::$mine;
+		return self::$mine = self::mineRows('n.*', $max);
+	}
+
+	/** The columns the top bar's count needs – no title, no text (0.8.1341). */
+	private const LIGHT = 'n.zzzzsys_nunext_notification_id, n.audience, n.mode, n.must_confirm';
+	private static ?array $light = null;
+
+	/**
+	 * For the bell in the top bar of every page: how many are unread, their ids, and whether one waits to be confirmed – read without
+	 * the texts (performance review, 0.8.1341: every page view fetched up to 300 notifications with their whole text for one number).
+	 * @return array{unread: int, unread_ids: list<string>, confirm: bool}
+	 */
+	public static function counts(): array
+	{
+		$all = self::$mine ?? (self::$light ??= self::mineRows(self::LIGHT, 300));
+		$ids = [];
+		$confirm = false;
+		foreach ($all as $id => $r) {
+			if ((string)$r['must_confirm'] === '1' && (string)$r['confirmed_at'] === '') $confirm = true;
+			if ((string)$r['hidden_at'] === '' && (string)$r['read_at'] === '') $ids[] = (string)$id;
+		}
+		return ['unread' => count($ids), 'unread_ids' => $ids, 'confirm' => $confirm];
+	}
+
+	/** @return array<string, array<string, mixed>> the notifications the signed-in user gets now (columns $cols of n + the state) */
+	private static function mineRows(string $cols, int $max): array
+	{
 		$p = self::me();
-		if (!$p || !self::ready()) return self::$mine = [];
+		if (!$p || !self::ready()) return [];
 		$now = self::now();
-		$rows = nu_db()->page('SELECT n.*, s.recipient AS s_recipient, s.read_at, s.hidden_at, s.confirmed_at FROM ' . self::T . ' n LEFT JOIN ' . self::U
+		$rows = nu_db()->page('SELECT ' . $cols . ', s.recipient AS s_recipient, s.read_at, s.hidden_at, s.confirmed_at FROM ' . self::T . ' n LEFT JOIN ' . self::U
 			. " s ON s.notification_id = n.zzzzsys_nunext_notification_id AND s.user_id = ? WHERE n.status = 'published' AND (n.publish_at IS NULL OR n.publish_at <= ?)"
 			. ' AND (n.expires_at IS NULL OR n.expires_at > ?)', [$p['id'], $now, $now], 'n.pinned DESC, n.publish_at DESC, n.created_at DESC', $max, 0);
 		$demo = NuDemo::active() ? (array)($_SESSION['nu_ntf'] ?? []) : null;
@@ -247,7 +284,7 @@ final class NuNotify
 			if ($demo !== null) foreach (['read_at', 'hidden_at', 'confirmed_at'] as $k) if (array_key_exists($k, (array)($demo[$id] ?? []))) $r[$k] = $demo[$id][$k];
 			$out[$id] = $r;
 		}
-		return self::$mine = $out;
+		return $out;
 	}
 
 	/** One notification for the bell / page (escaped HTML where needed). */
@@ -328,6 +365,7 @@ final class NuNotify
 	private static function write(string $id, array $vals): void
 	{
 		self::$mine = null;
+		self::$light = null;
 		if (NuDemo::active()) {                                    // demo visitors: only this session
 			$_SESSION['nu_ntf'][$id] = $vals + (array)($_SESSION['nu_ntf'][$id] ?? []);
 			return;

@@ -218,10 +218,10 @@ if (!is_string($p) || !isset($routes[$p])) {
 $pageJson = ($p === 'page' || $p === 'pageasset') && NuPage::wantsJson();
 if ($pageJson && nu_is_post()) {
 	$sent = $_POST['_csrf'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
-	if (!is_string($sent) || !hash_equals(nu_csrf_token(), $sent)) NuPage::fail(400, 'csrf', t('err_csrf'), t('err_csrf_hint'));
+	if (!nu_csrf_valid($sent)) NuPage::fail(400, 'csrf', t('err_csrf'), t('err_csrf_hint'));
 }
 // Uppy upload (0.8.459): a wrong token gets nuBuilder's upload answer {error, message} – Uppy's template shows message
-if ($p === 'upload' && nu_is_post() && !hash_equals(nu_csrf_token(), is_string($sent = $_POST['_csrf'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '')) ? $sent : '')) {
+if ($p === 'upload' && nu_is_post() && !nu_csrf_valid($_POST['_csrf'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? ''))) {
 	http_response_code(400);
 	header('Content-Type: application/json; charset=utf-8');
 	exit(json_encode(['error' => t('err_csrf'), 'message' => t('err_csrf') . ' ' . t('err_csrf_hint')], JSON_UNESCAPED_UNICODE));
@@ -307,4 +307,5 @@ if (empty($routes[$p]['public'])) {
 	}
 }
 
+if (empty($routes[$p]['json'])) nu_compress_start();   // HTML pages compressed (0.8.1342)
 require __DIR__ . "/pages/nu$p.php";

@@ -1,6 +1,7 @@
 /* global nuBs */
 /* Notification centre – the bell in the top bar (0.8.357; core/nulayout.php nu_bell(), pages/nunotifyapi.php, core/nunotify.php).
-   Checks every data-poll seconds (not while the tab is in the background; at once when it comes back), red badge = unread,
+   Checks every data-poll seconds (not while the tab is in the background; at once when it comes back; right after the page load only
+   when the server's count names something new – data-ids / data-confirm), red badge = unread,
    the panel lists the latest notifications (mark read / unread, hide, open the link), a toast for new ones, and a dialog for
    notifications that must be confirmed ("Got it"). */
 (function () {
@@ -162,6 +163,13 @@
 	});
 	allBtn.addEventListener('click', function () { request({action: 'readall'}).then(function (d) { apply(d); render(d); }).catch(function () { /* next check */ }); });
 	document.addEventListener('visibilitychange', function () { if (!document.hidden) check(); });
-	check();
+	// The page was drawn with the count a moment ago (data-ids = the unread ones, data-confirm = one waits for "Got it"): ask at once
+	// only when there is something to show now – a notification this browser tab has not announced yet, or one to confirm. Before
+	// (0.8.1341) every page view was followed by a request of its own.
+	var first = [];
+	try { first = JSON.parse(box.getAttribute('data-ids') || '[]'); } catch (e) { first = []; }
+	var known0 = seen();
+	if (known0 === null) seen(first);                     // first page of this browser session: nothing to announce for what is already there
+	if (box.hasAttribute('data-confirm') || !box.hasAttribute('data-ids') || (known0 !== null && first.some(function (i) { return known0.indexOf(i) < 0; }))) check();
 	timer = window.setInterval(check, poll);
 })();

@@ -108,6 +108,17 @@ final class NuSample
 		return is_string($src) && preg_match('/public const VERSION = (\d+);/', $src, $m) ? (int)$m[1] : 0;
 	}
 
+	/**
+	 * Installed? and which version – the one statement the start page's tile badge needs (0.8.1341: it called status(), eight
+	 * statements counting the sample's rows, on every view of the start page). @return array{installed: bool, version: int, current: int}
+	 */
+	public static function versionInfo(): array
+	{
+		$form = nu_db()->one('SELECT sfo_json FROM zzzzsys_form WHERE zzzzsys_form_id = ?', [self::fid(self::HOME)]);
+		$info = $form ? ((json_decode((string)$form['sfo_json'], true) ?: [])['nunext']['sample'] ?? []) : [];
+		return ['installed' => (bool)$form, 'version' => (int)($info['version'] ?? 0), 'current' => self::VERSION];
+	}
+
 	public static function status(): array
 	{
 		$db = nu_db();

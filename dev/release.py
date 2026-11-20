@@ -312,6 +312,12 @@ def main():
     if code != 0:
         sys.exit(out)
 
+    # 2c. minified copies of assets/ (0.8.1342, dev/minify.py): shipped beside the sources, nu_asset() serves them outside developer mode
+    code, out = run(['python3', '-I', 'dev/minify.py'])
+    print(out.strip())
+    if code != 0:
+        sys.exit(out)
+
     # 3. manifest (deployed files only)
     man = json.load(open('nunext-manifest.json', encoding='utf-8'))
     files = {}

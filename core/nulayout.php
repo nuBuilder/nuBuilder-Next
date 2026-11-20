@@ -143,12 +143,26 @@ function nu_menu_prefs(): void
 	<?php
 }
 
+/**
+ * A class for the <body> of the page that nu_layout_start() opens next (0.8.1341). 'nuRecPage' = a record page – one whose title bar is
+ * .nuRecHead (nuapp.css draws these pages compact): call nu_body_class('nuRecPage') before nu_layout_start() wherever a page prints
+ * that title bar (dev/tests/run.php checks it). The style sheet asked body:has(.nuRecHead) before – with :has() in front of the
+ * styled element the browser works out the styles of the whole page again on every change of the page.
+ */
+function nu_body_class(?string $add = null): string
+{
+	static $cls = '';
+	if ($add !== null && $add !== '' && !str_contains($cls . ' ', ' ' . $add . ' ')) $cls .= ' ' . $add;
+	return $cls;
+}
+
 function nu_layout_start(string $title, string $active = '', array $opt = []): void
 {
 	$u = NuAuth::user();
 	nu_head($title, $opt['head'] ?? '');
+	nu_layout_buffer();
 	if (!empty($opt['bare'])) {
-		echo '<body' . (isset($opt['nu_form']) ? ' id="nubody"' : '') . ' class="nu-app nu-bare' . h(' ' . ($opt['body_class'] ?? '')) . '"' . NuCustomCode::bodyAttrs($opt['nu_form'] ?? null) . '><main id="main" class="' . h($opt['container'] ?? 'container-fluid') . ' py-2">';
+		echo '<body' . (isset($opt['nu_form']) ? ' id="nubody"' : '') . ' class="nu-app nu-bare' . h(' ' . ($opt['body_class'] ?? '') . nu_body_class()) . '"' . NuCustomCode::bodyAttrs($opt['nu_form'] ?? null) . '><main id="main" class="' . h($opt['container'] ?? 'container-fluid') . ' py-2">';
 		if (!empty($_SESSION['nu_form_preview'])) echo NuFormDraft::banner(true);       // form drafts (0.8.386): "DRAFT" badge in iframes
 		nu_render_flashes();
 		return;
@@ -173,7 +187,7 @@ function nu_layout_start(string $title, string $active = '', array $opt = []): v
 	$sidebar = NuSidebar::enabled() && empty($opt['no_sidebar']);   // side bar (0.8.460, core/nusidebar.php)
 	if (empty($opt['bare'])) NuSidebar::record(NuSidebar::currentKey());   // recently used: side bar and start page (0.8.492)
 	?>
-<body<?= isset($opt['nu_form']) ? ' id="nubody"' : '' /* form pages: nuBuilder Forte's body id – form code reads $('#nubody') (0.8.974) */ ?> class="nu-app<?= $sidebar ? ' nuHasSidebar' : '' ?><?= h(' ' . ($opt['body_class'] ?? '')) ?><?= NuAdmin::$viewOnly ? ' nuViewOnly' : '' ?>"<?= NuAdmin::$viewOnly ? ' data-nu-view-only="' . h(t('adm_view_only')) . '"' : '' ?><?= NuCustomCode::bodyAttrs($opt['nu_form'] ?? null) /* page hook (0.8.523) */ ?>>
+<body<?= isset($opt['nu_form']) ? ' id="nubody"' : '' /* form pages: nuBuilder Forte's body id – form code reads $('#nubody') (0.8.974) */ ?> class="nu-app<?= $sidebar ? ' nuHasSidebar' : '' ?><?= $compact ? ' nuNavCrumbsOn' : '' /* the bar has the breadcrumb slot (nuapp.css hides the page's own at once) */ ?><?= h(' ' . ($opt['body_class'] ?? '') . nu_body_class()) ?><?= array_intersect(explode(' ', (string)($opt['container'] ?? 'nuContainer')), ['nuContainer', 'nuFormContainer', 'container', 'container-xl']) ? ' nuSheetMain' : '' /* the page's content as a sheet on wide screens (nuapp.css, 0.8.1342) */ ?><?= NuAdmin::$viewOnly ? ' nuViewOnly' : '' ?>"<?= NuAdmin::$viewOnly ? ' data-nu-view-only="' . h(t('adm_view_only')) . '"' : '' ?><?= NuCustomCode::bodyAttrs($opt['nu_form'] ?? null) /* page hook (0.8.523) */ ?>>
 <a class="visually-hidden-focusable" href="#main"><?= h(t('skip_to_content')) ?></a>
 <nav class="navbar navbar-expand-md nu-navbar border-bottom sticky-top<?= NuImpersonate::active() ? ' flex-wrap' : '' ?><?= $compact ? ' nuNavCompact' : '' ?>">
 	<?= NuImpersonate::banner() ?>
@@ -491,9 +505,60 @@ function nu_layout_end(string $extraBody = '', bool $bare = false): void
 <?php if (!$bare && NuAuth::user() && NuSysInfo::allowed()): ?><script src="<?= nu_asset('assets/js/nusysinfo.js') ?>"></script><?php endif; /* System info dialog (0.8.1237) */ ?>
 <?php if (!$bare && NuAuth::user() && NuHomeForms::allowed()): ?><script src="<?= nu_asset('assets/js/nuhomeforms.js') ?>"></script><?php endif; /* Home forms panel (0.8.1264) */ ?>
 <?= $extraBody ?>
+<?= nu_perf_mark() ?>
 </body>
 </html>
 <?php
+	nu_layout_buffer(true);
+}
+
+/**
+ * Classes of the <body> that depend on what the page printed (0.8.1342, review P4) – instead of style rules with :has() in front of the
+ * element they style (body:has(…) …, main:has(…) …), which make the browser work out the styles of the whole page on every change:
+ *   nuRecKeep  the record's heading stays visible (it holds a badge, a link or a button) – the breadcrumb does not repeat its name
+ *   nuListBack a system list whose head has a Back button – on phones the breadcrumb is left out (Back leads to the same place)
+ * nu_layout_start() keeps the page from <body> on; nu_layout_end() adds the classes to the body tag and sends it. A page that sends
+ * its output early (flush) or leaves a buffer open is sent unchanged.
+ */
+function nu_layout_buffer(bool $end = false): void
+{
+	static $level = null;
+	if (!$end) {
+		if (PHP_SAPI === 'cli') return;
+		ob_start();
+		$level = ob_get_level();
+		return;
+	}
+	if ($level === null || ob_get_level() !== $level) return;
+	$level = null;
+	$html = (string)ob_get_clean();
+	$add = '';
+	$p = strpos($html, 'nuRecHead');
+	if ($p !== false && preg_match('/^[^>]*>\s*<h1\b[^>]*>(.*?)<\/h1>/s', substr($html, $p), $m) && preg_match('/class="(?:[^"]*\s)?badge(?:\s[^"]*)?"|<a\b|<button\b/', $m[1])) $add .= ' nuRecKeep';   // badge as a class of its own (not bi-person-badge)
+	$p = strpos($html, 'nuListCard');
+	if ($p !== false) {
+		$q = strpos($html, 'nuListHead', $p);
+		$stop = $q === false ? false : strpos($html, '</h1>', $q);
+		$head = $q === false ? '' : substr($html, $q, ($stop === false ? 4000 : $stop - $q + 4000));
+		// the head ends where the filter row or the body of the card starts
+		foreach (['nuListFilter', 'card-body', '<table'] as $end2) { $e = strpos($head, $end2); if ($e !== false) $head = substr($head, 0, $e); }
+		if (str_contains($head, 'nuBackBtn')) $add .= ' nuListBack';
+	}
+	if ($add !== '') $html = (string)preg_replace('/(<body\b[^>]*\bclass=")/', '$1' . ltrim($add) . ' ', $html, 1);
+	echo $html;
+}
+
+/**
+ * Developer mode (0.8.1341): what the page cost on the server – database statements, the time they took and the time until here –
+ * as a hidden element at the end of the page: <span hidden id="nuPerf" data-statements data-db-ms data-ms>. Read it in the browser's
+ * inspector, or run dev/tests/perf.js, which compares every page with its budget (dev/tests/perf-budget.json).
+ */
+function nu_perf_mark(): string
+{
+	if (empty(nu_cfg('nuConfigDevMode'))) return '';
+	$ms = isset($_SERVER['REQUEST_TIME_FLOAT']) ? (microtime(true) - (float)$_SERVER['REQUEST_TIME_FLOAT']) * 1000 : 0.0;
+	return '<span hidden id="nuPerf" data-statements="' . NuDB::$statements . '" data-db-ms="' . number_format(NuDB::$nanos / 1e6, 1, '.', '')
+		. '" data-ms="' . number_format($ms, 1, '.', '') . '"></span>';
 }
 
 /**
@@ -504,7 +569,7 @@ function nu_bell(): void
 {
 	try {
 		if (!NuAuth::user() || !NuNotify::ready()) return;
-		$s = NuNotify::summary(0);
+		$s = NuNotify::counts();                              // the count without the texts (0.8.1341)
 	} catch (Throwable) {
 		return;
 	}
@@ -518,7 +583,8 @@ function nu_bell(): void
 	?>
 				<div class="dropdown nuBell" id="nuBell" data-url="<?= h(nu_url('notifyapi')) ?>" data-page="<?= h(nu_url('notifications')) ?>"
 					data-manage="<?= NuNotify::canManage() ? h(nu_url('notifications', ['tab' => 'manage'])) : '' ?>" data-csrf="<?= h(nu_csrf_token()) ?>"
-					data-poll="<?= NuNotify::POLL ?>" data-t="<?= h(json_encode($tx, JSON_UNESCAPED_UNICODE)) ?>">
+					data-poll="<?= NuNotify::POLL ?>" data-t="<?= h(json_encode($tx, JSON_UNESCAPED_UNICODE)) ?>"
+					data-ids="<?= h(json_encode(array_slice($s['unread_ids'], 0, 200))) ?>"<?= $s['confirm'] ? ' data-confirm="1"' : '' ?>>
 					<button type="button" class="btn btn-sm btn-outline-secondary nuBellBtn<?= $n ? ' nuBellHas' : '' ?>" id="nuBellBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside"
 						aria-expanded="false" aria-label="<?= h($label) ?>" title="<?= h($label) ?>"><i class="bi <?= $n ? 'bi-bell-fill' : 'bi-bell' ?>"></i><span class="nuBellBadge"<?= $n ? '' : ' hidden' ?>><?= $n > 99 ? '99+' : $n ?></span></button>
 					<div class="dropdown-menu dropdown-menu-end p-0 shadow nuBellPanel" aria-labelledby="nuBellBtn">
@@ -591,7 +657,7 @@ function nu_list_footer(int $total, int $page, int $per, string $route, array $p
 	<div class="nuListFooter <?= h($class) ?><?= $pages <= 1 ? ' nuListFooterOne' : '' ?>"<?= $id !== '' ? ' id="' . h($id) . '"' : '' ?>>
 		<div class="nuLfTotal"><?= h(t('lf_total')) ?> <b><?= number_format($total, 0, '.', "'") ?></b> <span class="nuLfUnit"><?= h(t($total === 1 ? 'lf_record' : 'lf_records')) ?></span></div>
 		<?php if ($pages > 1): // everything on one page: only the total – no disabled pager, no page size (0.8.436) ?>
-		<nav class="nuPager"" aria-label="<?= h(t('pagination')) ?>">
+		<nav class="nuPager" aria-label="<?= h(t('pagination')) ?>">
 			<?= $btn($page > 1, 1, 'nuPagerFirst', '<i class="bi bi-chevron-double-left"></i>', t('sc_page_first')) ?>
 			<?= $btn($page > 1, $page - 1, 'nuPagerPrev', '<i class="bi bi-chevron-left"></i><span class="nuPagerTxt">' . h(t('prev')) . '</span>', t('prev')) ?>
 			<?php if ($pages > 1): // click: enter a page number, Enter jumps there (assets/js/nuapp.js) ?>

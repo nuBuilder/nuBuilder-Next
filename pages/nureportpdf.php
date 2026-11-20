@@ -38,6 +38,10 @@ if ($token !== '') {
 }
 if (!NuReport::canRun($report)) $fail(t('rpt_err_denied', (string)$report['sre_code']), 403);
 
+// A report can take a while (0.8.1341): the view / download gives up the session lock, so the user's other tabs go on working meanwhile.
+// Not for a report whose data comes from a procedure (its code may use the session) and not for save / e-mail.
+if (!$json && !str_starts_with((string)$report['sre_zzzzsys_php_id'], 'PROCEDURE:')) nu_session_release();
+
 // Excel (0.8.1324): ?fmt=xlsx – the same run as a workbook (core/nureportxlsx.php: sheets Report + Data)
 if (!$json && ($_GET['fmt'] ?? '') === 'xlsx') {
 	try {

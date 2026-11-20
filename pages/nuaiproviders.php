@@ -105,6 +105,7 @@ $title = $prov ? $prov['name'] : t('aip_new');
 $num = static fn($n) => number_format((int)$n, 0, '.', "'");
 $kinds = [];
 foreach (NuAiProvider::KINDS as $k => [$tk, $url, $model]) $kinds[$k] = ['url' => $url, 'model' => $model];
+nu_body_class('nuRecPage');
 nu_layout_start(t('aip_title'), 'home', ['container' => 'container', 'head' => nu_ts_head()]);
 echo NuListView::crumbs([[t('aip_title'), nu_url('aiproviders')], [$title]]); ?>
 <div class="nuTitleBar nuRecHead mb-3">

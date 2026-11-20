@@ -191,6 +191,8 @@
 		function mode() { return $('#nb_mode_new').checked ? 'new' : 'existing'; }
 		function applyMode() {
 			var launch = $('#nb_type').value === 'launch' || $('#nb_type').value === 'page';   // page forms (0.8.387): no table either
+			var nf = $('#nbNewForm');
+			if (nf) { nf.classList.toggle('nbIsNew', mode() === 'new'); nf.classList.toggle('nbIsExisting', mode() === 'existing'); nf.classList.toggle('nbIsLaunch', $('#nb_type').value === 'launch'); }
 			$('.nbTableSection').classList.toggle('d-none', launch);
 			var lay = $('#nb_layout');
 			if (lay) lay.closest('[class*="col-"]').classList.toggle('d-none', $('#nb_type').value === 'page');

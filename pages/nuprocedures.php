@@ -115,6 +115,7 @@ if ($id !== '') {
 		. nu_ts_foot()   // Launch form: searchable (0.8.536)
 		. '<script src="' . nu_asset('assets/js/nuprocedures.js') . '"></script>';
 }
+if ($id !== '') nu_body_class('nuRecPage');
 nu_layout_start(t('proc_title'), 'forms', ['head' => $head]);
 ?>
 <nav aria-label="breadcrumb">

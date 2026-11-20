@@ -21,6 +21,9 @@ final class NuSidebar
 	public const SETTING_PIN_GA = 'sidebar_pin_ga';
 	public const TABLE       = 'zzzzsys_nunext_recent';
 	public const KEEP        = 10;
+	/** Session key of the page recorded last ([user|item, time]) and how long it is not written again (record()). */
+	private const LAST         = 'nu_recent_last';
+	private const SAME_SECONDS = 300;
 	/** Pages recorded under their start page tile key (the key is the route). */
 	public const PAGE_KEYS   = ['users', 'access', 'permissions', 'sessions', 'adminroles', 'userfields', 'forms', 'procedures', 'reports', 'prompts',
 		'apiclients', 'email', 'notifications', 'debug', 'update', 'settings', 'securitycheck', 'configfile', 'globalcode', 'setupwizard', 'branding', 'themes',
@@ -155,13 +158,20 @@ final class NuSidebar
 			return;
 		}
 		try {
+			$uid = self::userId();
+			// The page shown last is already on top of the list – nothing to write (performance review, 0.8.1341: every page view cost a
+			// SELECT and an UPDATE, i.e. a write to disk, also while paging through one list or going from a list to its records).
+			// Written again after SAME_SECONDS, so two browsers of one user stay in order.
+			$mark = $uid . '|' . $key;
+			$last = $_SESSION[self::LAST] ?? null;
+			if (is_array($last) && ($last[0] ?? '') === $mark && time() - (int)($last[1] ?? 0) < self::SAME_SECONDS) return;
 			NuSchema::ensure();
 			$db = nu_db();
-			$uid = self::userId();
 			$now = date('Y-m-d H:i:s');
 			$mt = microtime(true);
 			$stamp = date('YmdHis', (int)$mt) . sprintf('%06d', (int)(($mt - floor($mt)) * 1000000));   // several pages in one second keep their order
 			$id = $db->value('SELECT ' . self::TABLE . '_id FROM ' . self::TABLE . ' WHERE user_id = ? AND item = ?', [$uid, $key]);
+			$_SESSION[self::LAST] = [$mark, time()];
 			if ($id !== null) {
 				$db->update(self::TABLE, ['used_at' => $now, 'stamp' => $stamp], self::TABLE . '_id', (string)$id);
 				return;
@@ -213,6 +223,7 @@ final class NuSidebar
 		$u = NuAuth::user();
 		if (!$u || $key === '') return;
 		if (!empty($u['demo'])) { $_SESSION['nu_recent'] = array_values(array_diff((array)($_SESSION['nu_recent'] ?? []), [$key])); return; }
+		unset($_SESSION[self::LAST]);                           // the page may be recorded again at once
 		NuSchema::ensure();
 		nu_db()->run('DELETE FROM ' . self::TABLE . ' WHERE user_id = ? AND item = ?', [self::userId(), $key]);
 	}
@@ -222,6 +233,7 @@ final class NuSidebar
 		$u = NuAuth::user();
 		if (!$u) return;
 		if (!empty($u['demo'])) { $_SESSION['nu_recent'] = []; return; }
+		unset($_SESSION[self::LAST]);
 		NuSchema::ensure();
 		nu_db()->run('DELETE FROM ' . self::TABLE . ' WHERE user_id = ?', [self::userId()]);
 	}

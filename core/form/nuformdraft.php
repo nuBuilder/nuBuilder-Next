@@ -366,7 +366,7 @@ final class NuFormDraft
 		$mk = static fn(string $m, string $label, string $tip): array => ['mode' => $m, 'label' => $label, 'tip' => $tip];
 		$d = self::previewInfo($formId);
 		if ($d) return $mk('draft', t('svt_draft', $d['rev']), t('svt_draft_tip'));
-		if (!self::ready() || (string)nu_db()->value('SELECT sfo_status FROM zzzzsys_form WHERE zzzzsys_form_id = ?', [$formId]) === '0') {
+		if (!self::ready() || NuFormMeta::liveStatus($formId) === '0') {
 			return self::ready() ? $mk('unpub', t('svt_unpub'), t('svt_unpub_tip')) : $mk('live', t('svt_live'), t('svt_live_tip'));
 		}
 		$ga = !empty(NuAuth::user()['globeadmin']);

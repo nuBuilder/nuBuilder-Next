@@ -15,6 +15,8 @@ final class NuReady
 {
 	public const SETTING = 'getting_ready';
 	public const CACHE = 600;
+	/** Open points the start page card names (their states travel with the cached summary). */
+	public const CARD_ITEMS = 3;
 	public const LATER_DAYS = 7;
 	/** Groups in their order: id => [icon, text key]. */
 	public const GROUPS = [
@@ -247,15 +249,17 @@ final class NuReady
 				if ($it['st'] === 'bad') $bad++;
 			}
 		}
+		$st = [];
+		foreach (array_slice($open, 0, self::CARD_ITEMS) as $id) $st[$id] = $items[$id]['st'];
 		return ['done' => $done, 'total' => count($items), 'bad' => $bad, 'open' => $open,
-			'badIds' => array_keys(array_filter($items, static fn($it) => $it['open'] && $it['st'] === 'bad'))];
+			'badIds' => array_keys(array_filter($items, static fn($it) => $it['open'] && $it['st'] === 'bad')), 'st' => $st];
 	}
 
 	/** The summary for the bar and the card, from the session when it is fresh. */
 	public static function summary(): array
 	{
 		$c = $_SESSION['nu_gr'] ?? null;
-		if (is_array($c) && ($c['t'] ?? 0) > time() - self::CACHE) return $c;
+		if (is_array($c) && ($c['t'] ?? 0) > time() - self::CACHE && isset($c['st'])) return $c;
 		$c = self::summarise(self::items()) + ['t' => time()];
 		$_SESSION['nu_gr'] = $c;
 		return $c;
@@ -321,13 +325,14 @@ final class NuReady
 	public static function homeCard(): string
 	{
 		try { if (!self::visible()) return ''; } catch (Throwable) { return ''; }
+		// from the summary kept in the session (0.8.1341): the card used to run every check again on each view of the start page – the
+		// whole security check and the scan of the application's code, a third of the page's time and about 45 statements
 		$s = self::summary();
-		$items = self::items();
 		$li = '';
-		foreach (array_slice($s['open'], 0, 3) as $id) {
-			$it = $items[$id] ?? null;
-			if (!$it) continue;
-			$li .= '<li><a href="' . h($it['url']) . '" class="nuGrNext"><span class="nuGrDot nuGrSt-' . h($it['st']) . '" aria-hidden="true"></span>' . h(t('gr_i_' . $id)) . '</a></li>';
+		foreach (array_slice($s['open'], 0, self::CARD_ITEMS) as $id) {
+			if (!isset(self::ITEMS[$id], $s['st'][$id])) continue;
+			[, , $route, $params, $anchor] = self::ITEMS[$id];
+			$li .= '<li><a href="' . h(nu_url($route, $params) . $anchor) . '" class="nuGrNext"><span class="nuGrDot nuGrSt-' . h($s['st'][$id]) . '" aria-hidden="true"></span>' . h(t('gr_i_' . $id)) . '</a></li>';
 		}
 		return '<div class="card mb-4 nuGrCard" id="nuGrCard"><div class="card-body d-flex flex-wrap align-items-center gap-3">'
 			. self::ring($s['done'], $s['total'], 56)

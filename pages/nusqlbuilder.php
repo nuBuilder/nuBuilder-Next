@@ -109,10 +109,11 @@ if ($id !== '') {
 	$data = ['schema' => $schema, 'clauses' => $clauses, 'readonly' => $locked, 'url' => nu_url('sqlbuilder', ['id' => $id ?: 'new', 'clone' => $cloneId]), 'csrf' => nu_csrf_token(),
 		'msg' => array_combine(array_map(static fn($k) => $k, $keys = ['tables', 'search', 'system', 'alias', 'all', 'remove', 'join', 'left_join', 'join_toggle', 'join_delete',
 			'clauses', 'clause_add', 'type', 'field', 'clause', 'sort', 'order', 'sql', 'manual', 'manual_hint', 'preview', 'rows', 'more', 'no_rows', 'missing_table',
-			'drag_hint', 'empty', 'run_failed', 'columns', 'add_table']), array_map(static fn($k) => t('sqb_' . $k), $keys))];
+			'drag_hint', 'empty', 'run_failed', 'columns', 'add_table']), array_map(static fn($k) => t('sqb_' . $k), $keys)) + ['actions' => t('actions')]];
 	$foot = '<script type="application/json" id="sqbData">' . json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) . '</script>'
 		. '<script src="' . nu_asset('assets/js/nusqlbuilder.js') . '"></script>';
 }
+if ($id !== '') nu_body_class('nuRecPage');
 nu_layout_start(t('sqb_title'), 'forms', ['head' => '<link rel="stylesheet" href="' . nu_asset('assets/css/nusqlbuilder.css') . '">', 'container' => $id !== '' ? 'container-fluid' : 'nuContainer']);
 ?>
 <?php if ($id !== ''): ?><div class="alert alert-info small py-2 mb-2 d-sm-none nuBigScreenNote"><i class="bi bi-display me-1" aria-hidden="true"></i><?= h(t('big_screen_note')) ?></div><?php /* review M12 */ ?><?php endif; ?>

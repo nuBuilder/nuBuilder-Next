@@ -22,6 +22,12 @@ final class NuFormMeta
 	public array $browse = [];
 
 	private static array $cache = [];
+	/** Forms the live forms loaded so far name as sub-form or lookup (0.8.1343, review P6): loaded together on the first miss. */
+	private static array $wanted = [];
+	/** Live forms whose hook code (<form>_BB … _AD) is not read yet: read together on the first hook asked for. */
+	private static array $phpWanted = [];
+	/** Hook suffixes of a form read with one statement (phpById). */
+	private const HOOKS = ['BB', 'BE', 'BS', 'AS', 'BD', 'AD'];
 	/** From a snapshot (form drafts, 0.8.386): zzzzsys_php_id => sph_php; null = read from the database. */
 	private ?array $phpRows = null;
 
@@ -35,9 +41,55 @@ final class NuFormMeta
 			return self::$cache['draft:' . $formId] ??= self::fromSnapshot($snap);
 		}
 		if (array_key_exists($formId, self::$cache)) return self::$cache[$formId];
+		// a sub-form or lookup form of a form already loaded: all of them in one statement per table (0.8.1343, review P6 – an order
+		// record with a lookup, a sub-form and a lookup inside it read 4 × 5 statements, now 5 + 5 + 5)
+		if (isset(self::$wanted[$formId])) {
+			self::prime(array_keys(self::$wanted));
+			if (array_key_exists($formId, self::$cache)) return self::$cache[$formId];
+		}
 		$db   = nu_db();
 		$form = $db->one('SELECT * FROM zzzzsys_form WHERE zzzzsys_form_id = ?', [$formId]);
 		return self::$cache[$formId] = $form ? new self($form) : null;
+	}
+
+	/**
+	 * The live definitions of several forms with one statement per table (form, tabs, objects, events, list columns) – the forms a
+	 * page shows inside another (sub-forms, lookups). Forms already loaded or shown as a draft preview are left out.
+	 * @param list<string> $ids
+	 */
+	public static function prime(array $ids): void
+	{
+		$todo = [];
+		foreach ($ids as $id) {
+			$id = (string)$id;
+			unset(self::$wanted[$id]);
+			if ($id === '' || array_key_exists($id, self::$cache)) continue;
+			if (class_exists('NuFormDraft') && NuFormDraft::previewSnapshot($id) !== null) continue;
+			$todo[$id] = true;
+		}
+		if (!$todo) return;
+		$todo = array_keys($todo);
+		$db   = nu_db();
+		$in   = implode(',', array_fill(0, count($todo), '?'));
+		$by   = static function (array $rows, string $col): array {
+			$out = [];
+			foreach ($rows as $r) $out[(string)$r[$col]][] = $r;
+			return $out;
+		};
+		$forms = $by($db->all("SELECT * FROM zzzzsys_form WHERE zzzzsys_form_id IN ($in)", $todo), 'zzzzsys_form_id');
+		foreach ($todo as $id) if (!isset($forms[$id])) self::$cache[$id] = null;
+		$ids = array_keys($forms);
+		if (!$ids) return;
+		$in  = implode(',', array_fill(0, count($ids), '?'));
+		$tabs    = $by($db->all("SELECT * FROM zzzzsys_tab WHERE syt_zzzzsys_form_id IN ($in) ORDER BY syt_order, zzzzsys_tab_id", $ids), 'syt_zzzzsys_form_id');
+		$objects = $by($db->all("SELECT * FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id IN ($in)", $ids), 'sob_all_zzzzsys_form_id');
+		$events  = $by($db->all("SELECT e.sev_zzzzsys_object_id, e.sev_event, e.sev_javascript, o.sob_all_zzzzsys_form_id AS nu_form FROM zzzzsys_event e"
+			. " JOIN zzzzsys_object o ON o.zzzzsys_object_id = e.sev_zzzzsys_object_id WHERE o.sob_all_zzzzsys_form_id IN ($in)", $ids), 'nu_form');
+		$browse  = $by($db->all("SELECT * FROM zzzzsys_browse WHERE sbr_zzzzsys_form_id IN ($in) ORDER BY sbr_order, zzzzsys_browse_id", $ids), 'sbr_zzzzsys_form_id');
+		foreach ($ids as $id) {
+			self::$cache[$id] = new self($forms[$id][0], null, ['tabs' => $tabs[$id] ?? [], 'objects' => $objects[$id] ?? [],
+				'events' => $events[$id] ?? [], 'browse' => $browse[$id] ?? []]);
+		}
 	}
 
 	/** A form from a NuFormSnapshot (a draft) – the same as load() gives for the live rows. */
@@ -48,16 +100,26 @@ final class NuFormMeta
 
 	public static function byCode(string $code): ?self
 	{
+		// nuBuilder Forte: nuForm('code:<form code>', …) opens a form by its code
+		if (strncasecmp($code, 'code:', 5) === 0) $code = trim(substr($code, 5));
+		if ($code === '') return null;
 		$id = nu_db()->value('SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_code = ?', [$code]);
 		return $id ? self::load((string)$id) : null;
 	}
 
 	public static function forget(string $formId): void
 	{
-		unset(self::$cache[$formId], self::$cache['draft:' . $formId]);
+		unset(self::$cache[$formId], self::$cache['draft:' . $formId], self::$phpWanted[$formId]);
 	}
 
-	private function __construct(array $form, ?array $snap = null)
+	/** Forgets every form of this request (tests). */
+	public static function reset(): void
+	{
+		self::$cache = self::$wanted = self::$phpWanted = [];
+	}
+
+	/** @param array{tabs: list<array>, objects: list<array>, events: list<array>, browse: list<array>}|null $pre live rows read by prime() */
+	private function __construct(array $form, ?array $snap = null, ?array $pre = null)
 	{
 		$db         = nu_db();
 		$this->id   = (string)$form['zzzzsys_form_id'];
@@ -69,12 +131,13 @@ final class NuFormMeta
 			$this->phpRows = [];
 			foreach ($snap['php'] ?? [] as $p) $this->phpRows[(string)$p['zzzzsys_php_id']] = $p['sph_php'] ?? null;
 		} else {
-			$this->tabs = $db->all('SELECT * FROM zzzzsys_tab WHERE syt_zzzzsys_form_id = ? ORDER BY syt_order, zzzzsys_tab_id', [$this->id]);
+			$this->tabs = $pre['tabs'] ?? $db->all('SELECT * FROM zzzzsys_tab WHERE syt_zzzzsys_form_id = ? ORDER BY syt_order, zzzzsys_tab_id', [$this->id]);
 		}
 		$tabOrder   = [];
 		foreach ($this->tabs as $i => $t) $tabOrder[$t['zzzzsys_tab_id']] = $i;
 
-		$objects = $snap !== null ? array_values((array)($snap['objects'] ?? [])) : $db->all('SELECT * FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id = ?', [$this->id]);
+		$objects = $snap !== null ? array_values((array)($snap['objects'] ?? []))
+			: ($pre['objects'] ?? $db->all('SELECT * FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id = ?', [$this->id]));
 		usort($objects, static fn($a, $b) =>
 			[$tabOrder[$a['sob_all_zzzzsys_tab_id']] ?? 999, (int)($a['sob_all_order'] ?? 0), (int)($a['sob_all_top'] ?? 0), (int)($a['sob_all_left'] ?? 0)]
 			<=> [$tabOrder[$b['sob_all_zzzzsys_tab_id']] ?? 999, (int)($b['sob_all_order'] ?? 0), (int)($b['sob_all_top'] ?? 0), (int)($b['sob_all_left'] ?? 0)]);
@@ -100,9 +163,9 @@ final class NuFormMeta
 			}
 		} elseif ($objects) {
 			$ids = array_column($objects, 'zzzzsys_object_id');
-			foreach (array_chunk($ids, 500) as $chunk) {
+			foreach ($pre !== null ? [[]] : array_chunk($ids, 500) as $chunk) {
 				$in = implode(',', array_fill(0, count($chunk), '?'));
-				foreach ($db->all("SELECT sev_zzzzsys_object_id, sev_event, sev_javascript FROM zzzzsys_event WHERE sev_zzzzsys_object_id IN ($in)", $chunk) as $e) {
+				foreach ($pre['events'] ?? $db->all("SELECT sev_zzzzsys_object_id, sev_event, sev_javascript FROM zzzzsys_event WHERE sev_zzzzsys_object_id IN ($in)", $chunk) as $e) {
 					$ev = strtolower(trim((string)$e['sev_event']));
 					if ($ev === '') continue;
 					$prev = $this->events[$e['sev_zzzzsys_object_id']][$ev] ?? '';
@@ -115,7 +178,14 @@ final class NuFormMeta
 			$this->browse = array_values((array)($snap['browse'] ?? []));
 			usort($this->browse, static fn($a, $b) => [(int)$a['sbr_order'], (string)$a['zzzzsys_browse_id']] <=> [(int)$b['sbr_order'], (string)$b['zzzzsys_browse_id']]);
 		} else {
-			$this->browse = $db->all('SELECT * FROM zzzzsys_browse WHERE sbr_zzzzsys_form_id = ? ORDER BY sbr_order, zzzzsys_browse_id', [$this->id]);
+			$this->browse = $pre['browse'] ?? $db->all('SELECT * FROM zzzzsys_browse WHERE sbr_zzzzsys_form_id = ? ORDER BY sbr_order, zzzzsys_browse_id', [$this->id]);
+			// live: its sub-forms and lookup forms are loaded together when the first is asked for, its hooks with the first hook
+			foreach ($this->objects as $o) {
+				$t = (string)($o['sob_all_type'] ?? '');
+				$f = $t === 'subform' ? (string)($o['sob_subform_zzzzsys_form_id'] ?? '') : ($t === 'lookup' ? (string)($o['sob_lookup_zzzzsys_form_id'] ?? '') : '');
+				if ($f !== '' && !array_key_exists($f, self::$cache)) self::$wanted[$f] = true;
+			}
+			self::$phpWanted[$this->id] = true;
 		}
 		// column filters switched on by default for a few of nuBuilder's own lists (0.8.307) – only while the column has no setting of its
 		// own: the form builder can switch them off, and a nuBuilder update (which rewrites its system rows) brings the default back
@@ -349,8 +419,34 @@ final class NuFormMeta
 
 	private function phpById(string $id): ?string
 	{
-		$code = $this->phpRows !== null ? ($this->phpRows[$id] ?? null) : nu_db()->value('SELECT sph_php FROM zzzzsys_php WHERE zzzzsys_php_id = ?', [$id]);
+		// the live row once per request (0.8.1341: a record page read its Before Edit code four times) – dropped by a write to zzzzsys_php (NuMemo)
+		if ($this->phpRows === null && self::$phpWanted && !NuMemo::has('php:' . $id)) self::primePhp();
+		$code = $this->phpRows !== null ? ($this->phpRows[$id] ?? null)
+			: NuMemo::get('php:' . $id, ['zzzzsys_php'], static fn() => nu_db()->value('SELECT sph_php FROM zzzzsys_php WHERE zzzzsys_php_id = ?', [$id]));
 		return ($code !== null && trim((string)$code) !== '') ? (string)$code : null;
+	}
+
+	/** The hooks (BB … AD) of every live form loaded so far, in one statement (0.8.1343) – kept in NuMemo, missing ones as null. */
+	private static function primePhp(): void
+	{
+		$ids = [];
+		foreach (array_keys(self::$phpWanted) as $f) foreach (self::HOOKS as $h) if (!NuMemo::has('php:' . $f . '_' . $h)) $ids[] = $f . '_' . $h;
+		self::$phpWanted = [];
+		if (!$ids) return;
+		$found = [];
+		foreach (array_chunk($ids, 500) as $chunk) {
+			$in = implode(',', array_fill(0, count($chunk), '?'));
+			foreach (nu_db()->all("SELECT zzzzsys_php_id, sph_php FROM zzzzsys_php WHERE zzzzsys_php_id IN ($in)", $chunk) as $r) $found[(string)$r['zzzzsys_php_id']] = $r['sph_php'];
+		}
+		foreach ($ids as $id) NuMemo::put('php:' . $id, ['zzzzsys_php'], $found[$id] ?? null);
+	}
+
+	/** sfo_status of the live form – from the row loaded already (0.8.1343), else read. */
+	public static function liveStatus(string $formId): string
+	{
+		$m = self::$cache[$formId] ?? null;
+		if ($m instanceof self && !$m->isDraft()) return (string)($m->form['sfo_status'] ?? '');
+		return (string)nu_db()->value('SELECT sfo_status FROM zzzzsys_form WHERE zzzzsys_form_id = ?', [$formId]);
 	}
 
 	/** An object by its zzzzsys_object_id. */

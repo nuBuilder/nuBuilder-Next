@@ -117,30 +117,46 @@ final class NuAcl
 		return $out ?? self::none();
 	}
 
+	/**
+	 * Every row an access level has in zzzzsys_access_form: lower-case form id => row. Read once per request (performance review,
+	 * 0.8.1341: a form page of a normal user asked for one form at a time – 10 to 20 statements, two per form with the 4.9 columns);
+	 * a write to the table through NuDB drops it (NuMemo). The first row of a form counts, as the single-row read before.
+	 * @return array<string, array<string, mixed>>
+	 */
+	private static function levelRows(string $accessId): array
+	{
+		if ($accessId === '') return [];
+		return NuMemo::get('acl:' . $accessId, ['zzzzsys_access_form'], static function () use ($accessId): array {
+			$out = [];
+			foreach (nu_db()->all('SELECT * FROM zzzzsys_access_form WHERE slf_zzzzsys_access_id = ?', [$accessId]) as $row) {
+				$out[self::formKey((string)($row['slf_zzzzsys_form_id'] ?? ''))] ??= $row;
+			}
+			return $out;
+		});
+	}
+
+	/** Form ids are compared as the database does with its usual collations: case and trailing spaces do not count. */
+	private static function formKey(string $formId): string
+	{
+		return mb_strtolower(rtrim($formId, ' '));
+	}
+
 	/** Rights one access level gives on a form (zzzzsys_access_form). */
 	private static function levelRow(string $accessId, string $formId): array
 	{
-		$u = ['access_id' => $accessId];
-
-		$row = nu_db()->one('SELECT ' . implode(', ', self::RIGHTS) . '
-			FROM zzzzsys_access_form WHERE slf_zzzzsys_access_id = ? AND slf_zzzzsys_form_id = ?', [$u['access_id'], $formId]);
+		$row = self::levelRows($accessId)[self::formKey($formId)] ?? null;
 
 		if (!$row) return self::none();
 
 		$r = ['view' => true];
-		foreach (self::RIGHTS as $right => $col) $r[$right] = (string)$row[$col] === '1';
+		foreach (self::RIGHTS as $right => $col) $r[$right] = (string)($row[$col] ?? '') === '1';
 		$r['create'] = $r['add'] || $r['new'];     // "Add" on the list, "New" on the edit screen: either one allows creating
 		// form type / data mode (0.8.461) – columns of nuBuilder 4.9 (older databases lack them: no limit)
 		$r += self::FREE;
-		$cols = nu_db()->columns('zzzzsys_access_form');
-		if (isset($cols['slf_form_type']) || isset($cols['slf_data_mode'])) {
-			$m = nu_db()->one('SELECT ' . implode(', ', array_keys(array_intersect_key(['slf_form_type' => 1, 'slf_data_mode' => 1], $cols)))
-				. ' FROM zzzzsys_access_form WHERE slf_zzzzsys_access_id = ? AND slf_zzzzsys_form_id = ?', [$u['access_id'], $formId]) ?? [];
-			$ft = trim((string)($m['slf_form_type'] ?? ''));
-			if ($ft === '0') $r['edit'] = false;              // browse only
-			if ($ft === '1') $r['browse'] = false;            // edit only
-			if (trim((string)($m['slf_data_mode'] ?? '')) === '0') { $r['no_edits'] = true; $r['save'] = false; }
-		}
+		$ft = trim((string)($row['slf_form_type'] ?? ''));
+		if ($ft === '0') $r['edit'] = false;              // browse only
+		if ($ft === '1') $r['browse'] = false;            // edit only
+		if (trim((string)($row['slf_data_mode'] ?? '')) === '0') { $r['no_edits'] = true; $r['save'] = false; }
 		return $r;
 	}
 

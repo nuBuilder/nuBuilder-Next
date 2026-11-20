@@ -67,7 +67,7 @@
 .nuHomeGroupHead .nuHomeGroupTitle { margin: 0; }
 .nuHomeGDot { display: none; flex: none; width: .55rem; height: .55rem; border-radius: 50%; background: var(--nu-gc, var(--bs-secondary-color)); }
 #nuHomeView.nuHomeGcol .nuHomeGDot { display: inline-block; }
-.nuHomeGCount { display: none; flex: none; font-size: .72rem; font-weight: 600; line-height: 1.5; padding: 0 .45rem; border-radius: 999px; color: var(--bs-secondary-color); background: var(--bs-secondary-bg); }
+.nuHomeGCount { display: none; flex: none; font-size: .75rem; font-weight: 600; line-height: 1.5; padding: 0 .45rem; border-radius: 999px; color: var(--bs-secondary-color); background: var(--bs-secondary-bg); }
 #nuHomeView .nuHomeTabs { margin-bottom: 1.25rem; }
 #nuHomeView:not(.nuHomeNav-tabs) .nuHomeTabs { display: none; }
 #nuHomeView.nuHomeNav-groups .nuHomePane, #nuHomeView.nuHomeNav-none .nuHomePane { display: contents; }
@@ -79,7 +79,7 @@
 .nuHomeSide, .nuHomeSideSelect { display: none; }
 #nuHomeView.nuHomeNav-sidebar .nuHomeBody { display: grid; grid-template-columns: 14.5rem minmax(0, 1fr); gap: 1.75rem; align-items: start; }
 #nuHomeView.nuHomeNav-sidebar .nuHomeSide { display: flex; flex-direction: column; gap: .1rem; position: sticky; top: calc(var(--nu-nav-h, 0px) + 1rem); }
-.nuHomeSideHead { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--bs-secondary-color); padding: .9rem .7rem .35rem; }
+.nuHomeSideHead { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--bs-secondary-color); padding: .9rem .7rem .35rem; }
 .nuHomeSideHead:first-child { padding-top: 0; }
 .nuHomeSideItem { display: flex; align-items: center; gap: .6rem; padding: .5rem .7rem; font: inherit; text-align: start; color: var(--bs-body-color); background: none; border: 0; border-radius: .5rem; }
 .nuHomeSideItem .nuHomeSideLabel { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -111,12 +111,12 @@
 .nuHomeText { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; }
 .nuHomeLabelRow { display: flex; align-items: center; flex-wrap: wrap; gap: .25rem .4rem; min-width: 0; }
 .nuHomeLabel { min-width: 0; overflow-wrap: anywhere; }
-.nuHomeFavMark { flex: none; font-size: .62rem; color: var(--nu-star); }
+.nuHomeFavMark { flex: none; font-size: .75rem; color: var(--nu-star); }
 .nuHomeHint { color: var(--bs-secondary-color); font-size: .84rem; line-height: 1.35; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: var(--nu-lines); line-clamp: var(--nu-lines); }
 .nuHomeHint:empty { display: none; }
 .nuHomeGroupName { display: none; }
 .nuHomeKind { flex: none; color: var(--bs-secondary-color); }
-.nuHomeBadge { flex: none; font-size: .7rem; font-weight: 600; line-height: 1.2; padding: .18rem .5rem; border-radius: 999px; }
+.nuHomeBadge { flex: none; font-size: .75rem; font-weight: 600; line-height: 1.2; padding: .18rem .5rem; border-radius: 999px; }
 #nuHomeView.nuHomeNoBadges .nuHomeBadge { display: none; }
 .nuHomeAction { position: absolute; z-index: 2; top: 50%; inset-inline-end: .85rem; transform: translateY(-50%); }
 #nuHomeView.nuHomeNoActions .nuHomeAction { display: none; }
@@ -183,7 +183,7 @@
 .nuHomeStyle-compact .nuHomeIcon { width: 2rem; height: 2rem; font-size: 1rem; }
 .nuHomeStyle-compact .nuHomeLabelRow { flex-wrap: nowrap; }
 .nuHomeStyle-compact .nuHomeLabel { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: .95rem; }
-.nuHomeStyle-compact .nuHomeHint { font-size: .74rem; -webkit-line-clamp: min(var(--nu-lines), 2); line-clamp: min(var(--nu-lines), 2); }
+.nuHomeStyle-compact .nuHomeHint { font-size: .75rem; -webkit-line-clamp: min(var(--nu-lines), 2); line-clamp: min(var(--nu-lines), 2); }
 .nuHomeStyle-compact .nuHomeAction { inset-inline-end: .45rem; }
 .nuHomeStyle-compact .nuHomeAction .btn { --bs-btn-padding-y: .2rem; --bs-btn-padding-x: .45rem; }
 .nuHomeStyle-compact .nuHomeInfo { inset-inline-end: calc(.45rem + var(--nu-ea) * .9); }
@@ -233,7 +233,7 @@
 .nuHomeStyle-launcher .nuHomeText { width: 100%; max-width: 100%; align-items: center; margin-top: .55rem; }
 .nuHomeStyle-launcher .nuHomeLabelRow { justify-content: center; }
 .nuHomeStyle-launcher .nuHomeLabel { overflow-wrap: break-word; hyphens: auto; font-size: .85rem; line-height: 1.2; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
-.nuHomeStyle-launcher .nuHomeHint { font-size: .7rem; margin-top: .2rem; -webkit-line-clamp: min(var(--nu-lines), 2); line-clamp: min(var(--nu-lines), 2); }
+.nuHomeStyle-launcher .nuHomeHint { font-size: .75rem; margin-top: .2rem; -webkit-line-clamp: min(var(--nu-lines), 2); line-clamp: min(var(--nu-lines), 2); }
 .nuHomeStyle-launcher .nuHomeBadge { position: absolute; top: .7rem; inset-inline-end: calc(50% - 2.05rem); box-shadow: 0 0 0 2px var(--nu-page, var(--bs-body-bg)); }
 .nuHomeStyle-launcher :is(.nuHomeAction, .nuHomeKind) { display: none; }
 .nuHomeStyle-launcher .nuHomeInfo { top: .2rem; transform: none; inset-inline-end: .2rem; }
@@ -298,7 +298,7 @@
 .nuHomeStyle-table .nuHomeKind { display: none; }
 .nuHomeStyle-table .nuHomeAction { inset-inline-end: .75rem; }
 .nuHomeStyle-table .nuHomeInfo { inset-inline-end: calc(.6rem + var(--nu-ea)); }
-.nuHomeTHead { display: none; order: -1; padding-inline-end: calc(.9rem + var(--nu-tend)); font-size: .74rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em;
+.nuHomeTHead { display: none; order: -1; padding-inline-end: calc(.9rem + var(--nu-tend)); font-size: .75rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em;
 	color: var(--bs-secondary-color); background: var(--bs-tertiary-bg); border-bottom: 1px solid var(--bs-border-color-translucent); }
 .nuHomeStyle-table > .nuHomeTHead { display: grid; }
 .nuHomeTHead > * { min-width: 0; padding: 0; font: inherit; text-transform: inherit; letter-spacing: inherit; text-align: start; color: inherit; background: none; border: 0; white-space: nowrap; }
@@ -351,7 +351,7 @@
 .nuHomeHcFoot { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-top: .35rem; padding-top: .5rem; font-size: .75rem; color: var(--bs-secondary-color);
 	border-top: 1px solid var(--bs-border-color-translucent); }
 .nuHomeHcFoot .nuHomeHcLink { width: auto; padding: .2rem .45rem; font-size: .8rem; color: var(--bs-primary-text-emphasis); }
-.nuHomeHcFoot kbd { font-size: .7rem; padding: .1rem .3rem; color: var(--bs-body-color); background: var(--bs-tertiary-bg); border: 1px solid var(--bs-border-color); }
+.nuHomeHcFoot kbd { font-size: .75rem; padding: .1rem .3rem; color: var(--bs-body-color); background: var(--bs-tertiary-bg); border: 1px solid var(--bs-border-color); }
 
 /* ------------------------------------------------------------------ the View panel: drawer (≥ 992 px, pushes the page), overlay (576–991 px), sheet (phones) */
 .nuHomeVp { position: fixed; z-index: 1035; display: flex; flex-direction: column; font-size: .88rem; color: var(--bs-body-color); background: var(--nu-surface, var(--bs-body-bg)); }
@@ -377,7 +377,7 @@
 .nuHomeVpSaved .bi { color: var(--bs-success); }
 .nuHomeVpSec { padding: .95rem 0; border-bottom: 1px solid var(--bs-border-color-translucent); }
 .nuHomeVpSec:last-child { border-bottom: 0; }
-.nuHomeVpLbl { display: flex; align-items: center; gap: .4rem; margin-bottom: .55rem; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--bs-secondary-color); }
+.nuHomeVpLbl { display: flex; align-items: center; gap: .4rem; margin-bottom: .55rem; font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--bs-secondary-color); }
 .nuHomeVpRow { display: flex; gap: .4rem; }
 .nuHomeVpRow .form-select { flex: 1; min-width: 0; }
 .nuHomeVpRow .btn { flex: none; }
@@ -390,7 +390,7 @@
 .nuHomeVpNote .bi { margin-inline-end: .25rem; }
 .nuHomeVpLink { padding: 0; font: inherit; color: var(--bs-link-color); text-decoration: underline; text-underline-offset: 2px; background: none; border: 0; }
 .nuHomeVpLink:hover { color: var(--bs-link-hover-color); }
-.nuHomeVpOwn { padding: 0 .45rem; font-size: .68rem; font-weight: 600; text-transform: none; letter-spacing: 0; border-radius: 999px; color: var(--bs-primary-text-emphasis); background: var(--bs-primary-bg-subtle); }
+.nuHomeVpOwn { padding: 0 .45rem; font-size: .75rem; font-weight: 600; text-transform: none; letter-spacing: 0; border-radius: 999px; color: var(--bs-primary-text-emphasis); background: var(--bs-primary-bg-subtle); }
 .nuHomeVpSub { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin-top: .6rem; }
 .nuHomeVpSub > span { font-size: .82rem; color: var(--bs-secondary-color); white-space: nowrap; }
 .nuHomeVpSub .nuHomeSeg { flex: 0 1 auto; min-width: 0; }
@@ -409,7 +409,7 @@
 .nuHomeSeg.nuHomeSeg3 button:nth-child(3n) { border-inline-end: 0; }
 .nuHomeVpPick { display: grid; gap: .45rem; grid-template-columns: repeat(4, 1fr); }
 .nuHomeVpPick.nuHomeVpPickIcon { grid-template-columns: repeat(5, 1fr); }
-.nuHomeVpPick button { display: flex; flex-direction: column; align-items: center; gap: .25rem; min-width: 0; padding: .35rem .2rem .3rem; font: inherit; font-size: .72rem;
+.nuHomeVpPick button { display: flex; flex-direction: column; align-items: center; gap: .25rem; min-width: 0; padding: .35rem .2rem .3rem; font: inherit; font-size: .75rem;
 	color: var(--bs-secondary-color); background: var(--nu-surface, var(--bs-body-bg)); border: 1px solid var(--bs-border-color); border-radius: .55rem; }
 .nuHomeVpPick button > span:last-child { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nuHomeVpPick button:hover { color: var(--bs-body-color); border-color: color-mix(in srgb, var(--bs-primary) 45%, transparent); }
@@ -439,7 +439,7 @@
 
 /* ------------------------------------------------------------------ user start pages (0.8.425) */
 /* editor: tiles and groups shown only to some users (conditions) */
-.nuHomeCondMark { flex: none; font-size: .7rem; color: var(--bs-info-text-emphasis); margin-inline-start: .35rem; }
+.nuHomeCondMark { flex: none; font-size: .75rem; color: var(--bs-info-text-emphasis); margin-inline-start: .35rem; }
 .nuHomeGroupHead .nuHomeCondMark { font-size: .8rem; }
 .nuHeCondMark { position: absolute; top: .5rem; inset-inline-start: .65rem; font-size: .8rem; color: var(--bs-info-text-emphasis); z-index: 1; }
 .list-group-item .nuHeCondMark { position: static; margin-inline-start: .5rem; }

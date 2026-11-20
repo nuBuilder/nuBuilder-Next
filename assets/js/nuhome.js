@@ -2272,3 +2272,20 @@
 		modal.show();
 	}
 })();
+
+// start page notices (usability review G12): one strip for two or more notices – open / folded, remembered per browser (nutheme.js
+// sets html.nuNoticesShut before the first paint)
+(function () {
+	'use strict';
+	var b = document.getElementById('nuHomeNoticesToggle');
+	if (!b) return;
+	var root = document.documentElement;
+	var sync = function () { b.setAttribute('aria-expanded', root.classList.contains('nuNoticesShut') ? 'false' : 'true'); };
+	b.addEventListener('click', function () {
+		var shut = !root.classList.contains('nuNoticesShut');
+		root.classList.toggle('nuNoticesShut', shut);
+		try { localStorage.setItem('nunext-home-notices', shut ? 'shut' : 'open'); } catch (e) { /* storage blocked */ }
+		sync();
+	});
+	sync();
+})();

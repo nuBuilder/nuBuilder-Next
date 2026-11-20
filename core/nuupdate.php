@@ -879,7 +879,7 @@ final class NuMigrate
 		try {
 			NuSchema::ensure();
 			$db = nu_db();
-			$has = (bool)$db->value('SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = ?', [self::ENTRY_NOTICE]);
+			$has = nu_setting_has(self::ENTRY_NOTICE);
 			if ($on === null) return $has;
 			if ($on && !$has) $db->insert('zzzzsys_nunext_setting', ['zzzzsys_nunext_setting_id' => self::ENTRY_NOTICE, 'setting_value' => NU_VERSION, 'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => 'update']);
 			if (!$on && $has) $db->delete('zzzzsys_nunext_setting', 'zzzzsys_nunext_setting_id', self::ENTRY_NOTICE);

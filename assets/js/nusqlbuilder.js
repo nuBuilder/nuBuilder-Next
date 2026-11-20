@@ -272,7 +272,7 @@
 		var dl = el('datalist', {id: 'sqbFieldList'});
 		selectedFields().forEach(function (f) { dl.appendChild(el('option', {value: f})); });
 		var table = el('table', {'class': 'table table-sm align-middle mb-1'}, [el('thead', {}, [el('tr', {}, [el('th', {text: M.type}), el('th', {text: M.field}), el('th', {text: M.clause}),
-			el('th', {text: M.sort}), el('th', {text: M.order}), el('th', {})])])]);
+			el('th', {text: M.sort}), el('th', {text: M.order}), el('th', {}, [el('span', {'class': 'visually-hidden', text: M.actions || ''})])])])]);
 		var tb = el('tbody');
 		state.clauses.forEach(function (c, i) {
 			var type = el('select', {'class': 'form-select form-select-sm', 'aria-label': M.type});

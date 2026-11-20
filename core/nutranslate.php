@@ -43,7 +43,7 @@ final class NuTranslate
 			if ($u && $u['globeadmin']) {
 				$l = (string)(NuMailer::setupRow()['set_language'] ?? '');
 			} elseif ($u) {
-				$l = (string)nu_db()->value('SELECT sus_language FROM zzzzsys_user WHERE zzzzsys_user_id = ?', [(string)$u['id']]);
+				$l = (string)(NuAuth::userRow((string)$u['id'])['sus_language'] ?? '');
 			}
 		} catch (Throwable) {
 		}

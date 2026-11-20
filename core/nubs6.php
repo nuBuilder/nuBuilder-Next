@@ -96,7 +96,7 @@ final class NuBs6
 			$path = $root . '/' . $base;
 			$list = is_file($path) ? [$path] : (is_dir($path) ? self::walk($path) : []);
 			foreach ($list as $f) {
-				if (!preg_match('/\.(php|js|css|htm|html)$/', $f) || str_ends_with($f, 'nubs6.php')) continue;
+				if (!preg_match('/\.(php|js|css|htm|html)$/', $f) || preg_match('/\.min\.(js|css)$/', $f) || str_ends_with($f, 'nubs6.php')) continue;   // not the minified copies (0.8.1342)
 				$code = (string)@file_get_contents($f);
 				foreach (self::RULES as $rule => $re) {
 					$n = preg_match_all($re, $code, $m) ? count($rule === 'responsive' ? array_filter($m[0], [self::class, 'isResponsive']) : $m[0]) : 0;

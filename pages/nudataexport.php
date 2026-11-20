@@ -82,6 +82,7 @@ if ($runExport) {
 		}
 		NuDataExport::sendFile($r['path'], $r['name'], $r['mime']);   // unlinks the file
 	}
+	nu_body_class('nuRecPage');
 	nu_layout_start(t('dxp_title'), 'home');
 	echo NuListView::crumbs([[t('dxp_title'), nu_url('dataexport')], [$runExport['name']]]);
 	?>
@@ -191,6 +192,7 @@ $foot = '<script type="application/json" id="dxpData">' . json_encode($data, JSO
 	. nu_ts_foot()
 	. '<script src="' . nu_asset('assets/js/nudataexport.js') . '"></script>';
 $params = $export ? NuDataExport::params($export) : [];
+nu_body_class('nuRecPage');
 nu_layout_start(t('dxp_title'), 'home', ['head' => $head]);
 echo NuListView::crumbs([[t('dxp_title'), nu_url('dataexport')], [$export ? $e['name'] : t('dxp_new')]]);
 $fieldErr = static fn(string $f) => isset($errors[$f]) ? '<div class="invalid-feedback d-block">' . h($errors[$f]) . '</div>' : '';

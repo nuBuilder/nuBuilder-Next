@@ -20,9 +20,14 @@ if (!NuProcedure::hook('nu_before_save', $hash) || !NuPhp::run($meta->php('BB'),
 $hash = NuPhp::$hash + $hash;
 
 $max  = 50000;
+$process = NuOnProcess::rowsHook($meta->php('BB'), $hash);
+// a large export takes a while (0.8.1341): no session lock from here on, so the user's other pages go on working – once no code of
+// the form runs any more (Before Browse has run; nuOnProcessBrowseRows runs inside the query)
+if ($process === null) nu_session_release();
 $data = NuBrowse::query($meta, $hash, ['search' => $state['q'], 'runfilter' => $state['rf'], 'sort' => $state['sort'], 'dir' => $state['dir'], 'page' => 1, 'filters' => $state['flt'], 'adv' => $state['adv'], 'nosearch' => $state['nsc'], 'searchonly' => $state['sc'], 'all' => $max,
-	'process' => NuOnProcess::rowsHook($meta->php('BB'), $hash), 'raw' => NuPrintView::raw($hash), 'totals' => ($_GET['fmt'] ?? '') === 'xlsx']);   // as the print view (0.8.958); Excel gets the row of totals
+	'process' => $process, 'raw' => NuPrintView::raw($hash), 'totals' => ($_GET['fmt'] ?? '') === 'xlsx']);   // as the print view (0.8.958); Excel gets the row of totals
 NuBrowse::dropTempTable();
+nu_session_release();
 NuLog::write('browse_exported', $meta->code(), '', ['rows' => count($data['rows'])]);
 
 $cols  = array_values(NuPrintView::columns($data['columns'], $hash));   // nuPrintIncludeColumns() / ExcludeColumns() / IncludeHiddenColumns() (0.8.958)

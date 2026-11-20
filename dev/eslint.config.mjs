@@ -11,7 +11,7 @@ const runtime = {};
 const scan = dir => fs.readdirSync(dir, { withFileTypes: true }).forEach(e => {
 	const p = path.join(dir, e.name);
 	if (e.isDirectory()) { if (e.name !== 'vendor') scan(p); return; }
-	if (!p.endsWith('.js')) return;
+	if (!p.endsWith('.js') || p.endsWith('.min.js')) return;
 	const src = fs.readFileSync(p, 'utf8');
 	for (const re of [/api\('(nu\w+)'/g, /window\.([Nn]u\w+)\s*=/g, /proto\(\w+, '(nu\w+)'/g])
 		for (const m of src.matchAll(re)) runtime[m[1]] = 'writable';
@@ -21,7 +21,7 @@ scan(path.join(root, 'assets/js'));
 export default [
 	{
 		files: ['**/*.js'],
-		ignores: ['vendor/**'],
+		ignores: ['vendor/**', '**/*.min.js'],
 		languageOptions: {
 			ecmaVersion: 2020,
 			sourceType: 'script',

@@ -1,0 +1,21 @@
+{
+	"home": 20,
+	"home_user": 31,
+	"users": 25,
+	"user": 36,
+	"accesslevel": 28,
+	"forms": 20,
+	"procedures": 17,
+	"reports": 20,
+	"log": 15,
+	"settings": 8,
+	"notifications": 7,
+	"list_customer": 28,
+	"list_customer_user": 35,
+	"rec_customer": 26,
+	"rec_customer_user": 35,
+	"rec_order": 43,
+	"rec_order_user": 50,
+	"rec_all": 58,
+	"design_customer": 72
+}

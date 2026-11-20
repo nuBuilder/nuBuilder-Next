@@ -865,7 +865,7 @@ final class NuCodeSearch
 					foreach ($b as $l) {
 						if (!$l['hit']) continue;
 						$rows[] = [$g['title'] . ($g['draft'] ? ' (' . t('cs_draft') . ')' : ''), (string)$p['label'], t(self::PLACES[$p['place']][0] ?? 'cs_pl_own'),
-							strtoupper($p['lang']), (int)$l['n'], mb_substr(trim($l['text']), 0, 1000), nu_base_url() . self::lineUrl($p, (int)$l['n'], '')];
+							strtoupper($p['lang']), (int)$l['n'], mb_substr(trim($l['text']), 0, 1000), nu_base_url() . '/' . ltrim(self::lineUrl($p, (int)$l['n'], ''), '/')];   // a full address (the base has no slash at its end)
 					}
 				}
 			}

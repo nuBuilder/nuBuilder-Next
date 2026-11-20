@@ -82,7 +82,7 @@ try {
 		if ($isNew && NuDashboard::usesRecord($w, $meta)) nu_dash_out(['ok' => true, 'wait' => true]);
 		$hash = NuDashboard::hash($meta, $record, is_array($in['values'] ?? null) ? $in['values'] : [], $dates);
 		try {
-			$data = NuDashboard::data($w, $hash, !empty($in['force']));
+			$data = NuDashboard::data($w, $hash, !empty($in['force']), true);   // true: no session lock while a query runs (0.8.1341)
 		} catch (Throwable $e) {
 			if (!$e instanceof RuntimeException) error_log('nuBuilder Next dashboard ' . $d['code'] . ': ' . $e->getMessage());
 			nu_dash_out(['ok' => false, 'error' => $errMsg($e)]);

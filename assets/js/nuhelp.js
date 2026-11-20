@@ -371,6 +371,7 @@
 			.then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
 			.then(function (html) {
 				refBody.innerHTML = html;
+				if (typeof window.nuA11yScan === 'function') setTimeout(window.nuA11yScan, 50);   // scrolling figures / tables reachable by keyboard
 				markDetails(refBody);
 				if (wait) wait.remove();
 				ref = new Pane('ref', refBody, document.getElementById('helpTocRef'), document.getElementById('helpPaneRef'));

@@ -37,11 +37,20 @@ final class NuDB
 				throw new RuntimeException("Unsupported \$nuConfigDBType '{$this->type}' (use mysql or sqlsrv).");
 		}
 
-		$options = ($c['options'] ?? []) + [
+		$own = (array)($c['options'] ?? []);
+		$options = $own + [
 			PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
 			PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
 		];
-		if ($this->type === 'mysql') $options += [PDO::ATTR_EMULATE_PREPARES => false];
+		// MySQL (0.8.1342, review P1): nuBuilder Next's own statements are sent in ONE step (emulated prepare – the values are quoted by
+		// PDO and the statement goes to the server once; 40 % less time per statement than prepare + execute). Code of the application
+		// (procedures, form events, nuRunQuery, SQL typed by users, custom pages through pdo()) keeps the server-side prepare it always
+		// had – native() switches it on for those parts. Several statements in one call are refused on this connection, as a server-side
+		// prepare always did, so a mistake in building SQL text can never run a second statement. $nuConfigDBOptions may set either.
+		if ($this->type === 'mysql') {
+			$this->emulate = !array_key_exists(PDO::ATTR_EMULATE_PREPARES, $own);
+			$options += [PDO::ATTR_EMULATE_PREPARES => $this->emulate, nu_pdo_mysql_attr('MULTI_STATEMENTS') => false];
+		}
 
 		$this->pdo = new PDO($dsn, $c['user'] ?? null, $c['password'] ?? null, $options);
 		self::$connected = true;                               // a connection exists (0.8.701: NuLanguages reads its setting only then)
@@ -64,12 +73,60 @@ final class NuDB
 	public function run(string $sql, array $params = []): PDOStatement
 	{
 		NuDemo::check($sql);                                    // demo mode: read only (core/nudemo.php)
-		if (NuHash::$bound && str_contains($sql, NuHash::MARK)) [$sql, $params] = NuHash::resolveMarks($sql, $params);   // bound hash variables (0.8.873)
+		$marks = NuHash::$bound && str_contains($sql, NuHash::MARK);
+		if ($marks) [$sql, $params] = NuHash::resolveMarks($sql, $params);   // bound hash variables (0.8.873)
 		$this->noteWrite($sql);
-		$st = $this->pdo->prepare($sql);
-		$st->execute(self::bind($sql, $params));
+		$t = hrtime(true);
+		if ($marks && $this->emulated()) {
+			// values of hash variables bound into the SQL of the application: a server-side prepare, as before (a value may stand where
+			// MySQL wants a number, e.g. LIMIT – a quoted value would not do there)
+			$st = $this->native(function () use ($sql, $params): PDOStatement {
+				$st = $this->pdo->prepare($sql);
+				$st->execute(self::bind($sql, $params));
+				return $st;
+			});
+		} else {
+			$st = $this->pdo->prepare($sql);
+			$st->execute(self::bind($sql, $params));
+		}
+		self::$statements++;
+		self::$nanos += hrtime(true) - $t;
 		return $st;
 	}
+
+	/** MySQL: own statements in one step (see the constructor); false for SQL Server, SQLite, a connection handed out by pdo(). */
+	private bool $emulate = false;
+	private int $nativeDepth = 0;
+
+	/** Are statements sent in one step right now? */
+	public function emulated(): bool
+	{
+		return $this->emulate && $this->nativeDepth === 0;
+	}
+
+	/**
+	 * Runs $fn with server-side prepared statements (prepare + execute, as nuBuilder Next did before 0.8.1342) – for code and SQL of the
+	 * application: procedures and form events (NuPhp::run), nuRunQuery, SQL typed by users (readOnly). A bound value then stays a value
+	 * of its own type, so "LIMIT ?" with a number in a string keeps working there. Nested calls are fine.
+	 */
+	public function native(callable $fn): mixed
+	{
+		if (!$this->emulate) return $fn();
+		if ($this->nativeDepth++ === 0) $this->pdo->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
+		try {
+			return $fn();
+		} finally {
+			if (--$this->nativeDepth === 0 && $this->emulate) $this->pdo->setAttribute(PDO::ATTR_EMULATE_PREPARES, true);
+		}
+	}
+
+	/**
+	 * What this request asked the database so far (0.8.1341): the number of statements through run() / exec() and the time they took
+	 * (without reading the rows). Shown in developer mode at the end of a page (#nuPerf, core/nulayout.php) – dev/tests/perf.js
+	 * compares it with the budget of each page, so a page that starts to ask more is noticed.
+	 */
+	public static int $statements = 0;
+	public static int $nanos = 0;
 
 	/**
 	 * Per-request caches that a statement may invalidate (0.8.827): DDL → the table-exists cache of this connection, a write to
@@ -77,11 +134,20 @@ final class NuDB
 	 */
 	private function noteWrite(string $sql): void
 	{
-		if (preg_match('/^\s*(?:\/\*.*?\*\/\s*)?([A-Za-z]+)/s', $sql, $m) !== 1) return;
-		$verb = strtoupper($m[1]);
+		if (preg_match('/^\s*(?:\/\*.*?\*\/\s*)?([A-Za-z]+)/s', $sql, $m) === 1) $verb = strtoupper($m[1]);
+		elseif (str_starts_with(ltrim($sql), '(')) return;      // (SELECT …) UNION (SELECT …)
+		else $verb = '';                                        // starts with a "-- comment" line or the like: could be anything
 		if ($verb === 'SELECT' || $verb === 'SHOW' || $verb === 'SET' || $verb === 'EXPLAIN') return;
-		if ($verb === 'CREATE' || $verb === 'DROP' || $verb === 'RENAME' || $verb === 'ALTER') $this->tableCache = [];
-		if (stripos($sql, 'zzzzsys_nunext_setting') !== false && function_exists('nu_setting_forget')) nu_setting_forget();
+		if ($verb === '' || $verb === 'CREATE' || $verb === 'DROP' || $verb === 'RENAME' || $verb === 'ALTER') {
+			$this->tableCache = [];
+			if (isset($_SESSION['nu_rd_found'])) unset($_SESSION['nu_rd_found']);   // NuRowDetails::candidates: tables changed
+		}
+		if (($verb === '' || stripos($sql, 'zzzzsys_nunext_setting') !== false) && function_exists('nu_setting_forget')) nu_setting_forget();
+		// per-request values (NuMemo): a statement that names its tables drops what was read from them; one that does not (CALL, EXEC … – a
+		// stored procedure may change anything) drops everything
+		NuMemo::$writes++;
+		if (in_array($verb, ['INSERT', 'UPDATE', 'DELETE', 'REPLACE', 'TRUNCATE', 'MERGE', 'CREATE', 'DROP', 'RENAME', 'ALTER', 'WITH'], true)) NuMemo::written($sql);
+		else NuMemo::forget();
 	}
 
 	/**
@@ -226,6 +292,7 @@ final class NuDB
 
 	public function transaction(callable $fn): mixed
 	{
+		$mark = NuMemo::$writes;
 		$this->pdo->beginTransaction();
 		try {
 			$result = $fn($this);
@@ -233,6 +300,7 @@ final class NuDB
 			return $result;
 		} catch (Throwable $e) {
 			if ($this->pdo->inTransaction()) $this->pdo->rollBack();
+			if (NuMemo::$writes !== $mark) NuMemo::forget();    // something was written and is gone again: so may be what was read after it
 			throw $e;
 		}
 	}
@@ -263,17 +331,43 @@ final class NuDB
 		return addslashes($v);                               // \ ' " NUL – also safe inside "…" strings
 	}
 
-	/** The PDO connection (savepoints and manual transactions, e.g. NuImport). */
+	/**
+	 * The PDO connection (savepoints and manual transactions, e.g. NuImport; custom pages). Statements sent through it are not seen
+	 * by noteWrite(), so from here on nothing is kept in NuMemo for the rest of the request.
+	 */
 	public function pdo(): PDO
 	{
+		NuMemo::off();
+		// the raw connection goes to code that may expect server-side prepares (custom pages: $nu->db(), "LIMIT ?" with a bound value):
+		// from here on this request uses them for everything (0.8.1342)
+		if ($this->emulate) {
+			$this->emulate = false;
+			$this->pdo->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
+		}
 		return $this->pdo;
+	}
+
+	/** A quoted string literal of this connection (PDO::quote) – for the few places that build SQL text. */
+	public function quote(string $v): string
+	{
+		return (string)$this->pdo->quote($v);
+	}
+
+	/** A statement that only changes the connection itself (SET time_zone …) – no data: not a write, no demo check. */
+	public function session(string $sql): void
+	{
+		$this->pdo->exec($sql);
 	}
 
 	public function exec(string $sql): int
 	{
 		NuDemo::check($sql);
 		$this->noteWrite($sql);
-		return (int)$this->pdo->exec($sql);
+		$t = hrtime(true);
+		$n = (int)$this->pdo->exec($sql);
+		self::$statements++;
+		self::$nanos += hrtime(true) - $t;
+		return $n;
 	}
 
 	/**
@@ -285,7 +379,10 @@ final class NuDB
 	 */
 	public function readOnly(callable $fn, int $seconds = 15): mixed
 	{
+		// SQL typed by users: server-side prepares as before (0.8.1342)
+		if ($this->emulated()) return $this->native(fn () => $this->readOnly($fn, $seconds));
 		static $depth = 0;
+		$mark = NuMemo::$writes;                                // a write that gets rolled back here: what was read after it is forgotten
 		if ($this->pdo->inTransaction()) {
 			$sp = 'nu_ro_' . (++$depth);
 			$this->pdo->exec($this->type === 'sqlsrv' ? "SAVE TRANSACTION $sp" : "SAVEPOINT $sp");
@@ -299,6 +396,7 @@ final class NuDB
 				} catch (Throwable $e) {
 					error_log('nuBuilder Next readOnly savepoint: ' . $e->getMessage());
 				}
+				if (NuMemo::$writes !== $mark) NuMemo::forget();
 			}
 		}
 		$restore = [];
@@ -326,6 +424,7 @@ final class NuDB
 			return $fn($this);
 		} finally {
 			try { if ($this->type === 'mysql') $this->pdo->exec('ROLLBACK'); elseif ($this->pdo->inTransaction()) $this->pdo->rollBack(); } catch (Throwable) {}
+			if (NuMemo::$writes !== $mark) NuMemo::forget();
 			foreach ($restore as $var => $old) {
 				try {
 					if ($var === 'timeout') $this->pdo->setAttribute(PDO::SQLSRV_ATTR_QUERY_TIMEOUT, (int)$old);
@@ -498,5 +597,91 @@ final class NuDB
 	public static function likeRaw(string $s): string
 	{
 		return str_replace(['!', '%', '_', '['], ['!!', '!%', '!_', '!['], $s);
+	}
+}
+
+/**
+ * Values that several parts of one page ask the database for (performance review, 0.8.1341): the signed-in user's row, the rights
+ * rows of an access level, a user's permission items, the code of a form event … – read once per request and connection.
+ * Every entry names the tables it comes from. A statement that changes data and goes through NuDB (run / exec – also nuRunQuery of
+ * form code) drops the entries of every table it names; a rollback drops all of them; once the raw PDO connection was handed out
+ * (NuDB::pdo – custom pages, imports) nothing is kept any more. Other requests are not seen, as with any value read earlier in a page.
+ */
+final class NuMemo
+{
+	/** @var array<string, array{0: list<string>, 1: mixed}> key => [tables, value] */
+	private static array $data = [];
+	/** @var array<string, true> lower-case table names the entries depend on */
+	private static array $tables = [];
+	private static bool $off = false;
+	/** Statements that were not plain reads so far (NuDB::noteWrite) – a rollback forgets everything only when it took some back. */
+	public static int $writes = 0;
+
+	/**
+	 * @template T
+	 * @param list<string> $tables lower-case table names the value is read from
+	 * @param callable(): T $load
+	 * @return T
+	 */
+	public static function get(string $key, array $tables, callable $load): mixed
+	{
+		if (self::$off) return $load();
+		$k = spl_object_id(nu_db()) . '|' . $key;
+		if (array_key_exists($k, self::$data)) return self::$data[$k][1];
+		$v = $load();
+		if (self::$off) return $v;                              // the loader itself took the raw connection
+		self::$data[$k] = [$tables, $v];
+		foreach ($tables as $t) self::$tables[$t] = true;
+		return $v;
+	}
+
+	/** Keeps a value that was read another way (several rows in one statement – NuLookup::prime). */
+	public static function put(string $key, array $tables, mixed $value): void
+	{
+		if (self::$off) return;
+		self::$data[spl_object_id(nu_db()) . '|' . $key] = [$tables, $value];
+		foreach ($tables as $t) self::$tables[$t] = true;
+	}
+
+	/** Is a value kept under this key? (null is a value too) */
+	public static function has(string $key): bool
+	{
+		return !self::$off && array_key_exists(spl_object_id(nu_db()) . '|' . $key, self::$data);
+	}
+
+	/**
+	 * A statement that is not a plain read went through NuDB: forget what was read from the tables it names. The table name '*' stands
+	 * for "any table" (values of queries the application wrote – a lookup's list): dropped by every such statement.
+	 */
+	public static function written(string $sql): void
+	{
+		if (!self::$data) return;
+		$low = strtolower($sql);
+		$hit = [];
+		foreach (self::$tables as $t => $_) if ($t === '*' || str_contains($low, $t)) $hit[$t] = true;
+		if (!$hit) return;
+		foreach (self::$data as $k => [$tables]) {
+			foreach ($tables as $t) if (isset($hit[$t])) { unset(self::$data[$k]); break; }
+		}
+	}
+
+	public static function forget(): void
+	{
+		self::$data = [];
+	}
+
+	/** Nothing is kept from now on (the raw connection is in other hands). */
+	public static function off(): void
+	{
+		self::$off = true;
+		self::$data = [];
+	}
+
+	/** Starts over (tests; a command line job that begins a new piece of work). */
+	public static function reset(): void
+	{
+		self::$off = false;
+		self::$data = [];
+		self::$tables = [];
 	}
 }

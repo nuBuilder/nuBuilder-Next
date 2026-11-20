@@ -83,7 +83,7 @@
 	}
 	if (group) group.addEventListener('change', apply);
 	// sortable columns (0.8.611): ident, group, description, or the selected items first; ties by group and ident; kept per browser
-	var SORT_KEY = 'nunext-user-perm-sort', tbody = box.querySelector('.userPermTable tbody');
+	var SORT_STORE = 'nunext-user-perm-sort', tbody = box.querySelector('.userPermTable tbody');
 	function keyOf(it, col) {
 		if (col === 'sel') return it.querySelector('input[name="perm[]"]').checked ? '0' : '1';
 		if (col === 'ident') return it.querySelector('.userPermIdent label').textContent;
@@ -108,11 +108,11 @@
 		th.querySelector('button').addEventListener('click', function () {
 			var col = th.getAttribute('data-sort'), dir = th.getAttribute('aria-sort') === 'ascending' ? 'desc' : 'asc';
 			sortBy(col, dir);
-			try { localStorage.setItem(SORT_KEY, col + ':' + dir); } catch (e) { /* no storage */ }
+			try { localStorage.setItem(SORT_STORE, col + ':' + dir); } catch (e) { /* no storage */ }
 		});
 	});
 	try {
-		var keep = (localStorage.getItem(SORT_KEY) || '').split(':');
+		var keep = (localStorage.getItem(SORT_STORE) || '').split(':');
 		if (keep[0] && !(keep[0] === 'group' && keep[1] === 'asc')) sortBy(keep[0], keep[1] === 'desc' ? 'desc' : 'asc');
 	} catch (e) { /* no storage */ }
 	// Undo of All / None (0.8.584): the states before the click; a change by hand afterwards ends it
@@ -223,14 +223,14 @@
 	}
 
 	// phones: descriptions on / off (compact table); the choice stays in this browser
-	var descToggle = document.getElementById('userPermDescToggle'), DESC_KEY = 'nunext-perm-desc';
+	var descToggle = document.getElementById('userPermDescToggle'), DESC_STORE = 'nunext-perm-desc';
 	if (descToggle) {
-		try { if (localStorage.getItem(DESC_KEY) === '0') descToggle.checked = false; } catch (e) { /* no storage */ }
+		try { if (localStorage.getItem(DESC_STORE) === '0') descToggle.checked = false; } catch (e) { /* no storage */ }
 		var setDesc = function () { box.classList.toggle('userPermNoDesc', !descToggle.checked); };
 		setDesc();
 		descToggle.addEventListener('change', function () {
 			setDesc();
-			try { localStorage.setItem(DESC_KEY, descToggle.checked ? '1' : '0'); } catch (e) { /* no storage */ }
+			try { localStorage.setItem(DESC_STORE, descToggle.checked ? '1' : '0'); } catch (e) { /* no storage */ }
 		});
 	}
 })();

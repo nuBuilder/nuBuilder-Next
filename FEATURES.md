@@ -6,7 +6,9 @@ page) for how to use it.
 
 ## For everyone
 
-- **Works on every screen** – phones, tablets and desktops; light, dark or automatic mode; checked against WCAG 2.1 A/AA.
+- **Works on every screen** – phones, tablets and desktops; light, dark or automatic mode; checked against WCAG 2.1 A/AA and the target size of WCAG 2.2 (24 px on touch screens, 16 px text in fields so phones do not zoom, nothing below 12 px).
+- **One header on phones** – every page starts with ‹ previous page and its title; a record's title on its own row with the buttons below; tabs that scroll in one row; icon buttons on tablets; start page notices in one strip that folds.
+- **Fast pages** – own statements sent in one step, compressed pages, minified scripts and styles, form definitions of sub-forms and lookups read together, the help kept ready built.
 - **Tidy lists on phones** – at most three buttons in a list's title bar (the rest in ⋮), folded filters, cards or table per list; system rows hidden until you ask for them.
 - **Fast lists** – search, filters, sorting and paging; an advanced search with conditions per column and saved searches;
   coloured status badges; cells that open a form, a filtered list, a procedure or a report.
@@ -49,7 +51,7 @@ page) for how to use it.
 - **Validation rules without code** – as a builder or an expression, as errors or warnings, also for sub-form rows and per
   access level.
 - **Object types** – inputs, selects, lookups, sub-forms, charts, HTML, a WYSIWYG editor and run buttons (forms, reports,
-  procedures, URLs, saved pivots – shown only to users who may open them), calendars on forms; grid sub-forms can fit their columns to the width.
+  procedures, URLs, saved pivots – shown only to users who may open them), calendars on forms; grid sub-forms can fit their columns to the width and show their rows as cards on phones (or keep the table).
 - **Button settings in one dialogue** – right-click a button (or Alt+click): what it runs, target, record, filter, where it opens,
   JavaScript events, label, icon and access in one place, live or into the open draft.
 - **New form wizard** – from a table or a view, with the columns and their order chosen up front; text or UUID keys for new

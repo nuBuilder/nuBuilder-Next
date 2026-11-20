@@ -97,6 +97,7 @@ if ($id === '') {
 // Launch form and Data source: searchable (Tom Select, 0.8.510 – assets/js/nulistselect.js, class nuListTomSelect, description as second line)
 $foot = $id !== '' ? '<script src="' . nu_asset(NU_TOMSELECT . '/tom-select.complete.min.js') . '"></script><script src="' . nu_asset('assets/js/nulistselect.js') . '"></script>'
 	. '<script src="' . nu_asset('assets/js/nureports.js') . '"></script>' : '';
+if ($id !== '') nu_body_class('nuRecPage');
 nu_layout_start(t('rpt_title_list'), 'forms', $id !== '' ? ['head' => '<link rel="stylesheet" href="' . nu_asset(NU_TOMSELECT . '/tom-select.bootstrap5.min.css') . '">'] : []);
 $tcpdf = NuReport::tcpdfDir();
 ?>

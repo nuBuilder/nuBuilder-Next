@@ -32,25 +32,31 @@ final class NuFieldAccess
 	{
 		self::$rules = [];
 		self::$cache = [];
+		self::$all = null;
 	}
 
-	/** Rules of the objects of a form (one query per form and request). @return array<string, list<array>> */
+	/** Every rule of the table, read once per request (0.8.1343: was one statement per form – a record page with sub-forms read several). */
+	private static ?array $all = null;
+
+	/** Rules of the objects of a form. @return array<string, list<array>> */
 	public static function rulesOfForm(string $formId): array
 	{
 		if (isset(self::$rules[$formId])) return self::$rules[$formId];
-		$out = [];
-		try {
-			if (nu_db()->tableExists(self::TABLE)) {
-				foreach (nu_db()->all('SELECT * FROM ' . self::TABLE . ' WHERE noa_form_id = ?', [$formId]) as $r) {
-					$out[(string)$r['noa_object_id']][] = ['id' => (string)$r['zzzzsys_nunext_object_access_id'], 'type' => (string)$r['noa_subject_type'],
-						'subject' => (string)$r['noa_subject'], 'mode' => (string)$r['noa_mode'], 'mask' => (string)$r['noa_mask'],
-						'condition' => (string)$r['noa_condition'], 'note' => (string)$r['noa_note']];
+		if (self::$all === null) {
+			self::$all = [];
+			try {
+				if (nu_db()->tableExists(self::TABLE)) {
+					foreach (nu_db()->all('SELECT * FROM ' . self::TABLE) as $r) {
+						self::$all[(string)$r['noa_form_id']][(string)$r['noa_object_id']][] = ['id' => (string)$r['zzzzsys_nunext_object_access_id'], 'type' => (string)$r['noa_subject_type'],
+							'subject' => (string)$r['noa_subject'], 'mode' => (string)$r['noa_mode'], 'mask' => (string)$r['noa_mask'],
+							'condition' => (string)$r['noa_condition'], 'note' => (string)$r['noa_note']];
+					}
 				}
+			} catch (Throwable $e) {
+				error_log('nuBuilder Next field access: ' . $e->getMessage());
 			}
-		} catch (Throwable $e) {
-			error_log('nuBuilder Next field access: ' . $e->getMessage());
 		}
-		return self::$rules[$formId] = $out;
+		return self::$rules[$formId] = self::$all[$formId] ?? [];
 	}
 
 	public static function rulesOf(array $o): array
@@ -256,6 +262,7 @@ final class NuFieldAccess
 		$strip = static fn(array $l) => array_map(static fn($r) => array_diff_key($r, ['id' => 1]), $l);
 		if ($strip($before) !== $clean) NuLog::write('field_access_saved', self::TABLE, $objId, ['form' => $formId, 'field' => (string)$o['sob_all_id'], 'before' => $strip($before), 'after' => $clean]);
 		unset(self::$rules[$formId]);
+		self::$all = null;
 		self::$cache = [];
 	}
 

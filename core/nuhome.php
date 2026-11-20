@@ -208,7 +208,7 @@ final class NuHome
 		if ($b !== null) return $b;
 		$b = [];                                                // no version on the Update tile (0.8.332)
 		try {
-			$smp = NuSample::status();
+			$smp = NuSample::versionInfo();
 			if ($smp['installed'] && $smp['version'] < $smp['current']) $b['sample'] = [t('smp_update_available'), 'warning'];
 		} catch (Throwable) { /* no sample data */ }
 		try {                                                   // a newer release on GitHub (0.8.374, NuGitHub – looked up once a day)
@@ -1228,6 +1228,14 @@ final class NuHome
 	public static function autoLayout(?string $access = null): array
 	{
 		$access ??= (string)(self::$for['access'] ?? '');
+		// once per request (0.8.1341: the page and the side bar each built it – three statements a time); dropped by a write to its tables
+		$u = NuAuth::user();
+		return NuMemo::get('homeauto:' . $access . '|' . (empty(self::$for['preview']) ? '' : 'p') . '|' . (string)($u['id'] ?? '') . '|' . nu_lang_choice(),
+			['zzzzsys_access', 'zzzzsys_report', 'zzzzsys_form', 'zzzzsys_nunext_user_access'], static fn(): array => self::autoLayoutNow($access));
+	}
+
+	private static function autoLayoutNow(string $access): array
+	{
 		$l = ['v' => self::VERSION, 'display' => 'groups', 'size' => 'large', 'hidden' => [], 'fav' => [], 'custom' => [], 'tabs' => [],
 			'view' => ['style' => 'cards'] + self::VIEW_DEFAULTS, 'groups' => []];
 		if ($access === self::ALL_LEVELS || $access === '') {
@@ -1378,7 +1386,7 @@ final class NuHome
 		if ($f !== false) return $f;
 		$u = NuAuth::user();
 		if (!$u || !empty($u['globeadmin'])) return $f = null;
-		$row = nu_db()->one('SELECT sus_team, sus_department, sus_position FROM zzzzsys_user WHERE zzzzsys_user_id = ?', [(string)$u['id']]) ?? [];
+		$row = NuAuth::userRow((string)$u['id']) ?? [];
 		$low = static fn($v) => mb_strtolower(trim((string)$v));
 		return $f = ['team' => $low($row['sus_team'] ?? ''), 'department' => $low($row['sus_department'] ?? ''), 'position' => $low($row['sus_position'] ?? ''),
 			'permission' => array_map($low, NuPermission::idents((string)$u['id'])), 'fields' => NuUserFields::mine()];

@@ -5041,7 +5041,7 @@
     "o": "nb",
     "e": "nuForm('invoice', nuGetValue('inv_id'));",
     "p": {
-     "f": "form id",
+     "f": "form id, form code, or 'code:<form code>' as in nuBuilder Forte",
      "r": "record id ('' = list, '-1' = new)",
      "filter": "search words always applied",
      "search": "search text",

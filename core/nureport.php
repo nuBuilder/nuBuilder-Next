@@ -79,7 +79,13 @@ final class NuReport
 		if ($u['globeadmin']) return true;
 		if (!nu_db()->tableExists(self::ACCESS)) return false;
 		[$in, $lv] = NuUserAccess::inSql('sre_zzzzsys_access_id', $u);   // main + additional access levels (0.8.585)
-		return (bool)nu_db()->value("SELECT COUNT(*) FROM zzzzsys_access_report WHERE $in AND sre_zzzzsys_report_id = ?", [...$lv, (string)$r['zzzzsys_report_id']]);
+		// the reports of the user's levels in one statement per request (0.8.1341: one COUNT per report – every report tile of the start page)
+		$mine = NuMemo::get('reports:' . implode('|', $lv), ['zzzzsys_access_report', 'zzzzsys_nunext_user_access'], static function () use ($in, $lv): array {
+			$out = [];
+			foreach (nu_db()->all("SELECT sre_zzzzsys_report_id AS r FROM zzzzsys_access_report WHERE $in", $lv) as $x) $out[mb_strtolower(rtrim((string)$x['r'], ' '))] = true;
+			return $out;
+		});
+		return isset($mine[mb_strtolower(rtrim((string)$r['zzzzsys_report_id'], ' '))]);
 	}
 
 	/** Access levels with [zzzzsys_access_id, sal_code, sal_description, sal_group, granted]. */

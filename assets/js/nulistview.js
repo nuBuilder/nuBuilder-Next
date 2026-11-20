@@ -92,7 +92,7 @@
 			return '<li class="nav-item" role="presentation"><button class="nav-link' + (i ? '' : ' active') + '" type="button" role="tab" data-bs-toggle="tab" data-bs-target="#' + p + t[0] + '" aria-controls="' + p + t[0] + '" aria-selected="' + (i ? 'false' : 'true') + '">' + esc(t[1]) + '</button></li>';
 		}).join('') + '</ul><div class="tab-content">';
 		// columns
-		html += '<div class="tab-pane fade show active" id="' + p + 'cols" role="tabpanel"><div class="table-responsive"><table class="table table-sm align-middle nuLvEdTable"><thead><tr><th></th><th>' + esc(T.lv_visible) + '</th><th>' + esc(T.lv_width) + '</th><th>' + esc(T.lv_align) + '</th><th></th></tr></thead><tbody class="nuLvColRows">'
+		html += '<div class="tab-pane fade show active" id="' + p + 'cols" role="tabpanel"><div class="table-responsive"><table class="table table-sm align-middle nuLvEdTable"><thead><tr><th><span class="visually-hidden">' + esc(T.actions || '') + '</span></th><th>' + esc(T.lv_visible) + '</th><th>' + esc(T.lv_width) + '</th><th>' + esc(T.lv_align) + '</th><th><span class="visually-hidden">' + esc(T.actions || '') + '</span></th></tr></thead><tbody class="nuLvColRows">'
 			+ colRows.map(function (c) {
 				var lock = lockedOf[c.key];
 				return '<tr draggable="true" data-key="' + esc(c.key) + '"><td class="nuLvGrip"><i class="bi bi-grip-vertical"></i></td>'
@@ -111,7 +111,7 @@
 		for (var i = 0; i < 4; i++) html += '<div class="mb-1">' + sel(noneOpts, d.card.lines[i] || '', 'lvCardLine') + '</div>';
 		html += '</div><div class="col-md-5"><div class="small text-body-secondary mb-1">' + esc(T.lv_card_preview) + '</div><div class="nuLvCard nuLvCardDemo"></div></div></div></div>';
 		// filters
-		html += '<div class="tab-pane fade" id="' + p + 'filters" role="tabpanel"><table class="table table-sm align-middle nuLvEdTable"><thead><tr><th></th><th>' + esc(T.lv_filter_shown) + '</th><th>' + esc(T.lv_filter_default) + '</th><th></th></tr></thead><tbody class="nuLvFilRows">';
+		html += '<div class="tab-pane fade" id="' + p + 'filters" role="tabpanel"><table class="table table-sm align-middle nuLvEdTable"><thead><tr><th><span class="visually-hidden">' + esc(T.actions || '') + '</span></th><th>' + esc(T.lv_filter_shown) + '</th><th>' + esc(T.lv_filter_default) + '</th><th><span class="visually-hidden">' + esc(T.actions || '') + '</span></th></tr></thead><tbody class="nuLvFilRows">';
 		var fOrder = d.filters.shown.concat(D.filters.map(function (f) { return f.key; }).filter(function (k) { return d.filters.shown.indexOf(k) === -1; }));
 		fOrder.forEach(function (k) {
 			var f = D.filters.filter(function (x) { return x.key === k; })[0];

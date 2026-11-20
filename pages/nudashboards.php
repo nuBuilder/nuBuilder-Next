@@ -341,7 +341,7 @@ nu_layout_start(t('dash_title'), 'home');
 	</div>
 	<div class="table-responsive">
 		<table class="table align-middle mb-0 nu-table">
-			<thead><tr><th><?= h(t('dash_w_title_field')) ?></th><th><?= h(t('dash_type')) ?></th><th><?= h(t('dash_source')) ?></th><th><?= h(t('dash_width')) ?></th><th class="text-end"></th></tr></thead>
+			<thead><tr><th><?= h(t('dash_w_title_field')) ?></th><th><?= h(t('dash_type')) ?></th><th><?= h(t('dash_source')) ?></th><th><?= h(t('dash_width')) ?></th><th class="text-end"><span class="visually-hidden"><?= h(t('actions')) ?></span></th></tr></thead>
 			<tbody>
 			<?php if (!$widgets): ?><tr><td colspan="5" class="text-center text-body-secondary py-4"><?= h(t('dash_no_widgets')) ?></td></tr><?php endif; ?>
 			<?php foreach ($widgets as $i => $x): $wid2 = (string)$x['zzzzsys_nunext_widget_id']; $edit = nu_url('dashboards', ['id' => $id, 'w' => $wid2]); ?>

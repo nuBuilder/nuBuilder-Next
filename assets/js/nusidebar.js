@@ -14,7 +14,14 @@
 
 	// the top bar's height: the side bar sticks below it
 	var bar = document.querySelector('.nu-navbar');
-	function barHeight() { if (bar) root.style.setProperty('--nu-nav-h', bar.offsetHeight + 'px'); }
+	// nuapp.js keeps --nu-nav-h (and follows the bar's size) – here only where it is not loaded; never the same value again (a custom
+	// property on <html> restyles the whole page, 0.8.1341)
+	function barHeight() {
+		if (!bar) return;
+		var h = bar.offsetHeight + 'px', inline = root.style.getPropertyValue('--nu-nav-h').trim();
+		if (inline ? inline === h : getComputedStyle(root).getPropertyValue('--nu-nav-h').trim() === h) return;
+		root.style.setProperty('--nu-nav-h', h);
+	}
 	barHeight();
 	window.addEventListener('resize', barHeight);
 

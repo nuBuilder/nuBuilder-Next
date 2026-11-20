@@ -77,16 +77,18 @@ html.tox-fullscreen .nuAbsoluteCanvas { isolation: auto; }
 /* HTML objects as in nuBuilder Forte, which loads no Bootstrap (0.8.621): in the pixel layout its 13 px text and normal line height,
    so the content fits the object's size; headings bold in the browser's sizes and margins (not Bootstrap's large, thin ones) and
    paragraphs with the browser's margins. Specificity of a plain h3 / p: wins over Bootstrap (loaded before), the form's own CSS
-   (Setup → Style, form Style – loaded after, or with a class) wins over it. Not in dashboards (their own look) */
+   (Setup → Style, form Style – loaded after, or with a class) wins over it. Not in dashboards (their own look): .nuHasDash is set
+   on an HTML object with a dashboard by NuRender and by nudashboard.js when one is placed later (0.8.1341, was
+   :not(:has([data-nu-dashboard])) – :has() in front of the styled element restyles the whole page on every change of the page) */
 .nuAbs.nuWrap_html:not(:has([data-nu-dashboard])) { font-size: 13px; line-height: normal; }
-:where(.nuHtml:not(:has([data-nu-dashboard]))) :is(h1, h2, h3, h4, h5, h6) { font-size: revert; font-weight: bold; line-height: normal; margin: revert; }
-:where(.nuHtml:not(:has([data-nu-dashboard]))) p { margin: revert; }
+:where(.nuHtml:not(.nuHasDash)) :is(h1, h2, h3, h4, h5, h6) { font-size: revert; font-weight: bold; line-height: normal; margin: revert; }
+:where(.nuHtml:not(.nuHasDash)) p { margin: revert; }
 /* a table caption above the table as in the browser (Bootstrap's reboot puts it below, 0.8.965) */
-:where(.nuHtml:not(:has([data-nu-dashboard]))) :is(table, caption) { caption-side: top; }
-:where(.nuHtml:not(:has([data-nu-dashboard]))) caption { padding: revert; color: revert; text-align: revert; }
+:where(.nuHtml:not(.nuHasDash)) :is(table, caption) { caption-side: top; }
+:where(.nuHtml:not(.nuHasDash)) caption { padding: revert; color: revert; text-align: revert; }
 /* sizes as in the browser (nuBuilder Forte loads no global border-box): a box of an HTML object with height + padding gets its padding on
    top of the height, as the object's code expects (0.8.965) */
-:where(.nuHtml:not(:has([data-nu-dashboard]))) :where(*, *::before, *::after) { box-sizing: content-box; }
+:where(.nuHtml:not(.nuHasDash)) :where(*, *::before, *::after) { box-sizing: content-box; }
 .nuLabelLeft { position: absolute; right: calc(100% + 6px); top: 4px; margin: 0; white-space: nowrap; font-size: .85rem; color: var(--bs-secondary-color); text-align: right; }
 .nuLabelTop { position: absolute; bottom: calc(100% + 2px); left: 0; margin: 0; font-size: .85rem; color: var(--bs-secondary-color); }
 .nuAbs.nuWrap_contentbox { pointer-events: none; }
@@ -110,10 +112,10 @@ html.tox-fullscreen .nuAbsoluteCanvas { isolation: auto; }
 /* ---------------------------------------------------------------- flow layouts (auto / grid) */
 .nuGridRow + .nuGridRow { margin-top: .1rem; }
 /* the row after a subform / iframe gets more room (0.8.294): their box has no space of its own below, the next labels sat right on it */
-.nuGridRow:has(> .nuWrap_subform, > .nuWrap_run .nuIframe) + .nuGridRow { margin-top: 1rem; }
+.nuGridRow.nuRowTall + .nuGridRow { margin-top: 1rem; }   /* nuRowTall / nuRowNoLabel: set by NuRender::rows() (0.8.1342, was :has()) */
 .nuCell .form-label, .nuCell .nuLabel { font-size: .85rem; margin-bottom: .2rem; color: var(--bs-secondary-color); }
 .nuLabelSpacer { height: 1.55rem; }
-.nuGridRow:not(:has(> .nuWrap .nuLabel)) > .nuWrap > .nuLabelSpacer { display: none; }   /* a row without labels: no space for one */
+.nuGridRow.nuRowNoLabel > .nuWrap > .nuLabelSpacer { display: none; }   /* a row without labels: no space for one */
 .nuCheckWrap { padding-top: 1.85rem; }
 .nuLayout-auto .nuWrap_contentbox > .nuContentBoxContainer, .nuLayout-grid .nuWrap_contentbox > .nuContentBoxContainer { height: 100%; }
 .nuLayout-auto .nuContentBoxTitle, .nuLayout-grid .nuContentBoxTitle { border-bottom: 1px solid var(--bs-border-color-translucent); }
@@ -304,7 +306,7 @@ textarea.nuCodeField { font-family: SFMono-Regular, Menlo, Consolas, "Liberation
 /* options menu (keyboard shortcuts) */
 .nuOptionsList { min-width: 18rem; max-height: 75vh; overflow-y: auto; }
 .nuOptionsList .bi { width: 1.1rem; text-align: center; }
-.nuKbd { font-size: .7rem; background: var(--bs-tertiary-bg); color: var(--bs-secondary-color); border: 1px solid var(--bs-border-color); padding: .05rem .3rem; border-radius: .25rem; white-space: nowrap; }
+.nuKbd { font-size: .75rem; background: var(--bs-tertiary-bg); color: var(--bs-secondary-color); border: 1px solid var(--bs-border-color); padding: .05rem .3rem; border-radius: .25rem; white-space: nowrap; }
 
 /* hash viewer (Options → Hash variables) */
 .nuMessage:has(#nuHashTable) { width: min(92vw, 52rem); max-width: none; }
@@ -591,7 +593,7 @@ body:not(.nuPrintView) #nuBrowseTable { table-layout: fixed; }
 .nuBsqGrid { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem .75rem; }
 .nuBsqChecks { display: flex; flex-wrap: wrap; gap: .25rem 1.25rem; margin-top: .5rem; }
 .nuBsqColTable { font-size: .8125rem; margin-bottom: .5rem; }
-.nuBsqColTable th { font-weight: 600; font-size: .72rem; color: var(--bs-secondary-color); white-space: nowrap; }
+.nuBsqColTable th { font-weight: 600; font-size: .75rem; color: var(--bs-secondary-color); white-space: nowrap; }
 .nuBsqColTable td { padding: .2rem .25rem; }
 .nuBsqColNo { width: 1.75rem; color: var(--bs-secondary-color); text-align: right; }
 .nuBsqColW { width: 4.5rem; }
@@ -660,7 +662,9 @@ html.nuBsqResizing iframe { pointer-events: none; }
    class name of the form's code – no grid gutters and no full-width children (buttons in a ".row" stood one below the other).
    Specificity of Bootstrap's own rules (0,1,0) and later, so the form's CSS still wins. */
 :where(.nuHtml) .row:where(:not(:has(> [class*="col"]))) { display: block; --bs-gutter-x: 0; --bs-gutter-y: 0; margin: 0; }
-:where(.nuHtml) .row:where(:not(:has(> [class*="col"]))) > * { flex-shrink: 1; width: auto; max-width: none; margin-top: 0; padding-left: 0; padding-right: 0; }
+/* its children – asked from the child (0.8.1341): no column class on it, on a sibling before it or on one after it = the row has no
+   column. The same elements as .row:not(:has(> [class*="col"])) > * with the same weight, without :has() in front of the styled element */
+:where(.nuHtml) .row > :where(:not([class*="col"], [class*="col"] ~ *, :has(~ [class*="col"]))) { flex-shrink: 1; width: auto; max-width: none; margin-top: 0; padding-left: 0; padding-right: 0; }
 
 /* auto / grid layouts: tiny HTML objects (code holders, decorations of the fixed layout) take no room (NuRender::flow) */
 .nuFlowHolders { height: 0; overflow: hidden; }
@@ -678,18 +682,18 @@ html.nuPhoneCards #nuBrowseTable div.nuCell { max-height: none !important; }
    search (.nuPhAdd clicks #nuAddButton, nuruntime.js); the breadcrumb and Back are hidden. Wider screens keep breadcrumb + button row. */
 .nuPhBack, .nuPhTitle, .nuPhAdd { display: none; }
 @media (max-width: 575.98px) {
-	body.nuForm .nuFormHeader:has(> .nuPhTitle) { display: flex; flex-wrap: wrap; align-items: center; column-gap: .25rem; row-gap: 0; }
-	body.nuForm .nuFormHeader:has(> .nuPhTitle) > nav[aria-label="breadcrumb"] { display: none; }
+	body.nuForm .nuFormHeader.nuPhHead { display: flex; flex-wrap: wrap; align-items: center; column-gap: .25rem; row-gap: 0; }
+	body.nuForm .nuFormHeader.nuPhHead > nav[aria-label="breadcrumb"] { display: none; }
 	.nuFormHeader > .nuPhBack { display: inline-flex; align-items: center; gap: .15rem; flex: 0 0 100%; min-height: 2rem; font-size: .9rem; text-decoration: none; }
 	.nuFormHeader > .nuPhBack > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 	.nuFormHeader > .nuPhTitle { display: block; flex: 1 1 0; min-width: 0; margin: 0; font-size: 1.2rem; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-	.nuFormHeader:has(> .nuPhTitle) > #nuActionHolder { flex: 0 0 auto; flex-wrap: nowrap; gap: 0; margin-right: -.4rem; }
-	.nuFormHeader:has(> .nuPhTitle) #nuBackButton, .nuFormHeader:has(> .nuPhTitle) #nuAddButton { display: none !important; }
-	.nuFormHeader:has(> .nuPhTitle) #nuActionHolder .btn:not(.dropdown-item):not(.nuSaveEdited) { --bs-btn-border-color: transparent; --bs-btn-bg: transparent; --bs-btn-hover-bg: var(--bs-tertiary-bg); --bs-btn-hover-border-color: transparent; --bs-btn-active-bg: var(--bs-secondary-bg); --bs-btn-active-border-color: transparent; border-color: transparent; background-color: transparent; box-shadow: none; }
-	.nuFormHeader:has(> .nuPhTitle) #nuActionHolder .btn:not(.dropdown-item):not(.nuOptLayout > .btn) { min-width: 2.75rem; height: 2.75rem; padding: 0 .55rem; font-size: 0; display: inline-flex; align-items: center; justify-content: center; }
-	.nuFormHeader:has(> .nuPhTitle) #nuActionHolder .btn:not(.dropdown-item) > .bi { font-size: 1.2rem; margin: 0 !important; }
-	.nuFormHeader:has(> .nuPhTitle) #nuActionHolder .dropdown-toggle::after { display: none; }
-	.nuFormHeader:has(> .nuPhTitle) #nuActionHolder .btn-group > .btn { border-radius: var(--bs-border-radius) !important; }
+	.nuFormHeader.nuPhHead > #nuActionHolder { flex: 0 0 auto; flex-wrap: nowrap; gap: 0; margin-right: -.4rem; }
+	.nuFormHeader.nuPhHead #nuBackButton, .nuFormHeader.nuPhHead #nuAddButton { display: none !important; }
+	.nuFormHeader.nuPhHead #nuActionHolder .btn:not(.dropdown-item):not(.nuSaveEdited) { --bs-btn-border-color: transparent; --bs-btn-bg: transparent; --bs-btn-hover-bg: var(--bs-tertiary-bg); --bs-btn-hover-border-color: transparent; --bs-btn-active-bg: var(--bs-secondary-bg); --bs-btn-active-border-color: transparent; border-color: transparent; background-color: transparent; box-shadow: none; }
+	.nuFormHeader.nuPhHead #nuActionHolder .btn:not(.dropdown-item):not(.nuOptLayout > .btn) { min-width: 2.75rem; height: 2.75rem; padding: 0 .55rem; font-size: 0; display: inline-flex; align-items: center; justify-content: center; }
+	.nuFormHeader.nuPhHead #nuActionHolder .btn:not(.dropdown-item) > .bi { font-size: 1.2rem; margin: 0 !important; }
+	.nuFormHeader.nuPhHead #nuActionHolder .dropdown-toggle::after { display: none; }
+	.nuFormHeader.nuPhHead #nuActionHolder .btn-group > .btn { border-radius: var(--bs-border-radius) !important; }
 	html.nuBack-icon .nuFormHeader > .nuPhBack { flex-basis: auto; }
 	html.nuBack-icon .nuFormHeader > .nuPhBack > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }   /* shared setting nuPhoneBackButton */
 	html.nuBack-hidden .nuFormHeader > .nuPhBack { display: none; }
@@ -755,13 +759,13 @@ html:not(.nuPhoneCards) #nuBrowseTable > tbody > tr.nuBrowseRow > td:last-child 
 .nuBsqFold { display: inline-flex; align-items: center; gap: .35rem; padding: 0; border: 0; background: none; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer; }
 .nuBsqFold:hover { color: var(--bs-body-color); }
 .nuBsqFold:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 2px; border-radius: .2rem; }
-.nuBsqFold > .bi { font-size: .7rem; transition: transform .15s; }
+.nuBsqFold > .bi { font-size: .75rem; transition: transform .15s; }
 .nuBsqFold[aria-expanded="false"] > .bi { transform: rotate(-90deg); }
 @media (prefers-reduced-motion: reduce) { .nuBsqFold > .bi { transition: none; } }
 
 /* row of column totals below a form list (tfoot#nuBrowseTotals): over all matching rows; stays in view at the bottom (nuapp.js) */
 #nuBrowseTotals > tr > td { border-top: 2px solid var(--bs-border-color); border-bottom: 0; background: var(--bs-tertiary-bg); font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
-#nuBrowseTotals .nuTotalFn { font-size: .7rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--bs-secondary-color); margin-inline-end: .25rem; }
+#nuBrowseTotals .nuTotalFn { font-size: .75rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--bs-secondary-color); margin-inline-end: .25rem; }
 html:not(.nuPhoneCards) #nuBrowseTable #nuBrowseTotals > tr > td:first-child { padding-left: 1rem; }
 html:not(.nuPhoneCards) #nuBrowseTable #nuBrowseTotals > tr > td:last-child { padding-right: 1rem; }
 #nuBrowseTable.nuFootFloat #nuBrowseTotals > tr > td { position: relative; z-index: 1; box-shadow: 0 -.25rem .5rem rgba(0, 0, 0, .08); }
@@ -775,13 +779,13 @@ html.nuPhoneCards #nuBrowseTotals > tr > td[data-nu-total]::before { content: at
 #nuBrowseTable th.nuSelCol, #nuBrowseTable td.nuSelCol { width: 36px; min-width: 36px; padding: 0 .1rem 0 .75rem; text-align: center; }
 #nuBrowseTable .nuSelCol .form-check-input { margin: 0; vertical-align: middle; cursor: pointer; }
 #nuBrowseTotals.nuTotalSel > tr > td { background: var(--bs-primary-bg-subtle); }
-.nuSelClear { border: 0; border-radius: 1rem; padding: 0 .4rem; font-size: .7rem; font-weight: 700; line-height: 1.4; background: var(--bs-primary); color: #fff; cursor: pointer; }
+.nuSelClear { border: 0; border-radius: 1rem; padding: 0 .4rem; font-size: .75rem; font-weight: 700; line-height: 1.4; background: var(--bs-primary); color: #fff; cursor: pointer; }
 .nuSelClear:focus-visible { outline: 2px solid var(--bs-body-color); outline-offset: 1px; }
 #nuBrowseTable tr.nuGroupRow > th { background: var(--bs-tertiary-bg); font-weight: 600; padding: .35rem 1rem; border-bottom: 1px solid var(--bs-border-color); text-align: start; }
-#nuBrowseTable tr.nuGroupRow .nuGroupTitle { font-size: .7rem; letter-spacing: .04em; text-transform: uppercase; color: var(--bs-secondary-color); margin-inline-end: .35rem; }
-#nuBrowseTable tr.nuGroupRow .nuGroupCount { font-size: .72rem; font-weight: 600; color: var(--bs-secondary-color); background: var(--bs-secondary-bg); border-radius: 1rem; padding: 0 .45rem; margin-inline-start: .35rem; }
+#nuBrowseTable tr.nuGroupRow .nuGroupTitle { font-size: .75rem; letter-spacing: .04em; text-transform: uppercase; color: var(--bs-secondary-color); margin-inline-end: .35rem; }
+#nuBrowseTable tr.nuGroupRow .nuGroupCount { font-size: .75rem; font-weight: 600; color: var(--bs-secondary-color); background: var(--bs-secondary-bg); border-radius: 1rem; padding: 0 .45rem; margin-inline-start: .35rem; }
 #nuBrowseTable tr.nuGroupTotalRow > td { font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; border-bottom: 2px solid var(--bs-border-color); }
-#nuBrowseTable tr.nuGroupTotalRow .nuTotalFn { font-size: .7rem; letter-spacing: .04em; text-transform: uppercase; color: var(--bs-secondary-color); margin-inline-end: .25rem; }
+#nuBrowseTable tr.nuGroupTotalRow .nuTotalFn { font-size: .75rem; letter-spacing: .04em; text-transform: uppercase; color: var(--bs-secondary-color); margin-inline-end: .25rem; }
 html:not(.nuPhoneCards) #nuBrowseTable tr.nuGroupTotalRow > td:last-child { padding-right: 1rem; }
 html.nuPhoneCards #nuBrowseTable > tbody > tr.nuGroupRow, html.nuPhoneCards #nuBrowseTable > tbody > tr.nuGroupRow > th { display: block; }
 html.nuPhoneCards #nuBrowseTable > tbody > tr.nuGroupTotalRow { display: flex; flex-wrap: wrap; gap: .15rem 1rem; padding: .5rem .9rem; border-bottom: 2px solid var(--bs-border-color); }
@@ -910,7 +914,7 @@ html.nuPvOnly .nuPvDlg { background: var(--bs-body-bg); }
 .nuBsqRunSql mark.nuBsqFill, .badge.nuBsqBadgeFill { background: var(--bs-success-bg-subtle); color: var(--bs-success-text-emphasis); }
 .nuBsqRunSql mark.nuBsqUnset, .badge.nuBsqBadgeUnset { background: var(--bs-warning-bg-subtle); color: var(--bs-warning-text-emphasis); }
 .nuBsqRunVars { flex: 0 0 auto; max-height: 40%; overflow: auto; border-top: 1px solid var(--bs-border-color); padding: .5rem .75rem .6rem; display: flex; flex-direction: column; gap: .3rem; }
-.nuBsqRunHead { font-size: .7rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--bs-secondary-color); }
+.nuBsqRunHead { font-size: .75rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--bs-secondary-color); }
 .nuBsqRunVar { display: grid; grid-template-columns: minmax(0, 11rem) minmax(0, 1fr) auto; gap: .5rem; align-items: center; font-size: .8125rem; }
 .nuBsqRunVar code { color: var(--bs-body-color); overflow-wrap: anywhere; }
 .nuBsqRunVal { overflow-wrap: anywhere; font-family: var(--bs-font-monospace); font-size: .8rem; }
@@ -938,7 +942,7 @@ html.nuPvOnly .nuPvDlg { background: var(--bs-body-bg); }
 /* 0.8.1199: groups as cards (mockup B of "Code pane sections") – tinted heading with the count of parts holding code, the list's card dashed */
 .nuEcpCard { background: var(--bs-body-bg); border: 1px solid var(--bs-border-color); border-radius: .55rem; overflow: hidden; display: flex; flex-direction: column; padding-bottom: .2rem; flex: 0 0 auto; }
 .nuEcpCard[data-grp="list"] { border-style: dashed; }
-.nuEcpGroup { display: flex; align-items: center; gap: .4rem; font-size: .72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--bs-emphasis-color);
+.nuEcpGroup { display: flex; align-items: center; gap: .4rem; font-size: .75rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--bs-emphasis-color);
 	padding: .35rem .75rem; margin-bottom: .2rem; background: color-mix(in srgb, var(--bs-primary) 8%, var(--bs-body-bg)); border-bottom: 1px solid var(--bs-border-color-translucent); }
 .nuEcpCard[data-grp="list"] .nuEcpGroup { background: var(--bs-tertiary-bg); }
 .nuEcpCount { margin-inline-start: auto; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--bs-secondary-color); }
@@ -1044,3 +1048,36 @@ body.nuLookupPage main#main { padding: .75rem 1rem .25rem !important; }
 html.nuRdView #nuActionHolder, html.nuRdView .nuFormHeader, html.nuRdView #nuBreadcrumbHolder, html.nuRdView .nuStickyBar { display: none !important; }
 html.nuRdView body { background: var(--bs-body-bg); }
 html.nuRdView #main { padding-top: .25rem !important; padding-bottom: .25rem !important; }
+
+/* ---- usability review G3 / G5 / G7 / G14 / G15 (0.8.1344) -------------------------------------------------------------- */
+/* G3 phones: the record's title on its own row (up to two lines), the buttons as icons in the row below it */
+@media (max-width: 575.98px) {
+	body.nuForm-edit .nuFormHeader.nuPhHead > .nuPhTitle { flex: 0 0 100%; white-space: normal; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow-wrap: anywhere; }
+	body.nuForm-edit .nuFormHeader.nuPhHead > #nuActionHolder { flex: 1 1 100%; flex-wrap: wrap; margin: .15rem 0 0 -.55rem; }
+}
+/* G7 tablets (576–991 px): the buttons of a form as icons, as on phones – the label stays for screen readers and as tooltip (nuapp.js) */
+@media (min-width: 576px) and (max-width: 991.98px) {
+	body.nuForm .nuFormHeader #nuActionHolder .btn:not(.dropdown-item):not(.dropdown-toggle-split):has(> .bi) { font-size: 0; min-width: 2.5rem; min-height: 2.375rem; padding-inline: .65rem; display: inline-flex; align-items: center; justify-content: center; gap: 0; }
+	body.nuForm .nuFormHeader #nuActionHolder .btn:not(.dropdown-item) > .bi { font-size: 1.1rem; margin: 0 !important; }
+	body.nuForm .nuFormHeader #nuActionHolder .btn:not(.dropdown-item):not(.dropdown-toggle-split) > .bi ~ :not(.bi):not(.badge) { display: none; }
+	body.nuForm .nuFormHeader #nuActionHolder .btn.dropdown-toggle:not(.dropdown-toggle-split):has(> .bi)::after { display: none; }
+}
+/* G14 phone cards of lists: a value that is empty is left out with its label */
+html.nuPhoneCards #nuBrowseTable > tbody > tr.nuBrowseRow > td.nuCellTd:has(> .nuCell:empty) { display: none !important; }
+/* G15 phones: rows of a grid sub-form as small cards (labels = column titles); switched off per sub-form with nunext.phone = 'table' */
+@media (max-width: 575.98px) {
+	.nuSubformTable.nuSfPhCards { width: 100% !important; min-width: 0 !important; table-layout: auto; }
+	.nuSubformTable.nuSfPhCards > thead { display: none; }
+	.nuSubformTable.nuSfPhCards, .nuSubformTable.nuSfPhCards > tbody { display: block; }
+	.nuSubformTable.nuSfPhCards > tbody > tr.nuSubformRow { display: block; padding: .5rem .6rem; margin-bottom: .5rem; border: 1px solid var(--bs-border-color); border-radius: .5rem; background: var(--bs-body-bg); }
+	.nuSubformTable.nuSfPhCards > tbody > tr.nuSubformRow > td { display: flex; align-items: center; gap: .5rem; border: 0; padding: .15rem 0; width: auto !important; background: transparent; }
+	.nuSubformTable.nuSfPhCards > tbody > tr.nuSubformRow > td::before { content: attr(data-nu-label); flex: 0 0 34%; min-width: 0; font-size: .8125rem; color: var(--bs-secondary-color); overflow-wrap: anywhere; }
+	.nuSubformTable.nuSfPhCards > tbody > tr.nuSubformRow > td > :not([type="checkbox"]) { flex: 1 1 auto; min-width: 0; width: auto !important; max-width: 100%; }
+	.nuSubformTable.nuSfPhCards > tbody > tr.nuSubformRow > td > [type="checkbox"] { flex: 0 0 auto; width: 1.5rem; height: 1.5rem; margin: 0; }
+	.nuSubformTable.nuSfPhCards > tbody > tr.nuSubformRow > td.nuSubformDeleteCell { justify-content: flex-start; }
+	.nuSubformTable.nuSfPhCards > tbody > tr.nuSubformRow > td.nuSubformDeleteCell > * { flex: 0 0 auto; }
+	.nuSubformTable.nuSfPhCards > tbody > tr.nuSubformRow.nuNewRow { border-style: dashed; }
+	.nuSfPhCards .form-control, .nuSfPhCards .form-select { height: 2.25rem; }
+	html.nuPhoneStack .nuAbsoluteCanvas > .nuAbs.nuWrap_subform:has(.nuSfPhCards) { height: auto !important; }
+	.nuSubformScroll:has(> .nuSfPhCards) { max-height: none !important; overflow: visible; }
+}

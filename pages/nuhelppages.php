@@ -170,6 +170,7 @@ $linkList = [];
 foreach (NuUserHelp::codeList() as [$c, $tt]) if ($c !== $code) $linkList[] = ['title' => $tt . ' (' . $c . ')', 'value' => '#help=' . $c];
 $formOpts = array_filter(nu_forms(), static fn($f, $fid) => !str_starts_with((string)$fid, 'nu') && in_array($f['type'], ['browseedit', 'edit', 'browse', 'launch'], true), ARRAY_FILTER_USE_BOTH);
 
+nu_body_class('nuRecPage');
 nu_layout_start(t('uh_admin_title'), 'home', ['container' => 'container-xl', 'head' => nu_ts_head()]);
 $crumbs = [[t('uh_admin_title'), nu_url('helppages')]];
 if ($isTr) $crumbs[] = [(string)$base['title'], nu_url('helppages', ['id' => (string)$base['id']])];

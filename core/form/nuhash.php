@@ -67,7 +67,7 @@ final class NuHash
 		];
 		$db = nu_db();
 		if (!$u['globeadmin']) {
-			$row = $db->one('SELECT * FROM zzzzsys_user WHERE zzzzsys_user_id = ?', [$u['id']]) ?? [];
+			$row = NuAuth::userRow((string)$u['id']) ?? [];
 			foreach (['CODE' => 'sus_code', 'DEPARTMENT' => 'sus_department', 'TEAM' => 'sus_team', 'POSITION' => 'sus_position',
 					  'ADDITIONAL1' => 'sus_additional1', 'ADDITIONAL2' => 'sus_additional2', 'FIRST_NAME' => 'sus_first_name', 'LAST_NAME' => 'sus_last_name'] as $k => $col) {
 				$h['USER_' . $k] = (string)($row[$col] ?? '');
@@ -125,9 +125,11 @@ final class NuHash
 		$db = nu_db();
 		if (!$db->tableExists('zzzzsys_user_permission') || !$db->tableExists('zzzzsys_permission_item')) return [];
 		try {
-			return array_map('strval', array_column($db->all("SELECT pme_ident FROM zzzzsys_user_permission
+			// once per request (0.8.1341 – the hash, the start page conditions, field access and the notification senders each asked)
+			return NuMemo::get('perm:' . $userId, ['zzzzsys_user_permission', 'zzzzsys_permission_item'], static fn(): array =>
+				array_map('strval', array_column($db->all("SELECT pme_ident FROM zzzzsys_user_permission
 				LEFT JOIN zzzzsys_permission_item ON zzzzsys_permission_item_id = upe_ident
-				WHERE upe_zzzzsys_user_id = ? AND COALESCE(upe_active, '0') = '1' AND pme_ident IS NOT NULL ORDER BY pme_ident", [$userId]), 'pme_ident'));
+				WHERE upe_zzzzsys_user_id = ? AND COALESCE(upe_active, '0') = '1' AND pme_ident IS NOT NULL ORDER BY pme_ident", [$userId]), 'pme_ident')));
 		} catch (Throwable) {
 			return [];
 		}

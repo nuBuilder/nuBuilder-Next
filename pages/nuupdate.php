@@ -936,7 +936,7 @@ if (!$devUploadFirst) echo $finishedHtml; ?>
 			<?php endif; ?>
 			<div class="table-responsive">
 				<table class="table table-sm align-middle mb-0 nu-table" data-nu-phcards id="updBackups">
-					<thead><tr><th class="updBkSelCol"><input class="form-check-input" type="checkbox" id="updBkAll" aria-label="<?= h(t('upd_bk_select_page')) ?>" title="<?= h(t('upd_bk_select_page')) ?>"></th><th><?= h(t('upd_version')) ?></th><th><?= h(t('upd_created')) ?></th><th><?= h(t('upd_reason')) ?></th><th class="text-end"><?= h(t('upd_size')) ?></th><th></th></tr></thead>
+					<thead><tr><th class="updBkSelCol"><input class="form-check-input" type="checkbox" id="updBkAll" aria-label="<?= h(t('upd_bk_select_page')) ?>" title="<?= h(t('upd_bk_select_page')) ?>"></th><th><?= h(t('upd_version')) ?></th><th><?= h(t('upd_created')) ?></th><th><?= h(t('upd_reason')) ?></th><th class="text-end"><?= h(t('upd_size')) ?></th><th><span class="visually-hidden"><?= h(t('actions')) ?></span></th></tr></thead>
 					<tbody>
 					<?php if (!$backups): ?><tr><td colspan="6" class="text-center text-body-secondary py-4"><?= h(t('no_records')) ?></td></tr><?php endif; ?>
 					<?php foreach ($backups as $b): ?>

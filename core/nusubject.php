@@ -23,7 +23,7 @@ final class NuSubject
 		$me = ['id' => (string)($u['id'] ?? ''), 'ga' => !empty($u['globeadmin']), 'access' => (string)($u['access_id'] ?? ''), 'perms' => [], 'team' => '', 'dept' => ''];
 		if (!$me['ga'] && $me['id'] !== '') {
 			try {
-				$row = nu_db()->one('SELECT sus_team, sus_department FROM zzzzsys_user WHERE zzzzsys_user_id = ?', [$me['id']]) ?? [];
+				$row = NuAuth::userRow($me['id']) ?? [];
 				$me['team'] = mb_strtolower(trim((string)($row['sus_team'] ?? '')));
 				$me['dept'] = mb_strtolower(trim((string)($row['sus_department'] ?? '')));
 				$me['perms'] = array_map(static fn($p) => mb_strtolower(trim((string)$p)), NuPermission::idents($me['id']));

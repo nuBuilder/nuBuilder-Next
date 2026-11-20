@@ -131,7 +131,7 @@ nu_layout_start(t('lp_build_title'), 'update');
 		<form method="post" enctype="multipart/form-data" id="lpBuildForm" data-nu-once><?= nu_csrf_field() ?><input type="hidden" name="action" value="build">
 			<div class="table-responsive">
 				<table class="table table-sm nu-table small align-middle">
-					<thead><tr><th></th><th><?= h(t('upd_libs_name')) ?></th><th><?= h(t('lp_src')) ?></th><th><?= h(t('upd_libs_version')) ?></th></tr></thead>
+					<thead><tr><th><span class="visually-hidden"><?= h(t('actions')) ?></span></th><th><?= h(t('upd_libs_name')) ?></th><th><?= h(t('lp_src')) ?></th><th><?= h(t('upd_libs_version')) ?></th></tr></thead>
 					<tbody>
 					<?php foreach (NuLibs::SLOTS as $sl => $def): [$src, $kind] = NuLibs::source($sl); $ver = $src !== '' ? NuLibs::detectVersion($sl, $src) : ''; ?>
 						<tr data-slot="<?= h($sl) ?>">

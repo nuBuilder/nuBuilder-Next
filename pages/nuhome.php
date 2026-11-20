@@ -191,6 +191,9 @@ nu_layout_start($editorPage ? t('home_u_title') : t('nav_home'), 'home', ['head'
 </div>
 <?php endif; ?>
 
+<?php // notices before the tiles (usability review G12): two or more become one strip that folds – folded on phones until opened
+$noticeParts = []; $noticeTitles = [];
+ob_start(); ?>
 <?php if ($u['globeadmin'] && !$editorPage && NuMigrate::entryNotice()): // 0.8.825 / 0.8.826: cron.php, dbadmin.php → nu… (NuMigrate step 0033) ?>
 <div class="alert alert-warning d-flex align-items-start gap-2" role="note" id="nuEntryNotice"><i class="bi bi-signpost-split mt-1" aria-hidden="true"></i>
 	<details class="flex-grow-1 nuNoticeFold"><summary class="fw-semibold"><?= h(t('entry_ren_title')) ?> <span class="small fw-normal text-decoration-underline"><?= h(t('more_info')) ?></span></summary><?php /* review H1: one line, details folded */ ?>
@@ -201,7 +204,9 @@ nu_layout_start($editorPage ? t('home_u_title') : t('nav_home'), 'home', ['head'
 	<?php if (empty($u['demo'])): ?><form method="post" action="<?= h(nu_url('home')) ?>" class="m-0"><?= nu_csrf_field() ?><input type="hidden" name="action" value="hide_entry_notice">
 		<button type="submit" class="btn-close" id="nuEntryNoticeHide" title="<?= h(t('entry_ren_hide')) ?>" aria-label="<?= h(t('entry_ren_hide')) ?>"></button></form><?php endif; ?></div>
 <?php endif; ?>
-<?php // tutorial (0.8.328): until hidden or finished; right after the setup wizard also when hidden
+<?php $noticeParts[] = trim((string)ob_get_clean()); if ($noticeParts[0] !== '') $noticeTitles[] = t('entry_ren_title');
+ob_start();
+// tutorial (0.8.328): until hidden or finished; right after the setup wizard also when hidden
 $tutBanner = $editorPage ? null : NuTutorial::banner();
 $tutOffer = !$editorPage && !empty($_SESSION['nu_tut_offer']) && NuTutorial::allowed();
 unset($_SESSION['nu_tut_offer']);
@@ -217,7 +222,17 @@ if ($tutBanner): ?>
 </div>
 <?php endif; ?>
 
-<?= $editorPage ? '' : NuReady::homeCard() /* Getting ready checklist (0.8.1310) */ ?>
+<?php $tutHtml = trim((string)ob_get_clean()); if ($tutHtml !== '') { $noticeParts[] = $tutHtml; $noticeTitles[] = t('tut_banner_title'); }
+$grHtml = $editorPage ? '' : NuReady::homeCard();   // Getting ready checklist (0.8.1310)
+if (trim($grHtml) !== '') { $noticeParts[] = $grHtml; $noticeTitles[] = t('gr_title'); }
+$noticeParts = array_values(array_filter($noticeParts, static fn($x) => trim($x) !== ''));
+if (count($noticeParts) >= 2): ?>
+<div class="nuHomeNotices mb-3" id="nuHomeNotices">
+	<button type="button" class="nuHomeNoticesHead" id="nuHomeNoticesToggle" aria-expanded="true" aria-controls="nuHomeNoticesBody"><i class="bi bi-bell" aria-hidden="true"></i>
+		<span class="fw-semibold"><?= h(t('home_notices', count($noticeParts))) ?></span><span class="nuHomeNoticesNames"><?= h(implode(' · ', $noticeTitles)) ?></span><i class="bi bi-chevron-down nuHomeNoticesChev ms-auto" aria-hidden="true"></i></button>
+	<div class="nuHomeNoticesBody" id="nuHomeNoticesBody"><?= implode("\n", $noticeParts) ?></div>
+</div>
+<?php else: echo implode("\n", $noticeParts); endif; ?>
 <?php foreach ($homeDash as $hd): ?>
 <div class="mb-4" data-nu-dashboard="<?= h((string)$hd['code']) ?>"></div>
 <?php endforeach; ?>

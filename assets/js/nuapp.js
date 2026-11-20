@@ -381,7 +381,14 @@
 	(function () {
 		var nav = $('.nu-navbar');
 		if (!nav) return;
-		var set = function () { document.documentElement.style.setProperty('--nu-nav-h', nav.offsetHeight + 'px'); };
+		// Written only when it differs (0.8.1341): a custom property set on <html> makes the browser work out the style of every element
+		// again – the style sheet's own value (57px) and a height that did not change need no write.
+		var root = document.documentElement;
+		var set = function () {
+			var h = nav.offsetHeight + 'px', inline = root.style.getPropertyValue('--nu-nav-h').trim();
+			if (inline ? inline === h : getComputedStyle(root).getPropertyValue('--nu-nav-h').trim() === h) return;
+			root.style.setProperty('--nu-nav-h', h);
+		};
 		set();
 		if (window.ResizeObserver) new ResizeObserver(set).observe(nav); else window.addEventListener('resize', set);
 	})();
@@ -1286,6 +1293,7 @@
 			});
 		});
 	}
+	window.nuA11yScan = run;
 	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { setTimeout(run, 0); }); else setTimeout(run, 0);
 	window.addEventListener('load', function () { setTimeout(run, 300); });
 	['shown.bs.tab', 'shown.bs.collapse', 'shown.bs.modal'].forEach(function (e) { document.addEventListener(e, function () { setTimeout(run, 50); }); });
@@ -1595,17 +1603,29 @@
 	}
 	// --nu-sticky-top: where the row sticks (below the top bar and a form-draft banner); --nu-sticky-h: the room it takes, so
 	// sticky side panels (help, preview, field lists) stop below it
+	// Both are written only when they differ from what applies (0.8.1341; the style sheet's own values: below the top bar, no room
+	// taken) – a custom property set on <html> makes the browser work out the style of every element again, and this runs several
+	// times while a page loads (ready, load, every size observer).
+	var stickTop = 0;
 	function measure() {
 		var root = document.documentElement, banner = document.querySelector('body:not(.nu-bare) > .nuDraftBanner');
-		var nav = parseFloat(getComputedStyle(root).getPropertyValue('--nu-nav-h')) || 0;
-		root.style.setProperty('--nu-sticky-top', (nav + (banner ? banner.offsetHeight : 0)) + 'px');
-		root.style.setProperty('--nu-sticky-h', bars.length ? (bars[0].offsetHeight + 8) + 'px' : '0px');
+		var cs = getComputedStyle(root);
+		var nav = parseFloat(cs.getPropertyValue('--nu-nav-h')) || 0;
+		var put = function (name, px) {
+			var inline = root.style.getPropertyValue(name).trim();
+			if (inline ? parseFloat(inline) === px : parseFloat(cs.getPropertyValue(name)) === px) return;
+			root.style.setProperty(name, px + 'px');
+		};
+		stickTop = nav + (banner ? banner.offsetHeight : 0);
+		var room = bars.length ? bars[0].offsetHeight + 8 : 0;
+		put('--nu-sticky-top', stickTop);
+		put('--nu-sticky-h', room);
 		check();
 	}
 	var queued = false;
 	function check() {
 		queued = false;
-		var top = (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--nu-sticky-top')) || 0) + 8;
+		var top = stickTop + 8;
 		if (document.body.classList.contains('nu-bare')) top = 8;
 		bars.forEach(function (b) {
 			var y = b.getBoundingClientRect().top, stuck = window.scrollY > 0 && y <= top + 1 && y >= top - 1;
@@ -1906,29 +1926,41 @@ window.nuPageNoGo = function (value) {
 // points the link to the page before. Not with the shared setting nuPhoneBackButton = hidden (html.nuBack-hidden).
 (function () {
 	'use strict';
+	// one header on phones (usability review G4): also pages with only a breadcrumb (New form wizard), only a Back button (Documentation)
+	// or a Back button inside a list card (Translations, Notifications, Prompt generator) get the same "‹ parent" link at the top
 	function run() {
 		var main = document.getElementById('main');
 		if (!main || document.documentElement.classList.contains('nuBack-hidden') || main.querySelector('.nuFormHeader, a.nuPhBackOwn')) return;
 		var nav = main.querySelector('nav[aria-label=breadcrumb]');
-		if (!nav || nav.closest('.nuListCard, .modal')) return;
+		if (nav && nav.closest('.nuListCard, .modal')) nav = null;
 		var bar = null, btn = null;
+		var isBack = function (a) { if (a.classList.contains('nuBackBtn')) return true; var f = a.firstElementChild; return a.classList.contains('nuBtnAct') && f && f.classList.contains('bi-arrow-left'); };
 		main.querySelectorAll('.nuTitleBar').forEach(function (b) {
 			if (btn || b.closest('.nuListCard, .card-header, .modal')) return;
-			var c = b.querySelector('a.nuBackBtn') || [].filter.call(b.querySelectorAll('a.btn.nuBtnAct'), function (a) { var f = a.firstElementChild; return f && f.classList.contains('bi-arrow-left'); })[0];
+			var c = [].filter.call(b.querySelectorAll('a.btn'), isBack)[0];
 			if (c) { bar = b; btn = c; }
 		});
-		if (!btn) return;
-		var crumbs = nav.querySelectorAll('.breadcrumb-item a');
+		var card = null;
+		if (!btn) {
+			var h = main.querySelector('.nuListCard .nuListHead');
+			var c2 = h && !h.closest('.modal') ? [].filter.call(h.querySelectorAll('a.btn'), isBack)[0] : null;
+			if (c2) { btn = c2; card = h.closest('.nuListCard'); }
+		}
+		var crumbs = nav ? nav.querySelectorAll('.breadcrumb-item a') : [];
 		var last = crumbs.length ? crumbs[crumbs.length - 1] : null;
+		if (!btn && !last) return;
 		var a = document.createElement('a');
 		a.className = 'nuPhBack nuPhBackOwn';
-		a.href = btn.getAttribute('href') || (last ? last.getAttribute('href') : '') || 'index.php';
+		a.href = (btn && btn.getAttribute('href')) || (last ? last.getAttribute('href') : '') || 'index.php';
 		var i = document.createElement('i'); i.className = 'bi bi-chevron-left'; i.setAttribute('aria-hidden', 'true');
-		var sp = document.createElement('span'); sp.textContent = (last ? last.textContent : btn.textContent || '').trim();
+		var sp = document.createElement('span'); sp.textContent = (last ? last.textContent : (btn && btn.textContent) || '').trim();
 		a.appendChild(i); a.appendChild(sp);
-		nav.parentNode.insertBefore(a, nav);
-		nav.classList.add('nuPhCrumbOff');
-		btn.classList.add('nuPhBtnOff');
+		if (nav) nav.parentNode.insertBefore(a, nav);
+		else if (bar) bar.parentNode.insertBefore(a, bar);
+		else main.insertBefore(a, main.firstElementChild);
+		if (nav) { nav.classList.add('nuPhCrumbOff'); document.body.classList.add('nuPhCrumbsOff'); }   // the record's heading shows again (nuapp.css)
+		if (btn) btn.classList.add('nuPhBtnOff');
+		if (card) a.classList.add('nuPhBackCard');
 	}
 	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run); else run();
 })();
@@ -2311,15 +2343,22 @@ window.nuPageNoGo = function (value) {
 	var sep = fmt.charAt(1), order = fmt.split(sep), tok = (T.ph || 'DD|MM|YYYY').split('|');
 	var ph = order.map(function (k) { return k === 'd' ? tok[0] : (k === 'm' ? tok[1] : tok[2]); }).join(sep);
 	var pad = function (n) { return (n < 10 ? '0' : '') + n; };
-	var show = function (iso) {
-		var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
+	// date-time fields (usability review G16): the date as above, then hh:mm; the input keeps YYYY-MM-DDTHH:MM
+	var show = function (iso, dt) {
+		var m = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/.exec(iso || '');
 		if (!m) return '';
 		var v = {Y: m[1], m: m[2], d: m[3]};
-		return order.map(function (k) { return v[k]; }).join(sep);
+		return order.map(function (k) { return v[k]; }).join(sep) + (dt && m[4] ? ' ' + m[4] + ':' + m[5] : '');
 	};
-	var parse = function (txt) {                             // '' = empty, null = not a date, else ISO
+	var parse = function (txt, dt) {                         // '' = empty, null = not a date, else ISO
 		txt = String(txt || '').trim();
 		if (txt === '') return '';
+		if (dt) {
+			var tm = /^(.*?)[ T]+(\d{1,2}):(\d{2})$/.exec(txt);
+			if (!tm || +tm[2] > 23 || +tm[3] > 59) return null;
+			var dp = parse(tm[1], false);
+			return dp ? dp + 'T' + pad(+tm[2]) + ':' + tm[3] : null;
+		}
 		var iso = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(txt), p, v = {};
 		if (iso) { v.Y = +iso[1]; v.m = +iso[2]; v.d = +iso[3]; } else {
 			p = txt.split(/[.\/\- ]+/);
@@ -2332,11 +2371,12 @@ window.nuPageNoGo = function (value) {
 		return v.Y + '-' + pad(v.m) + '-' + pad(v.d);
 	};
 	function enhance(inp) {
-		if (inp.nuDateLocal || inp.type !== 'date' || inp.hasAttribute('data-nu-native-date') || inp.closest('template, .nuAbs, #nuEditForm')) return;
+		if (inp.nuDateLocal || (inp.type !== 'date' && inp.type !== 'datetime-local') || inp.hasAttribute('data-nu-native-date') || inp.closest('template, .nuAbs, #nuEditForm')) return;
 		inp.nuDateLocal = true;
+		var dt = inp.type === 'datetime-local', php = dt ? ph + ' hh:mm' : ph;
 		var wrap = document.createElement('span'), txt = document.createElement('input'), btn = document.createElement('button');
 		wrap.className = 'nuDateWrap';
-		txt.type = 'text'; txt.inputMode = 'numeric'; txt.autocomplete = 'off'; txt.placeholder = ph; txt.title = ph;
+		txt.type = 'text'; txt.inputMode = 'numeric'; txt.autocomplete = 'off'; txt.placeholder = php; txt.title = php; if (dt) txt.classList.add('nuDateTimeText');
 		txt.className = (inp.className.match(/\b(form-control(?:-sm|-lg)?|is-invalid)\b/g) || ['form-control']).join(' ') + ' nuDateText';
 		if (inp.id) { txt.id = inp.id + '_nuText'; document.querySelectorAll('label[for="' + inp.id + '"]').forEach(function (l) { l.htmlFor = txt.id; }); }
 		var al = inp.getAttribute('aria-label'); if (al) txt.setAttribute('aria-label', al);
@@ -2347,21 +2387,21 @@ window.nuPageNoGo = function (value) {
 		inp.parentNode.insertBefore(wrap, inp);
 		wrap.appendChild(txt); wrap.appendChild(btn); wrap.appendChild(inp);
 		inp.classList.add('nuDateNative'); inp.tabIndex = -1; inp.setAttribute('aria-hidden', 'true');
-		txt.value = show(inp.value);
+		txt.value = show(inp.value, dt);
 		inp.addEventListener('focus', function () { txt.focus(); });   // code that focuses the field by its id
 		var fire = function (type) { inp.dispatchEvent(new Event(type, {bubbles: true})); };
 		var commit = function (final) {
-			var v = parse(txt.value);
-			if (v === null) { txt.setCustomValidity(final ? (T.bad || '%s').replace('%s', ph) : ''); txt.classList.toggle('is-invalid', final); return; }
+			var v = parse(txt.value, dt);
+			if (v === null) { txt.setCustomValidity(final ? (T.bad || '%s').replace('%s', php) : ''); txt.classList.toggle('is-invalid', final); return; }
 			txt.setCustomValidity(''); txt.classList.remove('is-invalid');
-			if (v !== '' && ((inp.min && v < inp.min) || (inp.max && v > inp.max))) { txt.setCustomValidity((T.bad || '%s').replace('%s', ph)); if (final) txt.classList.add('is-invalid'); }
+			if (v !== '' && ((inp.min && v < inp.min) || (inp.max && v > inp.max))) { txt.setCustomValidity((T.bad || '%s').replace('%s', php)); if (final) txt.classList.add('is-invalid'); }
 			if (inp.value !== v) { inp.value = v; fire('input'); fire('change'); }
-			if (final && v !== '') txt.value = show(v);
+			if (final && v !== '') txt.value = show(v, dt);
 		};
 		txt.addEventListener('input', function () { commit(false); });
 		txt.addEventListener('change', function () { commit(true); });
 		txt.addEventListener('blur', function () { commit(true); });
-		inp.addEventListener('change', function () { var s = show(inp.value); if (txt.value !== s && parse(txt.value) !== inp.value) txt.value = s; txt.setCustomValidity(''); txt.classList.remove('is-invalid'); });
+		inp.addEventListener('change', function () { var s = show(inp.value, dt); if (txt.value !== s && parse(txt.value, dt) !== inp.value) txt.value = s; txt.setCustomValidity(''); txt.classList.remove('is-invalid'); });
 		btn.addEventListener('click', function () {
 			try { if (typeof inp.showPicker === 'function') { inp.showPicker(); return; } } catch (e) { /* not allowed – fall back */ }
 			txt.focus();
@@ -2369,14 +2409,74 @@ window.nuPageNoGo = function (value) {
 		// the value set by code later (dialogues filling the field): keep the text in step
 		var desc = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
 		Object.defineProperty(inp, 'value', {configurable: true, get: function () { return desc.get.call(this); },
-			set: function (v) { desc.set.call(this, v); if (document.activeElement !== txt) txt.value = show(desc.get.call(this)); }});
+			set: function (v) { desc.set.call(this, v); if (document.activeElement !== txt) txt.value = show(desc.get.call(this), dt); }});
 	}
-	window.nuDateLocal = function (root) { (root || document).querySelectorAll('input[type="date"]').forEach(enhance); };
+	window.nuDateLocal = function (root) { (root || document).querySelectorAll('input[type="date"], input[type="datetime-local"]').forEach(enhance); };
 	var start = function () {
 		window.nuDateLocal(document);
 		new MutationObserver(function (ms) {
-			ms.forEach(function (m) { m.addedNodes.forEach(function (n) { if (n.nodeType !== 1) return; if (n.matches && n.matches('input[type="date"]')) enhance(n); else if (n.querySelectorAll) window.nuDateLocal(n); }); });
+			ms.forEach(function (m) { m.addedNodes.forEach(function (n) { if (n.nodeType !== 1) return; if (n.matches && n.matches('input[type="date"], input[type="datetime-local"]')) enhance(n); else if (n.querySelectorAll) window.nuDateLocal(n); }); });
 		}).observe(document.body, {childList: true, subtree: true});
 	};
 	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+})();
+
+// ---------------------------------------------------------------- usability review G5 / G6 / G7 (0.8.1344)
+// G5 phones: the tabs of a form that take three rows or more become one row that scrolls sideways (fewer stay as they are).
+// G6 every row that scrolls sideways (tabs, sections – overflow-x auto): the open entry is scrolled into view and the cut edges fade
+// (classes nuHsL / nuHsR, nuapp.css). G7 below 992 px the buttons of a form show only their icons: the label becomes their tooltip.
+(function () {
+	'use strict';
+	var phone = window.matchMedia ? window.matchMedia('(max-width: 575.98px)') : null;
+	var narrow = window.matchMedia ? window.matchMedia('(max-width: 991.98px)') : null;
+	function rows(ul) {
+		var tops = {};
+		ul.querySelectorAll(':scope > .nav-item').forEach(function (li) { if (li.offsetParent !== null) tops[Math.round(li.offsetTop)] = true; });
+		return Object.keys(tops).length;
+	}
+	function formTabs() {
+		var ul = document.getElementById('nuTabHolder');
+		if (!ul || ul.classList.contains('d-none')) return;
+		if (phone && phone.matches) {
+			if (!ul.classList.contains('nuTabsScroll') && rows(ul) >= 3) { ul.classList.add('nuTabsScroll', 'nuTabsScrollG5'); }
+		} else if (ul.classList.contains('nuTabsScrollG5')) ul.classList.remove('nuTabsScroll', 'nuTabsScrollG5', 'nuHsL', 'nuHsR');
+	}
+	function edges(el) {
+		var max = el.scrollWidth - el.clientWidth, x = Math.abs(el.scrollLeft);
+		el.classList.toggle('nuHsL', max > 2 && x > 2);
+		el.classList.toggle('nuHsR', max > 2 && x < max - 2);
+	}
+	function reveal(el) {
+		var act = el.querySelector('.active, [aria-selected="true"], [aria-current="page"]');
+		if (!act || el.scrollWidth <= el.clientWidth) return;
+		var r = act.getBoundingClientRect(), c = el.getBoundingClientRect();
+		if (r.left < c.left || r.right > c.right) el.scrollLeft += (r.left + r.width / 2) - (c.left + c.width / 2);
+	}
+	function scan() {
+		formTabs();
+		document.querySelectorAll('.nav, .nuTabsScroll').forEach(function (el) {
+			var ox = getComputedStyle(el).overflowX;
+			if (ox !== 'auto' && ox !== 'scroll') { if (el.nuHs) el.classList.remove('nuHsL', 'nuHsR'); return; }
+			if (!el.nuHs) { el.nuHs = true; el.addEventListener('scroll', function () { edges(el); }, {passive: true}); reveal(el); }
+			edges(el);
+		});
+	}
+	function titles() {
+		if (!narrow || !narrow.matches) return;
+		document.querySelectorAll('#nuActionHolder .btn:not(.dropdown-item)').forEach(function (b) {
+			if (b.title || b.getAttribute('aria-label') || !b.querySelector(':scope > .bi')) return;
+			var txt = (b.textContent || '').replace(/\s+/g, ' ').trim();
+			if (txt) b.title = txt;
+		});
+	}
+	var tm = 0;
+	function later() { clearTimeout(tm); tm = setTimeout(scan, 150); }
+	function start() {
+		scan(); titles();
+		window.addEventListener('resize', later);
+		document.addEventListener('shown.bs.tab', function (e) { var n = e.target && e.target.closest('.nav'); if (n && n.nuHs) { reveal(n); edges(n); } });
+		window.addEventListener('load', scan);
+	}
+	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+	window.nuHScrollScan = scan;
 })();

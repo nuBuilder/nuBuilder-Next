@@ -3527,14 +3527,23 @@
 	// 2. One line: a label cut off with … gets the full label (+ the new-tab / popup hint) as tooltip, checked again when the size
 	//    changes (a button on a hidden tab has no size until the tab is shown).
 	var btnProbe = null, btnSizes = window.ResizeObserver ? new ResizeObserver(function (es) { es.forEach(function (e) { fitButtonTitle(e.target); }); }) : null;
-	function cssRgb(v) {                                               // any CSS colour → [r, g, b, a] (through a probe element)
+	// any CSS colour → [r, g, b, a]. What getComputedStyle hands out – rgb(…) / rgba(…) – is read as it is; other notations go through
+	// a probe element once per notation and theme (0.8.1341: asking the probe made the browser work out the styles of the whole
+	// page again for every button and every badge cell – 60 times on a list with two badge columns). Callers only read the result.
+	var rgbSeen = {}, rgbTheme = null;
+	function cssRgb(v) {
 		v = String(v || '').trim();
 		if (!v) return null;
+		var m = /^rgba?\(\s*([\d.]+)\s*[,\s]\s*([\d.]+)\s*[,\s]\s*([\d.]+)\s*(?:[,/]\s*([\d.]+)\s*)?\)$/.exec(v);
+		if (m) return [+m[1], +m[2], +m[3], m[4] === undefined ? 1 : +m[4]];
+		var theme = document.documentElement.getAttribute('data-bs-theme') || '';
+		if (theme !== rgbTheme) { rgbSeen = {}; rgbTheme = theme; }             // var(--…) colours differ between light and dark
+		if (Object.prototype.hasOwnProperty.call(rgbSeen, v)) return rgbSeen[v];
 		if (!btnProbe) { btnProbe = document.createElement('span'); btnProbe.hidden = true; document.body.appendChild(btnProbe); }
 		btnProbe.style.color = ''; btnProbe.style.color = v;
-		if (!btnProbe.style.color) return null;
-		var m = getComputedStyle(btnProbe).color.match(/[\d.]+/g);
-		return m && m.length >= 3 ? [+m[0], +m[1], +m[2], m.length > 3 ? +m[3] : 1] : null;
+		if (!btnProbe.style.color) return (rgbSeen[v] = null);
+		m = getComputedStyle(btnProbe).color.match(/[\d.]+/g);
+		return (rgbSeen[v] = m && m.length >= 3 ? [+m[0], +m[1], +m[2], m.length > 3 ? +m[3] : 1] : null);
 	}
 	function sameRgb(a, b) { return !!a && !!b && Math.abs(a[0] - b[0]) < 2 && Math.abs(a[1] - b[1]) < 2 && Math.abs(a[2] - b[2]) < 2; }
 	function luminance(c) {
@@ -6387,6 +6396,7 @@
 		if (N.mode === 'edit') fitWide();   // wide fixed-layout forms: page margins away while the form would scroll sideways (0.8.988)
 		if (N.mode === 'edit') growFrames();
 		$('#nuRECORD.nuEditJsWait').removeClass('nuEditJsWait');   // the record shown once the form's code and the layout ran (pages/nuform.php)
+		if (typeof window.nuHScrollScan === 'function') window.nuHScrollScan();   // usability review G5: tabs of three rows or more on phones
 		// first field gets the focus (mouse / trackpad only, see nuFocusFirst in assets/js/nuapp.js) – after nuOnLoad, which may set its own
 		// (in a popup yes, in an iframe object embedded in another form no – it would take the focus away from that form)
 		var embedded = false;

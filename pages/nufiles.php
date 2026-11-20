@@ -95,6 +95,7 @@ if ($id === '') {
 	return;
 }
 
+if ($id !== '') nu_body_class('nuRecPage');
 nu_layout_start(t('file_title'), 'forms');
 ?>
 <nav aria-label="breadcrumb">

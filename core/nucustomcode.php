@@ -36,16 +36,12 @@ final class NuCustomCode
 		try {
 			// installer (no nuconfig.php yet): nu_db() would end the request with "nuconfig.php not found" (0.8.552)
 			if (!is_file(nu_config_path()) || !nu_db()->tableExists('zzzzsys_nunext_setting')) return self::$cache = $out;
-			$rows = nu_db()->all('SELECT zzzzsys_nunext_setting_id AS k, setting_value AS v FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id IN (?, ?, ?)',
-				[self::KEYS['js'], self::KEYS['css'], self::SCOPE_KEY]);
-			foreach ($rows as $r) {
-				if ($r['k'] === self::KEYS['js']) $out['js'] = (string)$r['v'];
-				elseif ($r['k'] === self::KEYS['css']) $out['css'] = (string)$r['v'];
-				else {
-					$s = json_decode((string)$r['v'], true);
-					if (is_array($s)) foreach (self::SCOPES as $k => $d) $out['scope'][$k] = !empty($s[$k] ?? $d);
-				}
-			}
+			// with the other settings in one statement (nu_setting_values, 0.8.1341); long code in one more
+			$rows = nu_setting_values([self::KEYS['js'], self::KEYS['css'], self::SCOPE_KEY]);
+			$out['js'] = (string)($rows[self::KEYS['js']] ?? '');
+			$out['css'] = (string)($rows[self::KEYS['css']] ?? '');
+			$s = isset($rows[self::SCOPE_KEY]) ? json_decode((string)$rows[self::SCOPE_KEY], true) : null;
+			if (is_array($s)) foreach (self::SCOPES as $k => $d) $out['scope'][$k] = !empty($s[$k] ?? $d);
 		} catch (Throwable) {
 			/* no database (installer, error pages): nothing */
 		}

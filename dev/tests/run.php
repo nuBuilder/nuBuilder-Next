@@ -1455,6 +1455,119 @@ $legacy = (static function (string $s, string $k): string { $n = random_bytes(SO
 check('NuSecret: reads the earlier formats (webhook context, plain:, raw 2FA value)', NuSecret::open($legacy, 'webhook|', $sk1) === 'wh-secret'
 	&& NuSecret::open('plain:abc') === 'abc' && NuSecret::open('JBSWY3DP') === 'JBSWY3DP' && NuSecret::seal('x', '', '') === 'plain:x' && NuSecret::seal('x', '', '', true) === 'x');
 
+// ---------------------------------------------------------------- per-request memo, settings in one read, record page class (0.8.1341)
+NuDB::$override = new NuDB(['type' => 'sqlite', 'name' => ':memory:', 'host' => '', 'user' => '', 'pass' => '']);
+$mdb = NuDB::$override;
+NuMemo::reset();                                           // an earlier test took the raw connection (NuDB::pdo switches the memo off)
+$mdb->exec('CREATE TABLE zzzzsys_nunext_setting (zzzzsys_nunext_setting_id TEXT PRIMARY KEY, setting_value TEXT)');
+$mdb->exec('CREATE TABLE memo_a (id TEXT, v TEXT)');
+$mdb->exec('CREATE TABLE memo_b (id TEXT, v TEXT)');
+$mdb->insert('memo_a', ['id' => '1', 'v' => 'one']);
+$memoLoads = 0;
+$memoRead = static function () use ($mdb, &$memoLoads) {
+	return NuMemo::get('t:a', ['memo_a'], static function () use ($mdb, &$memoLoads) { $memoLoads++; return $mdb->value('SELECT v FROM memo_a WHERE id = ?', ['1']); });
+};
+check('NuMemo: a value is read once per request', $memoRead() === 'one' && $memoRead() === 'one' && $memoLoads === 1);
+$mdb->insert('memo_b', ['id' => '1', 'v' => 'x']);
+check('NuMemo: a write to another table keeps it', $memoRead() === 'one' && $memoLoads === 1);
+$mdb->run('UPDATE memo_a SET v = ? WHERE id = ?', ['two', '1']);
+check('NuMemo: a write to its table drops it', $memoRead() === 'two' && $memoLoads === 2);
+NuMemo::put('t:any', ['*'], 'kept');
+$memoHad = NuMemo::has('t:any');
+$mdb->run('DELETE FROM memo_b');
+check('NuMemo: a value of "any table" is dropped by every write', $memoHad && !NuMemo::has('t:any') && $memoRead() === 'two' && $memoLoads === 2);
+$mdb->all('SELECT * FROM memo_b');
+check('NuMemo: a plain read drops nothing', $memoRead() === 'two' && $memoLoads === 2);
+try {
+	$mdb->transaction(static function (NuDB $db) use ($memoRead): void { $db->run("UPDATE memo_a SET v = 'three'"); $memoRead(); throw new RuntimeException('back'); });
+} catch (RuntimeException) { /* rolled back */ }
+check('NuMemo: a rollback forgets what was read after a write inside it', $memoRead() === 'two', (string)$memoRead());
+$memoBefore = $memoLoads;
+try {
+	$mdb->transaction(static function () use ($memoRead): void { $memoRead(); throw new RuntimeException('back'); });
+} catch (RuntimeException) { /* nothing was written */ }
+check('NuMemo: a rollback without a write keeps the values', $memoRead() === 'two' && $memoLoads === $memoBefore);
+
+nu_setting_forget();
+$bigSetting = str_repeat('x', NU_SETTING_INLINE + 10);
+foreach (['s_small' => '{"a":1}', 's_big' => $bigSetting, 's_big2' => $bigSetting . 'y', 's_null' => null] as $k => $v) $mdb->insert('zzzzsys_nunext_setting', ['zzzzsys_nunext_setting_id' => $k, 'setting_value' => $v]);
+check('settings: every short value comes with the first read', nu_setting_value('s_small') === '{"a":1}' && nu_setting_value('s_none') === null
+	&& nu_setting_has('s_null') && nu_setting_value('s_null') === null && !nu_setting_has('s_none') && nu_setting_has('s_big'));
+check('settings: a long value is left out until it is asked for', nu_setting_rows($mdb)['s_big'] === false && nu_setting_value('s_big') === $bigSetting && nu_setting_rows($mdb)['s_big'] === $bigSetting);
+nu_setting_forget();
+check('settings: several long values in one go', nu_setting_values(['s_big', 's_big2', 's_small', 's_none']) === ['s_big' => $bigSetting, 's_big2' => $bigSetting . 'y', 's_small' => '{"a":1}', 's_none' => null]);
+nu_setting_save('s_small', ['setting_value' => 'saved']);
+nu_setting_save('s_new', ['setting_value' => 'n']);
+check('settings: saved values are read back', nu_setting_value('s_small') === 'saved' && nu_setting_value('s_new') === 'n');
+$mdb->run("UPDATE zzzzsys_nunext_setting SET setting_value = 'direct' WHERE zzzzsys_nunext_setting_id = 's_small'");
+check('settings: any write to the table through NuDB drops the loaded rows', nu_setting_value('s_small') === 'direct');
+NuDB::$override = null;
+
+// record pages: every page that prints the title bar .nuRecHead marks the page for the style sheet (body.nuRecPage, nu_body_class)
+$recBad = [];
+foreach (glob(NU_ROOT . '/pages/*.php') as $f) {
+	$src = (string)file_get_contents($f);
+	if (str_contains($src, 'nuRecHead') !== str_contains($src, "nu_body_class('nuRecPage')")) $recBad[] = basename($f);
+	if (substr_count($src, 'nuTitleBar nuRecHead') > substr_count($src, "nu_body_class('nuRecPage')")) $recBad[] = basename($f) . ' (a title bar without the class)';
+}
+check('record pages: nu_body_class(\'nuRecPage\') wherever a page prints .nuRecHead', $recBad === [], implode(', ', $recBad));
+$cssHas = [];
+foreach (['assets/css/nuapp.css', 'assets/css/nuform.css'] as $f) {
+	$css = (string)preg_replace('~/\*.*?\*/~s', '', (string)file_get_contents(NU_ROOT . '/' . $f));
+	// rules that cost a restyle of the whole page per change of the page (measured): :has() in front of a universal / wide subject
+	foreach (['body:has(.nuRecHead)', 'body:has(#nuNavCrumbs)', 'tr:has(+ tr', '.btn-group:has(> .btn-check) >', ':has([data-nu-dashboard]))) ', ':has(> [class*="col"]))) >'] as $bad) {
+		if (str_contains($css, $bad)) $cssHas[] = $f . ': ' . $bad;
+	}
+}
+check('style sheets: no :has() in front of the styled element in the rules that were rewritten', $cssHas === [], implode(' | ', $cssHas));
+
+// 0.8.1342 (review P4): no :has() in front of the element a rule styles, in any own style sheet – only on the subject (the last part)
+$hasBad = [];
+foreach (array_merge(glob(NU_ROOT . '/assets/css/*.css') ?: [], glob(NU_ROOT . '/apps/*/assets/*.css') ?: []) as $f) {
+	if (str_ends_with($f, '.min.css')) continue;
+	$css = (string)preg_replace('~/\*.*?\*/~s', '', (string)file_get_contents($f));
+	preg_match_all('/([^{}]+)\{/', $css, $mm);
+	foreach ($mm[1] as $selText) {
+		$selText = trim($selText);
+		if (!str_contains($selText, ':has(') || str_starts_with($selText, '@')) continue;
+		// top-level commas, then the start of the last compound (after the last top-level combinator)
+		$parts = []; $depth = 0; $cur = '';
+		foreach (str_split($selText) as $c) {
+			if ($c === '(' || $c === '[') $depth++;
+			elseif ($c === ')' || $c === ']') $depth--;
+			if ($depth === 0 && $c === ',') { $parts[] = $cur; $cur = ''; } else $cur .= $c;
+		}
+		$parts[] = $cur;
+		foreach ($parts as $sel) {
+			$sel = trim($sel); $depth = 0; $last = 0; $len = strlen($sel);
+			for ($i = 0; $i < $len; $i++) {
+				$c = $sel[$i];
+				if ($c === '(' || $c === '[') $depth++;
+				elseif ($c === ')' || $c === ']') $depth--;
+				elseif ($depth === 0 && strpbrk($c, ' >+~') !== false) {
+					$j = $i; while ($j < $len && strpbrk($sel[$j], ' >+~') !== false) $j++;
+					if ($j < $len) $last = $j;
+					$i = $j - 1;
+				}
+			}
+			if (str_contains(substr($sel, 0, $last), ':has(')) $hasBad[] = basename($f) . ': ' . $sel;
+		}
+	}
+}
+check('style sheets: :has() only on the element a rule styles (CLAUDE.md → Performance)', $hasBad === [], implode(' | ', array_slice($hasBad, 0, 5)));
+
+// form token masked per response (0.8.1342, review P2): nu_csrf_valid accepts the masked and the plain token, nothing else
+$_SESSION['nu_csrf'] = str_repeat('ab', 32);
+$t1 = nu_csrf_token(); $t2 = nu_csrf_token();
+check('csrf: a masked token differs on every call and is valid', $t1 !== $t2 && strlen($t1) === 128 && nu_csrf_valid($t1) && nu_csrf_valid($t2));
+check('csrf: the plain token is valid, others not', nu_csrf_valid(str_repeat('ab', 32)) && !nu_csrf_valid(str_repeat('ac', 32)) && !nu_csrf_valid('')
+	&& !nu_csrf_valid(null) && !nu_csrf_valid(substr($t1, 0, 127) . 'x') && !nu_csrf_valid(str_repeat('0', 128)) && !nu_csrf_valid(['x']));
+// one-step statements: native() runs its function also on a connection without them (SQLite / SQL Server)
+$ndb = new NuDB(['type' => 'sqlite', 'name' => ':memory:']);
+check('NuDB::native on SQLite: runs, nothing emulated', $ndb->native(static fn () => 7) === 7 && !$ndb->emulated());
+// minified copies: assets/min.json lists sources with their size; nu_asset serves the copy only for the recorded size
+check('nu_asset_min: a list (empty without dev/minify.py or in developer mode)', is_array(nu_asset_min()));
+
 @unlink($cfg);
 echo ($fails ? "$fails of $n tests FAILED" : "all $n tests passed") . "\n";
 exit($fails ? 1 : 0);

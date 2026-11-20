@@ -97,17 +97,68 @@ $render = static function (string $tab, bool $full = true) use ($visible, $admin
 	return $html;
 };
 
+/*
+ * The built tabs are kept in temp/help/ (0.8.1342, review P5): building them reads ~100 files and parses them (about 50 ms) – the same for
+ * everybody who sees the same parts. Key: the files of the documentation (names + times, the program version, the language) and what
+ * the reader sees (admin / preview / developer mode, and which of the forms named by data-acl he may open). Files of another key are
+ * removed when a new one is written, so an update or a changed page simply builds anew.
+ */
+$cached = (static function () use ($toc, $render, $admin, $preview, $dev): Closure {
+	$dir = NU_ROOT . '/temp/help';
+	$files = [NU_ROOT . '/docs/toc.json', NU_ROOT . '/docs/nunext-functions.json', NU_ROOT . '/lang/' . nu_lang() . '.php'];
+	foreach ($toc as $ch) {
+		$files[] = NU_ROOT . '/docs/pages/' . (string)($ch['file'] ?? '');
+		foreach ((array)($ch['pages'] ?? []) as $pg) $files[] = NU_ROOT . '/docs/pages/' . (string)($pg['file'] ?? '');
+	}
+	$sig = NU_VERSION . '|' . nu_lang_choice();
+	foreach ($files as $f) $sig .= '|' . basename($f) . ':' . (is_file($f) ? filemtime($f) . ':' . filesize($f) : '-');
+	$stamp = substr(hash('sha256', $sig), 0, 16);
+	$reader = ($admin ? 'a' : ($preview ? 'p' : 'u')) . ($dev ? 'd' : '');
+	if (!$admin && !$preview) {
+		// the forms named by data-acl (read once per stamp) and which of them this reader may open
+		$aclFile = "$dir/acl-$stamp.json";
+		$acl = is_file($aclFile) ? json_decode((string)@file_get_contents($aclFile), true) : null;
+		if (!is_array($acl)) {
+			$acl = [];
+			foreach ($files as $f) {
+				if (!str_ends_with($f, '.htm') || !is_file($f)) continue;
+				preg_match_all('/data-acl="([^"]*)"/', (string)file_get_contents($f), $m);
+				foreach ($m[1] as $list) foreach (array_filter(array_map('trim', explode(',', $list))) as $id) $acl[$id] = true;
+			}
+			$acl = array_keys($acl);
+			sort($acl);
+			if (is_dir($dir) || @mkdir($dir, 0775, true)) @file_put_contents($aclFile, json_encode($acl), LOCK_EX);
+		}
+		$bits = '';
+		foreach ($acl as $id) $bits .= NuAcl::can((string)$id) ? '1' : '0';
+		$reader .= '-' . substr(hash('sha256', $bits), 0, 12);
+	}
+	return static function (string $tab, bool $full = true) use ($dir, $stamp, $reader, $render): string {
+		$file = "$dir/help-$stamp-$reader-$tab" . ($full ? '' : '-head') . '.html';
+		$html = is_file($file) ? @file_get_contents($file) : false;
+		if (is_string($html)) return $html;
+		$html = $render($tab, $full);
+		if (is_dir($dir) || @mkdir($dir, 0775, true)) {
+			NuSecurity::protectDir(dirname($dir));
+			foreach (glob("$dir/*") ?: [] as $old) if (!str_contains(basename($old), "-$stamp")) @unlink($old);   // another version / changed pages
+			$tmp = $file . '.' . bin2hex(random_bytes(4));
+			if (@file_put_contents($tmp, $html, LOCK_EX) !== false) @rename($tmp, $file);
+		}
+		return $html;
+	};
+})();
+
 // the code reference is fetched by assets/js/nuhelp.js when its tab (or a link / search into it) needs it
 if (($_GET['part'] ?? '') === 'ref') {
 	header('Content-Type: text/html; charset=utf-8');
 	header('Cache-Control: private, no-store');
-	echo $render('ref');
+	echo $cached('ref');
 	exit;
 }
 
-$html = $render('guide');
+$html = $cached('guide');
 /** Does the reader see anything in the code reference? (the tab is shown only then) – without building the function list. */
-$hasRef = $render('ref', false) !== '';
+$hasRef = $cached('ref', false) !== '';
 $tab = $hasRef && ($_GET['tab'] ?? '') === 'ref' ? 'ref' : 'guide';
 
 nu_layout_start(t('help_title'), '');

@@ -93,9 +93,9 @@ final class NuColumnChange
 			$d = $info['default'];
 			if ($d !== null && strtoupper((string)$d) !== 'NULL') {
 				$isMaria = stripos((string)$db->value('SELECT VERSION()'), 'mariadb') !== false;
-				$def = ' DEFAULT ' . ($isMaria || is_numeric($d) || preg_match('/^current_timestamp/i', (string)$d) ? (string)$d : $db->pdo()->quote((string)$d));
+				$def = ' DEFAULT ' . ($isMaria || is_numeric($d) || preg_match('/^current_timestamp/i', (string)$d) ? (string)$d : $db->quote((string)$d));
 			}
-			$cm = $info['comment'] !== '' ? ' COMMENT ' . $db->pdo()->quote($info['comment']) : '';
+			$cm = $info['comment'] !== '' ? ' COMMENT ' . $db->quote($info['comment']) : '';
 			$sql = "ALTER TABLE $tbl MODIFY $col $target $null$def$cm";
 		} else {
 			$sql = "ALTER TABLE $tbl ALTER COLUMN $col $target $null";

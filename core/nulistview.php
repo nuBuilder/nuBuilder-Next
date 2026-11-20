@@ -363,6 +363,14 @@ final class NuListView
 	/** Options of a filter for the select: [value => [label, sub]] (without "all"). */
 	public static function filterOptions(array $L, string $k): array
 	{
+		// once per request (0.8.1341): the filter bar, the chips, the view editor and the print text each asked – the users list ran its
+		// DISTINCT statements and the access level list two to four times. Dropped by any write (NuMemo '*').
+		$key = 'lvopt:' . hash('sha256', (string)json_encode([$L['from'] ?? '', $L['where'] ?? [], $L['params'] ?? [], $k, nu_lang_choice()], JSON_PARTIAL_OUTPUT_ON_ERROR));
+		return NuMemo::get($key, ['*'], static fn(): array => self::filterOptionsNow($L, $k));
+	}
+
+	private static function filterOptionsNow(array $L, string $k): array
+	{
 		$f = $L['filters'][$k];
 		$o = [];
 		if (($f['none'] ?? null) !== null) $o['-'] = [(string)$f['none'], ''];
@@ -868,7 +876,7 @@ final class NuListView
 		foreach (['lv_edit_title', 'lv_new_title', 'lv_tab_columns', 'lv_tab_phone', 'lv_tab_filters', 'lv_tab_general', 'lv_name', 'lv_visible', 'lv_width', 'lv_align',
 			'lv_width_auto', 'lv_width_narrow', 'lv_width_wide', 'lv_align_auto', 'lv_align_start', 'lv_align_center', 'lv_align_end', 'lv_card_title', 'lv_card_badge',
 			'lv_card_lines', 'lv_none', 'lv_filter_shown', 'lv_filter_default', 'lv_filters_open', 'lv_sort', 'lv_sort_asc', 'lv_sort_desc', 'lv_per', 'lv_scope',
-			'lv_scope_user', 'lv_scope_shared', 'lv_levels', 'lv_levels_all', 'lv_save', 'lv_save_new', 'lv_delete', 'lv_delete_confirm', 'cancel', 'lv_up', 'lv_down',
+			'lv_scope_user', 'lv_scope_shared', 'lv_levels', 'lv_levels_all', 'lv_save', 'lv_save_new', 'lv_delete', 'lv_delete_confirm', 'cancel', 'lv_up', 'lv_down', 'actions',
 			'lv_import_title', 'lv_import_hint', 'lv_import_go', 'lv_card_preview', 'lv_locked', 'lv_copy_of', 'lv_err_name', 'lv_display', 'lv_display_table', 'lv_display_grid', 'lv_phone_layout', 'lv_phone_cards', 'lv_phone_table'] as $k) $texts[$k] = t($k);
 		$data = ['list' => $L['key'], 'route' => $L['route'], 'columns' => $cols, 'filters' => $filters, 'per' => self::PER, 'levels' => $levels, 'grid' => isset($L['grid']),
 			'manage' => self::canManage(), 'view' => ['id' => $view['id'], 'name' => $view['name'], 'scope' => $view['scope'], 'levels' => $view['levels'], 'editable' => $view['editable'], 'def' => $view['def']],

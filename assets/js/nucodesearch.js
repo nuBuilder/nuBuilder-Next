@@ -72,6 +72,11 @@
 	var go2 = document.getElementById('csRpGo');
 	function count() {
 		if (!go2) return;
+		// an unticked line: its marks struck through and its new line hidden (class csRpOff – nuapp.css, 0.8.1342; was :has() in the style sheet)
+		Array.prototype.forEach.call(document.querySelectorAll('.csRpTick'), function (c) {
+			var hit = c.closest('.csHit');
+			if (hit) hit.classList.toggle('csRpOff', !c.checked);
+		});
 		var n = document.querySelectorAll('.csRpTick:checked').length;
 		go2.textContent = (go2.getAttribute('data-label') || '%d').replace('%d', String(n));
 		go2.disabled = n === 0;

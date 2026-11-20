@@ -407,7 +407,7 @@ echo nu_page_header((string)$p['name'], ['icon' => 'bi-kanban', 'crumbs' => [[t(
 	<?php endif; ?>
 	<?php if (!$tasks): ?><p class="text-body-secondary"><?= h(t('prj_no_tasks')) ?></p><?php else: ?>
 	<div class="card shadow-sm"><div class="table-responsive"><table class="table table-sm align-middle nu-table mb-0" id="prjTasks">
-		<thead><tr><th class="text-center" style="width:1%"><span class="visually-hidden"><?= h(t('prj_task_done')) ?></span></th><th><?= h(t('prj_task_title')) ?></th><th><?= h(t('prj_task_assignee')) ?></th><th><?= h(t('prj_task_due')) ?></th><th class="d-none d-md-table-cell"><?= h(t('prj_task_item')) ?></th><th></th></tr></thead>
+		<thead><tr><th class="text-center" style="width:1%"><span class="visually-hidden"><?= h(t('prj_task_done')) ?></span></th><th><?= h(t('prj_task_title')) ?></th><th><?= h(t('prj_task_assignee')) ?></th><th><?= h(t('prj_task_due')) ?></th><th class="d-none d-md-table-cell"><?= h(t('prj_task_item')) ?></th><th><span class="visually-hidden"><?= h(t('actions')) ?></span></th></tr></thead>
 		<tbody>
 		<?php foreach ($tasks as $k): $kid = (string)$k['zzzzsys_nunext_project_task_id']; $done = (string)$k['status'] === 'done'; $due = substr((string)$k['due'], 0, 10); ?>
 			<tr data-task="<?= h($kid) ?>"<?= $done ? ' class="text-body-secondary prjTaskDone"' : '' ?>>

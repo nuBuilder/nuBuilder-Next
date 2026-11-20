@@ -336,7 +336,7 @@ final class NuCloner
 			if (!$this->o['new_pks']) continue;                     // same ids: the reference stays right
 			if ($this->o['dump']) {
 				$this->sql[] = "\n-- zzzzsys_object: the cloned " . $type . ' object points to the copy of ' . $form;
-				$this->sql[] = 'UPDATE zzzzsys_object SET ' . $col . ' = ' . $this->db->pdo()->quote($copy) . ' WHERE zzzzsys_object_id = ' . $this->db->pdo()->quote((string)$newObj) . ';';
+				$this->sql[] = 'UPDATE zzzzsys_object SET ' . $col . ' = ' . $this->db->quote($copy) . ' WHERE zzzzsys_object_id = ' . $this->db->quote((string)$newObj) . ';';
 			} else {
 				$this->db->update('zzzzsys_object', [$col => $copy], 'zzzzsys_object_id', (string)$newObj);
 			}

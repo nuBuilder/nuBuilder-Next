@@ -785,6 +785,9 @@ final class NuBrowse
 	/** Drops the #TABLE_ID# temp table a BB hook may have created. */
 	public static function dropTempTable(): void
 	{
+		// only code can have created it: a list without Before Browse code (and no global hook) sent a DROP TABLE on every view – a
+		// statement of its own that also made the next table check read the catalogue again (0.8.1341)
+		if (!class_exists('NuPhp', false) || NuPhp::$runs === 0) return;
 		$t  = NuHash::tableId();
 		$db = nu_db();
 		try {

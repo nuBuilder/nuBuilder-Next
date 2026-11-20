@@ -3,6 +3,12 @@ Grouped by topic (0.8.909, the owner): every point starts with a short **title**
 Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archive.md`.
 
 ## Decisions for the owner
+- [ ] **Performance review of 20 Nov 2026 – left for later** (0.8.1343; P1–P5 built in 0.8.1342, P6 option A in 0.8.1343, numbers in
+      the Claude Doc "nuBuilder Next review – performance, usability, code"): **P6 C – form definitions across requests** (a cached copy
+      plus one check statement): would take the remaining 6 statements per form shown (≈ 18 on an order record, ≈ 2 ms locally, more with
+      a database server elsewhere) – needs a reliable way to notice nuBuilder Forte editing the same tables (InnoDB keeps no change
+      time that survives a restart). Recommendation after A: not now. Also open in the doc: the usability list page by page (G1–G18 built
+      in 0.8.1344) and the code review (D, R, L, Q).
 - [ ] **Phone numbers without JavaScript** (0.8.1143, a forum post with a global JS formatter for one country) – options:
   A validation rule (matches, server + live; no reformat) · B HTML attributes pattern / inputmode="tel" (browser only) ·
   C Before Save PHP with nuNextSaveValue / nuNextSetSaveValue (per form) · D built-in format "Phone" P|<country> or
@@ -63,6 +69,16 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **SQL builder list** (0.8.688): concatenates 'SQL:' + id with +.
 
 ## Live server, e-mail and deployment
+- [ ] **One-step statements, compressed pages, minified files** (0.8.1342) – please verify on the live server: pages load as before
+      (MySQL: nuBuilder Next's own statements are sent in one step; procedures / form code / custom pages unchanged – a procedure with
+      `nuRunQuery(… LIMIT ?, [n])` still works), the browser's network panel shows `Content-Encoding: gzip` on pages and `.min.js` /
+      `.min.css` files (outside developer mode), forms still save after a page stood open for a while (the form token is masked per page),
+      the help opens faster the second time (temp/help/ is written – the web server needs write rights there, as for temp/).
+- [ ] **Session lock given up for long reads** (0.8.1341) – please verify on the live server (PHP-FPM / Apache; the test site's PHP server
+      answers one request at a time): a dashboard with several widgets fills side by side; while a large report or an Excel export is being
+      built, another tab of the same user keeps working; the report of a procedure and Save / E-mail of a report behave as before.
+- [ ] **Bell without a request after each page load** (0.8.1341) – a new notification still shows at once on the next page and within a
+      minute on an open page; "must confirm" ones open their dialogue right after signing in.
 - [ ] **PHP 8.5** (0.8.1317) – curl_close() and PDO::MYSQL_ATTR_USE_BUFFERED_QUERY gave "Deprecated" on PHP 8.5 (WampServer); fixed, and run.php now refuses the known 8.5 deprecations. Not run on PHP 8.5 here (container has 8.3): installer, update page, backups, data export, App cloner on 8.5 with display_errors on.
 - [ ] **Existing nuBuilder Forte database** (0.8.1008, no longer blocked): installer on a copy of the live Forte database – backup
       tick, integrity check, nuBuilder Forte keeps working afterwards; a hand-written nuconfig.php shows the backup note on the sign-in page.
@@ -119,6 +135,9 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       protect_fields is off.
 
 ## Forms and design mode
+- [ ] **Please verify: usability G1–G18 on a real phone / tablet** (0.8.1344) – iPhone: no zoom when a field gets the focus; record
+      header (title row, icons below); sub-form rows as cards (order items) and "Table on phones"; nine tabs as one scrolling row; tablet:
+      form buttons as icons; start page notices strip; date-time fields of the notification editor; Sign in / Sign out wording.
 - [ ] **Design mode improvements** (0.8.1300–0.8.1305) – please verify on a real form: the label where Save goes in the code side panels (Live / Draft / Live – draft open), *Set order by position* (rows / columns, content boxes kept together, one Undo), a selected content box (fields stay visible and clickable, move along with drag and arrow keys), *Discard* greyed while the draft holds no change and an empty draft gone after Done, the panel's section chips (jump, marked while scrolling, fold all, summaries)
 - [ ] **Lookup window** (0.8.1293 / 0.8.1294) – please verify on lookups of real forms: title, width / height fitted to the list, current value marked, Clear, keyboard, table on wide screens and cards on phones
 - [ ] **Publishing with old problems** (0.8.1285 / 0.8.1286) – Done → Publish now publishes at once; problems in parts the draft did not change (a run button to a deleted form) only warn – please verify on other older forms of the live database

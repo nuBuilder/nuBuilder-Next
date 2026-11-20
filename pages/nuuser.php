@@ -520,6 +520,7 @@ $input = static function (string $col, string $type = 'text', array $attr = []) 
 	return $html;
 };
 
+nu_body_class('nuRecPage');
 nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu_asset(NU_TOMSELECT . '/tom-select.bootstrap5.min.css') . '">']);   // access level: searchable (0.8.327)
 ?>
 <nav aria-label="breadcrumb">

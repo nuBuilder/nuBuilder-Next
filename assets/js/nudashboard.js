@@ -310,6 +310,9 @@
 
 	function mount(host, code) {
 		if (!host || host.nuDash) return host && host.nuDash;
+		// inside an HTML object of a form: the object keeps the application's look (nuform.css styles the others as nuBuilder Forte does)
+		const obj = host.closest ? host.closest('.nuHtml') : null;
+		if (obj) obj.classList.add('nuHasDash');
 		host.nuDash = new Board(host, code);
 		boards.push(host.nuDash);
 		return host.nuDash;

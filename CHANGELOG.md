@@ -3,6 +3,112 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.1345 – Release gate
+- Release gate (full test run: smoke, end-to-end, cross-tests against nuBuilder Forte, security scan). Before it the documentation was
+  brought up to date: "Sign in" / "Sign out" in the help pages and the tutorial (as in the texts of 0.8.1344), the feature list (one
+  header on phones, touch targets and text sizes, fast pages, sub-form rows as cards on phones)
+
+## 0.8.1344 – Usability G1–G18, nuForm with code:
+- Usability, the review's general findings G1–G18 as recommended (the owner: "do recommendations"):
+  G1 on touch screens everything one taps reacts on 24 px or more – (i) tips, the key mark, check boxes, switches, small buttons, filter
+  chips, "More information" – the look stays the same with a mouse. G2 text inside fields is 16 px on touch screens, so an iPhone no
+  longer zooms the page into a field (fields of forms with fixed positions once they are stacked on a phone). G3 phones: the title of a
+  record has a row of its own (up to two lines), the buttons sit below it as icons. G4 phones: every page starts the same way – the link
+  "‹ previous page", then the title – also pages with only a breadcrumb (New form wizard), only a Back button (documentation) or Back
+  inside a list card (translations, notifications, prompts). G5 phones: the tabs of a form that take three rows or more become one row
+  that scrolls. G6 rows of tabs or sections wider than the screen: the open one is scrolled into view, the cut edge fades. G7 tablets
+  (576–991 px): the buttons of a form show only their icons, the label is the tooltip. G8 form pages have a main heading again – the
+  last item of the breadcrumb, it looks as before. G9 no text below 12 px (column titles, badges, counters, small labels). G10 contrast
+  of 4.5:1 or more for code inside notes and warnings, the blocked Delete button of the access level form, the chosen view of the
+  calendar, the calendar's All chip and grey notes in dark mode. G11 phones: no Getting ready bar (the start page's card stays). G12
+  start page: two or more notices share one strip that folds – folded on phones until it is opened, remembered on the device. G13
+  wording: Sign in / Sign out everywhere (English), "sub-form", plain names instead of table names in texts of the access level form
+  and the Settings tile. G14 phone cards of form lists leave out empty values with their label. G15 phones: rows of a grid sub-form as
+  small cards with the column titles as labels; "Table on phones" in the properties of the sub-form object keeps the table. G16 date-time
+  fields of nuBuilder Next's own pages (Publish at / Until of notifications) in the language's format, as date fields already were.
+  G17 touch screens: TinyMCE's "Press ⌥0 for help" is left out. G18 column titles without text got a name for screen readers (delete
+  column of sub-forms, logged-in users, dashboard form, backups, translations, projects and others)
+- nuForm('code:<form code>', …) opens a form by its code, as in nuBuilder Forte – it gave "form not found" (the form code alone and the
+  form id worked). The same for every place that opens a form by id or code (custom pages, records over the API)
+
+## 0.8.1343 – Form definitions in fewer statements
+- Performance, form definitions (the review's P6, option A – within one request; the owner decides on a cache across requests after
+  these numbers): a page that shows sub-forms and lookups reads the definitions of those forms together – one statement per table for
+  all of them instead of five statements per form – and the Before Browse / Before Edit / Before Save … code of the loaded forms in one
+  statement instead of one per hook. Measured against 0.8.1342 on the same data: order record (lookup, sub-form with a lookup) 59 → 46
+  statements, ticket record 74 → 56 (33 → 20 ms), record with every object type 81 → 61, customer record 36 → 29; lists and pages
+  without sub-forms or lookups unchanged. The definitions are the same as read one by one (a test compares them); drafts shown as a
+  preview are still read from the draft
+- Field access rules are read once per request for all forms (was: one statement per form on the page)
+- A display field is worked out once while it is drawn (its SQL or procedure ran twice – a procedure with side effects ran them twice)
+- The label of the code side panels ("Saves to …") uses the form row already loaded instead of reading the status again
+
+## 0.8.1342 – Performance decisions: one-step statements, compressed pages, minified files, help cache
+- Performance, the decisions of the review (the owner: as recommended; P6, a cache of form definitions, stays for later):
+  MySQL statements in one step, compressed pages, minified scripts and style sheets, the last slow style rules rewritten and the
+  help kept ready built. Measured against 0.8.1341 on the same data, 25 pages,
+  requests alternating: database round trips 2,618 → 910 (−65 %), bytes of the pages 2.5 MB → 0.6 MB (−75 %), time until a page has
+  fully arrived −17 % with the database on the same computer (each round trip saved counts more with a database server elsewhere)
+- MySQL: nuBuilder Next's own statements go to the server in one step (the values are quoted by PHP's database driver) instead of
+  prepare + execute – about 40 % less time per statement, more with a database server on another computer. Procedures, form events,
+  nuRunQuery(), SQL typed by users and custom pages keep the server-side prepares they always had (a bound value where MySQL wants
+  a number, such as LIMIT ?, keeps working there). Several statements in one call are refused on nuBuilder Next's connection, as
+  before. $nuConfigDBOptions can still set either
+- Pages are sent compressed when the browser accepts it (the start page 28 KB instead of 149 KB, the user form 18 KB instead of 81 KB) – only
+  HTML pages written in one go; JSON answers, downloads and pages that send their output in parts are unchanged. The form token on
+  every page is now a different text each time (masked), so a compressed page gives nothing away about it; tokens of pages that are
+  already open keep working
+- Minified copies of nuBuilder Next's own scripts and style sheets are in the package (dev/minify.py, run by the release: 2.4 MB →
+  1.6 MB, nuruntime.js 394 → 242 KB). Pages load them; in developer mode they load the readable files. A browser cookie nunext_assets
+  = src / min chooses either way
+- The last 31 style rules that made the browser work out the styles of the whole page again on every change of the page are written
+  differently (the breadcrumb of record pages, the header of form pages on phones, list headers on phones, the content sheet on wide
+  screens, rows of auto / grid layouts, the code search, the New form wizard, the design panel, the tile editor): classes from the
+  server (body classes from what the page printed, grid rows) or from the page's script; the look is the same – compared with
+  screenshots old against new on desktop, phone and tablet, in dark mode and as a user. A unit test now refuses any new rule of
+  that kind
+- Help: the built page is kept per reader group (administrator, user preview, developer mode, and for users the forms they may open)
+  in temp/help/ and read from there the next time; a changed help page, another language or an update builds it again (48 → 20 ms,
+  and 745 → 228 KB sent with the compression)
+- Custom pages: $nu->csrfToken() gives a different text on every call (each one accepted – do not compare it yourself); $nu->db()
+  prepares statements on the server as before
+
+## 0.8.1341 – Performance review: fewer database statements per page, lighter style work in the browser
+- Performance review – every page asks the database less and the browser has less to do. Measured against 0.8.1340 on the same
+  data, 25 typical pages: 1,535 → 884 database statements (start page of the globeadmin 90 → 22, of a user 88 → 33, customer list
+  57 → 32, order record of a user 108 → 60), time until the first byte 29 % shorter with the database on the same computer (more
+  with a database server elsewhere), style work in the browser halved (a list with badge columns 182 → 45 ms, the help 168 → 60 ms)
+- Server: all settings of nuBuilder Next come with one read per request (a quarter of all statements were single settings reads);
+  the user's row, the rights of an access level, permission items, hook code and the setup row are read once per request
+  (NuMemo – dropped by any write to their tables); the lookups of a sub-form's rows come in one statement per column instead of one
+  per row; the bell no longer loads every user to find out who the reader is; the Getting ready card, the tutorial badge and the
+  sample badge of the start page use what the session already knows
+- A page view writes less: "Recently used" is not written again for the page that is already on top, the temporary table of a
+  list is only dropped when code of the form ran
+- Dashboards: the widgets of a dashboard are answered side by side and no longer hold up the user's other pages (four widgets of
+  half a second each: 2.0 s → 1.0 s; another page opened meanwhile: 461 → 14 ms). The same for a report (PDF / Excel view) and the
+  exports of lists: another tab keeps working while a large file is being made. Reports whose data comes from a procedure, and
+  Save / E-mail of a report, keep the session as before
+- Browser: the bell asks the server right after a page load only when there is something new to announce (one request less per
+  page view; the check every minute is unchanged); badge colours of lists and the text colour of buttons are worked out without
+  making the browser restyle the page each time; the heights of the top bar and of the sticky title row are only written when
+  they change
+- Style sheets: six groups of rules made the browser work out the styles of the whole page again on every change of the page
+  (2 to 30 ms each time – :has() standing in front of the element a rule styles): the highlight of the hovered list row, HTML
+  objects with a dashboard, rows without columns in HTML objects, segmented controls, the breadcrumb of the compact top bar and
+  the compact record pages. They are written differently now and look the same – compared with screenshots of about 110 pages
+  at desktop, tablet and phone width, in dark mode and as a user
+- Developer mode: every page ends with a hidden mark of what it cost on the server (#nuPerf – database statements, their time,
+  the time of the request); dev/tests/perf.js compares some twenty pages with a budget, so a page that starts to ask more is noticed
+- Fixed on the way: the address of the health check (Settings → Data & logs) and the links in the export of the code search
+  lacked the slash after the address of the installation; the pager of the lists had a stray quote in its markup
+- Not changed, listed for a decision in TODO.md: prepared statements sent in one step, compression of pages by the server,
+  minified JS / CSS, the remaining :has() rules, a cache for the help page and for form definitions
+
+## 0.8.1340 – Notes, storage key names
+- Code quality: two names of browser storage keys in the user form's script renamed (reported as possible credentials by a
+  secrets scan); no change in behaviour.
+
 ## 0.8.1339 – Release gate
 - Release gate: full test run (smoke, end-to-end, compatibility with nuBuilder Forte, OWASP ZAP).
 

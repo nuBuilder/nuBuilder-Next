@@ -54,6 +54,7 @@ final class NuListExport
 		if ($format === null) return;
 		NuAcl::require($formId, 'print');
 		$limit = $format === 'print' ? self::MAX_PRINT : self::MAX_CSV;
+		if ($format !== 'print') nu_session_release();   // a download of up to 50,000 rows (0.8.1341): the user's other pages do not wait for it
 		$data  = $rows($limit);
 		$lines = [];
 		foreach ($data as $r) {

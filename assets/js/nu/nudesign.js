@@ -2287,6 +2287,7 @@
 			type === 'lookup' ? field(t('builder_lookup_desc_width'), 'number', o.sob_lookup_description_width, save('sob_lookup_description_width'), {key: 'sob_lookup_description_width'}) : null,
 			type === 'subform' ? field(t('builder_subform_type'), 'select', o.sob_subform_type || 'g', save('sob_subform_type'), {key: 'sob_subform_type', options: [['g', t('builder_subform_grid')], ['f', t('builder_subform_formlayout')]]}) : null,
 			type === 'subform' && (o.sob_subform_type || 'g') !== 'f' ? field(t('ds_sf_fit'), 'check', nunext(o).fit ? '1' : '0', save('nunext_fit'), {key: 'nunext_fit', tip: t('ds_sf_fit_tip')}) : null,
+			type === 'subform' && (o.sob_subform_type || 'g') !== 'f' ? field(t('ds_sf_phone_table'), 'check', nunext(o).phone === 'table' ? '1' : '0', save('nunext_phone_table'), {key: 'nunext_phone_table', tip: t('ds_sf_phone_table_tip')}) : null,
 			type === 'select' ? field(t('builder_select_multiple'), 'check', String(o.sob_select_multiple || '0'), save('sob_select_multiple'), {key: 'sob_select_multiple'}) : null,
 			type === 'select' ? field(t('builder_select_search'), 'check', String(o.sob_select_2 || '0'), save('sob_select_2'), {key: 'sob_select_2'}) : null,
 			type === 'run' ? field(t('builder_run_method'), 'select', o.sob_run_method === 'i' ? 'i' : 'b', save('sob_run_method'), {key: 'sob_run_method', options: [['b', t('builder_run_b')], ['i', t('builder_run_i')]]}) : null,

@@ -93,6 +93,7 @@ if ($id === '' && $view === 'list') {
 	return;
 }
 
+if ($id !== '') nu_body_class('nuRecPage');
 nu_layout_start(t('trl_title'), 'forms', ['head' => $view === 'missing' && $id === '' ? nu_ts_head() : '']);
 ?>
 <nav aria-label="breadcrumb">
@@ -182,7 +183,7 @@ nu_layout_start(t('trl_title'), 'forms', ['head' => $view === 'missing' && $id =
 							<textarea class="d-none" name="ai_answer" aria-hidden="true"><?= h((string)($_POST['ai_answer'] ?? '')) ?></textarea>
 							<div class="small text-body-secondary mb-2"><?= h(t('trl_ai_preview', count($aiPreview['rows']))) ?></div>
 							<div class="table-responsive"><table class="table table-sm align-middle nu-table" id="trlAiPreview">
-								<thead><tr><th><input class="form-check-input" type="checkbox" id="trlAiAll" aria-label="<?= h(t('trl_ai_save')) ?>" checked></th><th><?= h(t('trl_language')) ?></th><th><?= h(t('trl_english')) ?></th><th><?= h(t('trl_translation')) ?></th><th><?= h(t('trl_ai_current')) ?></th><th></th></tr></thead>
+								<thead><tr><th><input class="form-check-input" type="checkbox" id="trlAiAll" aria-label="<?= h(t('trl_ai_save')) ?>" checked></th><th><?= h(t('trl_language')) ?></th><th><?= h(t('trl_english')) ?></th><th><?= h(t('trl_translation')) ?></th><th><?= h(t('trl_ai_current')) ?></th><th><span class="visually-hidden"><?= h(t('actions')) ?></span></th></tr></thead>
 								<tbody>
 								<?php foreach ($aiPreview['rows'] as $r): $ok = in_array($r['status'], ['new', 'change'], true); ?>
 									<tr data-status="<?= h($r['status']) ?>">
@@ -231,7 +232,7 @@ nu_layout_start(t('trl_title'), 'forms', ['head' => $view === 'missing' && $id =
 				<div class="card-header small text-body-secondary"><?= h(t('trl_missing_count', count($missing), $lang)) ?></div>
 				<div class="table-responsive">
 					<table class="table align-middle mb-0 nu-table" id="trlMissing">
-						<thead><tr><th><?= h(t('trl_english')) ?></th><th><?= h(t('trl_used_in')) ?></th><th></th></tr></thead>
+						<thead><tr><th><?= h(t('trl_english')) ?></th><th><?= h(t('trl_used_in')) ?></th><th><span class="visually-hidden"><?= h(t('actions')) ?></span></th></tr></thead>
 						<tbody>
 						<?php if (!$missing): ?><tr><td colspan="3" class="text-center text-success py-5"><i class="bi bi-check-circle me-1"></i><?= h(t('trl_all_done')) ?></td></tr><?php endif; ?>
 						<?php foreach ($missing as $text => $where): ?>

@@ -173,7 +173,7 @@ nu_layout_start($meta->description() . ' · ' . t('builder_title'), 'forms', ['h
 								<div class="text-body-secondary" id="pgKeysNone"><?= h(t('page_keys_none')) ?></div>
 							<?php else: ?>
 								<div class="table-responsive"><table class="table table-sm nu-table mb-1 align-middle">
-									<thead><tr><th><?= h(t('page_keys_col_key')) ?></th><th><?= h(t('page_keys_col_default')) ?></th><th><?= h(t('page_keys_col_where')) ?></th><th></th></tr></thead>
+									<thead><tr><th><?= h(t('page_keys_col_key')) ?></th><th><?= h(t('page_keys_col_default')) ?></th><th><?= h(t('page_keys_col_where')) ?></th><th><span class="visually-hidden"><?= h(t('actions')) ?></span></th></tr></thead>
 									<tbody>
 									<?php foreach ($keys['keys'] as $k => $e): $show = $e['dynamic'] ? rtrim($k, '.') . '.…' : $k; ?>
 										<tr class="pgKey" data-key="<?= h(rtrim($k, '.')) ?>" data-dynamic="<?= $e['dynamic'] ? '1' : '0' ?>">

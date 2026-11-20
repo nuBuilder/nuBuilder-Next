@@ -42,7 +42,7 @@ API version: 1 (`$nu->apiVersion()`, `NuPage.version`). Declare it in every page
 | `session_start()`, reading nuBuilder's session table for the user | `$u = $nu->user();` |
 | own permission / department / position queries | `$nu->hasPermission()`, `$nu->inDepartment()`, `$nu->hasPosition()` |
 | a role cache in `$_SESSION` | nothing – the rights are read on every request |
-| own CSRF token and check | `$nu->csrfField()` / `$nu->csrfToken()` – checked by nuBuilder Next (field `_csrf` or header `X-CSRF-Token`) |
+| own CSRF token and check | `$nu->csrfField()` / `$nu->csrfToken()` – checked by nuBuilder Next (field `_csrf` or header `X-CSRF-Token`); `$nu->db()` prepares statements on the server as always (a bound `LIMIT ?` works) |
 | own security headers | nothing – set by nuBuilder Next |
 | configuration constants at the top | `$nu->setting('key')` (page settings JSON) |
 | passwords / tokens in the code | `$nu->secret('key')` (secrets.php) |
@@ -145,7 +145,7 @@ Table and column names of insert / update / delete must match `^[A-Za-z0-9_]+$` 
 | Method | Result |
 | --- | --- |
 | `h(mixed $s): string` | HTML escape |
-| `csrfToken(): string` / `csrfField(): string` | the token / a hidden `_csrf` field |
+| `csrfToken(): string` / `csrfField(): string` | the token / a hidden `_csrf` field – a different text on every call (masked), each one accepted; do not compare it yourself |
 | `url(array $params = []): string` | this page (keeps r, pf, pr, ps): `url(['action' => 'save'])` |
 | `asset(string $path): string` | URL of a file in assets/ with a version stamp |
 | `formUrl(string $form, ?string $record = null): string` | a nuBuilder Next form (id or code) – list, or a record ('-1' = new); carries the breadcrumb trail, so the form's Back returns to this page (inside a launch form: to that form). The page runs in an iframe: give such links `target="_top"` (or use `NuPage.openForm()`), otherwise the form opens inside the page's frame |

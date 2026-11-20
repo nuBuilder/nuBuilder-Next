@@ -66,6 +66,7 @@ unset($_SESSION['nu_api_secret']);                                   // shown on
 $base = nu_base_url() . '/api.php/v1';
 
 $lvState = $id === '' ? NuListView::prepare('apiclients') : null;   // the list (0.8.547): a system list – views, filters, print / export, cards on phones
+if ($id !== '') nu_body_class('nuRecPage');
 nu_layout_start(t('api_title'), 'home', ($lvState ? [] : ['container' => 'container']) + ['head' => '<link rel="stylesheet" href="' . nu_asset(NU_TOMSELECT . '/tom-select.bootstrap5.min.css') . '">']);
 ?>
 <nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2">

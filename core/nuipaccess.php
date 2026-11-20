@@ -135,7 +135,7 @@ final class NuIpAccess
 	/** Main level + active additional levels of a user id. @return list<string> */
 	public static function levelsOf(string $userId): array
 	{
-		$main = (string)nu_db()->value('SELECT sus_zzzzsys_access_id FROM zzzzsys_user WHERE zzzzsys_user_id = ?', [$userId]);
+		$main = (string)(NuAuth::userRow($userId)['sus_zzzzsys_access_id'] ?? '');
 		return NuUserAccess::levels(['id' => $userId, 'globeadmin' => false, 'access_id' => $main]);
 	}
 

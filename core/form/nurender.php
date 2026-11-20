@@ -107,17 +107,23 @@ final class NuRender
 	{
 		$html = '';
 		foreach ($tree['rows'] as $items) {
-			$html .= '<div class="row g-3 nuGridRow">';
+			$row = '';
+			$tall = false;
 			foreach ($items as $it) {
 				$o   = $it['obj'];
 				$col = 'col-12 col-md-' . $it['span'];
 				if ($o['sob_all_type'] === 'contentbox') {
-					$html .= $this->wrapper($o, $col, '', $this->contentbox($o, $this->boxInner($o, $it['children'] ?? ['rows' => []])));
+					$row .= $this->wrapper($o, $col, '', $this->contentbox($o, $this->boxInner($o, $it['children'] ?? ['rows' => []])));
 				} else {
-					$html .= $this->wrapper($o, $col . ' nuCell', '', $this->object($o, 'flow'));
+					$part = $this->wrapper($o, $col . ' nuCell', '', $this->object($o, 'flow'));
+					if ($o['sob_all_type'] === 'subform' || ($o['sob_all_type'] === 'run' && str_contains($part, 'nuIframe'))) $tall = true;
+					$row .= $part;
 				}
 			}
-			$html .= '</div>';
+			// classes for nuform.css (0.8.1342 – they were :has() rules, which make the browser restyle the page on every change):
+			// nuRowTall = a sub-form or a framed form in the row (more room below), nuRowNoLabel = no label in the row (no label space)
+			$cls = ($tall ? ' nuRowTall' : '') . (preg_match('/class="[^"]*\bnuLabel\b/', $row) ? '' : ' nuRowNoLabel');
+			$html .= '<div class="row g-3 nuGridRow' . $cls . '">' . $row . '</div>';
 		}
 		return $html;
 	}
@@ -350,7 +356,11 @@ final class NuRender
 					$cc = NuCalendar::objectClient($this->meta, $o, $this->recordId);
 					return '<div class="nuHtml nuCalObj ' . h($cls) . '"' . $common . '>' . ($cc ? NuCalendar::host($cc, '', $this->layout === 'absolute' && !$calendar['height'] ? 'nuCalFill' : '') : '<div class="nuCalNone small text-body-secondary">' . h(t('cal_err_none')) . '</div>') . '</div>';
 				}
-				return '<div class="nuHtml ' . h($cls) . '"' . $common . '>' . self::deferScripts(self::closeFragment(NuHash::replace((string)$o['sob_html_code'], $this->pageHash, NuHash::HTML))) . '</div>';
+				$code = self::deferScripts(self::closeFragment(NuHash::replace((string)$o['sob_html_code'], $this->pageHash, NuHash::HTML)));
+				// an HTML object with a dashboard keeps the application's look (nuform.css: the others get nuBuilder Forte's typography) – a class
+				// since 0.8.1341, also set by nudashboard.js for a dashboard that code places later
+				$dash = preg_match('/<[a-z][^<>]*\sdata-nu-dashboard\b/i', $code) === 1 ? 'nuHasDash ' : '';
+				return '<div class="nuHtml ' . $dash . h($cls) . '"' . $common . '>' . $code . '</div>';
 
 			case 'run':
 				return $this->run($o, $common, $cls);
@@ -941,7 +951,7 @@ final class NuRender
 			$head .= '<th id="title_' . h($sf . $c['sob_all_id']) . '" class="nuSubformTitle" data-nu-field="' . h($c['sob_all_id']) . '" data-nu-obj="' . h((string)$c['zzzzsys_object_id']) . '" data-nu-sf-form="' . h((string)$o['sob_subform_zzzzsys_form_id']) . '" style="min-width:' . $w . 'px;width:' . $w . 'px' . ($hidden ? ';display:none' : '') . '">'
 				. self::closeFragment((string)$c['sob_all_label']) . $this->marks($c) . '</th>';
 		}
-		if ($canDelete) $head .= '<th class="nuSubformDeleteTitle"' . ($fit ? ' style="width:40px"' : '') . ' title="' . h(t('delete')) . '"><i class="bi bi-trash"></i></th>';
+		if ($canDelete) $head .= '<th class="nuSubformDeleteTitle"' . ($fit ? ' style="width:40px"' : '') . ' title="' . h(t('delete')) . '"><i class="bi bi-trash" aria-hidden="true"></i><span class="visually-hidden">' . h(t('delete')) . '</span></th>';
 
 		$isForm = strtolower(trim((string)$o['sob_subform_type'])) === 'f';
 		$rowFn  = $isForm
@@ -954,6 +964,15 @@ final class NuRender
 			$rows = [];
 			error_log('nuBuilder Next sub-form ' . $o['sob_all_id'] . ': ' . $e->getMessage());
 			if (class_exists('NuDebugLog')) NuDebugLog::write('Subform ' . $o['sob_all_id'] . ":\n" . $e->getMessage());
+		}
+		// the lookups of all rows in one statement per lookup column (0.8.1341, NuLookup::prime) – they were read row by row
+		if (count($rows) > 1) {
+			foreach ($cols as $c) {
+				if ($c['sob_all_type'] !== 'lookup') continue;
+				$ids = [];
+				foreach ($rows as $r) $ids[] = (string)$this->columnValue($r, (string)$c['sob_all_id']);
+				NuLookup::prime($c, $ids, $this->hash);
+			}
 		}
 		$body = '';
 		foreach ($rows as $i => $r) $body .= $rowFn(sprintf('%03d', $i), $r);
@@ -979,9 +998,11 @@ final class NuRender
 				. '<div class="nuSubformScroll" id="' . h($sf) . 'scrollDiv"' . ($h > 0 ? ' style="max-height:' . max(120, $h) . 'px"' : '') . '>'
 				. '<div class="nuSubformBody">' . $body . '</div></div>' . $template . '</div>';
 		}
+		// phones (usability review G15): each row a small card with the column titles as labels – unless nunext.phone = 'table'
+		$phCards = ((($o['nunext'] ?? NuFormMeta::nunextJson($o['sob_all_json'] ?? null))['phone'] ?? '') !== 'table') ? ' nuSfPhCards' : '';
 		return '<div class="nuSubform" id="' . h($sf) . '" data-nu-subform="' . h($sf) . '" data-nu-object-id="' . h($o['zzzzsys_object_id']) . '">'
 			. '<div class="nuSubformScroll" id="' . h($sf) . 'scrollDiv"' . ($h > 0 ? ' style="max-height:' . max(80, $h) . 'px"' : '') . '>'
-			. '<table class="table table-sm align-middle mb-0 nuSubformTable' . ($fit ? ' nuSubformFit" style="min-width:' . $fitMin . 'px' : '') . '"><thead><tr>' . $head . '</tr></thead><tbody class="nuSubformBody">' . $body . '</tbody></table></div>'
+			. '<table class="table table-sm align-middle mb-0 nuSubformTable' . $phCards . ($fit ? ' nuSubformFit" style="min-width:' . $fitMin . 'px' : '') . '"><thead><tr>' . $head . '</tr></thead><tbody class="nuSubformBody">' . $body . '</tbody></table></div>'
 			. $template . '</div>';
 	}
 
@@ -999,12 +1020,12 @@ final class NuRender
 			// event.target.parentNode's id and then its data-nu-primary-key finds both on the cell (0.8.957). The id is Forte's row holder
 			// <prefix>nuRECORD on every cell of the row (Forte code cuts the sub-form id and row number from it) and holds no field name, so
 			// selectors such as [id^="<sub-form>"][id*="<field>"] find only the field itself (0.8.965; was <prefix><field>_nucell)
-			$html  .= '<td class="nuSubformCell" id="' . h($prefix) . 'nuRECORD" data-nu-primary-key="' . h($pk) . '"' . ($hidden ? ' style="display:none"' : '') . '>'
+			$html  .= '<td class="nuSubformCell" id="' . h($prefix) . 'nuRECORD" data-nu-primary-key="' . h($pk) . '" data-nu-label="' . h(NuHtmlClean::cellText((string)$c['sob_all_label'])) . '"' . ($hidden ? ' style="display:none"' : '') . '>'
 				. $this->control($c, $prefix, $value, $c['sob_all_type'] === 'textarea' ? 'height:' . max(30, (int)$c['sob_all_height']) . 'px;' : '', $events) . '</td>';
 		}
 		if ($canDelete) {
 			$click = isset($sfEvents['clickdelete']) ? ' onclick="' . h($sfEvents['clickdelete']) . '"' : '';
-			$html .= '<td class="nuSubformDeleteCell"><input type="checkbox" class="form-check-input nuSubformDelete" id="' . h($prefix) . 'nuDelete"'
+			$html .= '<td class="nuSubformDeleteCell" data-nu-label="' . h(t('delete')) . '"><input type="checkbox" class="form-check-input nuSubformDelete" id="' . h($prefix) . 'nuDelete"'
 				. ' data-nu-checkbox="' . h($sf) . '" data-nu-prefix="' . h($prefix) . '"' . $click . ' aria-label="' . h(t('delete')) . '"'
 				. ($data === null ? ' checked' : '') . '></td>';   // the blank new row: ticked as in nuBuilder Forte, cleared once it is edited
 		}
@@ -1209,6 +1230,16 @@ final class NuRender
 	 * columns of the first row of sob_display_sql, one per line. Used on load and by nuRefreshDisplayObject.
 	 */
 	public function display(array $o): string
+	{
+		// asked twice while one field is drawn (its value, then its markup): once per object and hash (0.8.1343)
+		$key = (string)$o['zzzzsys_object_id'] . '|' . md5(serialize($this->hash));
+		return $this->displayed[$key] ??= $this->displayNow($o);
+	}
+
+	/** @var array<string, string> */
+	private array $displayed = [];
+
+	private function displayNow(array $o): string
 	{
 		$hash = ['OBJECT_ID' => (string)$o['zzzzsys_object_id']] + $this->hash;
 		$proc = trim((string)($o['sob_display_procedure'] ?? ''));

@@ -16,6 +16,8 @@ if (!function_exists('nuRunQuery')) {
 		$db = nu_db();
 		// no SQL: nuBuilder Forte returns [host, database, user, password] – here without the password (0.8.926)
 		if ($sql === null || trim($sql) === '') return [(string)nu_cfg('nuConfigDBHost'), (string)nu_cfg('nuConfigDBName'), (string)nu_cfg('nuConfigDBUser'), ''];
+		// SQL of the application: server-side prepares as nuBuilder Next always had (0.8.1342 – its own statements go in one step)
+		if ($db->emulated()) return $db->native(static fn () => nuRunQuery($sql, $params, $isInsert));
 		// nuBuilder Forte: when the first line starts with '#', every '#' line is a command run first (e.g. "#SET SESSION …")
 		[$commands, $sql] = nu_query_commands($sql);
 		foreach ($commands as $c) if ($c !== '') $db->run($c);

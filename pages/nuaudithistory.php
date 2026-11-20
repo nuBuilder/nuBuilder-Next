@@ -71,7 +71,7 @@ nu_layout_start(t('aud_history'), 'audit');
 				</div>
 				<div class="table-responsive border rounded">
 				<table class="table table-sm mb-0 align-middle nu-table nuAudTable">
-					<thead><tr><th class="w-25"><?= h(t('aud_column')) ?></th><th><?= h(t('aud_old')) ?></th><th><?= h(t('aud_new')) ?></th><th class="text-end"></th></tr></thead>
+					<thead><tr><th class="w-25"><?= h(t('aud_column')) ?></th><th><?= h(t('aud_old')) ?></th><th><?= h(t('aud_new')) ?></th><th class="text-end"><span class="visually-hidden"><?= h(t('actions')) ?></span></th></tr></thead>
 					<tbody>
 <?php foreach ($groups as $rows):
 	$g = $rows[0];

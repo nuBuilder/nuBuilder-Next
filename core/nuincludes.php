@@ -111,12 +111,12 @@ final class NuIncludes
 		if ($out !== null) return $out;
 		$out = [];
 		try {
-			$db = nu_db();
-			if (!$db->tableExists('zzzzsys_setup') || !in_array('set_include', array_map('strtolower', array_keys($db->columns('zzzzsys_setup'))), true)) return $out;
-			$text = (string)($db->page('SELECT set_include FROM zzzzsys_setup', [], 'zzzzsys_setup_id', 1, 0)[0]['set_include'] ?? '');
+			// the setup row the page reads anyway (NuMailer::setupRow, 0.8.1341 – was a catalogue question plus a statement of its own)
+			$text = (string)(array_change_key_case(NuMailer::setupRow())['set_include'] ?? '');
 		} catch (Throwable) {
 			return $out;
 		}
+		if ($text === '') return $out;
 		$text = (string)preg_replace(['/<!--.*?-->/s', '~/\*.*?\*/~s'], '', $text);
 		if (!preg_match_all('~<script\b[^>]*>.*?</script\s*>|<style\b[^>]*>.*?</style\s*>|<link\b[^>]*>~is', $text, $m)) return $out;
 		foreach ($m[0] as $html) {
