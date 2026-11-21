@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * nuBuilder's own include files in nuconfig.php (0.8.443): $nuConfigIncludeJS / $nuConfigIncludeCSS (form pages, where nuBuilder code runs)
+ * nuBuilder's own include files in nuconfig.php: $nuConfigIncludeJS / $nuConfigIncludeCSS (form pages, where nuBuilder code runs)
  * and $nuConfigIncludePHP (core/form/nuphp.php). A string or a list, as in nuBuilder.
  *   JS / CSS: "https://…", "//…" and "/…" are addresses and used as they are; a relative path is looked for in the nuBuilder Next folder
  *             first, then in nuBuilder's folder (NuBuilderLib::path – reached as "../" when nuBuilder Next is its subfolder, else through
@@ -39,7 +39,7 @@ final class NuIncludes
 		return null;
 	}
 
-	/** File on this server of a JS / CSS include (nuBuilder Next's folder, then nuBuilder's), null for an address or a file not found (0.8.578). */
+	/** File on this server of a JS / CSS include (nuBuilder Next's folder, then nuBuilder's), null for an address or a file not found. */
 	public static function localFile(string $e): ?string
 	{
 		if (self::isUrl($e)) return null;
@@ -89,7 +89,7 @@ final class NuIncludes
 				if (!preg_match('~^(https?:)?//([^/?#]+)~i', $e, $m)) continue;
 				$src[$dir][] = ($m[1] !== '' ? strtolower($m[1]) : 'https:') . '//' . strtolower($m[2]);
 			}
-			foreach (self::setupElements() as $el) {           // Setup → Include (0.8.444): <script src> / <link href> on other hosts
+			foreach (self::setupElements() as $el) {           // Setup → Include: <script src> / <link href> on other hosts
 				if (($el['tag'] === 'script') !== ($dir === 'script') || $el['tag'] === 'style') continue;
 				if (preg_match('~^(https?:)?//([^/?#]+)~i', $el['url'], $m)) $src[$dir][] = ($m[1] !== '' ? strtolower($m[1]) : 'https:') . '//' . strtolower($m[2]);
 			}
@@ -101,7 +101,7 @@ final class NuIncludes
 	}
 
 	/**
-	 * nuBuilder's Setup → Include (zzzzsys_setup.set_include, 0.8.444): only its <link>, <script> and <style> elements – the default text
+	 * nuBuilder's Setup → Include (zzzzsys_setup.set_include): only its <link>, <script> and <style> elements – the default text
 	 * ("// Add external CSS/JS file here", an HTML comment with examples) and other text are dropped. Read once per request.
 	 * @return list<array{tag: string, html: string, url: string}>
 	 */
@@ -111,7 +111,7 @@ final class NuIncludes
 		if ($out !== null) return $out;
 		$out = [];
 		try {
-			// the setup row the page reads anyway (NuMailer::setupRow, 0.8.1341 – was a catalogue question plus a statement of its own)
+			// the setup row the page reads anyway (NuMailer::setupRow – was a catalogue question plus a statement of its own)
 			$text = (string)(array_change_key_case(NuMailer::setupRow())['set_include'] ?? '');
 		} catch (Throwable) {
 			return $out;

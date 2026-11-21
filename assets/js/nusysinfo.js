@@ -1,5 +1,5 @@
 /* global nuBs */
-/* System info (0.8.1237, core/nusysinfo.php): the dialog of the user menu – nuBuilder Next, server and database from ?p=sysinfo (loaded
+/* System info (core/nusysinfo.php): the dialog of the user menu – nuBuilder Next, server and database from ?p=sysinfo (loaded
    when the dialog opens), the browser from here; "Copy for support" copies all of it as plain text. */
 (function () {
 	'use strict';

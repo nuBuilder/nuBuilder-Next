@@ -5,57 +5,24 @@ defined('NU_ROOT') || exit;
 /*
  * Sample data (globeadmin): install / refresh / remove the sample_ set and new passwords for the sample users – see core/nusample.php.
  * Passwords are shown once, right after they were created.
- * Layout (0.8.742): list of the samples on the left (index – a new sample in NuSampleSet::SETS appears there), the selected one on the
+ * Layout: list of the samples on the left (index – a new sample in NuSampleSet::SETS appears there), the selected one on the
  * right with tabs Overview / Contents / Logins / Maintenance; ?s=<key> (or #smpSet_<key>) selects, assets/js/nusample.js switches
  * without a reload. Passwords just created: tab Logins opens, masked until "Show passwords".
  */
 
-// admin rights (0.8.323): the globeadmin, or a user whose admin role has the right (core/nuadmin.php)
+// admin rights: the globeadmin, or a user whose admin role has the right (core/nuadmin.php)
 NuAdmin::require('sample');
 
-if (nu_is_post()) {
-	$action = nu_post('action');
-	$set = nu_post('set');
-	try {
-		if ($set !== '' && in_array($set, NuSampleSet::keys(), true)) {     // further sample applications (0.8.679, core/nusampleset.php)
-			if ($action === 'install' || $action === 'refresh') {
-				$_SESSION['nu_sample_pw_set'] = [$set => NuSampleSet::install($set)];
-				nu_flash('success', t($action === 'refresh' ? 'smp_refreshed' : 'smp_installed'));
-			} elseif ($action === 'remove') {
-				NuSampleSet::remove($set);
-				nu_flash('success', t('smp_removed'));
-			} elseif ($action === 'passwords') {
-				$_SESSION['nu_sample_pw_set'] = [$set => NuSampleSet::newPasswords($set)];
-				NuLog::write('sample_passwords', 'sample', $set);
-				nu_flash('success', t('smp_passwords_done'));
-			}
-			nu_redirect(nu_url('sample') . '#smpSet_' . $set);
-		}
-		if ($action === 'install' || $action === 'refresh') {
-			$_SESSION['nu_sample_pw'] = NuSample::install();
-			nu_flash('success', t($action === 'refresh' ? 'smp_refreshed' : 'smp_installed'));
-		} elseif ($action === 'remove') {
-			NuSample::remove();
-			nu_flash('success', t('smp_removed'));
-		} elseif ($action === 'passwords') {
-			$_SESSION['nu_sample_pw'] = NuSample::newPasswords();
-			NuLog::write('sample_passwords', 'sample');
-			nu_flash('success', t('smp_passwords_done'));
-		}
-	} catch (Throwable $e) {
-		error_log('nuBuilder Next sample data: ' . $e->getMessage());
-		nu_flash('danger', t('smp_failed') . ' ' . $e->getMessage());
-	}
-	nu_redirect(nu_url('sample', ['s' => 'sales']));
-}
+['e' => $e]
+	= NuSamplePage::post(get_defined_vars());   // the POST actions (code review R7, nusamplepage.php)
 
 // one entry per sample: the built-in sales sample (core/nusample.php) and the sets of core/nusampleset.php
 $samples = [];
 $st = NuSample::status();
-$pw = $_SESSION['nu_sample_pw'] ?? [];
-unset($_SESSION['nu_sample_pw']);
-$setPw = $_SESSION['nu_sample_pw_set'] ?? [];
-unset($_SESSION['nu_sample_pw_set']);
+$pw = $_SESSION[NuSess::SAMPLE_PW] ?? [];
+unset($_SESSION[NuSess::SAMPLE_PW]);
+$setPw = $_SESSION[NuSess::SAMPLE_PW_SET] ?? [];
+unset($_SESSION[NuSess::SAMPLE_PW_SET]);
 $salesUsers = [['sample_anna', 'sample_viewer', t('smp_u_viewer')], ['sample_ben', 'sample_editor', t('smp_u_editor')], ['sample_carla', 'sample_manager', t('smp_u_manager')],
 	['sample_dario', 'sample_sales', t('smp_u_sales')], ['sample_eva', 'sample_secure', t('smp_u_secure')]];
 $samples['sales'] = ['title' => t('smp_sales_title'), 'icon' => 'cart3', 'intro' => t('smp_intro'), 'st' => $st, 'pw' => $pw, 'users' => $salesUsers,
@@ -67,12 +34,14 @@ foreach (NuSampleSet::keys() as $key) {
 	$levels = [];
 	foreach ($def['rows'] as $r) if ($r[0] === 'zzzzsys_access') $levels[(string)$r[1]['zzzzsys_access_id']] = (string)$r[1]['sal_description'];
 	$users = [];
-	foreach ($def['users'] as $u) $users[] = [(string)$u['sus_login_name'], (string)$u['sus_zzzzsys_access_id'], trim((string)$u['sus_name'] . (isset($levels[$u['sus_zzzzsys_access_id']]) ? ' · ' . $levels[$u['sus_zzzzsys_access_id']] : ''))];
+	foreach ($def['users'] as $u) $users[] = [(string)$u['sus_login_name'], (string)$u['sus_zzzzsys_access_id'],
+		trim((string)$u['sus_name'] . (isset($levels[$u['sus_zzzzsys_access_id']]) ? ' · ' . $levels[$u['sus_zzzzsys_access_id']] : ''))];
 	$samples[$key] = ['title' => t('smp_' . $key . '_title'), 'icon' => ['ticket' => 'headset'][$key] ?? 'box-seam', 'intro' => t('smp_' . $key . '_intro'), 'st' => $ss,
 		'pw' => $setPw[$key] ?? [], 'users' => $users, 'open' => nu_url('form', ['f' => (string)$def['home']]), 'more' => t('smp_' . $key . '_more'), 'set' => $key,
 		'project' => $ss['project'] !== '' && NuProject::canView() ? nu_url('projects', ['id' => $ss['project']]) : '',
 		'changes' => array_combine(array_map('intval', array_keys((array)($def['changes'] ?? []))), array_values((array)($def['changes'] ?? []))),
-		'counts' => $ss['installed'] ? t('smp_set_counts', $ss['counts']['users'], $ss['counts']['access'], $ss['counts']['forms'], $ss['counts']['objects'], $ss['counts']['templates'], $ss['counts']['dashboards']) : ''];
+		'counts' => $ss['installed'] ? t('smp_set_counts', $ss['counts']['users'], $ss['counts']['access'], $ss['counts']['forms'], $ss['counts']['objects'],
+			$ss['counts']['templates'], $ss['counts']['dashboards']) : ''];
 }
 $sel = is_string($_GET['s'] ?? null) && isset($samples[$_GET['s']]) ? (string)$_GET['s'] : (string)array_key_first($samples);
 foreach ($samples as $k => $x) if ($x['pw']) $sel = $k;                       // passwords just created: that sample
@@ -82,7 +51,7 @@ $badge = static function (array $st, string $extra = ''): string {
 	if ($st['installed']) return '<span class="badge text-bg-success' . $extra . '">' . h(t('smp_is_installed', $st['version'])) . '</span>';
 	return '<span class="badge text-bg-secondary' . $extra . '">' . h(t('smp_not_installed')) . '</span>';
 };
-// change history of a sample (0.8.1256): versions newest first; $since > 0 = only the versions after it (what a refresh brings), marked New
+// change history of a sample: versions newest first; $since > 0 = only the versions after it (what a refresh brings), marked New
 $history = static function (array $changes, int $installed, int $since = 0): string {
 	krsort($changes);
 	$out = '';
@@ -129,15 +98,24 @@ nu_layout_start(t('smp_title'), 'home');
 					<div class="d-flex flex-wrap gap-2">
 					<?php if (!$s['installed']): ?>
 						<form method="post" action="<?= h(nu_url('sample')) ?>"><?= nu_csrf_field() ?><input type="hidden" name="action" value="install"><?= $hidden($set) ?>
-							<button class="btn btn-primary<?= $set !== '' ? ' smpSetInstall' : '' ?>" type="submit"<?= $set === '' ? ' id="smpInstall"' : '' ?>><i class="bi bi-download me-1"></i><?= h(t('smp_install')) ?></button></form>
+							<button class="btn btn-primary<?= $set !== '' ? ' smpSetInstall' : '' ?>"
+								type="submit"<?= $set === '' ? ' id="smpInstall"' : '' ?>><i class="bi bi-download me-1"></i><?= h(t('smp_install')) ?></button></form>
 					<?php else: ?>
-						<a class="btn btn-primary<?= $set !== '' ? ' smpSetOpen' : '' ?>" href="<?= h($x['open']) ?>"<?= $set === '' ? ' id="smpOpen"' : '' ?>><i class="bi bi-box-arrow-in-right me-1"></i><?= h(t('smp_open')) ?></a>
-						<form method="post" action="<?= h(nu_url('sample')) ?>" data-confirm="<?= h(t('smp_refresh_confirm')) ?>" data-confirm-ok="<?= h(t('smp_refresh')) ?>" data-confirm-class="btn btn-primary"><?= nu_csrf_field() ?><input type="hidden" name="action" value="refresh"><?= $hidden($set) ?>
-							<button class="btn <?= $out ? 'btn-warning' : 'btn-outline-primary' ?><?= $set !== '' ? ' smpSetRefresh' : '' ?>" type="submit"<?= $set === '' ? ' id="smpRefresh"' : '' ?>><i class="bi bi-arrow-repeat me-1"></i><?= h(t('smp_refresh')) ?></button></form>
+						<a class="btn btn-primary<?= $set !== '' ? ' smpSetOpen' : '' ?>"
+							href="<?= h($x['open']) ?>"<?= $set === '' ? ' id="smpOpen"' : '' ?>><i class="bi bi-box-arrow-in-right me-1"></i><?= h(t('smp_open')) ?></a>
+						<form method="post" action="<?= h(nu_url('sample')) ?>" data-confirm="<?= h(t('smp_refresh_confirm')) ?>"
+							data-confirm-ok="<?= h(t('smp_refresh')) ?>" data-confirm-class="btn btn-primary"><?= nu_csrf_field() ?><input type="hidden" name="action"
+							value="refresh"><?= $hidden($set) ?>
+							<button class="btn <?= $out ? 'btn-warning' : 'btn-outline-primary' ?><?= $set !== '' ? ' smpSetRefresh' : '' ?>"
+								type="submit"<?= $set === '' ? ' id="smpRefresh"' : '' ?>><i class="bi bi-arrow-repeat me-1"></i><?= h(t('smp_refresh')) ?></button></form>
 					<?php endif; ?>
-					<?php if ($s['installed'] || $s['leftovers']): // Remove right in the title row (0.8.858; was on the tab Maintenance) ?>
-						<form method="post" action="<?= h(nu_url('sample')) ?>" data-confirm="<?= h(t('smp_remove_confirm')) ?>" data-confirm-ok="<?= h(t('smp_remove')) ?>" data-confirm-class="btn btn-danger"><?= nu_csrf_field() ?><input type="hidden" name="action" value="remove"><?= $hidden($set) ?>
-							<button class="btn btn-outline-danger<?= $set !== '' ? ' smpSetRemove' : '' ?>" type="submit"<?= $set === '' ? ' id="smpRemove"' : '' ?><?= $s['blocking'] ? ' disabled' : '' ?> title="<?= h(t('smp_maint_remove')) ?>"><i class="bi bi-trash me-1"></i><?= h(t('smp_remove')) ?></button></form>
+					<?php if ($s['installed'] || $s['leftovers']): // Remove right in the title row (was on the tab Maintenance) ?>
+						<form method="post" action="<?= h(nu_url('sample')) ?>" data-confirm="<?= h(t('smp_remove_confirm')) ?>"
+							data-confirm-ok="<?= h(t('smp_remove')) ?>" data-confirm-class="btn btn-danger"><?= nu_csrf_field() ?><input type="hidden" name="action"
+							value="remove"><?= $hidden($set) ?>
+							<button class="btn btn-outline-danger<?= $set !== '' ? ' smpSetRemove' : '' ?>"
+								type="submit"<?= $set === '' ? ' id="smpRemove"' : '' ?><?= $s['blocking'] ? ' disabled' : '' ?>
+								title="<?= h(t('smp_maint_remove')) ?>"><i class="bi bi-trash me-1"></i><?= h(t('smp_remove')) ?></button></form>
 					<?php endif; ?>
 					</div>
 				</div>
@@ -146,15 +124,17 @@ nu_layout_start(t('smp_title'), 'home');
 				<ul class="nav nav-tabs mb-3" role="tablist">
 				<?php foreach (['overview', 'contents', 'logins', 'changes', 'maint'] as $tb): ?>
 					<li class="nav-item" role="presentation"><button class="nav-link<?= $tb === $tab ? ' active' : '' ?>" type="button" role="tab" data-bs-toggle="tab" data-bs-target="#<?= $tid . $tb ?>"
-						id="<?= $tid . $tb ?>_tab" aria-controls="<?= $tid . $tb ?>" aria-selected="<?= $tb === $tab ? 'true' : 'false' ?>"><?= h(t('smp_tab_' . $tb)) ?><?php if ($tb === 'logins'): ?> <span class="badge rounded-pill text-bg-light border"><?= count($x['users']) ?></span><?php endif; ?></button></li>
+						id="<?= $tid . $tb ?>_tab" aria-controls="<?= $tid . $tb ?>"
+							aria-selected="<?= $tb === $tab ? 'true' : 'false' ?>"><?= h(t('smp_tab_' . $tb)) ?><?php if ($tb === 'logins'): ?> <span class="badge rounded-pill text-bg-light border"><?= count($x['users']) ?></span><?php endif; ?></button></li>
 				<?php endforeach; ?>
 				</ul>
 				<div class="tab-content">
 					<div class="tab-pane fade<?= $tab === 'overview' ? ' show active' : '' ?>" id="<?= $tid ?>overview" role="tabpanel" aria-labelledby="<?= $tid ?>overview_tab" tabindex="0">
 						<p class="mb-2"><?= h($x['intro']) ?></p>
 						<?php if ($x['counts'] !== ''): ?><p class="small text-body-secondary mb-0"><?= h($x['counts']) ?></p><?php endif; ?>
-						<?php if ($out && ($new = $history($x['changes'], $s['version'], $s['version'])) !== ''): // what a refresh brings (0.8.1256) ?>
-						<div class="alert alert-warning small mt-3 mb-0 smpWhatsNew"><div class="fw-semibold mb-1"><i class="bi bi-stars me-1" aria-hidden="true"></i><?= h(t('smp_chg_since', $s['version'], $s['current'])) ?></div><?= $new ?></div>
+						<?php if ($out && ($new = $history($x['changes'], $s['version'], $s['version'])) !== ''): // what a refresh brings ?>
+						<div class="alert alert-warning small mt-3 mb-0 smpWhatsNew"><div class="fw-semibold mb-1"><i class="bi bi-stars me-1"
+							aria-hidden="true"></i><?= h(t('smp_chg_since', $s['version'], $s['current'])) ?></div><?= $new ?></div>
 						<?php endif; ?>
 					</div>
 					<div class="tab-pane fade" id="<?= $tid ?>changes" role="tabpanel" aria-labelledby="<?= $tid ?>changes_tab" tabindex="0">
@@ -175,7 +155,8 @@ nu_layout_start(t('smp_title'), 'home');
 						<?php endif; ?>
 							<div class="col-12"><h3 class="h6"><?= h(t('smp_c_more')) ?></h3><p class="mb-0"><?= h($x['more']) ?></p></div>
 						<?php if (($x['project'] ?? '') !== ''): ?>
-							<div class="col-12"><h3 class="h6"><?= h(t('prj_title_one')) ?></h3><p class="mb-0"><?= h(t('smp_project_hint')) ?> <a href="<?= h($x['project']) ?>" class="smpProjectLink"><i class="bi bi-kanban me-1"></i><?= h(t('smp_project_open')) ?></a></p></div>
+							<div class="col-12"><h3 class="h6"><?= h(t('prj_title_one')) ?></h3><p class="mb-0"><?= h(t('smp_project_hint')) ?> <a href="<?= h($x['project']) ?>"
+								class="smpProjectLink"><i class="bi bi-kanban me-1"></i><?= h(t('smp_project_open')) ?></a></p></div>
 						<?php endif; ?>
 						</div>
 					</div>
@@ -183,23 +164,29 @@ nu_layout_start(t('smp_title'), 'home');
 						<?php if ($x['pw']): ?>
 							<div class="d-flex flex-wrap align-items-center gap-2 mb-2<?= $set !== '' ? ' smpSetPasswords' : '' ?>"<?= $set === '' ? ' id="smpPasswords"' : '' ?>>
 								<span class="small text-body-secondary me-auto"><i class="bi bi-key me-1" aria-hidden="true"></i><?= h(t('smp_pw_hint')) ?></span>
-								<button class="btn btn-sm btn-outline-secondary smpPwToggle" type="button" data-show="<?= h(t('smp_pw_show')) ?>" data-hide="<?= h(t('smp_pw_hide')) ?>"><i class="bi bi-eye me-1" aria-hidden="true"></i><span><?= h(t('smp_pw_show')) ?></span></button>
+								<button class="btn btn-sm btn-outline-secondary smpPwToggle" type="button" data-show="<?= h(t('smp_pw_show')) ?>"
+									data-hide="<?= h(t('smp_pw_hide')) ?>"><i class="bi bi-eye me-1" aria-hidden="true"></i><span><?= h(t('smp_pw_show')) ?></span></button>
 							</div>
 						<?php else: ?><p class="small text-body-secondary mb-2"><?= h(t('smp_pw_none')) ?></p><?php endif; ?>
 						<div class="table-responsive"><table class="table table-sm nu-table mb-0 align-middle smpLogins smpPwMasked">
 							<thead><tr><th><?= h(t('smp_login')) ?></th><th><?= h(t('smp_level')) ?></th><th><?= h(t('smp_user_desc')) ?></th><?php if ($x['pw']): ?><th><?= h(t('smp_password')) ?></th><?php endif; ?></tr></thead>
 							<tbody><?php foreach ($x['users'] as [$login, $level, $desc]): ?><tr>
 								<td><code><?= h($login) ?></code></td><td><code><?= h($level) ?></code></td><td class="small"><?= h($desc) ?></td>
-								<?php if ($x['pw']): ?><td class="text-nowrap"><?php if (isset($x['pw'][$login])): ?><span class="smpPwDots" aria-hidden="true">••••••••</span><code class="user-select-all smpPwVal" data-sample-pw="<?= h($login) ?>"><?= h((string)$x['pw'][$login]) ?></code>
-									<button class="btn btn-sm btn-link p-0 ms-2 smpPwCopy" type="button" data-copied="<?= h(t('smp_pw_copied')) ?>" aria-label="<?= h(t('smp_pw_copy') . ' ' . $login) ?>"><i class="bi bi-clipboard" aria-hidden="true"></i></button><?php endif; ?></td><?php endif; ?>
+								<?php if ($x['pw']): ?><td class="text-nowrap"><?php if (isset($x['pw'][$login])): ?><span class="smpPwDots"
+									aria-hidden="true">••••••••</span><code class="user-select-all smpPwVal" data-sample-pw="<?= h($login) ?>"><?= h((string)$x['pw'][$login]) ?></code>
+									<button class="btn btn-sm btn-link p-0 ms-2 smpPwCopy" type="button" data-copied="<?= h(t('smp_pw_copied')) ?>"
+										aria-label="<?= h(t('smp_pw_copy') . ' ' . $login) ?>"><i class="bi bi-clipboard" aria-hidden="true"></i></button><?php endif; ?></td><?php endif; ?>
 							</tr><?php endforeach; ?></tbody></table></div>
 					</div>
 					<div class="tab-pane fade" id="<?= $tid ?>maint" role="tabpanel" aria-labelledby="<?= $tid ?>maint_tab" tabindex="0">
 						<?php if ($s['installed']): ?>
 						<div class="d-flex flex-wrap align-items-center gap-3 py-2 border-bottom">
 							<span class="small flex-grow-1"><?= h(t('smp_maint_pw')) ?></span>
-							<form method="post" action="<?= h(nu_url('sample')) ?>" data-confirm="<?= h(t('smp_passwords_confirm')) ?>" data-confirm-ok="<?= h(t('smp_passwords')) ?>" data-confirm-class="btn btn-primary"><?= nu_csrf_field() ?><input type="hidden" name="action" value="passwords"><?= $hidden($set) ?>
-								<button class="btn btn-outline-secondary<?= $set !== '' ? ' smpSetPw' : '' ?>" type="submit"<?= $set === '' ? ' id="smpPasswordsBtn"' : '' ?>><i class="bi bi-key me-1"></i><?= h(t('smp_passwords')) ?></button></form>
+							<form method="post" action="<?= h(nu_url('sample')) ?>" data-confirm="<?= h(t('smp_passwords_confirm')) ?>"
+								data-confirm-ok="<?= h(t('smp_passwords')) ?>" data-confirm-class="btn btn-primary"><?= nu_csrf_field() ?><input type="hidden" name="action"
+								value="passwords"><?= $hidden($set) ?>
+								<button class="btn btn-outline-secondary<?= $set !== '' ? ' smpSetPw' : '' ?>"
+									type="submit"<?= $set === '' ? ' id="smpPasswordsBtn"' : '' ?>><i class="bi bi-key me-1"></i><?= h(t('smp_passwords')) ?></button></form>
 						</div>
 						<?php endif; ?>
 						<?php if (!$s['installed']): ?><p class="small text-body-secondary mb-0"><?= h(t('smp_not_installed')) ?></p><?php endif; ?>

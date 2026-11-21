@@ -1,5 +1,5 @@
 /* global nuBs */
-/* nuBuilder Next: New form – how to start (0.8.848, pages/nubuilder.php ?new=1 without start=wizard). The last choice is marked
+/* nuBuilder Next: New form – how to start (pages/nubuilder.php ?new=1 without start=wizard). The last choice is marked
    (localStorage nunext-newform-last) and gets the focus. */
 (function () {
 	'use strict';
@@ -16,7 +16,7 @@
 		}
 		c.addEventListener('click', function () { nuStore.set(KEY, k); });
 	});
-	// Custom page (0.8.861): a short dialogue – description, code (= folder custom/pages/<code>/), open mode – then the page's own editor
+	// Custom page: a short dialogue – description, code (= folder custom/pages/<code>/), open mode – then the page's own editor
 	var start = document.getElementById('nuNfStart'), dlg = document.getElementById('nuNfPageDlg'), pcard = document.getElementById('nuNfC_page');
 	if (!start || !dlg || !pcard) return;
 	var form = document.getElementById('nuNfPageForm'), desc = document.getElementById('nuNfPageDesc'), code = document.getElementById('nuNfPageCode');

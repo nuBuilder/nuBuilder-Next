@@ -1,4 +1,4 @@
-/* User help pages (0.8.1023, core/nuuserhelp.php): the side panel of the form pages (? button #nuHelpButton, F1, the (?) marks of
+/* User help pages (core/nuuserhelp.php): the side panel of the form pages (? button #nuHelpButton, F1, the (?) marks of
    fields .nuUhTip) and the reader page (?p=userhelp: print). The panel loads ?p=userhelp&c=<code>&frag=1 – HTML cleaned on the server.
    window.nuUserHelpOpen(code) opens a page in the panel; window.nuUserHelpF1() is asked by nuapp.js's F1. */
 (function () {
@@ -65,7 +65,7 @@
 			if (e.key === 'Escape' && !panel.hidden && !document.querySelector('.modal.show')) { e.stopPropagation(); hide(); }
 		});
 	}
-	// width by the splitter on the left edge (0.8.1052): stored per browser, 300 px … 90 % of the window, double-click / Home = default;
+	// width by the splitter on the left edge: stored per browser, 300 px … 90 % of the window, double-click / Home = default;
 	// phones (< 576 px) keep the full width
 	var WKEY = 'nunext-uh-w', WDEF = 440, WMIN = 300;
 	function clampW(w) { return Math.round(Math.max(WMIN, Math.min(w, Math.max(WMIN, window.innerWidth * 0.9)))); }

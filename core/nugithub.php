@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Updates from GitHub (0.8.374): the newest release of the repository (default nuBuilder/nuBuilder-Next) is looked up through
+ * Updates from GitHub: the newest release of the repository (default nuBuilder/nuBuilder-Next) is looked up through
  * GitHub's REST API (public repository, no token), its asset nunext.zip is downloaded into the folder _update/ and installed from
  * there like any other package (update page → "Update from the folder"). The download is only kept when its signature is valid –
  * the Ed25519 signature, not GitHub, is what makes a package trusted.
@@ -20,7 +20,7 @@ final class NuGitHub
 	private const API = 'https://api.github.com/repos/%s/releases?per_page=30';
 	private const HOSTS = ['github.com', 'api.github.com', 'objects.githubusercontent.com', 'release-assets.githubusercontent.com', 'github-releases.githubusercontent.com', 'codeload.github.com'];
 	private const MAX_DOWNLOAD = 64 * 1048576;
-	/** Automatic check (0.8.673; before: on / off = once a day): never, once a day, a week or a month – value = days. */
+	/** Automatic check (before: on / off = once a day): never, once a day, a week or a month – value = days. */
 	public const EVERY = ['never' => 0, 'day' => 1, 'week' => 7, 'month' => 30];
 
 	/** @return array{repo: string, pre: bool, auto: bool, every: string, checked_at: int, latest: ?array, error: string} */
@@ -29,9 +29,8 @@ final class NuGitHub
 		$s = ['repo' => self::DEFAULT_REPO, 'pre' => true, 'auto' => true, 'every' => 'day', 'checked_at' => 0, 'latest' => null, 'error' => ''];
 		try {
 			NuSchema::ensure();
-			$v = nu_setting_value(self::SETTING);
-			$j = is_string($v) ? json_decode($v, true) : null;
-			if (is_array($j)) {
+			$j = nu_setting_json(self::SETTING);
+			if ($j) {
 				if (self::validRepo((string)($j['repo'] ?? ''))) $s['repo'] = (string)$j['repo'];
 				if (isset($j['pre'])) $s['pre'] = (bool)$j['pre'];
 				if (isset(self::EVERY[(string)($j['every'] ?? '')])) $s['every'] = (string)$j['every'];
@@ -41,7 +40,7 @@ final class NuGitHub
 				$s['latest'] = is_array($j['latest'] ?? null) ? $j['latest'] : null;
 				$s['error'] = (string)($j['error'] ?? '');
 			}
-		} catch (Throwable) { /* defaults */ }
+		} catch (Throwable $ig) { nu_ignored($ig, 'defaults'); }
 		return $s;
 	}
 
@@ -129,12 +128,12 @@ final class NuGitHub
 	{
 		$s = self::settings();
 		$days = self::EVERY[$s['every']] ?? 1;
-		// the update page (0.8.690): a known release that is not newer than this installation is likely stale (a newer one was published
+		// the update page: a known release that is not newer than this installation is likely stale (a newer one was published
 		// after the last look) – look again when the last look is more than an hour old, instead of waiting for the next interval
 		$stale = $updatePage && $days && $s['error'] === '' && version_compare((string)($s['latest']['version'] ?? '0'), NU_VERSION, '<=') && $s['checked_at'] < time() - 3600;
 		if (!$days || (!$stale && $s['checked_at'] > time() - $days * 86400)) return 0;
 		self::check();
-		try { NuLibs::ghCheck($s['repo']); } catch (Throwable) { /* shown on the update page */ }    // library packs (0.8.405)
+		try { NuLibs::ghCheck($s['repo']); } catch (Throwable $ig) { nu_ignored($ig, 'shown on the update page'); }    // library packs
 		return 1;
 	}
 
@@ -161,7 +160,7 @@ final class NuGitHub
 			if (is_file($tmp)) @unlink($tmp);
 		}
 		$p = array_values(array_filter(NuUpdate::folderPackages(), static fn($x) => $x['name'] === $name))[0] ?? null;
-		// the reason (0.8.645 – before: always "no valid signature"); a package whose signature PHP cannot check (no sodium) is kept,
+		// the reason (before: always "no valid signature"); a package whose signature PHP cannot check (no sodium) is kept,
 		// as for an uploaded one – Check package shows the warning
 		$why = !class_exists('ZipArchive') ? 'gh_err_nozip' : (!$p || $p['version'] === '' ? 'gh_err_notpkg'
 			: ($p['signature'] === 'unchecked' ? '' : ($p['signature'] === 'unsigned' ? 'gh_err_unsigned' : ($p['ok'] ? '' : 'gh_err_signature'))));
@@ -181,7 +180,7 @@ final class NuGitHub
 	}
 
 	/**
-	 * GET over https with GitHub's headers (also used by NuLibs – library packs, 0.8.405); redirects are followed only to the allowed hosts. Without $file the body is returned.
+	 * GET over https with GitHub's headers (also used by NuLibs – library packs); redirects are followed only to the allowed hosts. Without $file the body is returned.
 	 * curl when available, otherwise PHP's stream wrapper (redirects followed by hand).
 	 */
 	public static function get(string $url, int $max, int $timeout, ?string $file = null, bool $raw = false): string

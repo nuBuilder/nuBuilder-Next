@@ -42,7 +42,7 @@ final class NuDB
 			PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
 			PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
 		];
-		// MySQL (0.8.1342, review P1): nuBuilder Next's own statements are sent in ONE step (emulated prepare – the values are quoted by
+		// MySQL (review P1): nuBuilder Next's own statements are sent in ONE step (emulated prepare – the values are quoted by
 		// PDO and the statement goes to the server once; 40 % less time per statement than prepare + execute). Code of the application
 		// (procedures, form events, nuRunQuery, SQL typed by users, custom pages through pdo()) keeps the server-side prepare it always
 		// had – native() switches it on for those parts. Several statements in one call are refused on this connection, as a server-side
@@ -53,7 +53,7 @@ final class NuDB
 		}
 
 		$this->pdo = new PDO($dsn, $c['user'] ?? null, $c['password'] ?? null, $options);
-		self::$connected = true;                               // a connection exists (0.8.701: NuLanguages reads its setting only then)
+		self::$connected = true;                               // a connection exists (NuLanguages reads its setting only then)
 
 		if ($this->type === 'mysql' && !empty($c['charset'])) {
 			$set = 'SET NAMES ' . self::word($c['charset']);
@@ -74,7 +74,7 @@ final class NuDB
 	{
 		NuDemo::check($sql);                                    // demo mode: read only (core/nudemo.php)
 		$marks = NuHash::$bound && str_contains($sql, NuHash::MARK);
-		if ($marks) [$sql, $params] = NuHash::resolveMarks($sql, $params);   // bound hash variables (0.8.873)
+		if ($marks) [$sql, $params] = NuHash::resolveMarks($sql, $params);   // bound hash variables
 		$this->noteWrite($sql);
 		$t = hrtime(true);
 		if ($marks && $this->emulated()) {
@@ -105,7 +105,7 @@ final class NuDB
 	}
 
 	/**
-	 * Runs $fn with server-side prepared statements (prepare + execute, as nuBuilder Next did before 0.8.1342) – for code and SQL of the
+	 * Runs $fn with server-side prepared statements (prepare + execute) – for code and SQL of the
 	 * application: procedures and form events (NuPhp::run), nuRunQuery, SQL typed by users (readOnly). A bound value then stays a value
 	 * of its own type, so "LIMIT ?" with a number in a string keeps working there. Nested calls are fine.
 	 */
@@ -121,7 +121,7 @@ final class NuDB
 	}
 
 	/**
-	 * What this request asked the database so far (0.8.1341): the number of statements through run() / exec() and the time they took
+	 * What this request asked the database so far: the number of statements through run() / exec() and the time they took
 	 * (without reading the rows). Shown in developer mode at the end of a page (#nuPerf, core/nulayout.php) – dev/tests/perf.js
 	 * compares it with the budget of each page, so a page that starts to ask more is noticed.
 	 */
@@ -129,7 +129,7 @@ final class NuDB
 	public static int $nanos = 0;
 
 	/**
-	 * Per-request caches that a statement may invalidate (0.8.827): DDL → the table-exists cache of this connection, a write to
+	 * Per-request caches that a statement may invalidate: DDL → the table-exists cache of this connection, a write to
 	 * zzzzsys_nunext_setting → nu_setting_value()'s cache. Looks only at the first word, so a SELECT costs one preg_match.
 	 */
 	private function noteWrite(string $sql): void
@@ -140,7 +140,7 @@ final class NuDB
 		if ($verb === 'SELECT' || $verb === 'SHOW' || $verb === 'SET' || $verb === 'EXPLAIN') return;
 		if ($verb === '' || $verb === 'CREATE' || $verb === 'DROP' || $verb === 'RENAME' || $verb === 'ALTER') {
 			$this->tableCache = [];
-			if (isset($_SESSION['nu_rd_found'])) unset($_SESSION['nu_rd_found']);   // NuRowDetails::candidates: tables changed
+			if (isset($_SESSION[NuSess::ROW_DETAILS_FOUND])) unset($_SESSION[NuSess::ROW_DETAILS_FOUND]);   // NuRowDetails::candidates: tables changed
 		}
 		if (($verb === '' || stripos($sql, 'zzzzsys_nunext_setting') !== false) && function_exists('nu_setting_forget')) nu_setting_forget();
 		// per-request values (NuMemo): a statement that names its tables drops what was read from them; one that does not (CALL, EXEC … – a
@@ -189,7 +189,7 @@ final class NuDB
 	{
 		$limit  = max(1, $limit);
 		$offset = max(0, $offset);
-		if (trim($orderBy) !== '') $sql .= ' ORDER BY ' . self::uniqueOrder($orderBy);   // '' = no order (MySQL only – NuBrowse, 0.8.956)
+		if (trim($orderBy) !== '') $sql .= ' ORDER BY ' . self::uniqueOrder($orderBy);   // '' = no order (MySQL only – NuBrowse)
 		$sql   .= $this->type === 'sqlsrv'
 			? " OFFSET $offset ROWS FETCH NEXT $limit ROWS ONLY"
 			: " LIMIT $limit OFFSET $offset";
@@ -197,7 +197,7 @@ final class NuDB
 	}
 
 	/**
-	 * An ORDER BY list without repeated items (0.8.792): SQL Server refuses "ORDER BY nu_pk, nu_pk" ("A column has been specified more
+	 * An ORDER BY list without repeated items: SQL Server refuses "ORDER BY nu_pk, nu_pk" ("A column has been specified more
 	 * than once in the order by list"), MySQL ignores it. The first one of an expression counts (ASC / DESC do not make it another).
 	 */
 	public static function uniqueOrder(string $orderBy): string
@@ -238,7 +238,7 @@ final class NuDB
 	{
 		if (!$row) return 0;
 		// nuBuilder's own tables: write only what really changed (NULL and '' count as the same) – nuBuilder writes only edited
-		// fields, so a save without a change must leave its rows exactly as they were (0.8.364, dev/tests/compat.js meta:*)
+		// fields, so a save without a change must leave its rows exactly as they were (dev/tests/compat.js meta:*)
 		if (self::nuBuilderTable($table) && ($old = $this->one('SELECT * FROM ' . self::word($table) . ' WHERE ' . self::word($pk) . ' = ?', [$id]))) {
 			$oldCi = array_change_key_case($old, CASE_LOWER);
 			foreach ($row as $col => $v) {
@@ -247,7 +247,7 @@ final class NuDB
 				$o = $oldCi[$k];
 				if (!is_scalar($v) && $v !== null) continue;
 				if ((string)($o ?? '') === (string)($v ?? '')) unset($row[$col]);
-				// a value stored with spaces around it comes back trimmed from the form (nu_post trims) – not a change (0.8.956)
+				// a value stored with spaces around it comes back trimmed from the form (nu_post trims) – not a change
 				elseif (is_string($o) && is_string($v) && $v !== '' && trim($o) === $v) unset($row[$col]);
 			}
 			if (!$row) return 0;
@@ -261,7 +261,7 @@ final class NuDB
 	/**
 	 * Columns an editor fills with its own default where nuBuilder Forte left NULL (a switch shown off → '0', a status shown as
 	 * Active → '1', an empty graphic → its JSON): while the stored value is NULL and the posted one is that default, the column is
-	 * left out, so a save without a change keeps nuBuilder Forte's row as it was (0.8.956, dev/tests/compat.js meta:*).
+	 * left out, so a save without a change keeps nuBuilder Forte's row as it was (dev/tests/compat.js meta:*).
 	 * @param array<string, string> $defaults column => the value the editor shows for NULL
 	 */
 	public static function keepNull(?array $old, array $row, array $defaults): array
@@ -276,7 +276,7 @@ final class NuDB
 	/** One of nuBuilder's tables (zzzzsys_…), not nuBuilder Next's own (zzzzsys_nunext_…). */
 	/** True once a database connection was made in this request (no connection attempt). */
 	public static bool $connected = false;
-	/** The connection nu_db() returns instead of the configured one – the installer's, before nuconfig.php exists (integrity check, 0.8.705). */
+	/** The connection nu_db returns instead of the configured one – the installer's, before nuconfig.php exists (integrity check). */
 	public static ?NuDB $override = null;
 
 	public static function nuBuilderTable(string $table): bool
@@ -318,7 +318,7 @@ final class NuDB
 			$cache[$k] = false;
 			if ($this->type === 'mysql') {
 				try { $cache[$k] = str_contains(strtoupper((string)$this->pdo->query('SELECT @@SESSION.sql_mode')->fetchColumn()), 'NO_BACKSLASH_ESCAPES'); }
-				catch (Throwable) { }
+				catch (Throwable $ig) { nu_ignored($ig); }
 			}
 		}
 		return $cache[$k];
@@ -339,7 +339,7 @@ final class NuDB
 	{
 		NuMemo::off();
 		// the raw connection goes to code that may expect server-side prepares (custom pages: $nu->db(), "LIMIT ?" with a bound value):
-		// from here on this request uses them for everything (0.8.1342)
+		// from here on this request uses them for everything
 		if ($this->emulate) {
 			$this->emulate = false;
 			$this->pdo->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
@@ -374,18 +374,18 @@ final class NuDB
 	 * Runs $fn inside a transaction that is always rolled back, with a time limit per statement – for queries typed by a user
 	 * (SQL builder preview). MySQL / MariaDB: START TRANSACTION READ ONLY (writes fail), max_execution_time (MySQL, SELECT) or
 	 * max_statement_time (MariaDB); SQL Server: BEGIN TRAN … ROLLBACK and the query timeout of the driver.
-	 * Inside a running transaction (0.8.461, e.g. an access condition checked during a save): a SAVEPOINT that is rolled back – a new
+	 * Inside a running transaction (e.g. an access condition checked during a save): a SAVEPOINT that is rolled back – a new
 	 * START TRANSACTION would commit the running one in MySQL (the save wrote half, its ROLLBACK then hit nothing).
 	 */
 	public function readOnly(callable $fn, int $seconds = 15): mixed
 	{
-		// SQL typed by users: server-side prepares as before (0.8.1342)
+		// SQL typed by users: server-side prepares as before
 		if ($this->emulated()) return $this->native(fn () => $this->readOnly($fn, $seconds));
 		static $depth = 0;
 		$mark = NuMemo::$writes;                                // a write that gets rolled back here: what was read after it is forgotten
 		if ($this->pdo->inTransaction()) {
 			$sp = 'nu_ro_' . (++$depth);
-			$this->pdo->exec($this->type === 'sqlsrv' ? "SAVE TRANSACTION $sp" : "SAVEPOINT $sp");
+			$this->pdo->exec($this->savepointSql($sp));
 			try {
 				return $fn($this);
 			} finally {
@@ -423,19 +423,18 @@ final class NuDB
 			}
 			return $fn($this);
 		} finally {
-			try { if ($this->type === 'mysql') $this->pdo->exec('ROLLBACK'); elseif ($this->pdo->inTransaction()) $this->pdo->rollBack(); } catch (Throwable) {}
+			try { if ($this->type === 'mysql') $this->pdo->exec('ROLLBACK'); elseif ($this->pdo->inTransaction()) $this->pdo->rollBack(); } catch (Throwable $ig) { nu_ignored($ig); }
 			if (NuMemo::$writes !== $mark) NuMemo::forget();
 			foreach ($restore as $var => $old) {
 				try {
 					if ($var === 'timeout') $this->pdo->setAttribute(PDO::SQLSRV_ATTR_QUERY_TIMEOUT, (int)$old);
 					elseif (is_numeric($old)) $this->pdo->exec("SET SESSION $var = " . (0 + $old));
-				} catch (Throwable) {
-				}
+				} catch (Throwable $ig) { nu_ignored($ig); }
 			}
 		}
 	}
 
-	/** @var array<string, bool> table-exists answers of this connection (0.8.827: a page asked the catalogue 12–30 times) */
+	/** @var array<string, bool> table-exists answers of this connection (a page asked the catalogue 12–30 times) */
 	private array $tableCache = [];
 
 	public function tableExists(string $table): bool
@@ -489,7 +488,7 @@ final class NuDB
 
 	public static function forgetColumns(string $table): void
 	{
-		if ($table === '') { self::$columnCache = []; return; }     // '' = all tables (Reset database, 0.8.628)
+		if ($table === '') { self::$columnCache = []; return; }     // '' = all tables (Reset database)
 		unset(self::$columnCache[strtolower($table)]);
 	}
 
@@ -518,7 +517,7 @@ final class NuDB
 				'auto'     => str_contains(strtolower((string)$r['x']), 'auto_increment'),
 				'numeric'  => (bool)preg_match('/int|dec|num|float|double|real|money|bit/', $t),
 				'temporal' => (bool)preg_match('/date|time|year/', $t),
-				'length'   => isset($r['l']) && $r['l'] !== null && (int)$r['l'] > 0 ? (int)$r['l'] : null,   // characters of text columns (0.8.622)
+				'length'   => isset($r['l']) && $r['l'] !== null && (int)$r['l'] > 0 ? (int)$r['l'] : null,   // characters of text columns
 			];
 		}
 		return self::$columnCache[$key] = $cols;
@@ -538,9 +537,84 @@ final class NuDB
 		return $this->type === 'sqlsrv' ? $ymd . 'T00:00:00' : $ymd . ' 00:00:00';
 	}
 
+	// ----------------------------------------------------------------- SQL that differs between MySQL and SQL Server (code review R8)
+	// The recurring branches on $this->type in one place. SQLite (unit tests only) follows MySQL where it understands the same.
+
+	/** Date and time as a parameter value the driver parses unambiguously ('Y-m-d H:i:s', SQL Server 'Y-m-d\TH:i:s'); default now. */
+	public function stamp(?int $ts = null): string
+	{
+		return date($this->type === 'sqlsrv' ? 'Y-m-d\TH:i:s' : 'Y-m-d H:i:s', $ts ?? time());
+	}
+
+	/** Options after CREATE TABLE … ( … ): MySQL's engine / character set, nothing elsewhere. */
+	public function tableOptions(): string
+	{
+		return $this->type === 'mysql' ? NuDDL::mysqlTableOptions() : '';
+	}
+
+	/** An expression as text (search, filters, comparisons of mixed types). */
+	public function castText(string $expr): string
+	{
+		return $this->type === 'sqlsrv' ? "CAST(($expr) AS NVARCHAR(4000))" : "CAST(($expr) AS CHAR)";
+	}
+
+	/** One value of a JSON column as text – NULL when the column holds no valid JSON. $path without '$.', e.g. 'nunext.team'. */
+	public function jsonText(string $column, string $path): string
+	{
+		$p = "'$." . str_replace("'", "''", $path) . "'";
+		return match ($this->type) {
+			'mysql'  => "CASE WHEN $column IS NOT NULL AND $column <> '' AND JSON_VALID($column) THEN JSON_UNQUOTE(JSON_EXTRACT($column,$p)) END",
+			'sqlsrv' => "CASE WHEN ISJSON($column) = 1 THEN JSON_VALUE($column,$p) END",
+			default  => "json_extract($column,$p)",
+		};
+	}
+
+	/** The first $n rows of a SELECT (wrapped as a derived table – the SELECT itself may not end in ORDER BY on SQL Server). */
+	public function firstRows(string $select, int $n): string
+	{
+		$n = max(0, $n);
+		return $this->type === 'sqlsrv' ? "SELECT TOP $n * FROM ($select) nuFirst" : "SELECT * FROM ($select) nuFirst LIMIT $n";
+	}
+
+	/** What goes after the ORDER BY of a SELECT to keep its first $n rows (SQL Server needs that ORDER BY). */
+	public function limitTail(int $n): string
+	{
+		$n = max(0, $n);
+		return $this->type === 'sqlsrv' ? " OFFSET 0 ROWS FETCH NEXT $n ROWS ONLY" : " LIMIT $n";
+	}
+
+	/** ALTER TABLE … ADD [COLUMN] – SQL Server has no word COLUMN there. $table / $column as they go into the SQL. */
+	public function addColumnSql(string $table, string $column, string $type): string
+	{
+		return "ALTER TABLE $table ADD " . ($this->type === 'sqlsrv' ? '' : 'COLUMN ') . "$column $type";
+	}
+
+	/** DROP TABLE IF EXISTS – on SQL Server with OBJECT_ID, which every version knows. */
+	public function dropTableSql(string $table): string
+	{
+		return $this->type === 'sqlsrv' ? "IF OBJECT_ID('$table') IS NOT NULL DROP TABLE $table" : "DROP TABLE IF EXISTS $table";
+	}
+
+	/** A name quoted for this database ([x], `x`, "x") after the check of ident(). */
+	public function quoteName(string $name): string
+	{
+		$n = self::ident($name);
+		return match ($this->type) { 'sqlsrv' => "[$n]", 'mysql' => "`$n`", default => "\"$n\"" };
+	}
+
+	/** Savepoints: one statement each. */
+	public function savepointSql(string $name): string { return $this->type === 'sqlsrv' ? "SAVE TRANSACTION $name" : "SAVEPOINT $name"; }
+	public function rollbackToSql(string $name): string { return $this->type === 'sqlsrv' ? "ROLLBACK TRANSACTION $name" : "ROLLBACK TO SAVEPOINT $name"; }
+
+	/** Name of the database product for texts (AI prompts, dump headers). */
+	public function label(): string
+	{
+		return $this->type === 'sqlsrv' ? 'SQL Server' : 'MySQL / MariaDB';
+	}
+
 	/**
 	 * Equal text of two columns from tables that may have different collations (e.g. nuBuilder's zzzzsys_user in utf8mb4_general_ci,
-	 * nuBuilder Next's own tables in utf8mb4_unicode_ci): MySQL compares the bytes, SQL Server the database's collation (0.8.331).
+	 * nuBuilder Next's own tables in utf8mb4_unicode_ci): MySQL compares the bytes, SQL Server the database's collation.
 	 */
 	public function sameText(string $a, string $b): string
 	{
@@ -555,7 +629,7 @@ final class NuDB
 	private static array $collCache = [];
 
 	/**
-	 * Like sameText(), but an index on $a (a column of nuBuilder Next's own table $table) stays usable (0.8.761, review B1): only the other
+	 * Like sameText(), but an index on $a (a column of nuBuilder Next's own table $table) stays usable (review B1): only the other
 	 * side is converted to $a's character set and collation. sameText() casts both sides to BINARY, which no index can use – the users
 	 * list sorted by "Last login" took 39 s with 500 users and 200,000 log rows, 0.03 s this way. Unknown column: sameText().
 	 */
@@ -591,7 +665,7 @@ final class NuDB
 		return '%' . self::likeRaw($s) . '%';
 	}
 
-	/** The text with LIKE's wildcards escaped (ESCAPE '!'), without the % around it (0.8.719: starts with / ends with). */
+	/** The text with LIKE's wildcards escaped (ESCAPE '!'), without the % around it (starts with / ends with). */
 	public static function likeRaw(string $s): string
 	{
 		return str_replace(['!', '%', '_', '['], ['!!', '!%', '!_', '!['], $s);
@@ -599,7 +673,7 @@ final class NuDB
 }
 
 /**
- * Values that several parts of one page ask the database for (performance review, 0.8.1341): the signed-in user's row, the rights
+ * Values that several parts of one page ask the database for (performance review): the signed-in user's row, the rights
  * rows of an access level, a user's permission items, the code of a form event … – read once per request and connection.
  * Every entry names the tables it comes from. A statement that changes data and goes through NuDB (run / exec – also nuRunQuery of
  * form code) drops the entries of every table it names; a rollback drops all of them; once the raw PDO connection was handed out

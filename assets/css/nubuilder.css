@@ -1,12 +1,11 @@
-/* New form wizard (pages/nubuilder.php, assets/js/nubuilder.js). The form builder's editor was replaced by design mode (0.8.670,
- * assets/css/nudesign.css); the attribute editor's rules moved there too. */
-.nuBuilderContainer { max-width: none; }   /* 0.8.563: no cap – the preview takes the extra width */
+/* New form wizard (pages/nubuilder.php, assets/js/nubuilder.js). The form builder's editor was replaced by design mode (* assets/css/nudesign.css); the attribute editor's rules moved there too. */
+.nuBuilderContainer { max-width: none; }   /* no cap – the preview takes the extra width */
 .nbColGrid td { padding: .2rem; }
 .nbColGrid .nbLen { width: 5.5rem; }
 .nbColGrid td:first-child { min-width: 9rem; }
 .nbColGrid td:nth-child(2) { min-width: 8.5rem; }   /* label */
 .nbColGrid td:nth-child(3) { min-width: 10.5rem; }  /* type: the longest name ("Record ID (lookup)") fits; the grid scrolls sideways on phones */
-/* table mode of the wizard: classes of #nbNewForm set by the page (start) and nubuilder.js applyMode() – was :has() (0.8.1342) */
+/* table mode of the wizard: classes of #nbNewForm set by the page (start) and nubuilder.js applyMode() – was :has() */
 #nbNewForm.nbIsNew .nbExisting { display: none !important; }
 #nbNewForm.nbIsNew:not(.nbIsLaunch) .nbNew { display: block !important; }
 #nbNewForm.nbIsExisting .nbNew { display: none !important; }
@@ -22,7 +21,7 @@
 .nbStepMark.active { border-top-color: var(--nu-accent, var(--bs-primary)); color: var(--bs-body-color); font-weight: 600; }
 .nbStepMark.done { border-top-color: var(--nu-accent-2, var(--bs-success)); cursor: pointer; }
 .nbStepMark.done:hover { color: var(--bs-body-color); }
-/* New form: chosen columns of an existing table (0.8.675) */
+/* New form: chosen columns of an existing table */
 .nbPickBox { max-height: 22rem; overflow-y: auto; }
 .nbPickGrid thead th { position: sticky; top: 0; z-index: 1; background: var(--bs-body-bg); }
 .nbPickGrid td { padding: .2rem .4rem; }
@@ -31,6 +30,6 @@
 .nbPickGrip { cursor: grab; color: var(--bs-secondary-color); }
 .nbPickDragging { opacity: .5; }
 .nbPickOff .nbPickName { color: var(--bs-secondary-color); text-decoration: line-through; }
-/* New form, step 1 (0.8.866): description at most 500 px, code at most 380 px wide */
+/* New form, step 1: description at most 500 px, code at most 380 px wide */
 .nbColDesc { max-width: 500px; }
 .nbColCode { max-width: 380px; }

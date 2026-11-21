@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * AI context pack (0.8.961): a file the user attaches to the AI chat together with the prompt of Form with AI / design mode's Ask AI,
+ * AI context pack: a file the user attaches to the AI chat together with the prompt of Form with AI / design mode's Ask AI,
  * so the AI knows nuBuilder Next's functions, hash variables, conventions and the exact shape of a form spec – not only the format
  * description of the prompt.
  *
@@ -69,7 +69,7 @@ final class NuAiContext
 	}
 
 	/**
-	 * The pack of the prompt generator (0.8.991): PHP / JavaScript / SQL code, not a form spec – no request format, no example forms.
+	 * The pack of the prompt generator: PHP / JavaScript / SQL code, not a form spec – no request format, no example forms.
 	 * @param array $tables the tables chosen in the prompt ([] = all)
 	 */
 	public static function codeSections(array $tables, bool $full): array
@@ -121,7 +121,7 @@ final class NuAiContext
 
 	private static function header(): string
 	{
-		$db = nu_db()->type === 'sqlsrv' ? 'SQL Server' : 'MySQL / MariaDB';
+		$db = nu_db()->label();
 		return '> nuBuilder Next ' . NU_VERSION . ' · database ' . $db . ' · made ' . date('Y-m-d H:i')
 			. ". This file describes the installed version. It contains the structure of the database tables, but no data, settings or passwords.";
 	}
@@ -288,5 +288,27 @@ final class NuAiContext
 		if (!$rows) return '';
 		array_splice($rows, 1, 0, ['|' . str_repeat(' --- |', substr_count($rows[0], ' | ') + 1)]);
 		return implode("\n", $rows);
+	}
+
+	/**
+	 * The JSON object of an AI answer – a ```json block or the outermost { … }, comments copied from an example removed (code review D5:
+	 * shared by Form with AI and Reports with AI). @return array<mixed>|string the object, or the error text
+	 */
+	public static function answerJson(string $answer): array|string
+	{
+		$a = trim($answer);
+		if ($a === '') return t('fai_err_no_json');
+		if (preg_match('/```(?:json)?\s*(\{.*\})\s*```/s', $a, $m)) $a = $m[1];
+		else {
+			$s = strpos($a, '{');
+			$e = strrpos($a, '}');
+			if ($s === false || $e === false || $e < $s) return t('fai_err_no_json');
+			$a = substr($a, $s, $e - $s + 1);
+		}
+		$a = (string)preg_replace('~^\s*//.*$~m', '', $a);                     // comments the AI may have copied from the example …
+		$a = (string)preg_replace('~(?<=[,\[\]{}"0-9el])[ \t]+//[^\n]*~', '', $a);   // … also after a value ("https://" has no space before //)
+		$j = json_decode($a, true);
+		if (!is_array($j)) return t('fai_err_json', json_last_error_msg());
+		return $j;
 	}
 }

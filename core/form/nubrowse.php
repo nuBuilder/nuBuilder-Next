@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Browse lists, built the way nuBuilder builds them (0.8.382, nuBrowseRows() / nuSqlString in nuBuilder 4.9): FROM, WHERE, GROUP BY
+ * Browse lists, built the way nuBuilder builds them (nuBrowseRows() / nuSqlString in nuBuilder 4.9): FROM, WHERE, GROUP BY
  * and HAVING of sfo_browse_sql stay, the field list is replaced by the primary key and the zzzzsys_browse columns – so columns may
  * use table names and aliases (customer.name, c.name), an AS alias, joins whose tables share column names, and a SQL that does not
  * select the primary key. That query is then wrapped for search, column filters, count, sort and paging (MySQL and MSSQL):
@@ -62,7 +62,7 @@ final class NuBrowse
 				$vars[$n] = $v === null ? null : (is_scalar($v) ? (string)$v : (string)json_encode($v, JSON_UNESCAPED_UNICODE));
 			}
 		}
-		// the SQL as run in parts (0.8.1187, side pane "As run"): text, or [name, value as put into the SQL | null = not set, stays as text]
+		// the SQL as run in parts (side pane "As run"): text, or [name, value as put into the SQL | null = not set, stays as text]
 		$parts = [];
 		foreach (preg_split('/(#[A-Za-z_][A-Za-z0-9_]*#)/', $sql, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY) ?: [] as $bit) {
 			if (preg_match('/^#([A-Za-z_][A-Za-z0-9_]*)#$/', $bit, $mm)) {
@@ -71,7 +71,7 @@ final class NuBrowse
 			} else $parts[] = $bit;
 		}
 		self::$shown = ['sql' => NuHash::replace($sql, $hash, NuHash::SQL), 'vars' => $vars, 'parts' => $parts];
-		return NuHash::sql($sql, $hash);   // text, or bound parameters with $nuDevSelectQueryRunParameterised (0.8.873)
+		return NuHash::sql($sql, $hash);   // text, or bound parameters with $nuDevSelectQueryRunParameterised
 	}
 
 	/**
@@ -139,7 +139,8 @@ final class NuBrowse
 			if ($kw === 'FROM' && $from === null) $from = $k;
 		}
 		if ($from === null) return null;
-		$order = ['SELECT' => 'fields', 'FROM' => 'from', 'WHERE' => 'where', 'GROUP BY' => 'group', 'HAVING' => 'having', 'ORDER BY' => 'order', 'LIMIT' => 'tail', 'OFFSET' => 'tail', 'FOR UPDATE' => 'tail'];
+		$order = ['SELECT' => 'fields', 'FROM' => 'from', 'WHERE' => 'where', 'GROUP BY' => 'group', 'HAVING' => 'having', 'ORDER BY' => 'order',
+			'LIMIT' => 'tail', 'OFFSET' => 'tail', 'FOR UPDATE' => 'tail'];
 		$seen = [];
 		for ($k = 0, $nHits = count($hits); $k < $nHits; $k++) {
 			[$kw, $pos, $l] = $hits[$k];
@@ -207,10 +208,10 @@ final class NuBrowse
 
 	public static function build(string $sql, string $pk, array $cols, ?callable $columnsOf = null): array
 	{
-		$sql = self::trimTrailingComments($sql);              // "… -- note" at the end would comment out what is added after it (0.8.930)
+		$sql = self::trimTrailingComments($sql);              // "… -- note" at the end would comment out what is added after it
 		$p = self::splitSelect($sql);
 		$pkIdent = NuDB::ident($pk ?: 'id');
-		if ($p === null) {                                      // UNION / WITH …: the whole SQL as a derived table, as before 0.8.382
+		if ($p === null) {                                      // UNION / WITH …: the whole SQL as a derived table
 			[$inner, $order] = self::splitOrder($sql);
 			$f = ["nuX.$pkIdent AS nu_pk"];
 			foreach ($cols as $c) $f[] = $c['expr'] . ' AS nu_c' . $c['index'];
@@ -226,11 +227,11 @@ final class NuBrowse
 		$items = self::splitList($p['fields']);
 		foreach ($items as $it) { [$e, $a] = self::stripAlias($it); if ($a !== null) $aliases[strtolower($a)] = $e; }
 		$f = ["$pkIdent AS nu_pk"];
-		// a column that names an alias of the field list (SELECT CONCAT(a, b) AS full_name … with the column full_name, 0.8.731, reported
-		// by a tester): the field list is replaced, so the alias would not exist – its expression is used instead. Since 0.8.1059 also an
+		// a column that names an alias of the field list (SELECT CONCAT(a, b) AS full_name … with the column full_name, reported
+		// by a tester): the field list is replaced, so the alias would not exist – its expression is used instead. Since also an
 		// alias INSIDE a column's expression (IF(…, amount, ''), CONCAT(…), CAST(amount AS …)) – reported by a tester with a patch
 		// (expandAliases). A real column of the tables in FROM wins, as in nuBuilder Forte, which never resolves aliases; when a source
-		// cannot be checked (other database, unknown table, SELECT * of a derived table) the alias is used (0.8.1075, a tester's report:
+		// cannot be checked (other database, unknown table, SELECT * of a derived table) the alias is used (a tester's report:
 		// the field list is replaced, so a name that is no alias fails either way); derived tables give their output names.
 		$real = null;
 		$realCols = function () use ($p, $columnsOf, &$real): array {
@@ -281,7 +282,7 @@ final class NuBrowse
 	 * total.x), function names (total( …), the word after AS / USING (CAST(x AS date)), after a number (INTERVAL 1 day) or after ")",
 	 * an alias that is a real column ($real: lower-case names; null = aliases always win, as in MySQL's ORDER BY) and an alias that
 	 * only names itself. $skipKeyword: the expression is a clause that begins with a key word (GROUP BY …, HAVING …). null = no change.
-	 * (0.8.1059, from a tester's patch)
+	 * (from a tester's patch)
 	 */
 	public static function expandAliases(string $e, array $aliases, ?array $real, bool $skipKeyword = false): ?string
 	{
@@ -366,7 +367,7 @@ final class NuBrowse
 	/**
 	 * Columns of the sources in a FROM clause (lower-case names as keys), or null when one source cannot be checked: a qualified name
 	 * (other database / schema), a table without columns (unknown) or a derived table with SELECT *. A derived table
-	 * ("JOIN (SELECT … ) x") gives the output names of its SELECT (0.8.731; derived tables 0.8.1075).
+	 * ("JOIN (SELECT … ) x") gives the output names of its SELECT (derived tables).
 	 */
 	public static function sourceColumns(string $from, ?callable $columnsOf = null): ?array
 	{
@@ -438,19 +439,19 @@ final class NuBrowse
 	{
 		$cols = [];
 		foreach ($meta->browse as $i => $b) {
-			// column visibility / field data access (0.8.480, NuBrowseAccess): a hidden column is never selected, searched, filtered or
+			// column visibility / field data access (NuBrowseAccess): a hidden column is never selected, searched, filtered or
 			// sorted; a masked one is shown masked and is not searched, filtered or sorted. Columns keep their index (nu_c<index>).
 			$state = NuBrowseAccess::state($meta, $b);
 			if ($state === 'hide') continue;
-			$expr = trim(NuHash::sql((string)$b['sbr_display'], $hash));   // nuBuilder replaces hash variables in the columns too (bound: 0.8.873)
+			$expr = trim(NuHash::sql((string)$b['sbr_display'], $hash));   // nuBuilder replaces hash variables in the columns too (bound with $nuDevSelectQueryRunParameterised)
 			if ($expr === '' || strtolower($expr) === 'null') $expr = 'NULL';
 			$cols[$i] = [
 				'mask' => str_starts_with($state, 'mask:') ? substr($state, 5) : null,
 				'index' => $i, 'title' => (string)$b['sbr_title'], 'expr' => $expr, 'align' => (string)($b['sbr_align'] ?: 'l'),
 				'format' => (string)$b['sbr_format'], 'width' => (int)$b['sbr_width'], 'id' => (string)$b['zzzzsys_browse_id'],
 				'filter' => !empty(NuFormMeta::nunextJson($b['sbr_json'] ?? null)['filter']) && $expr !== 'NULL' && !str_starts_with($state, 'mask:'),
-				'badge' => str_starts_with($state, 'mask:') ? null : NuFormMeta::badgeOf($b['sbr_json'] ?? null),   // design mode's Badge (0.8.688)
-				'action' => str_starts_with($state, 'mask:') ? null : NuFormMeta::actionOf($b['sbr_json'] ?? null),   // On click (0.8.872)
+				'badge' => str_starts_with($state, 'mask:') ? null : NuFormMeta::badgeOf($b['sbr_json'] ?? null),   // design mode's Badge
+				'action' => str_starts_with($state, 'mask:') ? null : NuFormMeta::actionOf($b['sbr_json'] ?? null),   // On click
 				'total' => str_starts_with($state, 'mask:') || $expr === 'NULL' ? null : NuFormMeta::totalOf($b['sbr_json'] ?? null),   // row of totals
 				'group' => !str_starts_with($state, 'mask:') && $expr !== 'NULL' && NuFormMeta::groupOf($b['sbr_json'] ?? null),   // list grouped by this column
 			];
@@ -467,7 +468,7 @@ final class NuBrowse
 	}
 
 	/**
-	 * The list query with the search, filters and advanced search of $opt (0.8.1151, shared by query() and the pivot, NuPivot): columns,
+	 * The list query with the search, filters and advanced search of $opt (shared by query() and the pivot, NuPivot): columns,
 	 * the inner SQL (aliases nu_pk / nu_c<i>), its default ORDER BY, the WHERE parts on nuT and their parameters, and nuT's column expression.
 	 * @return array{cols: array, inner: string, order: string, where: list<string>, params: list<mixed>, col: callable}
 	 */
@@ -482,7 +483,7 @@ final class NuBrowse
 		$params = [];
 		$search = trim((string)($opt['search'] ?? ''));
 		if ($search !== '') {
-			// nuBuilder's syntax (0.8.427): words and "phrases" must each be found in one of the searched columns; -word and -"phrase"
+			// nuBuilder's syntax: words and "phrases" must each be found in one of the searched columns; -word and -"phrase"
 			// must be in none of them (an empty column counts as not containing it – nuBuilder's NOT LIKE drops such rows)
 			$terms = self::terms($search);
 			$searched = array_filter($cols, static fn($c) => $c['width'] > 0 && $c['expr'] !== 'NULL' && $c['mask'] === null && !in_array($c['index'], (array)($opt['nosearch'] ?? []), true)
@@ -504,7 +505,7 @@ final class NuBrowse
 		}
 		$runFilter = trim((string)($opt['runfilter'] ?? ''));
 		if ($runFilter !== '') {
-			// run filter (sob_run_filter / nuForm filter, 0.8.974): as nuBuilder Forte's nuBrowseWhereClause("$filter $search") – each word
+			// run filter (sob_run_filter / nuForm filter): as nuBuilder Forte's nuBrowseWhereClause("$filter $search") – each word
 			// must be found in the primary key or in any column, hidden ones (width 0) included; nosearch / searchonly do not apply
 			$terms = self::terms($runFilter);
 			$fields = ['nuT.nu_pk'];
@@ -528,7 +529,7 @@ final class NuBrowse
 			$where[] = self::castText($col($c)) . ' = ?';
 			$params[] = $val;
 		}
-		if (!empty($opt['adv'])) {                                            // advanced search (0.8.719, NuAdvSearch)
+		if (!empty($opt['adv'])) {                                            // advanced search (NuAdvSearch)
 			[$aw, $ap] = NuAdvSearch::where($cols, $opt['adv'], $col);
 			if ($aw !== '') { $where[] = $aw; array_push($params, ...$ap); }
 		}
@@ -565,7 +566,7 @@ final class NuBrowse
 				}
 			} catch (Throwable $e) {                                         // e.g. a text column SQL Server cannot add up: the list without totals
 				$total = null; $totals = [];
-				if (class_exists('NuDebugLog')) { try { NuDebugLog::write("Column totals:\n" . $e->getMessage()); } catch (Throwable) {} }
+				if (class_exists('NuDebugLog')) { try { NuDebugLog::write("Column totals:\n" . $e->getMessage()); } catch (Throwable $ig) { nu_ignored($ig); } }
 			}
 		}
 		if ($total === null) $total = (int)$db->value('SELECT COUNT(*)' . $from, $params);
@@ -590,13 +591,13 @@ final class NuBrowse
 		if (!empty($opt['totals'])) foreach ($cols as $c) if (!empty($c['group'])) { $grp = $c; break; }
 		if ($grp !== null && (string)$sort !== (string)$grp['index']) $order = 'nu_c' . $grp['index'] . ' ASC' . ($order !== '' ? ', ' . $order : '');
 		// no ORDER BY in the browse SQL and no column sorted: MySQL keeps the table's own order, as nuBuilder Forte (LIMIT without
-		// ORDER BY) – e.g. a Before Browse table made with CREATE TABLE … SELECT … ORDER BY (0.8.956); SQL Server needs one for OFFSET
+		// ORDER BY) – e.g. a Before Browse table made with CREATE TABLE … SELECT … ORDER BY; SQL Server needs one for OFFSET
 		if ($order !== '') $order .= ', nu_pk';
 		elseif ($db->type !== 'mysql') $order = 'nu_pk';
 
 		$rows = [];
 		$fetched = $db->page($select . $from, $params, $order, $per, ($page - 1) * $per);
-		// nuBuilder Forte's nuOnProcessBrowseRows() in Before Browse (0.8.958): the page's rows as [pk, column 0, column 1 …] before formatting
+		// nuBuilder Forte's nuOnProcessBrowseRows() in Before Browse: the page's rows as [pk, column 0, column 1 …] before formatting
 		if (isset($opt['process']) && is_callable($opt['process']) && $fetched) {
 			$width = $cols ? max(array_map(static fn($c) => (int)$c['index'], $cols)) + 1 : 0;
 			$raw = [];
@@ -616,14 +617,16 @@ final class NuBrowse
 		}
 		foreach ($fetched as $r) {
 			$cells = $classes = [];
-			$rawRow = [$r['nu_pk']];                                 // nuBuilder Forte's browse_rows: [pk, value of column 0 …] unformatted (0.8.965)
+			$rawRow = [$r['nu_pk']];                                 // nuBuilder Forte's browse_rows: [pk, value of column 0 …] unformatted
 			foreach ($cols as $c) {
 				$v = $r['nu_c' . $c['index']];
 				$rawRow[(int)$c['index'] + 1] = $c['mask'] !== null ? NuFieldAccess::maskValue($v, $c['mask']) : NuSecurity::demoMask($c['expr'], $v);
 			}
 			foreach ($cols as $k => $c) {
 				$v = $r['nu_c' . $c['index']];
-				$cells[$k]   = $c['mask'] !== null ? NuFieldAccess::maskValue($v, $c['mask']) : (!empty($opt['raw']) ? (string)(NuSecurity::demoMask($c['expr'], $v) ?? '') : NuFormat::format(NuSecurity::demoMask($c['expr'], $v), $c['format']));   // raw: print view of nuPrintUseBrowseFormats(false) (0.8.958)   // demo: no hashes / secrets
+				$cells[$k]   = $c['mask'] !== null ? NuFieldAccess::maskValue($v,
+					$c['mask']) : (!empty($opt['raw']) ? (string)(NuSecurity::demoMask($c['expr'], $v) ?? '') : NuFormat::format(NuSecurity::demoMask($c['expr'], $v),
+						$c['format']));   // raw: print view of nuPrintUseBrowseFormats(false)   // demo: no hashes / secrets
 				$classes[$k] = $c['mask'] !== null ? '' : NuFormat::cssClass($v, $c['format']);
 			}
 			$rows[] = ['pk' => (string)$r['nu_pk'], 'cells' => $cells, 'classes' => $classes, 'raw' => $rawRow] + ($grp !== null ? ['group' => self::groupKey($r['nu_c' . $grp['index']])] : []);
@@ -632,7 +635,8 @@ final class NuBrowse
 		$groups = [];
 		if ($grp !== null && $rows) {
 			foreach ($rows as $row) $groups[$row['group']] ??= ['label' => '', 'count' => null, 'totals' => []];
-			foreach ($fetched as $r) { $k = self::groupKey($r['nu_c' . $grp['index']]); if (($groups[$k]['label'] ?? '') === '') $groups[$k]['label'] = (string)NuFormat::format(NuSecurity::demoMask($grp['expr'], $r['nu_c' . $grp['index']]), $grp['format']); }
+			foreach ($fetched as $r) { $k = self::groupKey($r['nu_c' . $grp['index']]); if (($groups[$k]['label'] ?? '') === '') $groups[$k]['label'] = (string)NuFormat::format(NuSecurity::demoMask($grp['expr'], $r['nu_c' . $grp['index']]),
+				$grp['format']); }
 			try {
 				$gx = $col($grp);
 				$gt = self::castText($gx);
@@ -650,11 +654,12 @@ final class NuBrowse
 					if ($groups[$k]['totals'] === []) foreach ($aggs as $i => $e) $groups[$k]['totals'][$i] = self::totalCell($cols[$i], $g['nu_t' . $i] ?? null);
 				}
 			} catch (Throwable $e) {
-				if (class_exists('NuDebugLog')) { try { NuDebugLog::write("Group subtotals:\n" . $e->getMessage()); } catch (Throwable) {} }
+				if (class_exists('NuDebugLog')) { try { NuDebugLog::write("Group subtotals:\n" . $e->getMessage()); } catch (Throwable $ig) { nu_ignored($ig); } }
 			}
 		}
 
-		return ['columns' => $cols, 'rows' => $rows, 'total' => $total, 'page' => $page, 'pages' => $pages, 'per' => $per, 'totals' => $totals, 'group' => $grp !== null ? (int)$grp['index'] : null, 'groups' => $groups];
+		return ['columns' => $cols, 'rows' => $rows, 'total' => $total, 'page' => $page, 'pages' => $pages, 'per' => $per, 'totals' => $totals,
+			'group' => $grp !== null ? (int)$grp['index'] : null, 'groups' => $groups];
 	}
 
 	/** The key of a group: the value as text ('' for NULL / empty). */
@@ -710,7 +715,7 @@ final class NuBrowse
 		return ['fn' => $fn, 'label' => $label, 'value' => $v === null ? null : (is_numeric($v) ? $v + 0 : (string)$v), 'text' => $text];
 	}
 
-	/** The filter choices are kept in the session for this long (0.8.761): a DISTINCT over a large list costs a second per filter. */
+	/** The filter choices are kept in the session for this long: a DISTINCT over a large list costs a second per filter. */
 	public const VALUES_TTL = 120;
 
 	/**
@@ -721,7 +726,7 @@ final class NuBrowse
 	{
 		[$inner] = self::build(self::innerSql($meta, $hash), $meta->primaryKey(), [$col]);
 		$key = $meta->id . '|' . $col['index'] . '|' . hash('sha256', $inner . '|' . $limit . '|' . (string)$col['format'] . '|' . NuHash::boundKey($inner));
-		$c = $_SESSION['nu_dv'][$key] ?? null;
+		$c = $_SESSION[NuSess::DISTINCT_VALUES][$key] ?? null;
 		if (is_array($c) && ($c[0] ?? 0) > time() - self::VALUES_TTL) return $c[1];
 		$expr = self::castText('nuT.nu_c' . $col['index']);
 		$db   = nu_db();
@@ -732,8 +737,8 @@ final class NuBrowse
 			$out[] = $v === null ? [self::NULL_FILTER, '∅'] : [(string)$v, NuFormat::format($v, $col['format'])];
 		}
 		if (isset($_SESSION)) {
-			if (count($_SESSION['nu_dv'] ?? []) > 40) $_SESSION['nu_dv'] = [];
-			$_SESSION['nu_dv'][$key] = [time(), $out];
+			if (count($_SESSION[NuSess::DISTINCT_VALUES] ?? []) > 40) $_SESSION[NuSess::DISTINCT_VALUES] = [];
+			$_SESSION[NuSess::DISTINCT_VALUES][$key] = [time(), $out];
 		}
 		return $out;
 	}
@@ -741,7 +746,7 @@ final class NuBrowse
 	/** Forgets the cached filter choices (after a save / delete / import). */
 	public static function forgetValues(): void
 	{
-		unset($_SESSION['nu_dv']);
+		unset($_SESSION[NuSess::DISTINCT_VALUES]);
 	}
 
 	/**
@@ -766,7 +771,7 @@ final class NuBrowse
 
 	public static function castText(string $expr): string
 	{
-		return nu_db()->type === 'sqlsrv' ? "CAST(($expr) AS NVARCHAR(4000))" : "CAST(($expr) AS CHAR)";
+		return nu_db()->castText($expr);
 	}
 
 	/** The column as the user sees it (dd.mm.yyyy), so searching "14.10" finds dates. */
@@ -786,15 +791,14 @@ final class NuBrowse
 	public static function dropTempTable(): void
 	{
 		// only code can have created it: a list without Before Browse code (and no global hook) sent a DROP TABLE on every view – a
-		// statement of its own that also made the next table check read the catalogue again (0.8.1341)
+		// statement of its own that also made the next table check read the catalogue again
 		if (!class_exists('NuPhp', false) || NuPhp::$runs === 0) return;
 		$t  = NuHash::tableId();
 		$db = nu_db();
 		try {
 			if ($db->type === 'sqlsrv') $db->run("IF OBJECT_ID('$t') IS NOT NULL DROP TABLE $t");
 			elseif ($db->type === 'mysql') $db->run("DROP TABLE IF EXISTS $t");
-		} catch (Throwable) {
-		}
+		} catch (Throwable $ig) { nu_ignored($ig); }
 	}
 }
 
@@ -806,7 +810,7 @@ function nu_browse_index_list(mixed $v): array
 }
 
 /** Browse state from the request: search, sort, direction, page and column filters. */
-/** nuBuilder Forte's breadcrumb keys of a list in nuHash() of Before Browse (0.8.984): search, page from 0, sort, direction, skipped columns. */
+/** nuBuilder Forte's breadcrumb keys of a list in nuHash() of Before Browse: search, page from 0, sort, direction, skipped columns. */
 function nu_browse_hash_state(): array
 {
 	$st = nu_browse_request();
@@ -819,7 +823,7 @@ function nu_browse_request(): array
 	return nu_browse_request_from($_GET);
 }
 
-/** The list's search state from $src (GET of the list page; the pivot posts it, 0.8.1151). */
+/** The list's search state from $src (GET of the list page; the pivot posts it). */
 function nu_browse_request_from(array $src): array
 {
 	$flt = [];
@@ -832,9 +836,9 @@ function nu_browse_request_from(array $src): array
 		'sort' => isset($src['sort']) && $src['sort'] !== '' ? (int)$src['sort'] : null,
 		'dir'  => ($src['dir'] ?? '') === 'desc' ? 'desc' : 'asc',
 		'pg'   => max(1, (int)($src['pg'] ?? 1)),
-		'per'  => $src === $_GET ? nu_per_param(true) : 0,   // the footer's page size menu (0.8.437; any size since 0.8.604 – nuBrowseRowsPerPageFilter); 0 = the form's rows per page
+		'per'  => $src === $_GET ? nu_per_param(true) : 0,   // the footer's page size menu (any size – nuBrowseRowsPerPageFilter); 0 = the form's rows per page
 		'flt'  => $flt,
-		'adv'  => NuAdvSearch::parse($src['adv'] ?? ''),   // advanced search (0.8.719)
+		'adv'  => NuAdvSearch::parse($src['adv'] ?? ''),   // advanced search
 		// nuBuilder nuSetNoSearchColumns / nuSetSearchColumns: column indexes the search skips / is limited to ("1,3")
 		'nsc'  => nu_browse_index_list($src['nsc'] ?? ''),
 		'sc'   => nu_browse_index_list($src['sc'] ?? ''),

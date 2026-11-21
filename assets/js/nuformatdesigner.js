@@ -49,7 +49,8 @@
 		modal = h('div', {'class': 'modal fade', tabindex: '-1', 'aria-hidden': 'true', id: 'nuFormatDesigner'}, [
 			h('div', {'class': 'modal-dialog modal-lg modal-dialog-scrollable'}, [
 				h('div', {'class': 'modal-content'}, [
-					h('div', {'class': 'modal-header'}, [h('h2', {'class': 'modal-title fs-5', id: 'nfdTitle'}), h('button', {type: 'button', 'class': 'btn-close', 'data-bs-dismiss': 'modal', 'aria-label': t('cancel')})]),
+					h('div', {'class': 'modal-header'},
+						[h('h2', {'class': 'modal-title fs-5', id: 'nfdTitle'}), h('button', {type: 'button', 'class': 'btn-close', 'data-bs-dismiss': 'modal', 'aria-label': t('cancel')})]),
 					h('div', {'class': 'modal-body', id: 'nfdBody'}),
 					h('div', {'class': 'modal-footer', id: 'nfdFoot'})
 				])
@@ -100,7 +101,8 @@
 				disabled: !!st.id || types.indexOf(ty) < 0, onchange: function () { st = blank(ty); render(); }});
 			r.checked = st.type === ty;
 			typeGroup.appendChild(r);
-			typeGroup.appendChild(h('label', {'class': 'btn btn-outline-primary btn-sm', 'for': rid}, [h('i', {'class': 'bi ' + {Date: 'bi-calendar3', Number: 'bi-123', Text: 'bi-input-cursor-text'}[ty] + ' me-1'}), t('fmt_type_' + ty.toLowerCase())]));
+			typeGroup.appendChild(h('label', {'class': 'btn btn-outline-primary btn-sm', 'for': rid},
+				[h('i', {'class': 'bi ' + {Date: 'bi-calendar3', Number: 'bi-123', Text: 'bi-input-cursor-text'}[ty] + ' me-1'}), t('fmt_type_' + ty.toLowerCase())]));
 		});
 		body.appendChild(typeGroup);
 
@@ -119,7 +121,8 @@
 		]));
 		var def = h('input', {'class': 'form-check-input', type: 'checkbox', role: 'switch', id: defId, onchange: function () { st['default'] = this.checked; }});
 		def.checked = !!st['default'];
-		row.appendChild(h('div', {'class': 'col-sm-4 d-flex align-items-end'}, [h('div', {'class': 'form-check form-switch mb-1'}, [def, h('label', {'class': 'form-check-label small', 'for': defId, text: t('fmt_default')})])]));
+		row.appendChild(h('div', {'class': 'col-sm-4 d-flex align-items-end'},
+			[h('div', {'class': 'form-check form-switch mb-1'}, [def, h('label', {'class': 'form-check-label small', 'for': defId, text: t('fmt_default')})])]));
 
 		// result + preview
 		row.appendChild(h('div', {'class': 'col-12'}, [h('div', {'class': 'nfdResult'}, [
@@ -171,7 +174,9 @@
 		DATE_SEPS.forEach(function (s) {
 			tokens.appendChild(h('button', {type: 'button', 'class': 'btn btn-sm btn-light border nfdMono', onclick: function () { insert(s); }, text: s === ' ' ? '␣' : s}));
 		});
-		tokens.appendChild(h('button', {type: 'button', 'class': 'btn btn-sm btn-light border', title: t('fmt_clear'), onclick: function () { input.value = ''; st.format = ''; update(); input.focus(); }}, [h('i', {'class': 'bi bi-backspace'})]));
+		tokens.appendChild(h('button',
+			{type: 'button', 'class': 'btn btn-sm btn-light border', title: t('fmt_clear'), onclick: function () { input.value = ''; st.format = ''; update(); input.focus(); }},
+			[h('i', {'class': 'bi bi-backspace'})]));
 		row.appendChild(h('div', {'class': 'col-12'}, [
 			h('label', {'class': 'form-label small mb-1', 'for': pid, text: t('fmt_pattern')}), input, h('div', {'class': 'invalid-feedback'}), tokens,
 			h('div', {'class': 'form-text', text: t('fmt_date_help')})
@@ -205,7 +210,8 @@
 		row.appendChild(sel('fmt_places', 'places', [0, 1, 2, 3, 4, 5, 6].map(function (n) { return [String(n), String(n)]; })));
 		row.appendChild(txt('fmt_suffix', 'suffix', ' %'));
 		var nid = id('neg'), neg = h('select', {'class': 'form-select form-select-sm', id: nid, onchange: function () { st.negative = this.value; update(); }});
-		[['minus', '-1\'234.50'], ['brackets', '(1\'234.50)'], ['red', t('fmt_neg_red')], ['red_brackets', t('fmt_neg_red_brackets')]].forEach(function (o) { neg.appendChild(h('option', {value: o[0], text: o[1]})); });
+		[['minus', '-1\'234.50'], ['brackets', '(1\'234.50)'], ['red', t('fmt_neg_red')],
+			['red_brackets', t('fmt_neg_red_brackets')]].forEach(function (o) { neg.appendChild(h('option', {value: o[0], text: o[1]})); });
 		neg.value = st.negative;
 		row.appendChild(h('div', {'class': 'col-sm-5'}, [h('label', {'class': 'form-label small mb-1', 'for': nid, text: t('fmt_negative')}), neg]));
 		row.appendChild(h('div', {'class': 'col-sm-4 d-flex align-items-end'}, [h('div', {'class': 'form-text', text: t('fmt_number_help')})]));
@@ -237,7 +243,8 @@
 		row.appendChild(h('div', {'class': 'col-sm-6'}, [h('label', {'class': 'form-label small mb-1', 'for': sid, text: t('fmt_store')}), store]));
 		var cid = id('compl'), compl = h('input', {'class': 'form-check-input', type: 'checkbox', role: 'switch', id: cid, onchange: function () { st.complete = this.checked; update(); }});
 		compl.checked = !!st.complete;
-		row.appendChild(h('div', {'class': 'col-sm-6 d-flex align-items-end'}, [h('div', {'class': 'form-check form-switch mb-1'}, [compl, h('label', {'class': 'form-check-label small', 'for': cid, text: t('fmt_complete')})])]));
+		row.appendChild(h('div', {'class': 'col-sm-6 d-flex align-items-end'},
+			[h('div', {'class': 'form-check form-switch mb-1'}, [compl, h('label', {'class': 'form-check-label small', 'for': cid, text: t('fmt_complete')})])]));
 		var tid = id('try');
 		row.appendChild(h('div', {'class': 'col-sm-6'}, [
 			h('label', {'class': 'form-label small mb-1', 'for': tid, text: t('fmt_try')}),
@@ -276,7 +283,9 @@
 			var m = NuFormatLib.mask(st.sample || '', st.format);
 			if (st.sample) {
 				line(st.sample, m.masked);
-				p.appendChild(h('div', {'class': 'small mt-1 ' + (m.complete ? 'text-success' : 'text-warning-emphasis'), text: (m.complete ? t('fmt_complete_ok') : t('fmt_incomplete')) + ' · ' + t('fmt_stored_value') + ': ' + (st.store === 'raw' ? m.raw : m.masked)}));
+				p.appendChild(h('div',
+					{'class': 'small mt-1 ' + (m.complete ? 'text-success' : 'text-warning-emphasis'),
+						text: (m.complete ? t('fmt_complete_ok') : t('fmt_incomplete')) + ' · ' + t('fmt_stored_value') + ': ' + (st.store === 'raw' ? m.raw : m.masked)}));
 			} else {
 				p.appendChild(h('div', {'class': 'small text-body-secondary', text: t('fmt_try_hint')}));
 			}

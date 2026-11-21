@@ -152,6 +152,7 @@ return [
 	'hf_empty' => 'pusta',
 	'hf_empty_tip' => 'Ta strona kafelków nie ma kafelków – jej poziomy dostępu nic na niej nie widzą. Otwórz ją i dodaj kafelki albo ponownie użyj domyślnej.',
 	'form_blank_page' => 'Pusta strona (systemowa)',
+	'uhome_empty_tab' => 'Na tej karcie nie ma jeszcze przycisków. Dodaj je w trybie projektowania albo pozwól kreatorowi Nowy formularz dodać jeden dla każdego nowego formularza (Po utworzeniu → User Home).',
 	'nav_users' => 'Użytkownicy',
 	'nav_access' => 'Poziomy dostępu',
 	'nav_logout' => 'Wyloguj',
@@ -7022,6 +7023,7 @@ return [
 	'rd_search' => 'Szukaj',
 	'rd_no_fields' => 'Źródło danych nie ma kolumn.',
 	'rd_fields_error' => 'Nie udało się odczytać pól:',
+	'rd_canvas' => 'Układ raportu – strzałki przesuwają zaznaczone obiekty',
 	'rd_criteria' => 'Pola formularza startowego',
 	'rd_system' => 'Strona i system',
 	'rd_images' => 'Obrazy (pliki)',
@@ -7187,7 +7189,7 @@ return [
 	'sqb_empty' => 'Dodaj tabelę z listy.',
 	'sqb_run_failed' => 'Zapytanie nie powiodło się:',
 	'sqb_columns' => 'Kolumny',
-	// security check (0.8.207, Admin tools → Security check, core/nusecurity.php)
+	// security check (Admin tools → Security check, core/nusecurity.php)
 	'secchk_title' => 'Kontrola bezpieczeństwa',
 	'ipa_title' => 'Dostęp IP',
 	'sso_title' => 'Logowanie jednokrotne (SSO)',

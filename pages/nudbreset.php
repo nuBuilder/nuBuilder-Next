@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Reset database (0.8.628, core/nudbreset.php): only in developer mode (globeadmin + $nuConfigDevMode) on MySQL / MariaDB.
+ * Reset database (core/nudbreset.php): only in developer mode (globeadmin + $nuConfigDevMode) on MySQL / MariaDB.
  * 1. action=check: a file chosen (nubuilder4.sql of nuBuilder Forte, _install/, _update/) or uploaded – read and checked, nothing changes.
  * 2. action=run: the database name typed, password confirmed recently – all tables deleted, the file imported, nuBuilder Next's tables
  *    created (optionally a backup first and the sample application afterwards). Then: the setup wizard.
@@ -13,57 +13,17 @@ if (!NuHash::devMode() || !NuDbReset::available()) {
 	nu_fatal(t('err_not_found'), '', true);
 }
 
-$S = &$_SESSION['nu_dbreset'];
+$S = &$_SESSION[NuSess::DB_RESET];
 if (!is_array($S)) $S = [];
 if (($_GET['fresh'] ?? '') === '1' && ($fr = NuDbReset::finishFresh()) !== null) {   // second half of a fresh installation (new code)
 	$S = ['fresh' => $fr];
 	nu_redirect(nu_url('dbreset'));
 }
-if (nu_is_post()) {
-	$action = nu_post('action');
-	if ($action === 'check') {
-		try {
-			if (!empty($S['path'])) NuDbReset::forgetUpload((string)$S['path']);   // an earlier check's upload
-			if (!empty($_FILES['upload']['name'])) $path = NuDbReset::storeUpload($_FILES['upload']);
-			else {
-				$src = NuDbReset::sources();
-				$path = $src[nu_post('source')] ?? null;
-				if ($path === null) throw new RuntimeException(t('dbr_err_nofile'));
-			}
-			$S = ['path' => $path, 'check' => NuDbReset::check($path), 'backup' => nu_post('backup') === '1', 'sample' => nu_post('sample') === '1'];
-		} catch (Throwable $e) {
-			if (isset($path) && is_string($path)) NuDbReset::forgetUpload($path);
-			$S = [];
-			nu_flash('danger', $e->getMessage());
-		}
-	} elseif ($action === 'run' && !empty($S['check']['ok'])) {
-		NuSecurity::requireRecentAuth(nu_url('dbreset'));
-		if (trim(nu_post('confirm')) !== (string)$S['check']['database']) {
-			nu_flash('danger', t('dbr_err_confirm'));
-		} else {
-			try {
-				if (($S['check']['kind'] ?? '') === 'package') {
-					NuDbReset::runPackage((string)$S['path'], nu_post('backup') === '1', nu_post('sample') === '1');
-					NuDbReset::forgetUpload((string)$S['path']);
-					$S = [];
-					nu_redirect(nu_url('dbreset', ['fresh' => '1']));   // the next request runs the new code
-				}
-				// 0.8.1290: in steps (NuDbReset::step, assets/js/nudbreset.js) – one request for a large file outlasted the host's time limit (503)
-				$S = ['job' => NuDbReset::startJob((string)$S['path'], nu_post('backup') === '1', nu_post('sample') === '1', (array)$S['check'])];
-			} catch (Throwable $e) {
-				error_log('nuBuilder Next reset database: ' . $e->getMessage());
-				nu_flash('danger', t('dbr_err_failed', $e->getMessage()));
-			}
-		}
-	} elseif ($action === 'cancel') {
-		if (!empty($S['path'])) NuDbReset::forgetUpload((string)$S['path']);
-		$S = [];
-	}
-	nu_redirect(nu_url('dbreset'));
-}
+['S' => $S]
+	= NuDbresetPage::post(get_defined_vars());   // the POST actions (code review R7, nudbresetpage.php)
 
 $job = null;
-if (!empty($S['job'])) {                                            // a reset in steps (0.8.1290)
+if (!empty($S['job'])) {                                            // a reset in steps
 	$job = NuDbReset::job((string)$S['job']);
 	if ($job && $job['phase'] === 'done') { $S = ['done' => $job['result']]; $job = null; }
 	elseif (!$job || $job['phase'] === 'error') {
@@ -96,7 +56,8 @@ nu_layout_start(t('dbr_title'), 'dbreset');
 				<div class="modal-body p-4 text-center">
 					<div class="spinner-border text-danger mb-3 nuUpdSpinner" role="status" aria-hidden="true"></div>
 					<h2 class="h5 mb-3" id="dbrProgressTitle"><?= h(t('dbr_progress_title', (string)$job['database'])) ?></h2>
-					<div class="progress mb-2" role="progressbar" aria-labelledby="dbrPhase" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="dbrBar"><div class="progress-bar bg-danger" id="dbrBarFill"></div></div>
+					<div class="progress mb-2" role="progressbar" aria-labelledby="dbrPhase" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"
+						id="dbrBar"><div class="progress-bar bg-danger" id="dbrBarFill"></div></div>
 					<p class="small mb-3" id="dbrPhase" aria-live="polite"><?= h(t('dbr_ph_' . ($job['phase'] === 'import' ? 'drop' : $job['phase']))) ?></p>
 					<div class="alert alert-warning text-start small mb-2 py-2"><i class="bi bi-exclamation-triangle me-1"></i><?= h(t('dbr_progress_keep')) ?></div>
 					<p class="small text-body-secondary text-start mb-0"><?= h(t('dbr_progress_info')) ?></p>
@@ -144,7 +105,8 @@ nu_layout_start(t('dbr_title'), 'dbreset');
 		<dl class="row small mb-3" id="dbrCheck"<?= $pkg ? ' data-kind="package"' : '' ?>>
 			<dt class="col-sm-3"><?= h(t('dbr_file')) ?></dt><dd class="col-sm-9 text-break"><?= h($chk['file']) ?> (<?= h(number_format($chk['bytes'] / 1048576, 1) . ' MB') ?>)</dd>
 			<?php if ($pkg): ?>
-			<dt class="col-sm-3"><?= h(t('dbr_fresh_version')) ?></dt><dd class="col-sm-9" id="dbrPkgVersion"><?= h(t('dbr_fresh_from', NU_VERSION, $chk['version'])) ?> <span class="badge text-bg-success"><?= h(t('dbr_fresh_signed')) ?></span></dd>
+			<dt class="col-sm-3"><?= h(t('dbr_fresh_version')) ?></dt><dd class="col-sm-9"
+				id="dbrPkgVersion"><?= h(t('dbr_fresh_from', NU_VERSION, $chk['version'])) ?> <span class="badge text-bg-success"><?= h(t('dbr_fresh_signed')) ?></span></dd>
 			<dt class="col-sm-3"><?= h(t('dbr_creates')) ?></dt><dd class="col-sm-9"><?= h(t('dbr_fresh_creates')) ?></dd>
 			<dt class="col-sm-3"><?= h(t('dbr_fresh_packs')) ?></dt><dd class="col-sm-9"><?= h(t('dbr_fresh_packs_val', $chk['installed_packs'] ? implode(', ', $chk['installed_packs']) : '–', $chk['packs'] ? implode(', ', $chk['packs']) : '–')) ?></dd>
 			<dt class="col-sm-3"><?= h(t('dbr_fresh_keeps')) ?></dt><dd class="col-sm-9"><?= h(t('dbr_fresh_keeps_val')) ?></dd>
@@ -173,7 +135,7 @@ nu_layout_start(t('dbr_title'), 'dbreset');
 			</div>
 		</form>
 		<form method="post" id="dbrCancel"><?= nu_csrf_field() ?><input type="hidden" name="action" value="cancel"></form>
-		<?php // shown while the reset runs (0.8.1290, the owner: as on the update page) – no close button, no Escape ?>
+		<?php // shown while the reset runs (the owner: as on the update page) – no close button, no Escape ?>
 		<div class="modal fade" id="dbrProgress" tabindex="-1" aria-labelledby="dbrProgressTitle" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
 			<div class="modal-dialog modal-dialog-centered"><div class="modal-content">
 				<div class="modal-body p-4 text-center">

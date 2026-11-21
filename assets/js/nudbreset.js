@@ -1,6 +1,6 @@
 /* global nuBs */
 /*
- * Reset database in steps (0.8.1290): the progress window stays open while the page asks ?p=dbresetstep again and again
+ * Reset database in steps: the progress window stays open while the page asks ?p=dbresetstep again and again
  * (NuDbReset::step – about 12 seconds of work each). A failed or cut request is asked again; a step that still runs answers
  * "busy". At the end (done or error) the page is loaded again and shows the result.
  */

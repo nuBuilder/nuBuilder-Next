@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * nuBuilder's single-use login token (wiki "Single-User Password Token", 0.8.339).
+ * nuBuilder's single-use login token (wiki "Single-User Password Token").
  *
  *   zzzzsys_user.sus_json LOGIN_TOKEN = "<at least 20 characters>"   – written by nuBuilder Next (user form, nuCreateLoginToken(),
  *                                                                    REST API) or by another system, exactly as in nuBuilder
@@ -156,8 +156,8 @@ final class NuLoginToken
 		if (!$u || $email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) return t('welcome_err_email');
 		if (!NuMail::configured()) return t('welcome_err_mail');
 		$lang = nu_lang_from_db((string)$u['sus_language']) ?? nu_lang();
-		$prev = $_SESSION['nu_lang'] ?? null;
-		$_SESSION['nu_lang'] = $lang;
+		$prev = $_SESSION[NuSess::LANG] ?? null;
+		$_SESSION[NuSess::LANG] = $lang;
 		try {
 			$name = trim((string)$u['sus_name']) ?: (string)$u['sus_login_name'];
 			$p = static fn(string $s) => '<p style="margin:0 0 14px">' . $s . '</p>';
@@ -170,7 +170,7 @@ final class NuLoginToken
 			$subject = t('ltok_mail_subject');
 			$html = NuMail::layout($subject, $body);
 		} finally {
-			if ($prev === null) unset($_SESSION['nu_lang']); else $_SESSION['nu_lang'] = $prev;
+			if ($prev === null) unset($_SESSION[NuSess::LANG]); else $_SESSION[NuSess::LANG] = $prev;
 		}
 		$err = NuMail::send($email, $subject, $html, 'nunext_login_token');
 		NuLog::write($err === null ? 'login_token_mailed' : 'login_token_mail_failed', 'zzzzsys_user', $userId, ['to' => $email] + ($err !== null ? ['error' => $err] : []));

@@ -9,7 +9,7 @@ if (($_GET['p'] ?? '') === 'fa') {
 	exit;
 }
 
-// installable app (0.8.1136 / 0.8.1139): manifest, icons, service worker, offline page – WITHOUT nu_boot's session: the browser fetches
+// installable app: manifest, icons, service worker, offline page – WITHOUT nu_boot's session: the browser fetches
 // them on its own (worker script, update checks, cache filling) – a fresh session cookie in such an answer replaced the user's
 // session and signed them out. The manifest reads an existing session read-only for the favourites, and never sends a cookie.
 if (($_GET['p'] ?? '') === 'pwa' && !NuInstall::needed()) {
@@ -20,14 +20,14 @@ if (($_GET['p'] ?? '') === 'pwa' && !NuInstall::needed()) {
 	if (($_GET['a'] ?? '') === 'manifest' && preg_match('/^[A-Za-z0-9,-]{16,128}$/', $sid)) {
 		session_name('nunext');
 		session_id($sid);
-		@session_start(['read_and_close' => true, 'use_cookies' => false, 'use_only_cookies' => false, 'use_strict_mode' => false]);
+		session_start(['read_and_close' => true, 'use_cookies' => false, 'use_strict_mode' => false]);   // the id set above wins without use_only_cookies (deprecated in PHP 8.4)
 	}
 	nu_apply_timezone();
 	require __DIR__ . '/pages/nupwa.php';
 	exit;
 }
 
-// Health / status for monitoring tools (0.8.1335, NuHealth): JSON WITHOUT nu_boot's session – a monitor calling every minute must not
+// Health / status for monitoring tools (NuHealth): JSON WITHOUT nu_boot's session – a monitor calling every minute must not
 // create sessions or get a cookie; the details only with the key (header X-Health-Key, Authorization: Bearer or ?key=)
 if (($_GET['p'] ?? '') === 'health' && !NuInstall::needed()) {
 	nu_config();
@@ -36,7 +36,7 @@ if (($_GET['p'] ?? '') === 'health' && !NuInstall::needed()) {
 	exit;
 }
 
-// Reset database in steps (0.8.1290, NuDbReset::step): WITHOUT nu_boot's session and sign-in – the job's random token is the right;
+// Reset database in steps (NuDbReset::step): WITHOUT nu_boot's session and sign-in – the job's random token is the right;
 // between the steps the database has no sessions table, and a step must not wait for the session lock of the page's other requests
 if (($_GET['p'] ?? '') === 'dbresetstep' && !NuInstall::needed()) {
 	nu_config();
@@ -60,15 +60,15 @@ nu_boot();
 
 $routes = [
 	'login'       => ['public' => true],
-	'dbsetup'     => ['public' => true],   // database not set up yet (0.8.645, NuDbState): globeadmin or setup token
+	'dbsetup'     => ['public' => true],   // database not set up yet (NuDbState): globeadmin or setup token
 	'lang'        => ['public' => true],
 	'logout'      => ['public' => true],
 	'twofa'       => ['public' => true],
 	'forgot'      => ['public' => true],
 	'reset'       => ['public' => true],
-	'reportfile'  => ['public' => true],   // PDF of a report run through the REST API (token link, 0.8.340)
+	'reportfile'  => ['public' => true],   // PDF of a report run through the REST API (token link)
 	'brand'       => ['public' => true],
-	'pwa'         => ['public' => true],   // installable app: manifest, icons, service worker, offline page (0.8.1136, NuPwa)
+	'pwa'         => ['public' => true],   // installable app: manifest, icons, service worker, offline page (NuPwa)
 	'branding'    => [],
 	'setupwizard' => [],
 	'adminroles'  => [],
@@ -77,17 +77,18 @@ $routes = [
 	'palette'     => ['json' => true],
 	'security'    => [],
 	'securitycheck' => [],
-	'gettingready' => [],   // Getting ready checklist after the installation (0.8.1310, NuReady)
-	'ipaccess'    => [],   // IP access (0.8.722, pages/nuipaccess.php)
-	'sso'         => ['public' => true],   // single sign-on (0.8.863, pages/nusso.php: settings, start, return from the provider)
-	'passkey'     => ['public' => true, 'json' => true],   // passkeys (0.8.877, pages/nupasskey.php): add, second factor, sign-in, confirmation
-	'pwpolicy'    => [],   // password policy (0.8.745, pages/nupwpolicy.php)
+	'gettingready' => [],   // Getting ready checklist after the installation (NuReady)
+	'ipaccess'    => [],   // IP access (pages/nuipaccess.php)
+	'sso'         => ['public' => true],   // single sign-on (pages/nusso.php: settings, start, return from the provider)
+	'passkey'     => ['public' => true, 'json' => true],   // passkeys (pages/nupasskey.php): add, second factor, sign-in, confirmation
+	'pwpolicy'    => [],   // password policy (pages/nupwpolicy.php)
 	'reauth'      => [],
 	'log'         => [],
 	'notifications' => [],
 	'notifyapi'   => ['json' => true],
 	'homejs'      => ['json' => true],
-	'globalcodefile' => ['json' => true, 'public' => true],   // Global JS & CSS as files (0.8.523, NuCustomCode::serve; ?p=customcode until 0.8.573)   // JavaScript of the start page hook nu_home (0.8.379, NuHomeHook::serveJs)
+	'globalcodefile' => ['json' => true, 'public' => true],
+		// Global JS & CSS as files (NuCustomCode::serve; ?p=customcode until 0.8.573)   // JavaScript of the start page hook nu_home (NuHomeHook::serveJs)
 	'audit'       => [],
 	'audithistory' => [],
 	'debug'       => [],
@@ -96,30 +97,30 @@ $routes = [
 	'cloner'      => [],
 	'appcloner'   => [],
 	'vendor'      => [],
-	'filemanager' => [],                      // File Manager = the page nuFiles (0.8.479, pages/nufilemanager.php)
+	'filemanager' => [],                      // File Manager = the page nuFiles (pages/nufilemanager.php)
 	'apiclients'  => [],
-	'aiproviders' => [],   // AI providers (0.8.1099, pages/nuaiproviders.php)
+	'aiproviders' => [],   // AI providers (pages/nuaiproviders.php)
 	'aiask'       => ['json' => true],   // "Ask AI" of the AI dialogues (pages/nuaiask.php)
 	'webhooks'    => [],
-	'recyclebin'  => [],   // recycle bin for records (0.8.1325, pages/nurecyclebin.php)   // webhooks (0.8.715, pages/nuwebhooks.php)
-	'helppages'   => [],   // user help pages: list / editor (0.8.1023, pages/nuhelppages.php)
-	'codesearch'  => [],   // code search (0.8.1172, pages/nucodesearch.php)
-	'projects'    => [],   // projects: list, project page, export / import (0.8.1035, pages/nuprojects.php)
-	'userhelp'    => [],   // user help pages: reader + JSON for the side panel (0.8.1023, pages/nuuserhelp.php)
-	'userhelpimg' => [],   // pictures of the user help pages (0.8.1024, pages/nuuserhelpimg.php)
+	'recyclebin'  => [],   // recycle bin for records (pages/nurecyclebin.php)   // webhooks (pages/nuwebhooks.php)
+	'helppages'   => [],   // user help pages: list / editor (pages/nuhelppages.php)
+	'codesearch'  => [],   // code search (pages/nucodesearch.php)
+	'projects'    => [],   // projects: list, project page, export / import (pages/nuprojects.php)
+	'userhelp'    => [],   // user help pages: reader + JSON for the side panel (pages/nuuserhelp.php)
+	'userhelpimg' => [],   // pictures of the user help pages (pages/nuuserhelpimg.php)
 	'apiplayground' => [],
 	'settings'    => [],
 	'configfile'  => [],
 	'globalcode'   => [],
-	'jquery'       => [],                    // jQuery version + Migrate (0.8.741, NuJquery)
-	'jqfile'       => ['json' => true],      // a jQuery file of custom/jquery/ (0.8.741)
-	'jqwarn'       => ['json' => true],      // jQuery Migrate messages of a form page (0.8.741, assets/js/nu/nujqmigrate.js)
-	'userfields'  => [],   // custom user fields (0.8.454)
-	'account'     => [],   // My account: the custom fields a user fills in himself (0.8.454)
+	'jquery'       => [],                    // jQuery version + Migrate (NuJquery)
+	'jqfile'       => ['json' => true],      // a jQuery file of custom/jquery/
+	'jqwarn'       => ['json' => true],      // jQuery Migrate messages of a form page (assets/js/nu/nujqmigrate.js)
+	'userfields'  => [],   // custom user fields
+	'account'     => [],   // My account: the custom fields a user fills in himself
 	'todo'        => [],
 	'selftest'    => [],
 	'dbreset'     => [],
-	'themes'      => [],                     // themes (0.8.632, core/nutheme.php)                     // Reset database (0.8.628, developer mode)
+	'themes'      => [],                     // themes (core/nutheme.php)                     // Reset database (developer mode)
 	'help'        => [],
 	'tutorial'    => [],
 	'listview'    => [],
@@ -130,18 +131,18 @@ $routes = [
 	'reports'     => [],
 	'report'      => [],
 	'reportdesigner' => [],
-	'reportai'    => [],                     // reports with AI (0.8.1097): prompt, check, preview, apply – POST only
+	'reportai'    => [],                     // reports with AI: prompt, check, preview, apply – POST only
 	'reportpdf'   => [],
 	'sqlbuilder'  => [],
 	'prompts'     => [],
 	'import'      => [],
-	'dataexport'  => [],   // data export (0.8.758, pages/nudataexport.php)
+	'dataexport'  => [],   // data export (pages/nudataexport.php)
 	'email'       => [],
-	'mailoauth'   => [],   // OAuth 2 for the SMTP login: to the provider and back (oauth.php, 0.8.445)
+	'mailoauth'   => [],   // OAuth 2 for the SMTP login: to the provider and back (oauth.php)
 	'emailtemplates' => [],
 	'formexport'  => [],
 	'home'        => [],
-	'pageno'      => [],                 // page numbers P001 … (0.8.804, core/nupageno.php)
+	'pageno'      => [],                 // page numbers P001 … (core/nupageno.php)
 	'password'    => [],
 	'users'       => [],
 	'user'        => [],
@@ -149,43 +150,43 @@ $routes = [
 	'accesslevel' => [],
 	'form'        => [],
 	'formapi'     => ['json' => true],
-	'upload'      => ['json' => true],   // file upload of nuBuilder's Uppy objects (0.8.459, pages/nuupload.php)
+	'upload'      => ['json' => true],   // file upload of nuBuilder's Uppy objects (pages/nuupload.php)
 	'forms'       => [],
 	'formats'     => [],
 	'items'       => [],
 	'permissions' => [],
 	'impersonate' => [],
-	'sidebar'     => [],                 // side bar on / off, default, recently used, ☆ (0.8.460, pages/nusidebar.php)
+	'sidebar'     => [],                 // side bar on / off, default, recently used, ☆ (pages/nusidebar.php)
 	'files'       => [],
 	'file'        => [],
 	'translations' => [],
 	'formatapi'   => ['json' => true],
 	'fnlist'      => ['json' => true],
-	'codenames'   => ['json' => true],             // tables, columns, hash variables for the code editors' suggestions (0.8.1336)
+	'codenames'   => ['json' => true],             // tables, columns, hash variables for the code editors' suggestions
 	'sysinfo'     => ['json' => true],
-	'homeforms'   => ['json' => true],   // Home forms of the access levels, ▾ next to Home (0.8.1264, NuHomeForms)   // System info dialog (0.8.1237)
-	'codecheck'   => ['json' => true],             // PHP syntax check of the code editors (0.8.781)
+	'homeforms'   => ['json' => true],   // Home forms of the access levels, ▾ next to Home (NuHomeForms)   // System info dialog
+	'codecheck'   => ['json' => true],             // PHP syntax check of the code editors
 	'snippetlist' => ['json' => true],
-	'advsearch'   => ['json' => true],   // "My searches" of the advanced search of form lists (0.8.719, pages/nuadvsearch.php)   // code snippets of one code editor (0.8.714, pages/nusnippetlist.php)
-	'pivot'       => ['json' => true],   // pivot of a form list (0.8.1151, pages/nupivot.php; GET fmt=xlsx|csv = file)
-	'calendar'    => ['json' => true],   // calendars: list view, calendar objects, moving events (0.8.1165, pages/nucalendar.php)
-	'formstatus'  => ['json' => true],   // maintenance of forms on / off (0.8.808, pages/nuformstatus.php)
-	'formaccess'  => ['json' => true],   // access levels of one form – dialog of the form's ⋮ menu / design mode (0.8.683, pages/nuformaccess.php)   // function list of the code editors (0.8.593, pages/nufnlist.php)
+	'advsearch'   => ['json' => true],   // "My searches" of the advanced search of form lists (pages/nuadvsearch.php)   // code snippets of one code editor (pages/nusnippetlist.php)
+	'pivot'       => ['json' => true],   // pivot of a form list (pages/nupivot.php; GET fmt=xlsx|csv = file)
+	'calendar'    => ['json' => true],   // calendars: list view, calendar objects, moving events (pages/nucalendar.php)
+	'formstatus'  => ['json' => true],   // maintenance of forms on / off (pages/nuformstatus.php)
+	'formaccess'  => ['json' => true],   // access levels of one form – dialog of the form's ⋮ menu / design mode (pages/nuformaccess.php)   // function list of the code editors (pages/nufnlist.php)
 	'builder'     => [],
-	'formai'      => [],                     // form with AI (0.8.403)
-	'dataaccess'  => [],                     // field data access + column visibility of a form (0.8.480)
-	'libpack'     => [],                     // library packs: build and sign (0.8.405, developer mode)
+	'formai'      => [],                     // form with AI
+	'dataaccess'  => [],                     // field data access + column visibility of a form
+	'libpack'     => [],                     // library packs: build and sign (developer mode)
 	'builderapi'  => ['json' => true],
-	'page'        => [],                 // form type "page": the page file's own output (0.8.387, core/nupage.php)
+	'page'        => [],                 // form type "page": the page file's own output (core/nupage.php)
 	'pageasset'   => [],                 // css / js / images of a page folder
 ];
 
-// nuBuilder Forte's nuGetURLParams() (0.8.926): parameters of an entry address (no route – index.php?country=CA, the auto login ?u=…,
+// nuBuilder Forte's nuGetURLParams(): parameters of an entry address (no route – index.php?country=CA, the auto login ?u=…,
 // a permalink) are kept for the session, newer values replace older ones; p (the password hash of the auto login) never
 if (!nu_is_post() && $_GET && !isset($routes[(string)($_GET['p'] ?? '')])) {
-	$keep = (array)($_SESSION['nu_url_params'] ?? []);
+	$keep = (array)($_SESSION[NuSess::URL_PARAMS] ?? []);
 	foreach ($_GET as $k => $v) if (is_string($k) && $k !== 'p' && is_string($v) && strlen($k) <= 64 && strlen($v) <= 2000 && count($keep) < 50) $keep[$k] = $v;
-	$_SESSION['nu_url_params'] = $keep;
+	$_SESSION[NuSess::URL_PARAMS] = $keep;
 }
 
 // nuBuilder's auto login: index.php?u=<login>[&p=<password hash>][&f=<form>&r=<record>][&h=<home>] – here p is the hash, not a page
@@ -194,13 +195,13 @@ if (is_string($_GET['u'] ?? null) && !isset($routes[(string)($_GET['p'] ?? '')])
 	exit;
 }
 
-// nuBuilder's permalink (nuSetURLPermaLink, "Copy permalink"): index.php?f=<form>&r=<record>[&h=<home>] – the same form here (0.8.568;
-// before: the start page, also on F5 of such an address). h (nuBuilder's home form) is not used; "undefined" / "null" count as empty.
+// nuBuilder's permalink (nuSetURLPermaLink, "Copy permalink"): index.php?f=<form>&r=<record>[&h=<home>] – the same form here
+// (also on F5 of such an address). h (nuBuilder's home form) is not used; "undefined" / "null" count as empty.
 if (!isset($_GET['p']) && is_string($_GET['f'] ?? null) && $_GET['f'] !== '' && !nu_is_post()) {
 	$clean = static fn($v) => is_string($v) && !in_array(strtolower(trim($v)), ['', 'undefined', 'null'], true) ? trim($v) : null;
 	if (($pf = $clean($_GET['f'])) !== null && preg_match('/^[A-Za-z0-9_\-]{1,50}$/', $pf)) {
 		$pr = $clean($_GET['r'] ?? null);
-		// the other parameters stay (0.8.916): a list reloaded from such an address (code that rewrites the address bar the way nuBuilder
+		// the other parameters stay: a list reloaded from such an address (code that rewrites the address bar the way nuBuilder
 		// Forte does, then nuSearchAction) keeps its scope of properties (ps), search, page and sort
 		$keep = [];
 		foreach ($_GET as $k => $v) if (is_string($k) && is_string($v) && !in_array($k, ['f', 'r', 'h', 'p', 'u'], true)) $keep[$k] = $v;
@@ -214,13 +215,13 @@ if (!is_string($p) || !isset($routes[$p])) {
 	nu_fatal(t('err_not_found'), '', true);
 }
 
-// page forms (0.8.387): a fetch / XHR of the page gets JSON answers (401 login, 400 csrf …) instead of HTML pages
+// page forms: a fetch / XHR of the page gets JSON answers (401 login, 400 csrf …) instead of HTML pages
 $pageJson = ($p === 'page' || $p === 'pageasset') && NuPage::wantsJson();
 if ($pageJson && nu_is_post()) {
 	$sent = $_POST['_csrf'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
 	if (!nu_csrf_valid($sent)) NuPage::fail(400, 'csrf', t('err_csrf'), t('err_csrf_hint'));
 }
-// Uppy upload (0.8.459): a wrong token gets nuBuilder's upload answer {error, message} – Uppy's template shows message
+// Uppy upload: a wrong token gets nuBuilder's upload answer {error, message} – Uppy's template shows message
 if ($p === 'upload' && nu_is_post() && !nu_csrf_valid($_POST['_csrf'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? ''))) {
 	http_response_code(400);
 	header('Content-Type: application/json; charset=utf-8');
@@ -228,15 +229,15 @@ if ($p === 'upload' && nu_is_post() && !nu_csrf_valid($_POST['_csrf'] ?? ($_SERV
 }
 if (nu_is_post()) nu_csrf_verify();
 // Browsers post the lines of a <textarea> with CRLF; nuBuilder saves what its JavaScript reads (LF). Same line ends as nuBuilder,
-// so code, SQL and texts saved here are not changed by a save without a change (0.8.364, dev/tests/compat.js meta:sqlbuilder)
+// so code, SQL and texts saved here are not changed by a save without a change (dev/tests/compat.js meta:sqlbuilder)
 if (nu_is_post()) array_walk_recursive($_POST, static function (&$v): void { if (is_string($v) && str_contains($v, "\r")) $v = str_replace(["\r\n", "\r"], "\n", $v); });
-// the bell asks every minute (0.8.357): that alone must not keep an idle session alive (NuAuth::user)
+// the bell asks every minute: that alone must not keep an idle session alive (NuAuth::user)
 if ($p === 'notifyapi' && !nu_is_post()) define('NU_PASSIVE', true);
-if ($p === 'formapi' && ($_GET['presence'] ?? '') === '1') define('NU_PASSIVE', true);   // the "also open" ping (0.8.401) is no activity
-// a page's background poll (?passive=1) does not count as activity either (0.8.387)
+if ($p === 'formapi' && ($_GET['presence'] ?? '') === '1') define('NU_PASSIVE', true);   // the "also open" ping is no activity
+// a page's background poll (?passive=1) does not count as activity either
 if ($p === 'page' && ($_GET['passive'] ?? '') === '1' && !defined('NU_PASSIVE')) define('NU_PASSIVE', true);
 
-if (!empty($_SESSION['nu_dbreset']['job'])) NuDbReset::afterJob();   // 0.8.1290: signed in again after a reset in steps
+if (!empty($_SESSION[NuSess::DB_RESET]['job'])) NuDbReset::afterJob();   // signed in again after a reset in steps
 if (empty($routes[$p]['public'])) {
 	$user = NuAuth::user();
 	if (!$user) {
@@ -267,7 +268,7 @@ if (empty($routes[$p]['public'])) {
 	// demo mode (core/nudemo.php): everything visible, read only – form posts and background saves answer "Not available in the demo"
 	if (!empty($user['demo'])) NuDemo::guardRequest($p, !empty($routes[$p]['json']));
 
-	// database not set up (nuconfig.php written by hand for an empty database, tables missing, nuBuilder Forte older than 4.9 – 0.8.645,
+	// database not set up (nuconfig.php written by hand for an empty database, tables missing, nuBuilder Forte older than 4.9,
 	// NuDbState): the globeadmin goes to the set-up page, everybody else gets a notice
 	if (!NuDbState::ready() && $p !== 'logout') {
 		if (!empty($routes[$p]['json'])) {
@@ -296,16 +297,17 @@ if (empty($routes[$p]['public'])) {
 
 	if ($user['globeadmin'] && empty($user['demo'])) {
 		NuSecurity::rememberBaseUrl();                  // address for "Forgot password" links while $nuConfigBaseURL is empty
-		if (!empty($_SESSION['nu_weak_admin'])) {        // globeadmin password "nu" or shorter than 8 characters
-			unset($_SESSION['nu_weak_admin']);
+		if (!empty($_SESSION[NuSess::WEAK_ADMIN])) {        // globeadmin password "nu" or shorter than 8 characters
+			unset($_SESSION[NuSess::WEAK_ADMIN]);
 			nu_flash('warning', t('secchk_weak_admin_flash'));
 		}
-		// setup wizard (0.8.312): once per login, until nuconfig.php says $nuConfigShowInstaller = false (or "done" is in the database)
-		if (!nu_is_post() && empty($routes[$p]['json']) && !in_array($p, NuSetupWizard::FREE_ROUTES, true) && !NuImpersonate::active() && empty($_SESSION['nu_setup_wiz_seen']) && NuSetupWizard::pending()) {
+		// setup wizard: once per login, until nuconfig.php says $nuConfigShowInstaller = false (or "done" is in the database)
+		if (!nu_is_post() && empty($routes[$p]['json']) && !in_array($p, NuSetupWizard::FREE_ROUTES, true) && !NuImpersonate::active()
+			&& empty($_SESSION[NuSess::SETUP_WIZARD_SEEN]) && NuSetupWizard::pending()) {
 			nu_redirect(nu_url('setupwizard'));
 		}
 	}
 }
 
-if (empty($routes[$p]['json'])) nu_compress_start();   // HTML pages compressed (0.8.1342)
+if (empty($routes[$p]['json'])) nu_compress_start();   // HTML pages compressed
 require __DIR__ . "/pages/nu$p.php";

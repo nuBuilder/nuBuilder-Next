@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * PHPMailer token provider of NuMailOAuth (0.8.445) – loaded after PHPMailer (NuMailOAuth::tokenProvider). PHPMailer 6.6 and newer
+ * PHPMailer token provider of NuMailOAuth – loaded after PHPMailer (NuMailOAuth::tokenProvider). PHPMailer 6.6 and newer
  * have the interface OAuthTokenProvider (PHPMailer::setOAuth needs it); older copies call getOauth64() on any object.
  */
 trait NuMailOAuthTokenBody

@@ -109,7 +109,7 @@ $nuConfigFileMaxKB						= 300;						//-- Maximum size of files uploaded into for
 
 // Admin tools for the globeadmin (user menu): phpMyAdmin with nuBuilder's config, NOT part of the package – install it as a library
 // pack (Update → Libraries; vendor/packs/nudb-<version>/). A copy in third_party/nudb/ still works while no pack is installed.
-// MySQL / MariaDB only. The File Manager is the page nuFiles of nuBuilder Next (0.8.479; $nuConfigTFMURL is no longer used).
+// MySQL / MariaDB only. The File Manager is the page nuFiles of nuBuilder Next ($nuConfigTFMURL is no longer used).
 //$nuConfigPMAURL						= "";						//-- Other URL of phpMyAdmin, e.g. "/nubuilder4/third_party/nudb/"
 // Adminer (optional, NOT part of the package): a library pack (Update → Libraries) or adminer.php in third_party/adminer/ –
 // it opens through nudbadmin.php, logged in with the account above (also SQL Server).

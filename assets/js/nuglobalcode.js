@@ -1,11 +1,11 @@
 /* global nuBs */
-/* Admin tools → Custom code (pages/nuglobalcode.php, 0.8.444; Global JS & CSS 0.8.523): a CodeMirror editor per tab (JavaScript, CSS, HTML); the open tab is sent with
+/* Admin tools → Custom code (pages/nuglobalcode.php; Global JS & CSS): a CodeMirror editor per tab (JavaScript, CSS, HTML); the open tab is sent with
  * Save, so the page comes back to it. Tabs in the address: nuapp.js (data-nu-hash-tabs). */
 (function () {
 	'use strict';
 	var form = document.getElementById('scodeForm');
 	if (!form) return;
-	// the warning on top (0.8.856): × hides it – kept in this browser (localStorage nunext-scode-warn-hidden) –, the (i) next to the title shows it again
+	// the warning on top: × hides it – kept in this browser (localStorage nunext-scode-warn-hidden) –, the (i) next to the title shows it again
 	(function () {
 		var warn = document.getElementById('scodeWarn'), hideB = document.getElementById('scodeWarnHide'), showB = document.getElementById('scodeWarnShow');
 		if (!warn || !hideB || !showB) return;
@@ -18,7 +18,7 @@
 		var was = false;
 		try { was = localStorage.getItem(KEY) === '1'; } catch (e) { was = false; }
 		set(was, false);
-		document.documentElement.classList.remove('nuWarnOff-scode');   // nutheme.js hid the warning until here (0.8.1120)
+		document.documentElement.classList.remove('nuWarnOff-scode');   // nutheme.js hid the warning until here
 		hideB.addEventListener('click', function () { set(true, true); showB.focus(); });
 		showB.addEventListener('click', function () { set(false, true); hideB.focus(); });
 	})();
@@ -32,12 +32,12 @@
 			cm.on('change', function () { cm.save(); ta.dispatchEvent(new Event('input', {bubbles: true})); });   // red Save, leave guard
 			editors.push(cm);
 			byTab[ta.id.replace(/^scode-/, '')] = cm;
-			// toolbar (0.8.554): undo / redo, search, replace, comment, invisibles, format, full screen
+			// toolbar: undo / redo, search, replace, comment, invisibles, format, full screen
 			var tools = form.querySelector('.scodeTools[data-for="' + ta.id + '"]');
-			if (tools && window.NuCodeTools) NuCodeTools.attach(cm, tools, {lang: {css: 'CSS', htmlmixed: 'HTML'}[ta.getAttribute('data-mode')] || 'JS', readOnly: ro, scope: 1});   // snippets "Setup / Header" (0.8.714)
+			if (tools && window.NuCodeTools) NuCodeTools.attach(cm, tools, {lang: {css: 'CSS', htmlmixed: 'HTML'}[ta.getAttribute('data-mode')] || 'JS', readOnly: ro, scope: 1});   // snippets "Setup / Header"
 		});
 	}
-	// height (0.8.554): the editor of the open tab reaches down to the bottom of the window (at least 360 px), also after resizing;
+	// height: the editor of the open tab reaches down to the bottom of the window (at least 360 px), also after resizing;
 	// not while the toolbar's full screen is on – that one sizes the editor itself
 	var MIN_H = 360, GAP = 24;
 	function fit() {
@@ -53,7 +53,7 @@
 	fit();
 	var tabs = document.getElementById('scodeTabs'), field = document.getElementById('scodeTab');
 	function current() { var a = tabs && tabs.querySelector('.nav-link.active'); return a ? a.getAttribute('data-nu-tab') || '' : ''; }
-	// Form pages | All pages (0.8.857): only the tabs of the chosen group are shown; a switch opens the tab last used there (else its first);
+	// Form pages | All pages: only the tabs of the chosen group are shown; a switch opens the tab last used there (else its first);
 	// a tab opened otherwise (#gjs in the address, ?tab=) moves the switch along
 	var seg = document.getElementById('scodeSeg'), lastOf = {};
 	function groupOf(btn) { var li = btn && btn.closest('[data-scode-group]'); return li ? li.getAttribute('data-scode-group') : ''; }
@@ -77,9 +77,9 @@
 	syncGroup();
 	if (tabs) tabs.addEventListener('shown.bs.tab', function () { syncGroup(); fit(); editors.forEach(function (cm) { cm.refresh(); }); field.value = current(); });   // hidden editors have no size
 	form.addEventListener('submit', function () { editors.forEach(function (cm) { cm.save(); }); field.value = current(); });
-	if (window.NuCodeTools && NuCodeTools.guardForm) NuCodeTools.guardForm(form);   // syntax errors: ask before saving (0.8.781)
+	if (window.NuCodeTools && NuCodeTools.guardForm) NuCodeTools.guardForm(form);   // syntax errors: ask before saving
 	field.value = current();
-	// Templates (0.8.524, core/nucodetemplates.php): ▾ Templates per tab – a click inserts at the cursor; "Preview…" opens a dialogue
+	// Templates (core/nucodetemplates.php): ▾ Templates per tab – a click inserts at the cursor; "Preview…" opens a dialogue
 	// with all templates of the tab, description and code (Insert / Copy)
 	var dataEl = document.getElementById('scodeTplData');
 	if (dataEl) {
@@ -171,7 +171,7 @@
 		});
 	}
 
-	// Global JS & CSS (0.8.523): the "Runs on" switches are shown on both global tabs – kept in step (the JS tab's ones are sent)
+	// Global JS & CSS: the "Runs on" switches are shown on both global tabs – kept in step (the JS tab's ones are sent)
 	Array.prototype.forEach.call(form.querySelectorAll('.scodeScopeSw'), function (sw) {
 		sw.addEventListener('change', function () {
 			Array.prototype.forEach.call(form.querySelectorAll('.scodeScopeSw[data-scope="' + sw.getAttribute('data-scope') + '"]'), function (o) {

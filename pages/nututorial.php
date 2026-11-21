@@ -3,10 +3,10 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Tutorial (0.8.328) – globeadmin and users with an admin role. Text: docs/nunext-tutorial.htm (English), logic: core/nututorial.php.
+ * Tutorial – globeadmin and users with an admin role. Text: docs/nunext-tutorial.htm (English), logic: core/nututorial.php.
  *   ?p=tutorial         overview (chapters, progress, start / continue)
  *   ?p=tutorial&l=<id>  one lesson
- * POST action: done (and go to the next lesson) | undo | hide | show | reset | track (basic / advanced, 0.8.622) – the reader's own
+ * POST action: done (and go to the next lesson) | undo | hide | show | reset | track (basic / advanced) – the reader's own
  * progress only. Track not chosen yet: the overview is the choice screen (a lesson link goes there too, l is kept).
  */
 
@@ -19,50 +19,8 @@ $order = NuTutorial::order();
 $ids = array_keys($order);
 $all = NuTutorial::allLessons();                        // every lesson the reader may see: id => advanced | forte (advanced ⊇ basic)
 
-if (nu_is_post()) {
-	$p = NuTutorial::progress();
-	$id = nu_post('l');
-	$back = nu_post('back') === 'home' ? nu_url('home') : nu_url('tutorial', $id !== '' && isset($all[$id]) ? ['l' => $id] : []);
-	switch (nu_post('action')) {
-		case 'done':
-			if (isset($order[$id])) {
-				$p['done'][] = $id;
-				$pos = array_search($id, $ids, true);
-				$next = $ids[$pos + 1] ?? '';
-				$back = nu_url('tutorial', $next !== '' ? ['l' => $next] : ['finished' => '1']);
-			} elseif (isset($all[$id])) $p['done'][] = $id;           // a lesson of the other track: stays on it
-			break;
-		case 'track':
-			$tr = nu_post('track');
-			if (in_array($tr, NuTutorial::TRACKS, true)) {
-				$first = $p['track'] === '';
-				$p['track'] = $tr;
-				NuTutorial::save($p);
-				if ($id === '' && nu_post('go') === 'start') $id = NuTutorial::nextOpen($p);
-				$tOrder = NuTutorial::order($tr);
-				$back = nu_url('tutorial', $id !== '' && (isset($tOrder[$id]) || isset($all[$id])) ? ['l' => $id] : []);
-				if (!$first) nu_flash('info', t('tut_track_switched', t('tut_track_' . $tr)));
-			}
-			break;
-		case 'undo':
-			$p['done'] = array_values(array_diff($p['done'], [$id]));
-			break;
-		case 'hide':
-			$p['hidden'] = true;
-			nu_flash('info', t('tut_hidden'));
-			break;
-		case 'show':
-			$p['hidden'] = false;
-			break;
-		case 'reset':
-			$p['done'] = [];
-			$p['hidden'] = false;
-			$back = nu_url('tutorial');
-			break;
-	}
-	NuTutorial::save($p);
-	nu_redirect($back);
-}
+['id' => $id, 'all' => $all, 'order' => $order, 'ids' => $ids]
+	= NuTutorialPage::post(get_defined_vars());   // the POST actions (code review R7, nututorialpage.php)
 
 $chapters = NuTutorial::chapters();
 $prog = NuTutorial::progress();
@@ -93,14 +51,15 @@ if ($cur !== '') {
 	$title = $lesson['title'] . ' · ' . t('tut_title');
 }
 $parts = ['basics' => 'tut_part_basics', 'build' => 'tut_part_build', 'admin' => 'tut_part_admin', 'advanced' => 'tut_part_advanced',
-	'changes' => 'tut_part_changes', 'new' => 'tut_part_new'];   // nuBuilder Forte track (0.8.635)
+	'changes' => 'tut_part_changes', 'new' => 'tut_part_new'];   // nuBuilder Forte track
 $trackSwitch = static function (string $l) use ($track): string {   // Basic | Advanced in the title bar
 	$o = '<form method="post" class="btn-group nuSeg" role="group" aria-label="' . h(t('tut_track_label')) . '" id="tutTrack">' . nu_csrf_field()
 		. '<input type="hidden" name="action" value="track"><input type="hidden" name="l" value="' . h($l) . '">';
 	foreach (NuTutorial::TRACKS as $tr) {
 		$on = $tr === $track;
 		$o .= '<button class="btn btn-outline-secondary' . ($on ? ' active' : '') . '" type="submit" name="track" value="' . $tr . '"' . ($on ? ' aria-pressed="true"' : ' aria-pressed="false"')
-			. ' data-track="' . $tr . '"><i class="bi ' . ['basic' => 'bi-signpost-2', 'advanced' => 'bi-rocket-takeoff', 'forte' => 'bi-arrow-left-right'][$tr] . ' me-1"></i>' . h(t('tut_track_' . $tr)) . '</button>';
+			. ' data-track="' . $tr . '"><i class="bi ' . ['basic' => 'bi-signpost-2', 'advanced' => 'bi-rocket-takeoff', 'forte' => 'bi-arrow-left-right'][$tr]
+				. ' me-1"></i>' . h(t('tut_track_' . $tr)) . '</button>';
 	}
 	return $o . '</form>';
 };
@@ -144,7 +103,8 @@ nu_layout_start($title, 'home');
 						<h3 class="h5 mb-0 me-auto"><?= h(t('tut_track_' . $tr)) ?></h3>
 						<span class="badge text-bg-light border"><?= h(t('tut_lessons_n', $n)) ?></span></div>
 					<p class="mb-3 flex-grow-1"><?= h(t('tut_' . $tr . '_desc')) ?></p>
-					<div><button class="btn <?= $tr === 'basic' ? 'btn-primary' : 'btn-outline-primary' ?>" type="submit" id="tutChoose_<?= $tr ?>"><i class="bi bi-play-fill me-1"></i><?= h(t('tut_choose_btn_' . $tr)) ?></button></div>
+					<div><button class="btn <?= $tr === 'basic' ? 'btn-primary' : 'btn-outline-primary' ?>" type="submit"
+						id="tutChoose_<?= $tr ?>"><i class="bi bi-play-fill me-1"></i><?= h(t('tut_choose_btn_' . $tr)) ?></button></div>
 				</div>
 			</form>
 		</div>
@@ -173,7 +133,8 @@ nu_layout_start($title, 'home');
 					<?php $cAdv = !array_filter($c['lessons'], static fn($x) => !$x['advanced']); ?>
 					<div class="list-group-item tutChapter"><?= h($c['title']) ?><?php if ($cAdv): ?> <span class="badge tutAdvBadge ms-1"><?= h(t('tut_adv_badge')) ?></span><?php endif; ?></div>
 					<?php foreach ($c['lessons'] as $l): $d = $isDone($l['id']); ?>
-						<a class="list-group-item list-group-item-action tutLessonLink<?= $l['id'] === $cur ? ' active' : '' ?>" href="<?= h(nu_url('tutorial', ['l' => $l['id']])) ?>"<?= $l['id'] === $cur ? ' aria-current="page"' : '' ?>>
+						<a class="list-group-item list-group-item-action tutLessonLink<?= $l['id'] === $cur ? ' active' : '' ?>"
+							href="<?= h(nu_url('tutorial', ['l' => $l['id']])) ?>"<?= $l['id'] === $cur ? ' aria-current="page"' : '' ?>>
 							<i class="bi <?= $d ? 'bi-check-circle-fill text-success' : 'bi-circle text-body-tertiary' ?> me-2" aria-hidden="true"></i><?= h($l['title']) ?>
 							<?php if ($l['advanced'] && !$cAdv): ?><span class="badge tutAdvBadge ms-1"><?= h(t('tut_adv_badge')) ?></span><?php endif; ?>
 							<?php if ($d): ?><span class="visually-hidden"> (<?= h(t('tut_done_badge')) ?>)</span><?php endif; ?>
@@ -191,8 +152,10 @@ nu_layout_start($title, 'home');
 				<div class="small text-body-secondary mb-1"><?= h($chapter['title']) ?><?php if (!$outside): ?> · <?= h(t('tut_lesson_n', array_search($cur, $ids, true) + 1, $nTotal)) ?><?php endif; ?>
 					<?php if ($lesson['advanced']): ?> <span class="badge tutAdvBadge ms-1"><?= h(t('tut_adv_badge')) ?></span><?php endif; ?></div>
 				<?php if ($outside): ?>
-					<div class="alert alert-info d-flex flex-wrap align-items-center gap-2 py-2" id="tutOutside"><i class="bi <?= $outTrack === 'forte' ? 'bi-arrow-left-right' : 'bi-rocket-takeoff' ?>"></i><span class="me-auto"><?= h(t($outTrack === 'forte' ? 'tut_out_of_track_forte' : 'tut_out_of_track')) ?></span>
-						<form method="post"><?= nu_csrf_field() ?><input type="hidden" name="action" value="track"><input type="hidden" name="track" value="<?= h($outTrack) ?>"><input type="hidden" name="l" value="<?= h($cur) ?>">
+					<div class="alert alert-info d-flex flex-wrap align-items-center gap-2 py-2"
+						id="tutOutside"><i class="bi <?= $outTrack === 'forte' ? 'bi-arrow-left-right' : 'bi-rocket-takeoff' ?>"></i><span class="me-auto"><?= h(t($outTrack === 'forte' ? 'tut_out_of_track_forte' : 'tut_out_of_track')) ?></span>
+						<form method="post"><?= nu_csrf_field() ?><input type="hidden" name="action" value="track"><input type="hidden" name="track"
+							value="<?= h($outTrack) ?>"><input type="hidden" name="l" value="<?= h($cur) ?>">
 							<button class="btn btn-sm btn-primary" type="submit"><?= h(t($outTrack === 'forte' ? 'tut_switch_forte' : 'tut_switch_advanced')) ?></button></form></div>
 				<?php endif; ?>
 				<h2 class="h4 mb-3 d-flex align-items-center gap-2"><?= h($lesson['title']) ?>
@@ -225,14 +188,16 @@ nu_layout_start($title, 'home');
 				<p class="mb-3"><?= h(t('tut_intro')) ?></p>
 				<div class="d-flex flex-wrap gap-2">
 					<?php if ($next !== ''): ?>
-						<a class="btn btn-primary" href="<?= h(nu_url('tutorial', ['l' => $next])) ?>"><i class="bi bi-play-fill me-1"></i><?= h($nDone ? t('tut_continue', $chapters[$order[$next][0]]['lessons'][$order[$next][1]]['title']) : t('tut_start')) ?></a>
+						<a class="btn btn-primary"
+							href="<?= h(nu_url('tutorial', ['l' => $next])) ?>"><i class="bi bi-play-fill me-1"></i><?= h($nDone ? t('tut_continue', $chapters[$order[$next][0]]['lessons'][$order[$next][1]]['title']) : t('tut_start')) ?></a>
 					<?php endif; ?>
 					<?php if ($nDone): ?>
 						<form method="post" data-confirm="<?= h(t('tut_reset_confirm')) ?>" data-confirm-ok="<?= h(t('tut_reset')) ?>"><?= nu_csrf_field() ?>
 							<button class="btn btn-outline-secondary" type="submit" name="action" value="reset"><i class="bi bi-arrow-repeat me-1"></i><?= h(t('tut_reset')) ?></button></form>
 					<?php endif; ?>
 					<form method="post"><?= nu_csrf_field() ?>
-						<button class="btn btn-outline-secondary" type="submit" name="action" value="<?= $prog['hidden'] ? 'show' : 'hide' ?>"><i class="bi <?= $prog['hidden'] ? 'bi-eye' : 'bi-eye-slash' ?> me-1"></i><?= h(t($prog['hidden'] ? 'tut_banner_show' : 'tut_banner_hide')) ?></button></form>
+						<button class="btn btn-outline-secondary" type="submit" name="action"
+							value="<?= $prog['hidden'] ? 'show' : 'hide' ?>"><i class="bi <?= $prog['hidden'] ? 'bi-eye' : 'bi-eye-slash' ?> me-1"></i><?= h(t($prog['hidden'] ? 'tut_banner_show' : 'tut_banner_hide')) ?></button></form>
 				</div>
 			</div>
 		</div>

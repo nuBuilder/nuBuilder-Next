@@ -2,7 +2,7 @@
 declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
-/* ?p=jqfile&f=<file>&v=<mtime> – a jQuery file the admin put into custom/jquery/ (0.8.741, NuJquery; custom/ itself is never served). */
+/* ?p=jqfile&f=<file>&v=<mtime> – a jQuery file the admin put into custom/jquery/ (NuJquery; custom/ itself is never served). */
 
 $f = (string)($_GET['f'] ?? '');
 session_write_close();

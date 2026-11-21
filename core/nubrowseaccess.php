@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Browse column visibility (0.8.480, handover spec 07): per column of a form's list, sbr_json → nunext.access =
+ * Browse column visibility (handover spec 07): per column of a form's list, sbr_json → nunext.access =
  * {"default": "show"|"hide", "rules": [{"type": access|user|perm|team|dept, "subject": …, "mode": "show"|"hide"}]} – the most specific
  * rule wins (NuSubject), a tie hides. Also field data access (spec 04): a column showing a withheld field is hidden, a masked one masked.
  * A hidden column is never selected, searched, filtered, sorted or exported (NuBrowse::query builds the list without it).

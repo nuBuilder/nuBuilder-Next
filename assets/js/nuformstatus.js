@@ -1,4 +1,4 @@
-/* Forms list (pages/nuforms.php): right-click / long press on the status = menu to change the form's status (0.8.575).
+/* Forms list (pages/nuforms.php): right-click / long press on the status = menu to change the form's status.
    Saved through the form builder's API (action form.save, field sfo_status) – the same rights, draft rules and history as the builder. */
 (function () {
 	'use strict';
@@ -6,7 +6,8 @@
 	if (!D) return;
 	var T = {};
 	try { T = JSON.parse(D.getAttribute('data-t') || '{}'); } catch (e) { T = {}; }
-	var CLS = {'1': 'bg-success-subtle text-success-emphasis', '0': 'bg-warning-subtle text-warning-emphasis', '2': 'bg-danger-subtle text-danger-emphasis', '3': 'bg-secondary-subtle text-secondary-emphasis'};
+	var CLS = {'1': 'bg-success-subtle text-success-emphasis', '0': 'bg-warning-subtle text-warning-emphasis',
+		'2': 'bg-danger-subtle text-danger-emphasis', '3': 'bg-secondary-subtle text-secondary-emphasis'};
 	var ICON = {'1': 'bi-check-circle', '0': 'bi-pencil', '2': 'bi-cone-striped', '3': 'bi-archive'};
 	var menu = null, pressT = null, pressed = false;
 
@@ -35,7 +36,7 @@
 			}, function () { el.classList.remove('nuFormStatusBusy'); toast(T.err || '', false); });
 	}
 
-	// Maintenance (0.8.808): on = the dialog of assets/js/nu/nuformmaint.js (message, until); leaving it = maintenance off first, then the new status
+	// Maintenance: on = the dialog of assets/js/nu/nuformmaint.js (message, until); leaving it = maintenance off first, then the new status
 	function maint(el, st) {
 		var id = el.getAttribute('data-nu-form');
 		if (st === '2') {

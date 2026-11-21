@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Streaming .xlsx writer (0.8.758, Data export): rows go straight into a temporary sheet file while they are read from the database, so
+ * Streaming .xlsx writer (Data export): rows go straight into a temporary sheet file while they are read from the database, so
  * memory stays flat for any number of rows. Strings are inline (no shared string table), styles are one per column (number / date
  * format) plus the header. A sheet that reaches Excel's row limit continues on "<name> (2)". NuXlsx (core/nuxlsx.php) stays the
  * full-featured in-memory writer for procedures; this one only does tables.

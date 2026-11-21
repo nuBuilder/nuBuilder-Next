@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Single sign-on with OpenID Connect (0.8.863, the owner's choice A · 2.3 · 3.2 · 4.1): Microsoft Entra ID, Google Workspace, Keycloak,
+ * Single sign-on with OpenID Connect (the owner's choice A · 2.3 · 3.2 · 4.1): Microsoft Entra ID, Google Workspace, Keycloak,
  * Okta, Authentik, ADFS … – any provider with a discovery document (<issuer>/.well-known/openid-configuration).
  *
  *   flow      authorization code + PKCE (S256), state + nonce in the session (10 minutes, once); the provider sends the browser back to
@@ -35,13 +35,7 @@ final class NuSso
 	public static function settings(): array
 	{
 		if (NuMemo::find('set:sso', $kept)) return $kept;   // NuMemo (code review R9): a write to the settings drops it
-		$s = null;
-		try {
-			$v = nu_setting_value(self::KEY);
-			$s = is_string($v) ? json_decode($v, true) : null;
-		} catch (Throwable) {
-		}
-		return NuMemo::keep('set:sso', ['zzzzsys_nunext_setting'], self::clean(is_array($s) ? $s : []));
+		return NuMemo::keep('set:sso', ['zzzzsys_nunext_setting'], self::clean(nu_setting_json(self::KEY)));
 	}
 
 	public static function clean(array $s): array
@@ -80,8 +74,7 @@ final class NuSso
 		$old = self::settings();
 		$s = self::clean($in);
 		$s['client_secret'] = (string)($in['client_secret'] ?? '') !== '' ? self::seal((string)$in['client_secret']) : $old['client_secret'];
-		NuSchema::ensure();
-		nu_setting_save(self::KEY, ['setting_value' => json_encode($s, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), 'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => $by]);
+		nu_setting_json_save(self::KEY, $s, $by);
 		if ($old['issuer'] !== $s['issuer']) self::forgetCache();
 		NuMemo::drop('set:sso');
 		return self::settings();
@@ -158,7 +151,7 @@ final class NuSso
 		$state = self::STATE_PREFIX . bin2hex(random_bytes(20));
 		$nonce = bin2hex(random_bytes(16));
 		$verifier = self::b64url(random_bytes(48));
-		$_SESSION['nunext_sso'] = ['state' => $state, 'nonce' => $nonce, 'verifier' => $verifier, 'at' => time(), 'test' => $test];
+		$_SESSION[NuSess::SSO] = ['state' => $state, 'nonce' => $nonce, 'verifier' => $verifier, 'at' => time(), 'test' => $test];
 		$q = ['client_id' => $s['client_id'], 'response_type' => 'code', 'redirect_uri' => self::redirectUri(), 'scope' => $s['scopes'],
 			'state' => $state, 'nonce' => $nonce, 'code_challenge' => self::b64url(hash('sha256', $verifier, true)), 'code_challenge_method' => 'S256'];
 		if ($s['kind'] === 'entra') $q += ['response_mode' => 'query', 'prompt' => 'select_account'];
@@ -173,8 +166,8 @@ final class NuSso
 	 */
 	public static function finish(array $get): array
 	{
-		$st = $_SESSION['nunext_sso'] ?? null;
-		unset($_SESSION['nunext_sso']);
+		$st = $_SESSION[NuSess::SSO] ?? null;
+		unset($_SESSION[NuSess::SSO]);
 		if (!is_array($st) || !is_string($get['state'] ?? null) || !hash_equals((string)$st['state'], (string)$get['state']) || (int)$st['at'] < time() - 600) {
 			throw new RuntimeException(t('sso_err_state'));
 		}
@@ -372,20 +365,13 @@ final class NuSso
 
 	private static function cache(): array
 	{
-		try {
-			$v = nu_setting_value(self::CACHE);
-			$c = is_string($v) ? json_decode($v, true) : null;
-			return is_array($c) ? $c : [];
-		} catch (Throwable) {
-			return [];
-		}
+		return nu_setting_json(self::CACHE);
 	}
 
 	private static function storeCache(array $c): void
 	{
 		try {
-			NuSchema::ensure();
-			nu_setting_save(self::CACHE, ['setting_value' => json_encode($c, JSON_UNESCAPED_SLASHES), 'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => 'sso']);
+			nu_setting_json_save(self::CACHE, $c, 'sso');
 		} catch (Throwable $e) {
 			error_log('nuBuilder Next SSO cache: ' . $e->getMessage());
 		}
@@ -411,7 +397,8 @@ final class NuSso
 		[$code, $body] = self::http($url, $params);
 		$j = json_decode($body, true);
 		if (!is_array($j)) throw new RuntimeException(t('sso_err_fetch', (string)parse_url($url, PHP_URL_HOST), (string)$code));
-		if ($code >= 400 || isset($j['error'])) throw new RuntimeException(t('sso_err_provider', mb_substr(trim((string)($j['error'] ?? 'HTTP ' . $code) . ' – ' . (string)($j['error_description'] ?? ''), ' –'), 0, 300)));
+		if ($code >= 400
+			|| isset($j['error'])) throw new RuntimeException(t('sso_err_provider', mb_substr(trim((string)($j['error'] ?? 'HTTP ' . $code) . ' – ' . (string)($j['error_description'] ?? ''), ' –'), 0, 300)));
 		return $j;
 	}
 
@@ -448,7 +435,7 @@ final class NuSso
 
 	private static function seal(string $s): string
 	{
-		return NuSecret::seal($s, '');   // 0.8.1326: one implementation (core/nusecret.php)
+		return NuSecret::seal($s, '');   // one implementation (core/nusecret.php)
 	}
 
 	private static function open(string $s): string

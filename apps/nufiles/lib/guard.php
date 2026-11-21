@@ -22,7 +22,7 @@ final class NufError extends RuntimeException
 
 final class NufGuard
 {
-	/** nuBuilder Next 0.8.459 NuSecurity::UPLOAD_DANGEROUS – kept in sync; the core list is used when it exists. */
+	/** nuBuilder Next's NuSecurity::UPLOAD_DANGEROUS – kept in sync; the core list is used when it exists. */
 	public const DANGEROUS = ['php', 'php2', 'php3', 'php4', 'php5', 'php6', 'php7', 'php8', 'phps', 'pht', 'phtm', 'phtml', 'phar', 'inc',
 		'cgi', 'pl', 'py', 'rb', 'sh', 'bash', 'asp', 'aspx', 'ashx', 'asmx', 'cer', 'jsp', 'jspx', 'shtml', 'shtm', 'stm', 'htaccess', 'htpasswd',
 		'ini', 'exe', 'com', 'bat', 'cmd', 'dll'];

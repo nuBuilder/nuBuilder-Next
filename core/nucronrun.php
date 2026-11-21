@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * A procedure started by the server's cron (0.8.1135):  php nucron.php run <code> [--user=<login>] [--mail=<address>] [name=value …]
+ * A procedure started by the server's cron:  php nucron.php run <code> [--user=<login>] [--mail=<address>] [name=value …]
  * The crontab decides when; this runs the procedure as a user (default: the globeadmin), writes one log entry and – when it fails –
  * sends an e-mail through the mail settings to --mail or the address of Settings → Data & logs (setting 'cron_run' {mail}).
  */
@@ -123,7 +123,8 @@ final class NuCronRun
 			if ($to && !NuMail::configured()) $res['mail_error'] = 'the e-mail settings are not complete';
 			elseif ($to) {
 				$name = trim((string)($php['sph_description'] ?? '')) !== '' ? (string)$php['sph_description'] . " ($code)" : $code;
-				$line = static fn(string $k, string $v): string => '<tr><td style="padding:2px 12px 2px 0;color:#666;vertical-align:top">' . h($k) . '</td><td style="padding:2px 0">' . nl2br(h($v)) . '</td></tr>';
+				$line = static fn(string $k, string $v): string => '<tr><td style="padding:2px 12px 2px 0;color:#666;vertical-align:top">' . h($k)
+					. '</td><td style="padding:2px 0">' . nl2br(h($v)) . '</td></tr>';
 				$html = '<p>' . h(t('cron_mail_intro')) . '</p><table style="border-collapse:collapse">'
 					. $line(t('builder_run_procedure'), $name) . $line(t('cron_mail_when'), date('Y-m-d H:i:s') . ' (' . date_default_timezone_get() . ')')
 					. $line(t('cron_mail_user'), $actor['login']) . $line(t('cron_mail_app'), nu_app_title() . (NuSecurity::mailBaseUrl() !== '' ? ' – ' . NuSecurity::mailBaseUrl() : ''))

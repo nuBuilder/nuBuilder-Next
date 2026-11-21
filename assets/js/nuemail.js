@@ -8,7 +8,7 @@
 	if (!form) return;
 	var copyBtn = document.getElementById('nuMailCopy'), pasteBtn = document.getElementById('nuMailPaste');
 	var status = document.getElementById('nuMailClipStatus');
-	var FIELDS = { host: 'm_host', port: 'm_port', username: 'm_user', from_address: 'm_from', from_name: 'm_fromname', auth_type: 'm_authtype' };   // auth_type: 0.8.342
+	var FIELDS = { host: 'm_host', port: 'm_port', username: 'm_user', from_address: 'm_from', from_name: 'm_fromname', auth_type: 'm_authtype' };   // auth_type
 	var SWITCHES = { use_authentication: 'm_auth', use_ssl: 'm_ssl' };
 	var NU_KEYS = { set_smtp_host: 'host', set_smtp_port: 'port', set_smtp_username: 'username', set_smtp_from_address: 'from_address',
 		set_smtp_from_name: 'from_name', set_smtp_use_authentication: 'use_authentication', set_smtp_use_ssl: 'use_ssl' };   // nuBuilder's column names
@@ -80,7 +80,7 @@
 		else fallback();
 	});
 
-	// download as a JSON file (0.8.629) – the same content as "Copy settings", without the password
+	// download as a JSON file – the same content as "Copy settings", without the password
 	var dlBtn = document.getElementById('nuMailDownload');
 	if (dlBtn) dlBtn.addEventListener('click', function () {
 		var o = current(), a = document.createElement('a');
@@ -114,7 +114,7 @@
 	});
 })();
 
-/* OAuth 2 for the SMTP login (0.8.445): the block shows with the method OAuth 2; provider → tenant (Microsoft) or own addresses (other);
+/* OAuth 2 for the SMTP login: the block shows with the method OAuth 2; provider → tenant (Microsoft) or own addresses (other);
  * "Use smtp.gmail.com:587" fills server and port. */
 (function () {
 	'use strict';

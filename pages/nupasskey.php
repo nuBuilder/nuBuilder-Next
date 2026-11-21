@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Passkeys (0.8.877, core/nupasskey.php) – JSON answers for assets/js/nupasskey.js. POST action (+ _csrf, cred = the browser's
+ * Passkeys (core/nupasskey.php) – JSON answers for assets/js/nupasskey.js. POST action (+ _csrf, cred = the browser's
  * PublicKeyCredential as JSON):
  *   reg_options / reg        signed in: add a passkey (password confirmed recently, not in demo mode or while acting as a user)
  *   twofa_options / twofa    the pending second factor of a sign-in (pages/nutwofa.php)
@@ -29,7 +29,7 @@ switch ($action) {
 		if (!$u) $out(['ok' => false, 'message' => t('login_session_timeout'), 'go' => NuAuth::loginUrl(nu_url('security'))], 401);
 		if (!empty($u['demo']) || ($u['via'] ?? '') === 'demo_ga' || NuImpersonate::active()) $out(['ok' => false, 'message' => t('demo_not_available')], 403);
 		if (!NuSecurity::recentAuth()) {
-			$_SESSION['nu_reauth_next'] = nu_url('security');
+			$_SESSION[NuSess::REAUTH_NEXT] = nu_url('security');
 			$out(['ok' => false, 'message' => t('reauth_needed'), 'go' => nu_url('reauth')]);
 		}
 		if ($action === 'reg_options') $out(['ok' => true, 'options' => NuPasskey::registrationOptions($u)]);
@@ -49,7 +49,7 @@ switch ($action) {
 			$p['fails'] = (int)$p['fails'] + 1;
 			NuLog::write('2fa_failed', '', '', ['method' => 'passkey'], $p['auth']);
 			if ($p['fails'] >= NuTwoFA::MAX_FAILS) {
-				unset($_SESSION['nu_2fa']);
+				unset($_SESSION[NuSess::TWOFA]);
 				nu_flash('danger', t('twofa_too_many'));
 				$out(['ok' => false, 'message' => t('twofa_too_many'), 'go' => nu_url('login')]);
 			}
@@ -84,8 +84,8 @@ switch ($action) {
 			$out(['ok' => false, 'message' => t($err ?? 'pk_err_check')]);
 		}
 		NuSecurity::confirmed();
-		$next = (string)($_SESSION['nu_reauth_next'] ?? nu_url('home'));
-		unset($_SESSION['nu_reauth_next']);
+		$next = (string)($_SESSION[NuSess::REAUTH_NEXT] ?? nu_url('home'));
+		unset($_SESSION[NuSess::REAUTH_NEXT]);
 		NuLog::write('reauth_ok', '', '', ['via' => 'passkey']);
 		$out(['ok' => true, 'go' => $next]);
 }

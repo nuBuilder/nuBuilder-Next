@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Further sample applications (0.8.679): a sample set described in install/samples/<key>.json instead of PHP code – the first is the
+ * Further sample applications: a sample set described in install/samples/<key>.json instead of PHP code – the first is the
  * ticket system (key "ticket", prefix tkt_). The JSON is written by dev/sample_capture.php from an application built with design
  * mode on a test installation, so a sample can be changed in design mode and captured again.
  *
@@ -35,7 +35,7 @@ final class NuSampleSet
 		'zzzzsys_form' => 'zzzzsys_form_id',
 	];
 
-	/** Date columns of nuBuilder Next's own tables the sample's rows carry (moved like the sample's own dates, 0.8.1036). */
+	/** Date columns of nuBuilder Next's own tables the sample's rows carry (moved like the sample's own dates). */
 	private const OWN_DATES = [
 		'zzzzsys_nunext_project' => ['created_at', 'updated_at'], 'zzzzsys_nunext_project_item' => ['added_at'],
 		'zzzzsys_nunext_project_note' => ['created_at', 'updated_at'], 'zzzzsys_nunext_project_task' => ['created_at', 'updated_at', 'due', 'done_at'],
@@ -62,12 +62,9 @@ final class NuSampleSet
 	/** Version of a sample set inside an update package (0 = not found). */
 	public static function versionInZip(string $zipFile, string $prefix, string $key): int
 	{
-		if (!class_exists('ZipArchive') || !isset(self::SETS[$key])) return 0;
-		$z = new ZipArchive();
-		if ($z->open($zipFile) !== true) return 0;
-		$src = $z->getFromName($prefix . 'install/samples/' . self::SETS[$key]);
-		$z->close();
-		$j = is_string($src) ? json_decode($src, true) : null;
+		if (!isset(self::SETS[$key])) return 0;
+		$src = nu_zip_entry($zipFile, $prefix . 'install/samples/' . self::SETS[$key]);
+		$j = $src !== null ? json_decode($src, true) : null;
 		return is_array($j) ? (int)($j['version'] ?? 0) : 0;
 	}
 
@@ -80,15 +77,17 @@ final class NuSampleSet
 		$info = $form ? ((json_decode((string)$form['sfo_json'], true) ?: [])['nunext']['sample'] ?? []) : [];
 		$ids = self::ids($d);
 		$counts = [];
-		foreach (['zzzzsys_user' => 'users', 'zzzzsys_access' => 'access', 'zzzzsys_form' => 'forms', 'zzzzsys_object' => 'objects', 'zzzzsys_php' => 'php', 'zzzzsys_email_template' => 'templates', 'zzzzsys_nunext_dashboard' => 'dashboards', 'zzzzsys_nunext_project' => 'projects'] as $t => $k) {
+		foreach (['zzzzsys_user' => 'users', 'zzzzsys_access' => 'access', 'zzzzsys_form' => 'forms', 'zzzzsys_object' => 'objects', 'zzzzsys_php' => 'php',
+			'zzzzsys_email_template' => 'templates', 'zzzzsys_nunext_dashboard' => 'dashboards', 'zzzzsys_nunext_project' => 'projects'] as $t => $k) {
 			$counts[$k] = 0;
 			$list = $ids[$t] ?? [];
 			if ($t === 'zzzzsys_user') $list = array_column($d['users'] ?? [], 'zzzzsys_user_id');
 			if ($list && $db->tableExists($t)) $counts[$k] = (int)$db->value('SELECT COUNT(*) FROM ' . $t . ' WHERE ' . self::PK[$t] . ' IN (' . self::marks($list) . ')', $list);
 		}
 		$tables = array_values(array_filter(array_keys($d['tables'] ?? []), static fn($t) => $db->tableExists((string)$t)));
-		$project = '';                                            // the sample's project (0.8.1036), when it is there
-		foreach ($ids['zzzzsys_nunext_project'] ?? [] as $pid) if ($db->tableExists('zzzzsys_nunext_project') && $db->value('SELECT COUNT(*) FROM zzzzsys_nunext_project WHERE zzzzsys_nunext_project_id = ?', [$pid])) { $project = $pid; break; }
+		$project = '';                                            // the sample's project, when it is there
+		foreach ($ids['zzzzsys_nunext_project'] ?? [] as $pid) if ($db->tableExists('zzzzsys_nunext_project')
+			&& $db->value('SELECT COUNT(*) FROM zzzzsys_nunext_project WHERE zzzzsys_nunext_project_id = ?', [$pid])) { $project = $pid; break; }
 		return [
 			'project' => $project,
 			'installed' => (bool)$form, 'version' => (int)($info['version'] ?? 0), 'current' => (int)$d['version'],
@@ -133,7 +132,8 @@ final class NuSampleSet
 				NuDDL::createTable((string)$name, $name . '_id', $spec['columns'], !empty($spec['audit']));
 				$created[] = (string)$name;
 			}
-			foreach ($d['indexes'] ?? [] as $t => $cols) foreach ($cols as $c) { try { NuDDL::ensureIndex((string)$t, (string)$c); } catch (Throwable $e) { error_log('nuBuilder Next sample index: ' . $e->getMessage()); } }
+			foreach ($d['indexes']
+				?? [] as $t => $cols) foreach ($cols as $c) { try { NuDDL::ensureIndex((string)$t, (string)$c); } catch (Throwable $e) { error_log('nuBuilder Next sample index: ' . $e->getMessage()); } }
 			$shift = self::shiftDays($d);
 			$dates = self::dateColumns($d);
 			$db->transaction(static function (NuDB $db) use ($d, $shift, $dates, &$passwords) {
@@ -153,8 +153,8 @@ final class NuSampleSet
 				}
 			});
 		} catch (Throwable $e) {
-			foreach (array_reverse($created) as $t) { try { NuDDL::dropTable($t); } catch (Throwable) {} }
-			try { self::deleteRows($d); } catch (Throwable) {}
+			foreach (array_reverse($created) as $t) { try { NuDDL::dropTable($t); } catch (Throwable $ig) { nu_ignored($ig); } }
+			try { self::deleteRows($d); } catch (Throwable $ig) { nu_ignored($ig); }
 			throw $e;
 		}
 		NuLog::write('sample_installed', 'sample', $key, ['version' => (int)$d['version']]);
@@ -218,7 +218,9 @@ final class NuSampleSet
 			// rights of other access levels on the sample's forms / procedures, assignments of its items and users, start pages of its levels
 			if ($forms && $db->tableExists('zzzzsys_access_form')) $db->run('DELETE FROM zzzzsys_access_form WHERE slf_zzzzsys_form_id IN (' . self::marks($forms) . ')', $forms);
 			if ($procs = $ids['zzzzsys_php'] ?? []) if ($db->tableExists('zzzzsys_access_php')) $db->run('DELETE FROM zzzzsys_access_php WHERE slp_zzzzsys_php_id IN (' . self::marks($procs) . ')', $procs);
-			if ($reps = $ids['zzzzsys_report'] ?? []) if ($db->tableExists('zzzzsys_access_report')) $db->run('DELETE FROM zzzzsys_access_report WHERE sre_zzzzsys_report_id IN (' . self::marks($reps) . ')', $reps);
+			if ($reps = $ids['zzzzsys_report']
+				?? []) if ($db->tableExists('zzzzsys_access_report')) $db->run('DELETE FROM zzzzsys_access_report WHERE sre_zzzzsys_report_id IN ('
+				. self::marks($reps) . ')', $reps);
 			if ($db->tableExists('zzzzsys_user_permission')) {
 				if ($items) $db->run('DELETE FROM zzzzsys_user_permission WHERE upe_ident IN (' . self::marks($items) . ')', $items);
 				if ($users) $db->run('DELETE FROM zzzzsys_user_permission WHERE upe_zzzzsys_user_id IN (' . self::marks($users) . ')', $users);

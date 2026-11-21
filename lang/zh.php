@@ -152,6 +152,7 @@ return [
 	'hf_empty' => '空',
 	'hf_empty_tip' => '此磁贴页没有磁贴 – 其访问级别在上面什么也看不到。打开它并添加磁贴，或重新使用默认页。',
 	'form_blank_page' => '空白页（系统）',
+	'uhome_empty_tab' => '此标签页还没有按钮。请在设计模式中添加，或让新建表单向导为每个新表单添加一个（创建后 → User Home）。',
 	'nav_users' => '用户',
 	'nav_access' => '访问级别',
 	'nav_logout' => '退出登录',
@@ -7021,6 +7022,7 @@ return [
 	'rd_search' => '搜索',
 	'rd_no_fields' => '数据源没有列。',
 	'rd_fields_error' => '无法读取字段：',
+	'rd_canvas' => '报表布局 – 方向键移动所选对象',
 	'rd_criteria' => '启动表单的字段',
 	'rd_system' => '页面和系统',
 	'rd_images' => '图片（文件）',
@@ -7186,7 +7188,7 @@ return [
 	'sqb_empty' => '从列表中添加一个表。',
 	'sqb_run_failed' => '查询失败：',
 	'sqb_columns' => '列',
-	// security check (0.8.207, Admin tools → Security check, core/nusecurity.php)
+	// security check (Admin tools → Security check, core/nusecurity.php)
 	'secchk_title' => '安全检查',
 	'ipa_title' => 'IP 访问',
 	'sso_title' => '单点登录 (SSO)',

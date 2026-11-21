@@ -16,18 +16,18 @@ final class NuAcl
 	public const FORM_ACCESS = 'nuaccess';
 	public const FORM_FORM   = 'nuform';      // form builder
 	public const FORM_LOG    = 'nunextlog';   // login & change log (nuBuilder Next only)
-	public const FORM_AUDIT  = 'nunextaudit'; // audit trail (nuBuilder Next only, 0.8.350)
-	public const FORM_ADMINROLE = 'nunextadminrole'; // admin roles list (nuBuilder Next only, 0.8.687) – right through the admin right adminroles
-	public const FORM_APICLIENT = 'nunextapiclient'; // API clients list (nuBuilder Next only, 0.8.547) – right through the admin right apiclients
-	public const FORM_EXPORT = 'nunextexport';       // data exports list (nuBuilder Next only, 0.8.758) – right through the admin right dataexport
-	public const FORM_USERHELP = 'nunextuserhelp';   // user help pages list (nuBuilder Next only, 0.8.1023) – right through the admin right userhelp
-	public const FORM_AIPROVIDER = 'nunextaiprovider'; // AI providers list (nuBuilder Next only, 0.8.1099) – right through the admin right aiproviders
-	public const FORM_WEBHOOK = 'nunextwebhook';     // webhooks + their calls (nuBuilder Next only, 0.8.715) – right through the admin right webhooks
-	public const FORM_DASHBOARD = 'nunextdashboard'; // dashboards list (nuBuilder Next only, 0.8.690) – right through the admin right dashboards
-	public const FORM_PROJECT = 'nunextproject';     // projects list (nuBuilder Next only, 0.8.1035) – admin right projects, or the save right on the Forms form
-	public const FORM_RECYCLE = 'nunextrecycle';     // recycle bin list (0.8.1325) – the admin right recyclebin, or the delete right of a form that keeps deleted records
-	public const FORM_NOTIFY = 'nunextnotify';       // notifications → Manage list (0.8.690) – view / print for everybody NuNotify::canManage() lets in
-	public const FORM_USERFIELD = 'nunextuserfield'; // custom user fields list (nuBuilder Next only, 0.8.546) – right through the admin right userfields
+	public const FORM_AUDIT  = 'nunextaudit'; // audit trail (nuBuilder Next only)
+	public const FORM_ADMINROLE = 'nunextadminrole'; // admin roles list (nuBuilder Next only) – right through the admin right adminroles
+	public const FORM_APICLIENT = 'nunextapiclient'; // API clients list (nuBuilder Next only) – right through the admin right apiclients
+	public const FORM_EXPORT = 'nunextexport';       // data exports list (nuBuilder Next only) – right through the admin right dataexport
+	public const FORM_USERHELP = 'nunextuserhelp';   // user help pages list (nuBuilder Next only) – right through the admin right userhelp
+	public const FORM_AIPROVIDER = 'nunextaiprovider'; // AI providers list (nuBuilder Next only) – right through the admin right aiproviders
+	public const FORM_WEBHOOK = 'nunextwebhook';     // webhooks + their calls (nuBuilder Next only) – right through the admin right webhooks
+	public const FORM_DASHBOARD = 'nunextdashboard'; // dashboards list (nuBuilder Next only) – right through the admin right dashboards
+	public const FORM_PROJECT = 'nunextproject';     // projects list (nuBuilder Next only) – admin right projects, or the save right on the Forms form
+	public const FORM_RECYCLE = 'nunextrecycle';     // recycle bin list – the admin right recyclebin, or the delete right of a form that keeps deleted records
+	public const FORM_NOTIFY = 'nunextnotify';       // notifications → Manage list – view / print for everybody NuNotify::canManage() lets in
+	public const FORM_USERFIELD = 'nunextuserfield'; // custom user fields list (nuBuilder Next only) – right through the admin right userfields
 	public const FORM_SETUP  = 'nusetup';     // nuBuilder setup form (e-mail settings, test mail)
 	public const FORM_EMAILLOG = 'nuemaillog'; // nuBuilder e-mail log
 	public const FORM_FORMAT = 'nuformat';
@@ -56,7 +56,7 @@ final class NuAcl
 
 	/** @return array{view:bool,add:bool,save:bool,delete:bool,clone:bool,new:bool,print:bool,create:bool} */
 	/**
-	 * Besides the buttons (RIGHTS), nuBuilder's access level gives per form (0.8.461, as 4.9's nuform.php / nudata.php):
+	 * Besides the buttons (RIGHTS), nuBuilder's access level gives per form (as 4.9's nuform.php / nudata.php):
 	 *   slf_form_type 0 = browse only (no edit screen, not even a new record), 1 = edit only (no browse list) → 'browse' / 'edit' false;
 	 *   slf_data_mode 0 = no changes to existing records → 'no_edits' true and 'save' false (new records, Clone and Delete stay).
 	 * The globeadmin and admin roles with "change" on the form are not limited (nuBuilder: global access).
@@ -77,30 +77,30 @@ final class NuAcl
 			return self::$cache[$key] = $r;
 		}
 		$r = self::rightsOf($u, $formId);
-		// nuBuilder Forte's User Home (0.8.602): open for a user whose access level has it as home form – a launch form without data
+		// nuBuilder Forte's User Home: open for a user whose access level has it as home form – a launch form without data
 		if (!$r['view'] && $formId === NuUserHome::FORM && NuUserHome::isHomeOf($u)) $r = ['view' => true, 'print' => true] + self::none() + self::FREE;
 		// the Home form of the user's access level opens without a row in zzzzsys_access_form, as in nuBuilder Forte (its nuFormAccessList
-		// adds HOME_ID; not for admin-equivalent system forms) – without Add / Save / Delete / Clone / Print (0.8.1204)
+		// adds HOME_ID; not for admin-equivalent system forms) – without Add / Save / Delete / Clone / Print
 		elseif (!$r['view'] && !in_array($formId, NuSecurity::ADMIN_FORMS, true) && NuUserHome::isHomeOf($u, $formId)) $r = ['view' => true] + self::FREE + self::none();
-		// notification centre → Manage (0.8.690): senders and viewers (admin right, permission items) see the list – the rows are filtered by NuNotify
+		// notification centre → Manage: senders and viewers (admin right, permission items) see the list – the rows are filtered by NuNotify
 		if (!$r['view'] && $formId === self::FORM_NOTIFY && NuNotify::canManage()) $r = ['view' => true, 'print' => true] + self::none() + self::FREE;
-		if (!$r['view'] && $formId === self::FORM_RECYCLE && NuRecycle::canSeeAny()) $r = ['view' => true, 'print' => true] + self::none() + self::FREE;   // recycle bin (0.8.1325)
-		if (!$r['view'] && $formId === self::FORM_PROJECT && NuProject::canView()) $r = ['view' => true, 'print' => true] + self::none() + self::FREE;   // projects (0.8.1035): form designers too
-		// admin role (0.8.323): rights on nuBuilder's system forms on top of the access level (core/nuadmin.php)
+		if (!$r['view'] && $formId === self::FORM_RECYCLE && NuRecycle::canSeeAny()) $r = ['view' => true, 'print' => true] + self::none() + self::FREE;   // recycle bin
+		if (!$r['view'] && $formId === self::FORM_PROJECT && NuProject::canView()) $r = ['view' => true, 'print' => true] + self::none() + self::FREE;   // projects: form designers too
+		// admin role: rights on nuBuilder's system forms on top of the access level (core/nuadmin.php)
 		$lvl = class_exists('NuAdmin') ? NuAdmin::formLevel($formId) : '';
 		if ($lvl === 'change') $r = array_fill_keys(['view', 'create', ...array_keys(self::RIGHTS)], true) + self::FREE;
 		elseif ($lvl === 'view') { $r['view'] = true; $r['print'] = true; $r['browse'] = $r['edit'] = true; }
 		return self::$cache[$key] = $r;
 	}
 
-	/** Rights an access level gives on a form (zzzzsys_access_form only – no admin role, no globeadmin); for the self-test (0.8.361). */
+	/** Rights an access level gives on a form (zzzzsys_access_form only – no admin role, no globeadmin); for the self-test. */
 	public static function levelRights(string $accessId, string $formId): array
 	{
 		return self::rightsOf(['access_id' => $accessId], $formId);
 	}
 
 	/**
-	 * Rights of the user's levels combined (0.8.585): the main level plus active additional levels (NuUserAccess) – a right any level
+	 * Rights of the user's levels combined: the main level plus active additional levels (NuUserAccess) – a right any level
 	 * grants counts; browse / edit when any level allows it; "no changes to existing records" only when every level with the form says so.
 	 */
 	private static function rightsOf(array $u, string $formId): array
@@ -119,7 +119,7 @@ final class NuAcl
 
 	/**
 	 * Every row an access level has in zzzzsys_access_form: lower-case form id => row. Read once per request (performance review,
-	 * 0.8.1341: a form page of a normal user asked for one form at a time – 10 to 20 statements, two per form with the 4.9 columns);
+	 * a form page of a normal user asked for one form at a time – 10 to 20 statements, two per form with the 4.9 columns);
 	 * a write to the table through NuDB drops it (NuMemo). The first row of a form counts, as the single-row read before.
 	 * @return array<string, array<string, mixed>>
 	 */
@@ -137,7 +137,7 @@ final class NuAcl
 
 	/**
 	 * Every access level (zzzzsys_access): id => row (all columns as text, ordered by code) – read once per request (code review R5,
-	 * 0.8.1351: about thirty places read the list by hand); a write to the table through NuDB drops it (NuMemo). [] without the table.
+	 * about thirty places read the list by hand); a write to the table through NuDB drops it (NuMemo). [] without the table.
 	 * @return array<string, array<string, mixed>>
 	 */
 	public static function levels(): array
@@ -151,7 +151,7 @@ final class NuAcl
 					foreach ($r as $k => $v) if (is_string($k) && $v !== null && !is_string($v)) $r[$k] = (string)$v;
 					$out[(string)$r['zzzzsys_access_id']] = $r;
 				}
-			} catch (Throwable) { /* no table / no connection */ }
+			} catch (Throwable $ig) { nu_ignored($ig, 'no table / no connection'); }
 			return $out;
 		});
 	}
@@ -176,6 +176,19 @@ final class NuAcl
 	public static function levelCodes(): array
 	{
 		return array_map(static fn($r) => (string)($r['sal_code'] ?? ''), self::levels());
+	}
+
+	/** The access levels as plain rows for settings pages (IP access, single sign-on); none while the table cannot be read.
+	 * @return list<array{id: string, code: string, name: string, group: string}> */
+	public static function levelList(): array
+	{
+		try {
+			return array_map(static fn($r) => ['id' => (string)$r['zzzzsys_access_id'], 'code' => (string)$r['sal_code'],
+				'name' => (string)$r['sal_description'], 'group' => (string)($r['sal_group'] ?? '')], array_values(self::levels()));
+		} catch (Throwable $ig) {
+			nu_ignored($ig, 'no access level table');
+			return [];
+		}
 	}
 
 	/** The access levels ordered by group, then code (select lists with groups). @return array<string, array<string, mixed>> */
@@ -206,7 +219,7 @@ final class NuAcl
 		$r = ['view' => true];
 		foreach (self::RIGHTS as $right => $col) $r[$right] = (string)($row[$col] ?? '') === '1';
 		$r['create'] = $r['add'] || $r['new'];     // "Add" on the list, "New" on the edit screen: either one allows creating
-		// form type / data mode (0.8.461) – columns of nuBuilder 4.9 (older databases lack them: no limit)
+		// form type / data mode – columns of nuBuilder 4.9 (older databases lack them: no limit)
 		$r += self::FREE;
 		$ft = trim((string)($row['slf_form_type'] ?? ''));
 		if ($ft === '0') $r['edit'] = false;              // browse only

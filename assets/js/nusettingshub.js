@@ -1,4 +1,4 @@
-/* Settings centre (0.8.702, core/nusettingshub.php): search over every setting in the side bar (index loaded once from
+/* Settings centre (core/nusettingshub.php): search over every setting in the side bar (index loaded once from
    ?p=settings&index=1), the target of a result highlighted (#anchor), ?q= fills the search of nuBuilder Forte's list,
    ?find= jumps to a variable in the nuconfig.php editor. */
 (function () {
@@ -128,7 +128,7 @@
 	});
 })();
 
-/* Settings → General → Languages (0.8.782): the variants of English / German follow their language (off = greyed out), and the last
+/* Settings → General → Languages: the variants of English / German follow their language (off = greyed out), and the last
  * ticked variant of a language cannot be unticked (at least one stays offered). */
 (function () {
 	'use strict';
@@ -154,13 +154,13 @@
 	form.addEventListener('submit', function () { form.querySelectorAll('.setLangVars input:disabled').forEach(function (b) { b.disabled = false; }); });
 })();
 
-// phones: section select (review H6, 0.8.1068)
+// phones: section select (review H6)
 (function () {
 	var sel = document.getElementById('nuSetPhSel');
 	if (sel) sel.addEventListener('change', function () { if (sel.value) window.location.href = sel.value; });
 })();
 
-// Settings → Look → Page width (0.8.1226): the pixel field only for "Custom"
+// Settings → Look → Page width: the pixel field only for "Custom"
 (function () {
 	var m = document.getElementById('shPwMode'), w = document.getElementById('shPwPxWrap'), px = document.getElementById('shPwPx');
 	if (!m || !w || !px) return;
@@ -171,7 +171,7 @@
 	});
 })();
 
-// "Compact" switch of the settings overview and sections (0.8.1240): hides the descriptions, remembered per device
+// "Compact" switch of the settings overview and sections: hides the descriptions, remembered per device
 (function () {
 	var sw = document.getElementById('nuSetCompact');
 	if (!sw) return;

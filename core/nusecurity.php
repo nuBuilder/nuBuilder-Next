@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Security settings and helpers (0.8.207, from the security review in TODO.md).
+ * Security settings and helpers (from the security review in TODO.md).
  *
  * Settings: one JSON row 'security' in zzzzsys_nunext_setting, edited on Admin tools → Security check (pages/nusecuritycheck.php).
  * Helpers: HTTPS detection behind a proxy, login rate limit (counted in the log, so it works without cookies), admin-equivalent
@@ -18,15 +18,15 @@ final class NuSecurity
 		'rights_globeadmin_only' => true,   // only the globeadmin grants rights on ADMIN_FORMS; nobody changes his own access level / rights
 		'protect_fields'         => false,  // read-only / hidden objects are not saved from the browser
 		'record_check'           => false,  // a record must be found through the form's browse SQL before it is opened, saved or deleted
-		'field_access_ga'        => false,  // field data access / column visibility rules apply to the globeadmin too (testing, 0.8.480)
+		'field_access_ga'        => false,  // field data access / column visibility rules apply to the globeadmin too (testing)
 		'md5_login'              => true,   // legacy md5 passwords (nuBuilder before 4.5) are still accepted
-		'login_token'            => true,   // nuBuilder's single-use login token (sus_json LOGIN_TOKEN, ?u=…&p=<token>) – core/nulogintoken.php (0.8.339)
-		'form_drafts_required'   => false,  // form builder (0.8.386): published forms change only through drafts (the globeadmin: live after a confirmation)
+		'login_token'            => true,   // nuBuilder's single-use login token (sus_json LOGIN_TOKEN, ?u=…&p=<token>) – core/nulogintoken.php
+		'form_drafts_required'   => false,  // form builder: published forms change only through drafts (the globeadmin: live after a confirmation)
 		'form_preview_saves'     => false,  // default of new drafts: Save / Delete allowed in the draft preview (writes live data)
 		'log_keep_days'          => 0,      // 0 = keep the log for ever
 		'reauth_minutes'         => 15,     // password again for dangerous actions when the last confirmation is older (0 = never ask)
-		'reauth_minutes_dev'     => 480,    // the same for the globeadmin while $nuConfigDevMode is on (0.8.338: development without live data)
-		'passkeys'               => true,   // users may add passkeys and use them as a second factor (0.8.877, core/nupasskey.php)
+		'reauth_minutes_dev'     => 480,    // the same for the globeadmin while $nuConfigDevMode is on (development without live data)
+		'passkeys'               => true,   // users may add passkeys and use them as a second factor (core/nupasskey.php)
 		'passkey_login'          => false,  // signing in with a passkey alone, without the password
 	];
 
@@ -55,8 +55,7 @@ final class NuSecurity
 			NuSchema::ensure();
 			$v = nu_setting_value(self::SETTING);
 			$stored = is_string($v) ? (json_decode($v, true) ?: []) : [];
-		} catch (Throwable) {
-		}
+		} catch (Throwable $ig) { nu_ignored($ig); }
 		$out = self::DEFAULTS;
 		foreach (self::DEFAULTS as $k => $d) {
 			if (!array_key_exists($k, $stored)) continue;
@@ -182,7 +181,7 @@ final class NuSecurity
 
 	// ================================================================= password confirmation (sudo)
 
-	/** Minutes a password confirmation is valid: reauth_minutes, in nuBuilder's developer mode (globeadmin + $nuConfigDevMode) reauth_minutes_dev (0.8.338). */
+	/** Minutes a password confirmation is valid: reauth_minutes, in nuBuilder's developer mode (globeadmin + $nuConfigDevMode) reauth_minutes_dev. */
 	public static function reauthMinutes(): int
 	{
 		return (int)self::get(NuHash::devMode() ? 'reauth_minutes_dev' : 'reauth_minutes');
@@ -193,15 +192,15 @@ final class NuSecurity
 	{
 		$min = self::reauthMinutes();
 		if ($min <= 0) return true;
-		$at = (int)($_SESSION['nu_auth']['confirmed'] ?? $_SESSION['nu_auth']['since'] ?? 0);
-		$via = (string)($_SESSION['nu_auth']['via'] ?? '');
-		if ($via !== '' && !isset($_SESSION['nu_auth']['confirmed'])) $at = 0;   // shared login / acting: confirm once
+		$at = (int)($_SESSION[NuSess::AUTH]['confirmed'] ?? $_SESSION[NuSess::AUTH]['since'] ?? 0);
+		$via = (string)($_SESSION[NuSess::AUTH]['via'] ?? '');
+		if ($via !== '' && !isset($_SESSION[NuSess::AUTH]['confirmed'])) $at = 0;   // shared login / acting: confirm once
 		return time() - $at <= $min * 60;
 	}
 
 	public static function confirmed(): void
 	{
-		if (isset($_SESSION['nu_auth'])) $_SESSION['nu_auth']['confirmed'] = time();
+		if (isset($_SESSION[NuSess::AUTH])) $_SESSION[NuSess::AUTH]['confirmed'] = time();
 	}
 
 	/**
@@ -213,7 +212,7 @@ final class NuSecurity
 		if (self::recentAuth()) return;
 		if (!empty(NuAuth::user()['demo'])) return;            // demo mode refuses these actions anyway
 		if (nu_is_post()) nu_flash('warning', t('reauth_needed'));
-		$_SESSION['nu_reauth_next'] = NuAuth::validNext($back) ?? nu_url('home');
+		$_SESSION[NuSess::REAUTH_NEXT] = NuAuth::validNext($back) ?? nu_url('home');
 		nu_redirect(nu_url('reauth'));
 	}
 
@@ -221,7 +220,7 @@ final class NuSecurity
 
 	/** Column / setting names that hold passwords, keys or tokens. */
 	/**
-	 * Web server rules for this installation (0.8.761, review D1): Apache AllowOverride + every nginx rule the .htaccess files stand for –
+	 * Web server rules for this installation (review D1): Apache AllowOverride + every nginx rule the .htaccess files stand for –
 	 * the same list as Help → Security check → Web server rules. Server-only library packs come from NuLibs::SLOTS ('web' => false).
 	 */
 	public static function serverRules(string $docRoot, string $base): string
@@ -257,7 +256,7 @@ final class NuSecurity
 	{
 		if (!NuDemo::active() || $value === null || $value === '') return $value;
 		if (self::hashValue($value) || self::secretName($column)) return '•••';
-		if (strcasecmp($column, 'sus_json') === 0 && is_string($value)) {      // 0.8.341: login token, 2FA / OTP secrets, auto-login epoch
+		if (strcasecmp($column, 'sus_json') === 0 && is_string($value)) {      // login token, 2FA / OTP secrets, auto-login epoch
 			$j = json_decode($value, true);
 			if (!is_array($j)) return '•••';
 			foreach ($j as $k => $v) if (preg_match('/^(LOGIN_TOKEN|2FA_|OTP_|PASSWORD_|NUNEXT_AUTOLOGIN)/i', (string)$k)) $j[$k] = '•••';
@@ -287,28 +286,29 @@ final class NuSecurity
 		$bd = NuUpdate::backupDir();
 		if (str_starts_with(str_replace('\\', '/', $bd), str_replace('\\', '/', NU_ROOT) . '/')) $urls[] = substr($bd, strlen(NU_ROOT) + 1) . '/index.html';
 		if (is_dir(NU_ROOT . '/temp')) $urls[] = 'temp/index.html';
-		if (is_file(NU_ROOT . '/_libsrc/index.html')) $urls[] = '_libsrc/index.html';     // library pack sources inside (0.8.412)
-		// library packs (0.8.409): vendor/packs/ is closed – its state file and the server-only packs (TCPDF, PHPMailer, Adminer)
+		if (is_file(NU_ROOT . '/_libsrc/index.html')) $urls[] = '_libsrc/index.html';     // library pack sources inside
+		// library packs: vendor/packs/ is closed – its state file and the server-only packs (TCPDF, PHPMailer, Adminer)
 		if (is_file(NU_ROOT . '/' . NU_PACKS . '/index.html')) $urls[] = NU_PACKS . '/index.html';
 		if (is_file(NU_ROOT . '/' . NuLibs::STATE)) $urls[] = NuLibs::STATE;
 		foreach (['tcpdf', 'phpmailer'] as $sl) {
 			$d = NuLibs::activeDir($sl);
 			if ($d !== null && is_file($d . '/' . NuLibs::MANIFEST) && !NuLibs::isLegacy($sl)) $urls[] = NuLibs::webPath($sl) . '/' . NuLibs::MANIFEST;
 		}
-		// page forms (0.8.387): custom/ is reachable only through the router (nginx needs its own rule)
-		foreach (['custom/PAGE_GUIDE.md', 'custom/pages/_template/index.php', 'custom/pages/_template/assets/app.css', 'apps/nufiles/README.md', 'apps/nufiles/lib/api.php'] as $f) if (is_file(NU_ROOT . '/' . $f)) $urls[] = $f;
-		foreach (['PMA'] as $a) {                             // a local version note of a copied tool (0.8.231) may name open CVEs
+		// page forms: custom/ is reachable only through the router (nginx needs its own rule)
+		foreach (['custom/PAGE_GUIDE.md', 'custom/pages/_template/index.php', 'custom/pages/_template/assets/app.css', 'apps/nufiles/README.md',
+			'apps/nufiles/lib/api.php'] as $f) if (is_file(NU_ROOT . '/' . $f)) $urls[] = $f;
+		foreach (['PMA'] as $a) {                             // a local version note of a copied tool may name open CVEs
 			$f = NuVendor::dir($a) . '/' . self::LOCAL_VERSION;
 			if (is_file($f) && str_starts_with(str_replace('\\', '/', $f), str_replace('\\', '/', NU_ROOT) . '/')) $urls[] = substr($f, strlen(NU_ROOT) + 1);
 		}
-		// Adminer (0.8.282) must only open through nudbadmin.php – served directly it would offer its own login form
+		// Adminer must only open through nudbadmin.php – served directly it would offer its own login form
 		$adm = NuVendor::adminerFile();
 		if ($adm !== '' && str_starts_with(str_replace('\\', '/', $adm), str_replace('\\', '/', NU_ROOT) . '/')) $urls[] = substr(str_replace('\\', '/', $adm), strlen(NU_ROOT) + 1);
 		return $urls;
 	}
 
 	/**
-	 * What each probed file really starts with (0.8.503): the Security check counts a file as readable only when the answer contains
+	 * What each probed file really starts with: the Security check counts a file as readable only when the answer contains
 	 * this – a host's own page (bot protection, error page) with HTTP 200 is not the file. '' = an empty file (index.html of a closed
 	 * folder). @return array<string, string> url => the first 80 characters (line ends as \n)
 	 */
@@ -328,16 +328,16 @@ final class NuSecurity
 	 * Third-party code nuBuilder Next uses from the nuBuilder installation, a library pack (vendor/packs/) or an old copy: [name, version, path, min,
 	 * status ok|old|warn|missing, note key]. Minimum = first version without the publicly known vulnerabilities at the time of this
 	 * release (TCPDF CVE-2024-32489 → 6.7.4, PHPMailer CVE-2021-34551 → 6.5.0, phpMyAdmin PMASA-2025-1…3 → 5.2.2, TinyMCE
-	 * CVE-2024-38356/38357 → 6.8.4 / 7.2.0). Tiny File Manager was removed in 0.8.479 (File Manager = the page nuFiles).
+	 * CVE-2024-38356/38357 → 6.8.4 / 7.2.0). Tiny File Manager was removed in (File Manager = the page nuFiles).
 	 */
-	/** Version note of a library you build / patch yourself (0.8.231), in the library's folder – see localVersion(). */
+	/** Version note of a library you build / patch yourself, in the library's folder – see localVersion(). */
 	public const LOCAL_VERSION = 'NUNEXT-VERSION.txt';
 
 	/**
 	 * Reads NUNEXT-VERSION.txt of a copied library: "key: value" lines (version, upstream, commit, downloaded, CVE-…: open|fixed …) and
 	 * free lists (additions:, fixes:, changes: with "- " lines). @return ?array{version: string, cves: array<string, string>, text: string}
 	 */
-	/** A CVE line of NUNEXT-VERSION.txt that says it is dealt with: starts with "fixed" or "patched" (0.8.417), any case. */
+	/** A CVE line of NUNEXT-VERSION.txt that says it is dealt with: starts with "fixed" or "patched", any case. */
 	public static function cveFixed(string $status): bool
 	{
 		return (bool)preg_match('/^\s*(fixed|patched)\b/i', $status);
@@ -376,11 +376,11 @@ final class NuSecurity
 		$out[] = ['TinyMCE', $v, is_dir($tm) ? $tm : '', $v !== '' && version_compare($v, '7', '>=') ? '7.2.0' : '6.8.4', ''];
 		$pma = NuVendor::dir('PMA');
 		$out[] = ['phpMyAdmin', $read($pma . '/libraries/classes/Version.php', "/VERSION = '([0-9.]+)'/"), is_dir($pma) ? $pma : '', '5.2.2', ''];
-		$adm = NuVendor::adminerFile();                           // 0.8.282 – 4.x works but is not PHP 8 clean and no longer maintained
+		$adm = NuVendor::adminerFile();                           // 4.x works but is not PHP 8 clean and no longer maintained
 		$out[] = ['Adminer', NuVendor::adminerVersion(), $adm !== '' ? dirname($adm) : '', '5.0.0', NuVendor::adminerConverted() ? 'secchk_lib_adminer_crlf' : ''];
-		$up = NuLibs::uppy();                                     // 0.8.459: file objects with target "File System" (library pack only)
+		$up = NuLibs::uppy();                                     // file objects with target "File System" (library pack only)
 		$out[] = ['Uppy', $up !== '' ? (NuLibs::uppyVersion(NU_ROOT . '/' . $up . '/uppy.min.js') ?: '?') : '', $up !== '' ? NU_ROOT . '/' . $up : '', '', ''];
-		$ps = NuLibs::activeDir('phpspreadsheet');                // 0.8.755: Excel / OpenDocument files (library pack only)
+		$ps = NuLibs::activeDir('phpspreadsheet');                // Excel / OpenDocument files (library pack only)
 		$out[] = ['PhpSpreadsheet', $ps !== null ? (NuSpreadsheet::version() ?: '?') : '', $ps ?? '', '', ''];
 		foreach ($out as &$l) {
 			[$name, $ver, $path, $min, $note] = $l;
@@ -431,7 +431,7 @@ final class NuSecurity
 
 	/**
 	 * The PHP release with the PHP2Shell fix this server needs: '' when $v has it (or is a newer branch), else the version to update to
-	 * (0.8.362). Distributions / hosts can backport the fix without changing the version number – the texts say so.
+	 *. Distributions / hosts can backport the fix without changing the version number – the texts say so.
 	 */
 	public static function phpFixNeeded(string $v = PHP_VERSION): string
 	{
@@ -467,7 +467,7 @@ final class NuSecurity
 			$base !== '' ? $base : ($seen !== '' ? t('secchk_chk_baseurl_seen', $seen) : t('secchk_chk_baseurl_none')), nu_url('configfile'));
 		$key = (string)nu_cfg('nuConfigSecretKey') !== '';
 		$add('secretkey', $key ? 'ok' : 'bad', 'secchk_chk_key', $key ? '' : t('secchk_chk_key_none'), $key ? '' : nu_url('apiclients'));
-		// secrets at rest (0.8.1326, NuSecret): encrypted / plain / unreadable, the shared SMTP password
+		// secrets at rest (NuSecret): encrypted / plain / unreadable, the shared SMTP password
 		try {
 			$ss = NuSecret::status();
 			$sp = [];
@@ -480,23 +480,25 @@ final class NuSecurity
 			$st = $bad || ($sp && !$key) ? 'bad' : ($sp || ($ss['smtp_shared'] && !$ss['smtp_only']) ? 'warn' : 'ok');
 			$add('secrets', $st, 'secchk_chk_secrets', $det ? implode(' ', $det) : t('secchk_chk_secrets_ok', $ss['total']['sealed']),
 				$sp && $key ? '' : ($ss['smtp_shared'] && !$ss['smtp_only'] ? nu_url('email', ['tab' => 'settings']) . '#m_onlyWrap' : ''));
-		} catch (Throwable) { /* no tables yet */ }
+		} catch (Throwable $ig) { nu_ignored($ig, 'no tables yet'); }
 		$add('adminpw', self::weakAdminPassword() ? 'bad' : 'ok', 'secchk_chk_adminpw', self::weakAdminPassword() ? t('secchk_chk_adminpw_weak') : '', nu_url('configfile'));
 		$add('admin2fa', nu_cfg('nuConfig2FAAdmin') ? 'ok' : 'warn', 'secchk_chk_admin2fa', nu_cfg('nuConfig2FAAdmin') ? '' : t('secchk_chk_admin2fa_off'), nu_url('configfile'));
-		$ipa = NuIpAccess::settings();   // IP access (0.8.722)
+		$ipa = NuIpAccess::settings();   // IP access
 		$add('ipaccess', $ipa['on'] ? 'ok' : 'info', 'secchk_chk_ipaccess', $ipa['on'] ? t('secchk_chk_ipaccess_on', count($ipa['levels'])) : t('secchk_chk_ipaccess_off'), nu_url('ipaccess'));
-		$pkProblem = NuPasskey::problem();   // passkeys (0.8.877)
+		$pkProblem = NuPasskey::problem();   // passkeys
 		$pkUsers = $pkProblem === '' && nu_db()->tableExists(NuPasskey::TABLE) ? (int)nu_db()->value('SELECT COUNT(DISTINCT user_id) FROM ' . NuPasskey::TABLE) : 0;
-		$add('passkeys', $pkProblem === '' ? 'ok' : 'info', 'secchk_chk_passkeys', $pkProblem === '' ? t('secchk_chk_passkeys_on', $pkUsers) . (NuPasskey::loginOn() ? ' ' . t('secchk_chk_passkeys_login') : '') : t($pkProblem), nu_url('securitycheck', ['tab' => 'settings']) . '#sec_passkeys');
-		$dbgOn = !empty(nu_config()['nuConfigDebug']) || !empty(nu_cfg('nuConfigDebug'));   // the file or Forte's table (0.8.766)
+		$add('passkeys', $pkProblem === '' ? 'ok' : 'info', 'secchk_chk_passkeys', $pkProblem === '' ? t('secchk_chk_passkeys_on', $pkUsers)
+			. (NuPasskey::loginOn() ? ' ' . t('secchk_chk_passkeys_login') : '') : t($pkProblem), nu_url('securitycheck', ['tab' => 'settings'])
+			. '#sec_passkeys');
+		$dbgOn = !empty(nu_config()['nuConfigDebug']) || !empty(nu_cfg('nuConfigDebug'));   // the file or Forte's table
 		$add('debug', $dbgOn ? 'bad' : 'ok', 'secchk_chk_debug', $dbgOn ? t('secchk_chk_debug_on') : '');
-		// $nuConfigIncludeJS / CSS / PHP (0.8.443): files that are not found are left out – say which
+		// $nuConfigIncludeJS / CSS / PHP: files that are not found are left out – say which
 		if (NuIncludes::entries('js') || NuIncludes::entries('css') || NuIncludes::entries('php')) {
 			$miss = NuIncludes::missing();
 			$add('includes', $miss ? 'warn' : 'ok', 'secchk_chk_includes',
 				$miss ? t('secchk_chk_includes_missing', implode(' · ', array_map(static fn($m) => $m['var'] . ': ' . $m['file'], $miss))) : '', nu_url('configfile'));
 		}
-		// admin roles (0.8.323): who has a part of the globeadmin's rights – roles with "full access" rights are named
+		// admin roles: who has a part of the globeadmin's rights – roles with "full access" rights are named
 		try {
 			$adm = [];
 			$full = false;
@@ -507,37 +509,38 @@ final class NuSecurity
 				foreach (NuAdmin::usersOf($r['id']) as $au) $adm[] = $au['login'] . ' – ' . $r['name'] . ($f ? ' (' . t('adm_full') . ')' : '');
 			}
 			$add('adminroles', !$adm ? 'ok' : ($full ? 'warn' : 'ok'), 'secchk_chk_adminroles', $adm ? implode(' · ', $adm) : t('secchk_chk_adminroles_none'), nu_url('adminroles'));
-		} catch (Throwable) { /* no tables yet */ }
+		} catch (Throwable $ig) { nu_ignored($ig, 'no tables yet'); }
 		$de = filter_var(nu_ini_get('display_errors'), FILTER_VALIDATE_BOOLEAN) || in_array(strtolower((string)nu_ini_get('display_errors')), ['stdout', 'stderr'], true);
 		$add('display_errors', $de ? 'warn' : 'ok', 'secchk_chk_display_errors', $de ? t('secchk_chk_display_errors_on') : '');
-		$fix = self::phpFixNote();                         // 0.8.362: PHP2Shell – a version without the fix is a red point
+		$fix = self::phpFixNote();                         // PHP2Shell – a version without the fix is a red point
 		$add('php', $fix !== '' ? 'bad' : (PHP_VERSION_ID >= 80200 ? 'ok' : 'warn'), 'secchk_chk_php',
 			PHP_VERSION . (PHP_VERSION_ID < 80200 && $fix === '' ? ' – ' . t('secchk_php_old') : '') . ($fix !== '' ? ' – ' . $fix : ''));
-		// updates (0.8.645): packages are zips with an Ed25519 signature – without zip nothing can be read, without sodium the signature is not checked
+		// updates: packages are zips with an Ed25519 signature – without zip nothing can be read, without sodium the signature is not checked
 		$zip = class_exists('ZipArchive'); $sod = function_exists('sodium_crypto_sign_verify_detached');
-		$add('php_update_ext', $zip && $sod ? 'ok' : ($zip ? 'warn' : 'bad'), 'secchk_chk_update_ext', $zip && $sod ? 'zip · sodium' : implode(' ', array_filter([$zip ? '' : t('secchk_chk_nozip'), $sod ? '' : t('secchk_chk_nosodium')])));
+		$add('php_update_ext', $zip && $sod ? 'ok' : ($zip ? 'warn' : 'bad'), 'secchk_chk_update_ext', $zip
+			&& $sod ? 'zip · sodium' : implode(' ', array_filter([$zip ? '' : t('secchk_chk_nozip'), $sod ? '' : t('secchk_chk_nosodium')])));
 		if (nu_cfg('nuConfigApiAllowHttp')) $add('api_http', 'bad', 'secchk_chk_api_http', t('secchk_chk_api_http_on'));
 		if (NuDemo::configured()) $add('demo', 'warn', 'secchk_chk_demo', t('secchk_chk_demo_on'), nu_url('vendor') . '#demomode');
 		if (nu_cfg('nuConfigAutoLogin')) $add('autologin', 'info', 'secchk_chk_autologin', t('secchk_chk_autologin_on'));
-		if (NuHomeHook::active()) $add('homehook', 'info', 'secchk_chk_homehook', t('secchk_chk_homehook_on'), nu_url('procedures', ['id' => (string)(NuHomeHook::procedure()['id'] ?? '')]));   // 0.8.378
-		if (!empty(nu_cfg('nuConfigDevMode'))) {             // 0.8.338: developer mode relaxes the password confirmation of the globeadmin
+		if (NuHomeHook::active()) $add('homehook', 'info', 'secchk_chk_homehook', t('secchk_chk_homehook_on'), nu_url('procedures', ['id' => (string)(NuHomeHook::procedure()['id'] ?? '')]));
+		if (!empty(nu_cfg('nuConfigDevMode'))) {             // developer mode relaxes the password confirmation of the globeadmin
 			$dm = (int)self::get('reauth_minutes_dev');
 			$add('devmode', 'info', 'secchk_chk_devmode', $dm > 0 ? t('secchk_chk_devmode_on', $dm) : t('secchk_chk_devmode_never'), nu_url('securitycheck') . '#sec_reauth_minutes_dev');
 		}
-		if (NuLoginToken::enabled()) {                        // nuBuilder's single-use login tokens (0.8.339)
+		if (NuLoginToken::enabled()) {                        // nuBuilder's single-use login tokens
 			$lt = count(NuLoginToken::holders());
 			$add('logintoken', $lt > 0 ? 'info' : 'ok', 'secchk_chk_logintoken', $lt > 0 ? t('secchk_chk_logintoken_n', $lt) : t('secchk_chk_logintoken_none'));
 		} else {
 			$add('logintoken', 'ok', 'secchk_chk_logintoken', t('secchk_chk_logintoken_off'));
 		}
 		$md5 = self::md5Users();
-		if (NuAuth::md5Storage()) {                            // nuBuilder's $nuUseMd5PasswordHash = true: new passwords are md5 too (0.8.336)
+		if (NuAuth::md5Storage()) {                            // nuBuilder's $nuUseMd5PasswordHash = true: new passwords are md5 too
 			$add('md5store', 'bad', 'secchk_chk_md5store', t('secchk_chk_md5store_on'), nu_cfg('nuConfigSettingsFromDB') ? nu_url('settings', ['q' => 'nuUseMd5PasswordHash']) : nu_url('configfile'));
 			$add('md5', $md5 === 0 ? 'ok' : 'info', 'secchk_chk_md5', $md5 === 0 ? '' : t('secchk_chk_md5_kept', $md5));
 		} else {
 			$add('md5', $md5 === 0 ? 'ok' : (self::get('md5_login') ? 'warn' : 'info'), 'secchk_chk_md5', $md5 === 0 ? '' : t('secchk_chk_md5_n', $md5));
 		}
-		// 0.8.478 (security assessment C2 / K1 / C1): row access, field protection, the upload template's folder
+		// (security assessment C2 / K1 / C1): row access, field protection, the upload template's folder
 		$rc = (bool)self::get('record_check');
 		$add('recordcheck', $rc ? 'ok' : 'warn', 'secchk_chk_recordcheck', $rc ? '' : t('secchk_chk_recordcheck_off'), $rc ? '' : nu_url('securitycheck') . '#sec_record_check');
 		$pf = (bool)self::get('protect_fields');
@@ -547,12 +550,13 @@ final class NuSecurity
 			$pid = (string)(nu_db()->value('SELECT zzzzsys_php_id FROM zzzzsys_php WHERE sph_code = ?', [NuUpload::PROCEDURE_CODE]) ?? '');
 			$add('uploadtpl', $web ? 'bad' : 'ok', 'secchk_chk_uploadtpl', $web ? t('secchk_chk_uploadtpl_web') : '', $web ? nu_url('procedures', ['id' => $pid]) : '');
 		}
-		// field data access (0.8.480): forms with rules – the values of withheld / masked fields still reach nuBuilder 4.9 on the same database
+		// field data access: forms with rules – the values of withheld / masked fields still reach nuBuilder 4.9 on the same database
 		$fa = NuFieldAccess::counts();
 		if ($fa) $add('fieldaccess', 'info', 'secchk_chk_fieldaccess', t('secchk_chk_fieldaccess_n', array_sum($fa), count($fa)));
-		// 0.8.479: Tiny File Manager is gone – a copy the update could not delete is still reachable on the web
+		// Tiny File Manager is gone – a copy the update could not delete is still reachable on the web
 		$tfmLeft = array_values(array_filter([NU_ROOT . '/third_party/tinyfilemanager', ...(glob(NU_ROOT . '/' . NU_PACKS . '/tinyfilemanager-*', GLOB_ONLYDIR) ?: [])], 'is_dir'));
-		if ($tfmLeft) $add('tfm_left', 'bad', 'secchk_chk_tfm_left', t('secchk_chk_tfm_left_n', implode(' · ', array_map(static fn($d) => substr(str_replace('\\', '/', $d), strlen(NU_ROOT) + 1), $tfmLeft))));
+		if ($tfmLeft) $add('tfm_left', 'bad', 'secchk_chk_tfm_left',
+			t('secchk_chk_tfm_left_n', implode(' · ', array_map(static fn($d) => substr(str_replace('\\', '/', $d), strlen(NU_ROOT) + 1), $tfmLeft))));
 		$levels = self::adminLevels();
 		$add('adminlevels', $levels ? 'info' : 'ok', 'secchk_chk_adminlevels',
 			$levels ? implode(' · ', array_map(static fn($code, $forms) => $code . ' (' . implode(', ', $forms) . ')', array_keys($levels), $levels)) : '', nu_url('access'));
@@ -581,7 +585,7 @@ final class NuSecurity
 	// ================================================================= uploads
 
 	/**
-	 * Extensions a web server may run or obey (0.8.459, upload route ?p=upload): checked on every dot part after the name, because
+	 * Extensions a web server may run or obey (upload route ?p=upload): checked on every dot part after the name, because
 	 * Apache with "AddHandler" runs report.php.pdf too. Names starting with a dot (.htaccess, .user.ini) are refused as well.
 	 */
 	public const UPLOAD_DANGEROUS = ['php', 'php2', 'php3', 'php4', 'php5', 'php6', 'php7', 'php8', 'phps', 'pht', 'phtm', 'phtml', 'phar', 'inc',
@@ -619,8 +623,8 @@ final class NuSecurity
 	/** Remembers the URL of this installation from a globeadmin request (once per session). */
 	public static function rememberBaseUrl(): void
 	{
-		if (!empty($_SESSION['nu_base_seen']) || trim((string)nu_cfg('nuConfigBaseURL')) !== '') return;
-		$_SESSION['nu_base_seen'] = 1;
+		if (!empty($_SESSION[NuSess::BASE_SEEN]) || trim((string)nu_cfg('nuConfigBaseURL')) !== '') return;
+		$_SESSION[NuSess::BASE_SEEN] = 1;
 		$host = (string)($_SERVER['HTTP_HOST'] ?? '');
 		if (!preg_match('/^[A-Za-z0-9.\-]+(:\d+)?$|^\[[0-9a-fA-F:]+\](:\d+)?$/', $host)) return;
 		$url = (nu_https() ? 'https' : 'http') . '://' . $host . rtrim(self::cookiePath(), '/');
@@ -631,7 +635,6 @@ final class NuSecurity
 			$row = ['setting_value' => $url, 'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => 'globeadmin'];
 			if ($cur === null) $db->insert('zzzzsys_nunext_setting', ['zzzzsys_nunext_setting_id' => 'base_url_seen'] + $row);
 			elseif ($cur !== $url) $db->update('zzzzsys_nunext_setting', $row, 'zzzzsys_nunext_setting_id', 'base_url_seen');
-		} catch (Throwable) {
-		}
+		} catch (Throwable $ig) { nu_ignored($ig); }
 	}
 }

@@ -3,10 +3,10 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Languages of the installation (0.8.701): the ones chosen when installing (installer step Options) or later in Admin tools →
+ * Languages of the installation: the ones chosen when installing (installer step Options) or later in Admin tools →
  * Settings → card Languages. Only these are offered – language menus, the sign-in page, the user form, the setup wizard – and only
  * they get a built-in welcome e-mail template (NuWelcome::ensureTemplates). Setting row 'languages' (JSON list of codes, as
- * NU_LANGS); 0.8.693–0.8.700 stored it as 'welcome_langs' (read as the fallback). No row = every language (installations from
+ * NU_LANGS); stored it as 'welcome_langs' (read as the fallback). No row = every language (installations from
  * before, and while there is no database yet – the installer).
  */
 final class NuLanguages
@@ -26,13 +26,13 @@ final class NuLanguages
 		if (!NuDB::$connected) {
 			// connect now – but never while connecting fails (the error page asks for texts again) and never before nuconfig.php exists
 			if (self::$connecting) return $all;
-			// command line (nucron.php, dev/tests/run.php): no connection of its own – a failing one ends the script (0.8.714)
+			// command line (nucron.php, dev/tests/run.php): no connection of its own – a failing one ends the script
 			if (PHP_SAPI === 'cli') return $all;
 			self::$connecting = true;
 			try { nu_db(); } finally { self::$connecting = false; }
 		}
 		$l = [];
-		// never again while reading (0.8.789): a connection that fails ends in nu_fatal() → t() → here again – endless, memory exhausted
+		// never again while reading: a connection that fails ends in nu_fatal() → t() → here again – endless, memory exhausted
 		if (self::$connecting) return $all;
 		self::$connecting = true;
 		try {
@@ -87,11 +87,11 @@ final class NuLanguages
 		return ['added' => array_values(array_diff($l, $before)), 'removed' => $removed];
 	}
 
-	// ---------------------------------------------------------------- variants (0.8.782): English UK / Australia / US, German DE / CH
+	// ---------------------------------------------------------------- variants: English UK / Australia / US, German DE / CH
 	// Setting row 'language_variants' {base: [variant codes]} – a base language without an entry (or no row) offers all its variants.
 	public const VAR_KEY = 'language_variants';
 	private static ?array $varCache = null;
-	/** @var array<string, list<string>> base => offered variants, worked out once per request for the stored setting (0.8.1341 – every t() asked) */
+	/** @var array<string, list<string>> base => offered variants, worked out once per request for the stored setting (every t() asked) */
 	private static array $varOf = [];
 
 	/** Variant codes offered for a base language (in the order of NU_LANG_VARIANTS); [] = the language has no variants. */
@@ -107,8 +107,7 @@ final class NuLanguages
 					$v = nu_setting_value(self::VAR_KEY);
 					$d = is_string($v) ? json_decode($v, true) : null;
 					if (is_array($d)) self::$varCache = $d;
-				} catch (Throwable) {
-				}
+				} catch (Throwable $ig) { nu_ignored($ig); }
 			}
 		}
 		$on = array_values(array_intersect($all, array_map('strval', (array)(self::$varCache[$base] ?? []))));
@@ -156,8 +155,7 @@ final class NuLanguages
 				$c = nu_lang_from_db((string)$r['l']);
 				if ($c !== null) $out[$c] += (int)$r['n'];
 			}
-		} catch (Throwable) {
-		}
+		} catch (Throwable $ig) { nu_ignored($ig); }
 		return $out;
 	}
 }

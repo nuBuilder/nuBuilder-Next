@@ -21,7 +21,7 @@ if ($id !== '' && !$isNew) {
 	$rec = $db->one("SELECT * FROM $T WHERE zzzzsys_prompt_generator_id = ?", [$id]);
 	if (!$rec) { http_response_code(404); nu_fatal(t('record_not_found'), '', true); }
 }
-// clone (0.8.680, as nuBuilder Forte): ?id=new&clone=<id> opens a copy with a free code that is saved only with Save
+// clone (as nuBuilder Forte): ?id=new&clone=<id> opens a copy with a free code that is saved only with Save
 $cloneId = $isNew ? (string)($_GET['clone'] ?? '') : '';
 $src = null;
 if ($cloneId !== '') {
@@ -36,49 +36,8 @@ if ($cloneId !== '') {
 }
 $errors = [];
 
-if (nu_is_post()) {
-	$action = nu_post('action');
-	// live preview of the complete prompt (editor, while typing)
-	if ($action === 'build') {
-		$row = NuPrompt::fromInput($_POST);
-		$prompt = NuPrompt::build($row);
-		header('Content-Type: application/json; charset=utf-8');
-		exit(json_encode(['prompt' => $prompt, 'chars' => mb_strlen($prompt)], JSON_UNESCAPED_UNICODE));
-	}
-	// AI context file (0.8.991, as Form with AI): functions, hash variables, guide and the chosen tables – attached to the chat with the prompt
-	if ($action === 'context') {
-		$tables = array_values(array_filter(array_map('strval', (array)($_POST['tables'] ?? [])), static fn($x) => $x !== ''));
-		$full = nu_post('full') === '1';
-		$secs = NuAiContext::codeSections($tables, $full);
-		$zip = nu_post('fmt') === 'zip' ? NuAiContext::zip($secs, 'code') : null;
-		if ($zip !== null) { header('Content-Type: application/zip'); $name = NuAiContext::fileName('code', 'zip'); $body = $zip; }
-		else { header('Content-Type: text/markdown; charset=utf-8'); $name = NuAiContext::fileName('code', 'md'); $body = NuAiContext::markdown($secs, 'code'); }
-		header('Content-Disposition: attachment; filename="' . $name . '"');
-		header('X-Nu-File-Name: ' . $name);
-		header('Cache-Control: no-store');
-		NuLog::write('form_ai_context', $T, $rec ? $id : '', ['kind' => 'code', 'fmt' => $zip !== null ? 'zip' : 'md', 'full' => $full]);
-		echo $body;
-		exit;
-	}
-	if ($action === 'save') {
-		NuAcl::require(NuAcl::FORM_PROMPT, $rec ? 'save' : ($src ? 'clone' : 'create'));
-		$row = NuPrompt::fromInput($_POST);
-		[$newId, $errors] = NuPrompt::save($row, $rec ? $id : '');
-		if (!$errors) {
-			$after = $db->one("SELECT * FROM $T WHERE zzzzsys_prompt_generator_id = ?", [$newId]) ?? [];
-			NuLog::write($rec ? 'prompt_changed' : 'prompt_created', $T, (string)$newId, $rec ? ['fields' => NuLog::diff($rec, $after)] : ['code' => $row['pge_code']] + ($src ? ['clone_of' => $cloneId] : []));
-			nu_flash('success', t('saved'));
-			nu_redirect(nu_url('prompts', ['id' => $newId]));
-		}
-	}
-	if ($action === 'delete' && $rec) {
-		NuAcl::require(NuAcl::FORM_PROMPT, 'delete');
-		$db->delete($T, 'zzzzsys_prompt_generator_id', $id);
-		NuLog::write('prompt_deleted', $T, $id, ['code' => (string)$rec['pge_code']]);
-		nu_flash('success', t('pg_deleted'));
-		nu_redirect(nu_url('prompts'));
-	}
-}
+['rec' => $rec, 'id' => $id, 'src' => $src, 'errors' => $errors, 'cloneId' => $cloneId]
+	= NuPromptsPage::post(get_defined_vars());   // the POST actions (code review R7, nupromptspage.php)
 
 $labels = static function (mixed $v, array $catalog): array {
 	return array_map(static fn($c) => $catalog[$c]['label'] ?? $c, NuPrompt::list($v));
@@ -86,10 +45,11 @@ $labels = static function (mixed $v, array $catalog): array {
 
 // ------------------------------------------------------------------ list (also Print / CSV)
 if ($id === '') {
-	// list: columns, filters and sort of the chosen list view (0.8.334, core/nulistdefs.php)
+	// list: columns, filters and sort of the chosen list view (core/nulistdefs.php)
 	NuListView::page('prompts', [
 		'before' => NuListView::crumbs([[t('nav_forms'), nu_url('forms')], [t('pg_title')]]), 'active' => 'forms',
-		'buttons' => $rights['add'] ? '<a class="btn nuAddBtn" title="' . h(t('pg_new')) . '" href="' . h(nu_url('prompts', ['id' => 'new'])) . '"><i class="bi bi-plus-lg me-1"></i>' . h(t('add')) . '</a>' : '',
+		'buttons' => $rights['add'] ? '<a class="btn nuAddBtn" title="' . h(t('pg_new')) . '" href="' . h(nu_url('prompts', ['id' => 'new']))
+			. '"><i class="bi bi-plus-lg me-1"></i>' . h(t('add')) . '</a>' : '',
 	]);
 	return;
 }
@@ -128,7 +88,7 @@ nu_layout_start(t('pg_title'), 'forms', ['head' => $head]);
 	$fb  = static fn(string $k) => '<div class="invalid-feedback">' . h($errors[$k] ?? '') . '</div>';
 	$row = static function (string $k, string $label, string $control, bool $req = false): string {
 		return '<div class="row g-2 mb-3 align-items-start"><label class="col-sm-3 col-form-label text-sm-end" for="' . $k . '">' . h($label)
-			. ($req ? ' <span class="text-danger">*</span>' : '') . ($k === 'pge_code' ? nu_unique_mark($req) : '') . '</label><div class="col-sm-9">' . $control . '</div></div>';   // key: unique (0.8.627)
+			. ($req ? ' <span class="text-danger">*</span>' : '') . ($k === 'pge_code' ? nu_unique_mark($req) : '') . '</label><div class="col-sm-9">' . $control . '</div></div>';   // key: unique
 	};
 	$multi = static function (string $k, array $options, array $selected, string $extra = '') use ($err): string {
 		$h = '<select class="form-select pgMulti' . $err($k) . '" id="' . $k . '" name="' . $k . '[]" multiple placeholder="' . h(t('pg_select_ph')) . '"' . $extra . '>';
@@ -139,19 +99,23 @@ nu_layout_start(t('pg_title'), 'forms', ['head' => $head]);
 	$labelsOf = static fn(array $cat) => array_map(static fn($e) => $e['label'], $cat);
 	$tables = NuPrompt::tables();
 	?>
-	<form method="post" data-nu-focus-first data-nu-guard id="pgForm" action="<?= h(nu_url('prompts', ['id' => $rec ? $id : 'new', 'clone' => $cloneId])) ?>"<?= $src ? ' data-nu-clone="' . h(t('form_clone_badge')) . '"' : '' ?> novalidate data-catalog="<?= h(NuPrompt::catalogJson()) ?>"
+	<form method="post" data-nu-focus-first data-nu-guard id="pgForm"
+		action="<?= h(nu_url('prompts', ['id' => $rec ? $id : 'new', 'clone' => $cloneId])) ?>"<?= $src ? ' data-nu-clone="' . h(t('form_clone_badge')) . '"' : '' ?>
+		novalidate data-catalog="<?= h(NuPrompt::catalogJson()) ?>"
 		  data-copied="<?= h(t('pg_copied')) ?>" data-stats="<?= h(t('pg_stats')) ?>" data-suggest-none="<?= h(t('pg_suggest_none')) ?>" data-suggest-added="<?= h(t('pg_suggest_added')) ?>">
 		<?= nu_csrf_field() ?>
 		<input type="hidden" name="action" value="save">
 		<div class="nuTitleBar nuRecHead mb-3">
 			<h1 class="h4 mb-0"><i class="bi bi-stars me-2"></i><?= h($rec ? (string)$rec['pge_code'] : t('pg_new')) ?></h1>
 			<a class="btn nuBtnAct" href="<?= h(nu_url('prompts')) ?>"><i class="bi bi-arrow-left me-1"></i><?= h(t('back')) ?></a>
-			<?php if (!$locked): ?><button data-nu-save class="btn nuBtnAct nuBtnSave" type="submit" name="action" value="save" id="pgSave"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button><?php endif; ?>
+			<?php if (!$locked): ?><button data-nu-save class="btn nuBtnAct nuBtnSave" type="submit" name="action" value="save"
+				id="pgSave"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button><?php endif; ?>
 			<?php if ($rec && $rights['clone']): ?>
 				<a class="btn nuBtnAct" href="<?= h(nu_url('prompts', ['id' => 'new', 'clone' => $id])) ?>" id="pgClone"><i class="bi bi-copy me-1"></i><?= h(t('clone')) ?></a>
 			<?php endif; ?>
 			<?php if ($rec && $rights['delete']): ?>
-				<button class="btn nuBtnAct nuBtnDel" type="submit" name="action" value="delete" formnovalidate data-confirm-submit="<?= h(t('pg_delete_confirm')) ?>"><i class="bi bi-trash me-1"></i><?= h(t('delete')) ?></button>
+				<button class="btn nuBtnAct nuBtnDel" type="submit" name="action" value="delete" formnovalidate
+					data-confirm-submit="<?= h(t('pg_delete_confirm')) ?>"><i class="bi bi-trash me-1"></i><?= h(t('delete')) ?></button>
 			<?php endif; ?>
 		</div>
 		<div class="row g-3">
@@ -162,7 +126,8 @@ nu_layout_start(t('pg_title'), 'forms', ['head' => $head]);
 					<?= $row('pge_language', t('pg_languages'), $multi('pge_language', $labelsOf(NuPrompt::languages()), NuPrompt::list($val['pge_language']))) ?>
 					<?= $row('pge_scope', t('pg_scopes'), $multi('pge_scope', $labelsOf(NuPrompt::scopes()), NuPrompt::list($val['pge_scope']))) ?>
 					<?= $row('pge_tag', t('pg_topics'), '<div class="d-flex gap-2"><div class="flex-grow-1 min-w-0">' . $multi('pge_tag', $labelsOf(NuPrompt::topics()), NuPrompt::list($val['pge_tag']))
-						. '</div><button class="btn btn-outline-secondary nuSearchBtn flex-none align-self-start" type="button" id="pgSuggest" title="' . h(t('pg_suggest')) . '" aria-label="' . h(t('pg_suggest')) . '"><i class="bi bi-magic"></i></button></div>'
+						. '</div><button class="btn btn-outline-secondary nuSearchBtn flex-none align-self-start" type="button" id="pgSuggest" title="' . h(t('pg_suggest'))
+							. '" aria-label="' . h(t('pg_suggest')) . '"><i class="bi bi-magic"></i></button></div>'
 						. '<div class="form-text" id="pgSuggestInfo" aria-live="polite"></div>') ?>
 					<?= $row('pge_table', t('pg_tables'), $multi('pge_table', array_combine($tables, $tables) ?: [], NuPrompt::list($val['pge_table']), ' data-max="' . NuPrompt::MAX_TABLES . '"')
 						. '<div class="form-text">' . h(t('pg_tables_hint', NuPrompt::MAX_TABLES)) . '</div>') ?>

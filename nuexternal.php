@@ -2,11 +2,11 @@
 declare(strict_types=1);
 
 /**
- * nuBuilder Next – who is signed in, for your own PHP apps (0.8.1273).
+ * nuBuilder Next – who is signed in, for your own PHP apps.
  *
  * For PHP files that are not part of nuBuilder Next (no custom page) but should use its sign-in:
  *
- *     require __DIR__ . '/../../nuexternal.php';          // the path to this file in nuBuilder Next's folder
+ *     require __DIR__. '/../../nuexternal.php';          // the path to this file in nuBuilder Next's folder
  *     $me = NuNextUser::require();                        // signed in – else to the sign-in page and back here
  *     if (!NuNextUser::hasPermission('my_tool') && !NuNextUser::inTeam('Sales')) NuNextUser::deny();
  *     $pdo = NuNextUser::pdo();                           // the database of nuBuilder Next (optional)

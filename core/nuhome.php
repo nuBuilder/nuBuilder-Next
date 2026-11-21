@@ -10,11 +10,11 @@ defined('NU_ROOT') || exit;
  * Layout: {v, display: groups|tabs, size: large|compact|list, tabs: [{id, title}], groups: [{id, title, tab, tiles: [key …], color?}], hidden: [key …],
  *          custom: {key: {label, hint, icon, color, kind: form|page|procedure|url, target, record, run, newtab}}, view: {…}}
  * Display tabs: the tabs hold groups (group.tab); without tabs each group is a tab of its own.
- * View (0.8.420, the View panel of the start page): how the tiles look – style, descriptions, navigation, look, per tab (tabStyle) and per
+ * View (the View panel of the start page): how the tiles look – style, descriptions, navigation, look, per tab (tabStyle) and per
  * screen size (sizes.tablet / sizes.phone); size and display are derived from it (compatibility: hook variables, Customise). People
  * without the right to change the layout keep their own changes in an overlay per layout (overlays(), not in the layout).
  *
- * User start pages (0.8.425): users without an admin role get a tile page too – one layout per access level (list key home_user,
+ * User start pages: users without an admin role get a tile page too – one layout per access level (list key home_user,
  * access_ids = [access id]) or the default for all access levels (access_ids = ["*"]); without either, an automatic layout of the
  * forms and reports of the access level (autoLayout()). Only own tiles (c_…: form, report, procedure, link, a few pages), each tile
  * and group optionally with conditions (cond: permission items, team, department, position). Edited by "Start page layout"
@@ -25,20 +25,22 @@ final class NuHome
 {
 	public const SETTING = 'home_layout';
 	public const DISPLAYS = ['groups', 'tabs'];
-	public const SIZES = ['large', 'compact', 'list', 'listwide', 'list2'];   // list2 = list in two columns (0.8.363); 'largeinfo' of 0.8.352 was removed in 0.8.355 (stored: becomes 'large')
+	public const SIZES = ['large', 'compact', 'list', 'listwide', 'list2'];   // list2 = list in two columns; 'largeinfo' of was removed in (stored: becomes 'large')
 	public const KINDS = ['form', 'page', 'procedure', 'url', 'report'];
-	/** User start pages (0.8.425): list key, default layout id in access_ids, pages a user tile may open, condition kinds. */
+	/** User start pages: list key, default layout id in access_ids, pages a user tile may open, condition kinds. */
 	public const LIST_USER = 'home_user';
 	public const ALL_LEVELS = '*';
-	public const USER_PAGES = ['help', 'password', 'security', 'notifications', 'import', 'userhelp'];   // import (0.8.773): users with permission items of type Data import
+	public const USER_PAGES = ['help', 'password', 'security', 'notifications', 'import', 'userhelp'];   // import: users with permission items of type Data import
 	public const COND_KINDS = ['permission', 'team', 'department', 'position'];
 	/** nuBuilder Next pages an own tile may open (kind page). */
-	public const PAGES = ['users', 'access', 'permissions', 'sessions', 'forms', 'procedures', 'reports', 'sqlbuilder', 'prompts', 'apiclients', 'apiplayground', 'webhooks', 'aiproviders', 'email', 'emailtemplates',
-		'debug', 'log', 'audit', 'update', 'settings', 'branding', 'themes', 'dashboards', 'vendor', 'sample', 'import', 'dataexport', 'cloner', 'appcloner', 'files', 'items', 'formats', 'translations', 'help', 'security', 'password',
+	public const PAGES = ['users', 'access', 'permissions', 'sessions', 'forms', 'procedures', 'reports', 'sqlbuilder', 'prompts', 'apiclients',
+		'apiplayground', 'webhooks', 'aiproviders', 'email', 'emailtemplates',
+		'debug', 'log', 'audit', 'update', 'settings', 'branding', 'themes', 'dashboards', 'vendor', 'sample', 'import', 'dataexport', 'cloner', 'appcloner',
+			'files', 'items', 'formats', 'translations', 'help', 'security', 'password',
 		'notifications', 'securitycheck', 'setupwizard', 'configfile', 'globalcode', 'compat', 'adminroles', 'tutorial', 'userfields', 'helppages', 'userhelp', 'projects', 'codesearch'];
-	/** Pinned pages of a tile's menu that open the same page as a tile of their own (0.8.934): shown only while that tile is not on the page. */
+	/** Pinned pages of a tile's menu that open the same page as a tile of their own: shown only while that tile is not on the page. */
 	public const SAME_PAGE = ['s_form_clone' => 'cloner'];
-	/** Groups of the former Admin tools page (0.8.316) in the default layout. */
+	/** Groups of the former Admin tools page in the default layout. */
 	public const ADMIN_GROUPS = [
 		'g_adm_system' => ['home_group_system', ['tutorial', 'update', 'securitycheck', 'settings', 'globalcode', 'configfile', 'setupwizard', 'vendor', 'todo', 'selftest', 'dbreset']],
 		'g_adm_look'   => ['home_group_look', ['branding', 'themes', 'dashboards']],
@@ -46,7 +48,7 @@ final class NuHome
 		'g_adm_int'    => ['home_group_integration', ['apiclients', 'webhooks', 'aiproviders', 'prompts', 'compat']],
 	];
 	/**
-	 * Start page profiles (0.8.385): ready-made layouts for Customise → "Start from" and Save as new layout → "Based on".
+	 * Start page profiles: ready-made layouts for Customise → "Start from" and Save as new layout → "Based on".
 	 * standard / all are built in presetLayout(); the others: display, size, tabs [id, title key], groups [id, title key ('' = none),
 	 * tab id ('' = none), tile keys], favourites. Tiles a profile does not place are hidden (presetLayout()). Label and description:
 	 * home_pf_<id>, home_pf_<id>_hint.
@@ -89,19 +91,19 @@ final class NuHome
 				['g_msg', 'home_pf_g_messages', '', ['notifications', 'helppages', 'prompts']]]],
 		'blank'       => ['icon' => 'bi-square', 'display' => 'groups', 'size' => 'large', 'groups' => [['g_own', 'home_pf_g_own', '', []]]],
 	];
-	/** View of a layout (0.8.420): allowed values and defaults – see the class comment. */
+	/** View of a layout: allowed values and defaults – see the class comment. */
 	public const VIEW_STYLES = ['large', 'cards', 'compact', 'list', 'launcher', 'panels', 'table'];
 	public const VIEW_DESCS = ['auto', 'inline', 'tooltip', 'hovercard', 'info', 'off'];
 	public const VIEW_NAVS = ['groups', 'tabs', 'sidebar', 'none'];
 	public const VIEW_DENSITIES = ['comfortable', 'cozy', 'dense'];
 	public const VIEW_ICONS = ['soft', 'solid', 'outline', 'mono', 'none'];
-	public const VIEW_LIST_COLS = ['1', '2', '3', '4', 'auto'];   // 3 / 4 (0.8.659): fewer on narrow screens (nuhome.css)
+	public const VIEW_LIST_COLS = ['1', '2', '3', '4', 'auto'];   // 3 / 4: fewer on narrow screens (nuhome.css)
 	public const VIEW_LIST_WIDTHS = ['readable', 'full'];
 	public const VIEW_LINES = [0, 1, 2, 3];
 	public const VIEW_DELAYS = [0, 300, 800];
 	public const VIEW_SIZES = ['tablet', 'phone'];
-	// recentNoFav (0.8.1115): Recently used leaves out what is in the Favourites row (start page and side bar)
-	// favStrip: unused since 0.8.806 (kept so stored views stay valid); favRow (0.8.807) = row Favourites shown while tiles are starred
+	// recentNoFav: Recently used leaves out what is in the Favourites row (start page and side bar)
+	// favStrip: unused (kept so stored views stay valid); favRow = row Favourites shown while tiles are starred
 	public const VIEW_DEFAULTS = ['style' => 'large', 'listCols' => '1', 'listWidth' => 'readable', 'desc' => 'auto', 'lines' => 2, 'delay' => 300, 'nav' => 'groups',
 		'density' => 'comfortable', 'icon' => 'soft', 'groupColors' => false, 'favStrip' => false, 'favRow' => true, 'recentStrip' => false, 'recentNoFav' => false, 'badges' => true, 'actions' => true];
 	/** Colours of groups without an own colour (by position) when "Colour per group" is on. */
@@ -134,41 +136,41 @@ final class NuHome
 			'permissions' => ['permissions', 'bi-key', t('perm_title'), t('home_perm_hint')],
 			'sessions'    => ['sessions', 'bi-people-fill', t('sess_title'), t('home_sessions_hint')],
 			'adminroles'  => ['adminroles', 'bi-person-badge', t('adm_title'), t('adm_card_hint')],
-			'userfields'  => ['userfields', 'bi-ui-checks', t('uf_title'), t('uf_card_hint')],   // custom user fields (0.8.454)
+			'userfields'  => ['userfields', 'bi-ui-checks', t('uf_title'), t('uf_card_hint')],   // custom user fields
 			'forms'       => ['forms', 'bi-ui-checks-grid', t('nav_forms'), t('home_forms_hint')],
 			'procedures'  => ['procedures', 'bi-filetype-php', t('proc_title'), t('home_proc_hint')],
 			'reports'     => ['reports', 'bi-file-earmark-richtext', t('rpt_title_list'), t('home_reports_hint')],
 			'prompts'     => ['prompts', 'bi-stars', t('pg_title'), t('home_prompts_hint')],
-			'projects'    => ['projects', 'bi-kanban', t('prj_title'), t('prj_card_hint')],   // projects (0.8.1035)
-			'codesearch'  => ['codesearch', 'bi-search', t('cs_title'), t('cs_hint')],   // code search (0.8.1172)
+			'projects'    => ['projects', 'bi-kanban', t('prj_title'), t('prj_card_hint')],   // projects
+			'codesearch'  => ['codesearch', 'bi-search', t('cs_title'), t('cs_hint')],   // code search
 			'apiclients'  => ['apiclients', 'bi-plug', t('api_title'), t('home_api_hint')],
 			'webhooks'    => ['webhooks', 'bi-broadcast', t('wh_title'), t('home_wh_hint')],
 			'aiproviders' => ['aiproviders', 'bi-stars', t('aip_title'), t('home_aip_hint')],
 			'email'       => ['email', 'bi-envelope', t('nav_email'), t('home_email_hint')],
 			'notifications' => [['notifications', ['tab' => 'manage']], 'bi-bell', t('ntf_title'), t('home_ntf_hint')],
-			'helppages'   => ['helppages', 'bi-journal-bookmark', t('uh_admin_title'), t('uh_card_hint')],   // user help pages (0.8.1023)
+			'helppages'   => ['helppages', 'bi-journal-bookmark', t('uh_admin_title'), t('uh_card_hint')],   // user help pages
 		];
-		// nuBuilder Forte's User Home (0.8.602): the launch form nuuserhome with the run buttons of the New form wizard
+		// nuBuilder Forte's User Home: the launch form nuuserhome with the run buttons of the New form wizard
 		if (NuUserHome::available()) $c['userhome'] = [['form', ['f' => NuUserHome::FORM]], 'bi-house-door', t('home_userhome'), t('home_userhome_hint')];
 		if (isset(nu_forms()['nunotes'])) $c['notes'] = [['form', ['f' => 'nunotes']], 'bi-journal-richtext', t('nav_notes'), t('home_notes_hint')];
 		$c['debug'] = ['debug', 'bi-journal-text', t('nav_log'), t('home_log_hint')];
 		$c['update'] = ['update', 'bi-cloud-arrow-up', t('upd_title'), t('home_update_hint')];
 		$c['settings'] = ['settings', 'bi-sliders', t('set_title'), t('home_settings_hint')];
-		// Database (key 'pma' as before): the primary tool – phpMyAdmin or Adminer (0.8.282, ▾ = the other one, NuHome::actions());
+		// Database (key 'pma' as before): the primary tool – phpMyAdmin or Adminer (▾ = the other one, NuHome::actions());
 		// File Manager. Opened like in the user menu (POST, new tab); not copied yet → the Admin tools page explains it
 		$dbTools = NuVendor::dbTools();
 		if (nu_db()->type === 'mysql' || $dbTools) {
 			$c['pma'] = $dbTools ? [['post' => 'DB'], 'bi-database', t('home_db'), NuVendor::DB_TOOLS[$dbTools[0]]]
 				: ['vendor', 'bi-database', t('home_db'), 'phpMyAdmin / Adminer – ' . t('home_tool_missing')];
 		}
-		// File Manager (0.8.479): the page nuFiles (core/nufilemanager.php) – key 'tfm' kept, so saved layouts keep the tile
+		// File Manager: the page nuFiles (core/nufilemanager.php) – key 'tfm' kept, so saved layouts keep the tile
 		if (NuFileManager::shipped()) $c['tfm'] = ['filemanager', 'bi-folder2-open', t('vendor_tfm'), t('fm_tile_desc')];
-		// the former Admin tools page (0.8.316): its tools are tiles now; 'vendor' = System status (InnoDB, demo mode, missing tools)
+		// the former Admin tools page: its tools are tiles now; 'vendor' = System status (InnoDB, demo mode, missing tools)
 		$b = self::badges();
 		$c['update'][4] = $b['update'] ?? null;
 		$c += [
 			'securitycheck' => ['securitycheck', 'bi-shield-check', t('secchk_title'), t('secchk_card_hint')],
-			'configfile'    => ['configfile', 'bi-filetype-php', t('cfg_tile'), t('cfg_card_hint')],   // short name (0.8.659) – the description names nuconfig.php
+			'configfile'    => ['configfile', 'bi-filetype-php', t('cfg_tile'), t('cfg_card_hint')],   // short name – the description names nuconfig.php
 			'globalcode'     => ['globalcode', 'bi-code-square', t('scode_title'), t('scode_card_hint')],
 			'setupwizard'   => ['setupwizard', 'bi-magic', t('wiz_title'), t('wiz_card_hint')],
 			'branding'      => ['branding', 'bi-palette', t('brand_title'), t('brand_card_hint')],
@@ -176,7 +178,7 @@ final class NuHome
 			'dashboards'    => ['dashboards', 'bi-speedometer2', t('dash_title'), t('dash_card_hint')],
 			'import'        => ['import', 'bi-file-earmark-arrow-up', t('imp_title'), t('imp_card_hint')],
 			'dataexport'    => ['dataexport', 'bi-file-earmark-arrow-down', t('dxp_title'), t('dxp_card_hint')],
-			'cloner'        => ['cloner', 'bi-files', t('cl_title'), t('cl_card_hint')],   // 0.8.633: a tile of its own (before: only Forms ▾ → Clone form)
+			'cloner'        => ['cloner', 'bi-files', t('cl_title'), t('cl_card_hint')],   // a tile of its own (before: only Forms ▾ → Clone form)
 			'appcloner'     => ['appcloner', 'bi-copy', t('ac_title'), t('ac_card_hint')],
 			'sample'        => ['sample', 'bi-box-seam', t('smp_title'), t('smp_card_hint'), $b['sample'] ?? null],
 			'compat'        => ['compat', 'bi-puzzle', t('compat_title'), t('compat_hint')],
@@ -184,12 +186,12 @@ final class NuHome
 		$c['vendor'] = ['vendor', 'bi-activity', t('status_title'), t('status_hint'), $b['vendor'] ?? null];
 		$c['tutorial'] = ['tutorial', 'bi-mortarboard', t('tut_title'), t('tut_card_hint'), self::tutorialBadge()];
 		if (NuHash::devMode()) $c['todo'] = ['todo', 'bi-list-check', t('todo_title'), t('todo_card_hint'), ['Dev', 'secondary']];
-		if (NuHash::devMode()) $c['selftest'] = ['selftest', 'bi-clipboard2-pulse', t('st_title'), t('st_card_hint'), ['Dev', 'secondary']];   // 0.8.361
-		if (NuHash::devMode() && NuDbReset::available()) $c['dbreset'] = ['dbreset', 'bi-database-x', t('dbr_title'), t('dbr_card_hint'), ['Dev', 'secondary']];   // 0.8.628
+		if (NuHash::devMode()) $c['selftest'] = ['selftest', 'bi-clipboard2-pulse', t('st_title'), t('st_card_hint'), ['Dev', 'secondary']];
+		if (NuHash::devMode() && NuDbReset::available()) $c['dbreset'] = ['dbreset', 'bi-database-x', t('dbr_title'), t('dbr_card_hint'), ['Dev', 'secondary']];
 		return $c;
 	}
 
-	/** Tutorial tile: lessons done of all (0.8.328). */
+	/** Tutorial tile: lessons done of all. */
 	private static function tutorialBadge(): ?array
 	{
 		try {
@@ -206,16 +208,16 @@ final class NuHome
 	{
 		static $b = null;
 		if ($b !== null) return $b;
-		$b = [];                                                // no version on the Update tile (0.8.332)
+		$b = [];                                                // no version on the Update tile
 		try {
 			$smp = NuSample::versionInfo();
 			if ($smp['installed'] && $smp['version'] < $smp['current']) $b['sample'] = [t('smp_update_available'), 'warning'];
-		} catch (Throwable) { /* no sample data */ }
-		try {                                                   // a newer release on GitHub (0.8.374, NuGitHub – looked up once a day)
+		} catch (Throwable $ig) { nu_ignored($ig, 'no sample data'); }
+		try {                                                   // a newer release on GitHub (NuGitHub – looked up once a day)
 			if (NuAdmin::can('update', 'view')) NuGitHub::autoCheck();   // once a day, only for those who may update (a page view of anybody else never waits for GitHub)
 			$gh = NuGitHub::newer();
 			if ($gh) $b['update'] = [t('gh_badge_new', (string)$gh['version']), 'success'];
-		} catch (Throwable) { /* no settings table */ }
+		} catch (Throwable $ig) { nu_ignored($ig, 'no settings table'); }
 		$n = self::statusWarnings();
 		$b['vendor'] = $n > 0 ? [t('status_badge_warn', $n), 'warning'] : [t('status_badge_ok'), 'success'];
 		return $b;
@@ -228,7 +230,7 @@ final class NuHome
 	 */
 	public static function statusWarnings(bool $fresh = false): int
 	{
-		$c = $_SESSION['nu_status_warn'] ?? null;
+		$c = $_SESSION[NuSess::STATUS_WARN] ?? null;
 		if (!$fresh && is_array($c) && ($c[0] ?? 0) > time() - 300) return (int)$c[1];
 		$n = 0;
 		try {
@@ -237,13 +239,13 @@ final class NuHome
 			if ($mysql && !NuVendor::dbTools()) $n++;
 			if ($mysql && (int)nu_db()->value("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = 'BASE TABLE' AND COALESCE(ENGINE, '') <> 'InnoDB'") > 0) $n++;
 			foreach (NuDemo::status() as $d) if ($d['problems']) { $n++; break; }
-		} catch (Throwable) { /* best effort */ }
-		$_SESSION['nu_status_warn'] = [time(), $n];
+		} catch (Throwable $ig) { nu_ignored($ig, 'best effort'); }
+		$_SESSION[NuSess::STATUS_WARN] = [time(), $n];
 		return $n;
 	}
 
 	/**
-	 * Pages and actions behind the tiles (0.8.321): the "+" of a tile and the entries of its "▾" menu. Each can be pinned as a tile of
+	 * Pages and actions behind the tiles: the "+" of a tile and the entries of its "▾" menu. Each can be pinned as a tile of
 	 * its own (pin in the menu, or Customize → Add tile → built-in), is found by the search and by Ctrl+K – but is never placed on the
 	 * start page by itself. key (prefix s_, or an existing tile key) => [url, icon, label, parent tile key].
 	 */
@@ -255,7 +257,7 @@ final class NuHome
 		$s = [
 			's_user_new'      => [nu_url('user'), 'bi-person-plus', t('user_new'), 'users'],
 			's_access_new'    => [nu_url('accesslevel'), 'bi-plus-lg', t('access_new'), 'access'],
-			's_user_home'     => [nu_url('home', ['for' => self::ALL_LEVELS]), 'bi-grid-1x2', t('home_u_title'), 'access'],   // user start pages (0.8.425)
+			's_user_home'     => [nu_url('home', ['for' => self::ALL_LEVELS]), 'bi-grid-1x2', t('home_u_title'), 'access'],   // user start pages
 			's_perm_new'      => [nu_url('permissions', ['id' => 'new']), 'bi-plus-lg', t('perm_new'), 'permissions'],
 			's_proc_new'      => [nu_url('procedures', ['id' => 'new']), 'bi-plus-lg', t('proc_new'), 'procedures'],
 			's_prompt_new'    => [nu_url('prompts', ['id' => 'new']), 'bi-plus-lg', t('pg_new'), 'prompts'],
@@ -265,7 +267,7 @@ final class NuHome
 			's_sqlbuilder_new' => [nu_url('sqlbuilder', ['id' => 'new']), 'bi-plus-lg', t('sqb_new'), 'reports'],
 			's_form_new'      => [nu_url('builder', ['new' => '1']), 'bi-plus-lg', t('builder_new_form'), 'forms'],
 			's_form_clone'    => [nu_url('cloner'), 'bi-files', t('home_clone_form'), 'forms'],
-			's_pages'         => [nu_url('forms', ['type' => 'page']), 'bi-filetype-php', t('upd_pages_title'), 'forms'],   // the list Custom pages (0.8.861)
+			's_pages'         => [nu_url('forms', ['type' => 'page']), 'bi-filetype-php', t('upd_pages_title'), 'forms'],   // the list Custom pages
 			'import'          => [nu_url('import'), 'bi-file-earmark-arrow-up', t('imp_title'), 'forms'],
 		];
 		if (isset($forms['nucodesnippet'])) $s['s_snippets'] = [nu_url('form', ['f' => 'nucodesnippet']), 'bi-file-earmark-code', t('nav_snippets'), 'forms'];
@@ -289,13 +291,13 @@ final class NuHome
 			'sessions'        => [nu_url('sessions'), 'bi-people', t('sess_title'), 'debug'],
 		];
 		if (isset($forms['nunotes'])) $s['s_note_new'] = [nu_url('form', ['f' => 'nunotes', 'r' => '-1']), 'bi-plus-lg', t('home_new_note'), 'notes'];
-		// settings centre (0.8.702): its sections behind the Settings tile (only those the user may open)
+		// settings centre: its sections behind the Settings tile (only those the user may open)
 		foreach (NuSettingsHub::pages() as $sec => $list) $s['s_set_' . $sec] = [$list[0][2], NuSettingsHub::SECTIONS[$sec][0], t(NuSettingsHub::SECTIONS[$sec][1]), 'settings'];
 		return $s;
 	}
 
 	/**
-	 * Button on the right of a built-in tile instead of the ">" (0.8.141): ['add', label, url, sub key] = "+" straight to a new record,
+	 * Button on the right of a built-in tile instead of the ">": ['add', label, url, sub key] = "+" straight to a new record,
 	 * ['menu', label, [[icon, label, url, sub key], …]] = "▾" with the pages behind the tile (subTiles()). Tiles without an entry keep ">".
 	 */
 	public static function actions(): array
@@ -331,7 +333,7 @@ final class NuHome
 
 	public static function defaultLayout(): array
 	{
-		// two tabs (display "Tabs"): the daily work and the former Admin tools page (0.8.316); display "Groups" shows all groups
+		// two tabs (display "Tabs"): the daily work and the former Admin tools page; display "Groups" shows all groups
 		$l = ['v' => self::VERSION, 'display' => 'groups', 'size' => 'large', 'hidden' => [], 'fav' => [], 'custom' => (object)[], 'view' => self::VIEW_DEFAULTS,
 			'tabs' => [['id' => 't_home', 'title' => t('nav_home')], ['id' => 't_admin', 'title' => t('vendor_title')]], 'groups' => [
 			['id' => 'g_users', 'title' => t('home_group_users'), 'tab' => 't_home', 'tiles' => ['users', 'access', 'permissions', 'userfields', 'sessions', 'adminroles']],
@@ -343,7 +345,7 @@ final class NuHome
 	}
 
 	/**
-	 * A profile as a layout, cleaned like a stored one (0.8.385); null = unknown id. Only tiles this installation offers; every
+	 * A profile as a layout, cleaned like a stored one; null = unknown id. Only tiles this installation offers; every
 	 * built-in tile the profile does not place goes to "hidden" – otherwise layout() would add it to the last group again.
 	 * $keepOwn: the own tiles of $from come along – in a group "My tiles" on top (own tiles hidden there stay hidden, favourites stay).
 	 * Without: no own tiles (as Reset did). Mirrored in assets/js/nuhome.js (presetLayout) for the own tiles – keep both in step.
@@ -402,7 +404,7 @@ final class NuHome
 	}
 
 	/**
-	 * The profiles for the page (0.8.385): id => icon, label, hint, layout (without own tiles – the JS adds them), counts of what the
+	 * The profiles for the page: id => icon, label, hint, layout (without own tiles – the JS adds them), counts of what the
 	 * signed-in user sees (tiles his admin role does not allow are not counted).
 	 */
 	public static function presets(): array
@@ -449,8 +451,10 @@ final class NuHome
 		unset($g);
 		$l['hidden'] = array_values(array_filter($l['hidden'], static fn($k) => in_array($k, $knownAll, true)));
 		$missing = array_values(array_diff($known, $placed));
-		// tiles of a later version next to their neighbour when it is placed (reports after procedures, 0.8.183)
-		foreach (['reports' => 'procedures', 'adminroles' => 'sessions', 'notifications' => 'email', 'selftest' => 'todo', 'dbreset' => 'selftest', 'themes' => 'branding', 'cloner' => 'import', 'dataexport' => 'import', 'userfields' => 'permissions', 'helppages' => 'notifications', 'projects' => 'reports', 'codesearch' => 'projects'] as $tile => $after) {
+		// tiles of a later version next to their neighbour when it is placed (reports after procedures)
+		foreach (['reports' => 'procedures', 'adminroles' => 'sessions', 'notifications' => 'email', 'selftest' => 'todo', 'dbreset' => 'selftest',
+			'themes' => 'branding', 'cloner' => 'import', 'dataexport' => 'import', 'userfields' => 'permissions', 'helppages' => 'notifications',
+			'projects' => 'reports', 'codesearch' => 'projects'] as $tile => $after) {
 			if (!in_array($tile, $missing, true)) continue;
 			foreach ($l['groups'] as &$g) {
 				$i = array_search($after, $g['tiles'], true);
@@ -503,19 +507,19 @@ final class NuHome
 			$title = mb_substr(trim((string)($g['title'] ?? '')), 0, 60);
 			$tab = (string)($g['tab'] ?? '');
 			$grp = ['id' => $key($g['id'] ?? '') ?? 'g_' . $i, 'title' => $title, 'tab' => isset($tabIds[$tab]) ? $tab : ($out['tabs'][0]['id'] ?? ''), 'tiles' => $tiles];
-			if (preg_match('/^#[0-9a-fA-F]{6}$/', (string)($g['color'] ?? ''))) $grp['color'] = strtolower((string)$g['color']);   // own colour of the group (0.8.420)
-			if ($cond = self::cleanCond($g['cond'] ?? null)) $grp['cond'] = $cond;   // who sees the group (user start pages, 0.8.425)
+			if (preg_match('/^#[0-9a-fA-F]{6}$/', (string)($g['color'] ?? ''))) $grp['color'] = strtolower((string)$g['color']);   // own colour of the group
+			if ($cond = self::cleanCond($g['cond'] ?? null)) $grp['cond'] = $cond;   // who sees the group (user start pages)
 			$out['groups'][] = $grp;
 		}
 		foreach (array_slice(is_array($in['hidden'] ?? null) ? $in['hidden'] : [], 0, 200) as $t) {
 			if (($t = $key($t)) !== null && !isset($seen[$t])) { $out['hidden'][] = $t; $seen[$t] = true; }
 		}
-		// favourites (0.8.353): tiles of the layout marked with ☆ in Customize – "Favourites only" on the start page shows just them
+		// favourites: tiles of the layout marked with ☆ in Customize – "Favourites only" on the start page shows just them
 		foreach (array_slice(is_array($in['fav'] ?? null) ? $in['fav'] : [], 0, 200) as $t) {
 			if (($t = $key($t)) !== null && isset($seen[$t]) && !in_array($t, $out['fav'], true)) $out['fav'][] = $t;
 		}
 		$out['custom'] = (object)$out['custom'];
-		// view (0.8.420): cleaned, or built from size / display of an older layout; size and display follow it (compatibility)
+		// view: cleaned, or built from size / display of an older layout; size and display follow it (compatibility)
 		$units = $tabIds ?: array_fill_keys(array_column($out['groups'], 'id'), true);   // without tabs every group is a tab of its own
 		$out['view'] = is_array($in['view'] ?? null) ? self::cleanView($in['view'], $units, false) : self::legacyView($in);
 		[$out['size'], $out['display']] = self::compat($out['view']);
@@ -523,7 +527,7 @@ final class NuHome
 	}
 
 	/**
-	 * A view (0.8.420): unknown keys are dropped, wrong values become the default ($partial = false: a whole view with tabStyle and
+	 * A view: unknown keys are dropped, wrong values become the default ($partial = false: a whole view with tabStyle and
 	 * sizes) or are dropped ($partial = true: an entry of sizes or of a personal view). $units: ids a tab style may be set for.
 	 */
 	public static function cleanView(array $in, array $units, bool $partial): array
@@ -604,7 +608,7 @@ final class NuHome
 		return (string)($v['style'] ?? 'large');
 	}
 
-	// ------------------------------------------------------------------ personal view (0.8.420)
+	// ------------------------------------------------------------------ personal view
 
 	/** @return array<string, array{view: array, sizes: array, at: string}> layout id => personal view; layouts no longer there are left out */
 	public static function overlays(): array
@@ -612,7 +616,7 @@ final class NuHome
 		$u = NuAuth::user();
 		if (!$u) return [];
 		try {
-			if (!empty($u['demo'])) $all = $_SESSION['nu_home_view'] ?? [];
+			if (!empty($u['demo'])) $all = $_SESSION[NuSess::HOME_VIEW] ?? [];
 			elseif (!empty($u['globeadmin'])) $all = json_decode((string)nu_setting_value(self::VIEW_GA), true);
 			else $all = NuUserJson::get((string)$u['id'], self::VIEW_JSON);
 		} catch (Throwable) {
@@ -634,11 +638,11 @@ final class NuHome
 		return self::overlays()[$layoutId] ?? null;
 	}
 
-	/** Most tiles in a person's own favourites / hidden tiles (user start pages, 0.8.425). */
+	/** Most tiles in a person's own favourites / hidden tiles (user start pages). */
 	public const MINE_MAX = 60;
 
 	/**
-	 * An entry of a personal view, cleaned: {view, sizes: {tablet, phone}, at} + on user start pages (0.8.425) fav (own favourites –
+	 * An entry of a personal view, cleaned: {view, sizes: {tablet, phone}, at} + on user start pages fav (own favourites –
 	 * replace the layout's) and hide (tiles hidden for this person); [] = nothing left.
 	 */
 	public static function cleanOverlay(array $in): array
@@ -650,7 +654,8 @@ final class NuHome
 			$e = is_array($in['sizes'][$sz] ?? null) ? self::cleanView($in['sizes'][$sz], [], true) : [];
 			if ($e) $sizes[$sz] = $e;
 		}
-		$keys = static fn($l) => array_slice(array_values(array_unique(array_filter(is_array($l) ? $l : [], static fn($k) => is_string($k) && preg_match('/^[a-z][a-z0-9_]{0,39}$/', $k)))), 0, self::MINE_MAX);
+		$keys = static fn($l) => array_slice(array_values(array_unique(array_filter(is_array($l) ? $l : [], static fn($k) => is_string($k) && preg_match('/^[a-z][a-z0-9_]{0,39}$/', $k)))),
+			0, self::MINE_MAX);
 		$fav = array_key_exists('fav', $in) && is_array($in['fav']) ? $keys($in['fav']) : null;
 		$hide = $keys($in['hide'] ?? []);
 		if (!$view && !$sizes && $fav === null && !$hide) return [];
@@ -662,7 +667,7 @@ final class NuHome
 	}
 
 	/**
-	 * Own favourites and hidden tiles of a user start page (0.8.425) – the view of the overlay stays. $fav null = the layout's
+	 * Own favourites and hidden tiles of a user start page – the view of the overlay stays. $fav null = the layout's
 	 * favourites again. @return bool false = too large
 	 */
 	public static function setMine(string $layoutId, ?array $fav, array $hide): bool
@@ -681,7 +686,7 @@ final class NuHome
 		$all = self::overlays();
 		$old = $all[$layoutId] ?? [];
 		unset($all[$layoutId]);
-		if ($keepMine && $old) {                                  // a change of the view (View panel) keeps the tiles a user chose (0.8.425)
+		if ($keepMine && $old) {                                  // a change of the view (View panel) keeps the tiles a user chose
 			$ov ??= [];
 			foreach (['fav', 'hide'] as $k) if (array_key_exists($k, $old) && !array_key_exists($k, $ov)) $ov[$k] = $old[$k];
 		}
@@ -696,7 +701,7 @@ final class NuHome
 		}
 		uasort($all, static fn($a, $b) => strcmp($b['at'], $a['at']));
 		$all = array_slice($all, 0, self::VIEW_OVERLAYS_MAX, true);
-		if (!empty($u['demo'])) { $_SESSION['nu_home_view'] = $all; return true; }
+		if (!empty($u['demo'])) { $_SESSION[NuSess::HOME_VIEW] = $all; return true; }
 		if (!empty($u['globeadmin'])) { self::setSetting(self::VIEW_GA, json_encode((object)$all, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), (string)$u['login']); return true; }
 		NuUserJson::set((string)$u['id'], self::VIEW_JSON, $all ? $all : null);
 		return true;
@@ -730,7 +735,7 @@ final class NuHome
 			'target' => mb_substr(trim((string)($c['target'] ?? '')), 0, 500), 'record' => mb_substr(trim((string)($c['record'] ?? '')), 0, 25),
 			'run' => ($c['run'] ?? '') === 'hidden' ? 'hidden' : 'window', 'newtab' => !empty($c['newtab']),
 		];
-		if ($cond = self::cleanCond($c['cond'] ?? null)) $tile['cond'] = $cond;   // who sees the tile (user start pages, 0.8.425)
+		if ($cond = self::cleanCond($c['cond'] ?? null)) $tile['cond'] = $cond;   // who sees the tile (user start pages)
 		if (!$strict) return [$tile, ''];
 		if ($tile['label'] === '') return [$tile, t('home_err_label')];
 		switch ($tile['kind']) {
@@ -765,7 +770,7 @@ final class NuHome
 		$id = $cur['id'];
 		$moveView = null;
 		if ($id === 'default') {                               // the built-in layout is never changed: a stored copy takes its place
-			$moveView = self::overlay('default');                  // 0.8.1115: the personal view goes along – it was left behind with 'default'
+			$moveView = self::overlay('default');                  // the personal view goes along – it was left behind with 'default'
 			$shared = self::canManage();
 			$id = self::insertLayout($shared ? t('home_layout_standard') : t('home_layout_mine'), $shared ? 'shared' : 'user', [], $layout);
 			if ($shared) NuListView::storeListDefault(self::LIST, $id);
@@ -774,20 +779,20 @@ final class NuHome
 			nu_db()->update(NuListView::TABLE, ['definition' => json_encode($layout, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
 				'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => mb_substr($login, 0, 50)], 'zzzzsys_nunext_list_view_id', $id);
 		}
-		self::$current = self::$rows = null;                       // 0.8.652: also the rows – a stored copy of the built-in layout is current from now on
-		if ($moveView) { unset($moveView['at']); try { self::setOverlay((string)$id, $moveView, false); } catch (Throwable) { /* the view is a convenience: the layout is saved */ } }
+		self::$current = self::$rows = null;                       // also the rows – a stored copy of the built-in layout is current from now on
+		if ($moveView) { unset($moveView['at']); try { self::setOverlay((string)$id, $moveView, false); } catch (Throwable $ig) { nu_ignored($ig, 'the view is a convenience: the layout is saved'); } }
 		NuLog::write($event, NuListView::TABLE, $id, $details ?? ['groups' => count($layout['groups']), 'hidden' => count($layout['hidden']), 'own' => count((array)$layout['custom'])]);
 		return [];
 	}
 
-	/** Saves a user start page (0.8.425): the access level's own row, created on its first save (also when it showed the default). */
+	/** Saves a user start page: the access level's own row, created on its first save (also when it showed the default). */
 	private static function saveUser(array $layout, string $login, string $event, ?array $details): array
 	{
 		$acc = (string)self::$for['access'];
 		$db = nu_db();
 		NuSchema::ensure();
 		$own = self::userRows()[$acc] ?? null;
-		if (self::layoutEmpty($layout)) {   // 0.8.1279: no tiles = no own tile page – the level uses the default (or the automatic one) again
+		if (self::layoutEmpty($layout)) {   // no tiles = no own tile page – the level uses the default (or the automatic one) again
 			if ($own !== null) self::dropOwn($acc, ['empty' => true]);
 			return [];
 		}
@@ -802,33 +807,41 @@ final class NuHome
 				'access_ids' => json_encode([$acc]), 'definition' => $def, 'sort_order' => 0, 'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => mb_substr($login, 0, 50)]);
 		}
 		self::$current = self::$rows = null;
-		NuLog::write($event === 'home_layout_saved' ? 'home_user_saved' : $event, NuListView::TABLE, $id, ($details ?? []) + ['access' => $acc, 'groups' => count($layout['groups']), 'own' => count((array)$layout['custom'])]);
+		NuLog::write($event === 'home_layout_saved' ? 'home_user_saved' : $event, NuListView::TABLE, $id,
+			($details ?? []) + ['access' => $acc, 'groups' => count($layout['groups']), 'own' => count((array)$layout['custom'])]);
 		return [];
 	}
 
 	/**
-	 * Admin roles (0.8.323): which tiles a user with a role sees – the globeadmin sees all. Built-in tile => admin right [right, level]
+	 * Admin roles: which tiles a user with a role sees – the globeadmin sees all. Built-in tile => admin right [right, level]
 	 * or a nuBuilder system form (rights of access level + role, NuAcl). Pinned pages follow their tile; own tiles: forms by their
 	 * rights, pages by the right of the page, links always.
 	 */
 	private const TILE_RIGHTS = [
 		'users' => ['acl', NuAcl::FORM_USER], 'access' => ['acl', NuAcl::FORM_ACCESS], 'permissions' => ['acl', NuAcl::FORM_PERMISSION],
 		'sessions' => ['sessions', 'view'], 'forms' => ['acl', NuAcl::FORM_FORM], 'procedures' => ['acl', NuAcl::FORM_PROCEDURE],
-		'reports' => ['acl', NuAcl::FORM_REPORT], 'prompts' => ['acl', NuAcl::FORM_PROMPT], 'apiclients' => ['apiclients', 'view'], 'webhooks' => ['webhooks', 'view'], 'aiproviders' => ['aiproviders', 'view'],
+		'reports' => ['acl', NuAcl::FORM_REPORT], 'prompts' => ['acl', NuAcl::FORM_PROMPT], 'apiclients' => ['apiclients', 'view'],
+			'webhooks' => ['webhooks', 'view'], 'aiproviders' => ['aiproviders', 'view'],
 		'email' => ['email', 'view'], 'debug' => ['acl', NuAcl::FORM_DEBUG], 'update' => ['update', 'view'], 'settings' => ['settings', 'view'],
 		'pma' => ['dbtool', 'change'], 'tfm' => ['filemanager', 'change'], 'vendor' => ['status', 'view'], 'securitycheck' => ['securitycheck', 'view'],
 		'configfile' => ['configfile', 'change'], 'globalcode' => ['globalcode', 'view'], 'setupwizard' => ['setupwizard', 'change'], 'branding' => ['branding', 'view'], 'themes' => ['branding', 'view'],
-		'dashboards' => ['dashboards', 'view'], 'import' => ['import', 'change'], 'dataexport' => ['dataexport', 'view'], 'appcloner' => ['appcloner', 'change'], 'cloner' => ['forms', 'change'], 'sample' => ['sample', 'view'],
-		'compat' => ['compat', 'view'], 'todo' => ['globeadmin', ''], 'selftest' => ['globeadmin', ''], 'dbreset' => ['globeadmin', ''], 'adminroles' => ['adminroles', 'change'], 'tutorial' => ['any', ''], 'userfields' => ['userfields', 'view'], 'helppages' => ['userhelp', 'view'], 'projects' => ['acl', NuAcl::FORM_PROJECT], 'codesearch' => ['codesearch', 'view'],
+		'dashboards' => ['dashboards', 'view'], 'import' => ['import', 'change'], 'dataexport' => ['dataexport', 'view'],
+			'appcloner' => ['appcloner', 'change'], 'cloner' => ['forms', 'change'], 'sample' => ['sample', 'view'],
+		'compat' => ['compat', 'view'], 'todo' => ['globeadmin', ''], 'selftest' => ['globeadmin', ''], 'dbreset' => ['globeadmin', ''],
+			'adminroles' => ['adminroles', 'change'], 'tutorial' => ['any', ''], 'userfields' => ['userfields', 'view'], 'helppages' => ['userhelp', 'view'],
+			'projects' => ['acl', NuAcl::FORM_PROJECT], 'codesearch' => ['codesearch', 'view'],
 		's_audit' => ['acl', NuAcl::FORM_AUDIT], 'notifications' => ['notifications', 'view'], 's_user_home' => ['homelayout', 'change'],
 	];
 	/** Pages an own tile (kind page) may open => the tile whose right decides. */
 	private const PAGE_TILE = ['users' => 'users', 'access' => 'access', 'permissions' => 'permissions', 'sessions' => 'sessions', 'forms' => 'forms',
 		'procedures' => 'procedures', 'reports' => 'reports', 'sqlbuilder' => 'reports', 'prompts' => 'prompts', 'apiclients' => 'apiclients', 'webhooks' => 'webhooks', 'aiproviders' => 'aiproviders',
-		'apiplayground' => 'apiclients', 'email' => 'email', 'emailtemplates' => 'email', 'debug' => 'debug', 'log' => 'debug', 'audit' => 's_audit', 'notifications' => 'notifications', 'update' => 'update',
-		'settings' => 'settings', 'branding' => 'branding', 'themes' => 'themes', 'dashboards' => 'dashboards', 'vendor' => 'vendor', 'sample' => 'sample', 'import' => 'import', 'dataexport' => 'dataexport',
+		'apiplayground' => 'apiclients', 'email' => 'email', 'emailtemplates' => 'email', 'debug' => 'debug', 'log' => 'debug', 'audit' => 's_audit',
+			'notifications' => 'notifications', 'update' => 'update',
+		'settings' => 'settings', 'branding' => 'branding', 'themes' => 'themes', 'dashboards' => 'dashboards', 'vendor' => 'vendor', 'sample' => 'sample',
+			'import' => 'import', 'dataexport' => 'dataexport',
 		'cloner' => 'cloner', 'appcloner' => 'appcloner', 'files' => 'forms', 'items' => 'forms', 'formats' => 'forms', 'translations' => 'forms',
-		'securitycheck' => 'securitycheck', 'setupwizard' => 'setupwizard', 'configfile' => 'configfile', 'globalcode' => 'globalcode', 'compat' => 'compat', 'adminroles' => 'adminroles', 'userfields' => 'userfields',
+		'securitycheck' => 'securitycheck', 'setupwizard' => 'setupwizard', 'configfile' => 'configfile', 'globalcode' => 'globalcode', 'compat' => 'compat',
+			'adminroles' => 'adminroles', 'userfields' => 'userfields',
 		'tutorial' => 'tutorial', 'helppages' => 'helppages', 'projects' => 'projects', 'codesearch' => 'codesearch'];
 
 	/** May the signed-in user see this tile? */
@@ -850,12 +863,13 @@ final class NuHome
 		$c = (array)(((array)$layout['custom'])[$key] ?? []);
 		if (!$c) return false;
 		if (($c['kind'] ?? '') === 'form') return NuAcl::can((string)$c['target']);
-		if (($c['kind'] ?? '') === 'page') return isset(self::PAGE_TILE[$c['target']]) ? self::visible(self::PAGE_TILE[$c['target']], $layout) : in_array($c['target'], ['help', 'security', 'password', 'userhelp'], true);
+		if (($c['kind'] ?? '') === 'page') return isset(self::PAGE_TILE[$c['target']]) ? self::visible(self::PAGE_TILE[$c['target']],
+			$layout) : in_array($c['target'], ['help', 'security', 'password', 'userhelp'], true);
 		return true;
 	}
 
 	/** Keys placed in a group (not hidden). */
-	/** A pinned menu page whose page has a tile of its own on this page (SAME_PAGE) – drawn once (0.8.934). */
+	/** A pinned menu page whose page has a tile of its own on this page (SAME_PAGE) – drawn once. */
 	public static function twinShown(string $key, array $layout, array $hide = []): bool
 	{
 		$twin = self::SAME_PAGE[$key] ?? null;
@@ -869,7 +883,7 @@ final class NuHome
 	}
 
 	/**
-	 * Pins a page / action of a tile's menu as a tile (0.8.321) – into the group of its tile, after it and the ones pinned before – or
+	 * Pins a page / action of a tile's menu as a tile – into the group of its tile, after it and the ones pinned before – or
 	 * takes it off the start page again when it is pinned already. @return bool|null pinned now (null = unknown key / not saved)
 	 */
 	public static function togglePin(string $key, string $login): ?bool
@@ -904,7 +918,7 @@ final class NuHome
 		return self::save($l, $login) ? null : $pinned;
 	}
 
-	// ------------------------------------------------------------------ saved layouts (0.8.333)
+	// ------------------------------------------------------------------ saved layouts
 	// Stored like list views (zzzzsys_nunext_list_view, list_key 'home'): shared (by "Start page layout" admins, for everyone or for chosen
 	// admin roles – access_ids holds role ids here) and personal ones. The one shown is the user's own choice, else the default for
 	// everyone, else the built-in default. The single layout of earlier versions became the shared layout "Standard" (step 0010).
@@ -996,7 +1010,7 @@ final class NuHome
 	}
 
 	/** Save as a new layout (name, personal / shared, admin roles) and switch to it – a copy of the current one or, with $preset
-	 *  ("Based on", 0.8.385), a profile (own tiles of the current layout along with $keepOwn). @return string error ('' = done) */
+	 *  ("Based on"), a profile (own tiles of the current layout along with $keepOwn). @return string error ('' = done) */
 	public static function saveAs(string $name, string $scope, array $roles, string $preset = '', bool $keepOwn = false): string
 	{
 		$name = trim($name);
@@ -1093,12 +1107,12 @@ final class NuHome
 			$badge = $cat[$key][4] ?? null;
 			$post = is_array($route) && isset($route['post']) ? $route['post'] : null;
 			$href = $post ? null : (is_array($route) ? nu_url($route[0], $route[1]) : nu_url($route));
-			// File Manager (0.8.516): in a new tab, like the database tools – it is a work area of its own
+			// File Manager: in a new tab, like the database tools – it is a work area of its own
 			return ['href' => $href, 'post' => $post, 'icon' => $icon, 'label' => $label, 'hint' => $hint, 'color' => '', 'newtab' => (bool)$post || $key === 'tfm', 'proc' => null, 'run' => '',
 				'action' => self::actions()[$key] ?? null, 'badge' => $badge, 'kind' => $post ? 'post' : 'page'];
 		}
 		$sub = self::subTiles()[$key] ?? null;
-		if ($sub) {                                         // a pinned page / action of a tile's menu (0.8.321)
+		if ($sub) {                                         // a pinned page / action of a tile's menu
 			$parent = self::catalog()[$sub[3]][2] ?? '';
 			return ['href' => $sub[0], 'post' => null, 'icon' => $sub[1], 'label' => $sub[2], 'hint' => $parent, 'color' => '', 'newtab' => false, 'proc' => null, 'run' => '',
 				'action' => null, 'badge' => null, 'kind' => 'page'];
@@ -1115,13 +1129,15 @@ final class NuHome
 		};
 		if ($href === null && $c['kind'] !== 'procedure') return null;
 		return ['href' => $href, 'post' => null, 'icon' => $c['icon'], 'label' => $c['label'], 'hint' => $c['hint'], 'color' => $c['color'],
-			'newtab' => (bool)$c['newtab'] || ($c['kind'] === 'form' && NuPage::opensInTab((string)$c['target'])), 'proc' => $c['kind'] === 'procedure' ? (string)$c['target'] : null, 'run' => $c['run'], 'action' => null,
-			// a form in maintenance (0.8.808): badge, greyed for those who cannot open it
-			'badge' => $c['kind'] === 'form' ? NuFormStatus::badge((string)$c['target']) : null, 'maint' => $c['kind'] === 'form' && NuFormStatus::blocked(NuFormStatus::of((string)$c['target'])), 'kind' => (string)$c['kind'],
+			'newtab' => (bool)$c['newtab'] || ($c['kind'] === 'form' && NuPage::opensInTab((string)$c['target'])),
+				'proc' => $c['kind'] === 'procedure' ? (string)$c['target'] : null, 'run' => $c['run'], 'action' => null,
+			// a form in maintenance: badge, greyed for those who cannot open it
+			'badge' => $c['kind'] === 'form' ? NuFormStatus::badge((string)$c['target']) : null, 'maint' => $c['kind'] === 'form'
+				&& NuFormStatus::blocked(NuFormStatus::of((string)$c['target'])), 'kind' => (string)$c['kind'],
 			'cond' => (array)($c['cond'] ?? [])];
 	}
 
-	// ------------------------------------------------------------------ user start pages (0.8.425)
+	// ------------------------------------------------------------------ user start pages
 
 	/** ['access' => access id | '*', 'preview' => true on the editor page (rights of that access level, conditions not applied)] */
 	private static ?array $for = null;
@@ -1153,7 +1169,7 @@ final class NuHome
 				$ids = json_decode((string)$r['access_ids'], true);
 				foreach (is_array($ids) ? $ids : [] as $a) if (is_string($a) && !isset($rows[$a])) $rows[$a] = $r;
 			}
-		} catch (Throwable) { /* no table yet */ }
+		} catch (Throwable $ig) { nu_ignored($ig, 'no table yet'); }
 		return self::$rows = $rows;
 	}
 
@@ -1178,7 +1194,7 @@ final class NuHome
 	}
 
 	/**
-	 * The tile page users of an access level get, for the access level form's tab Start page (0.8.1213) – read only:
+	 * The tile page users of an access level get, for the access level form's tab Start page – read only:
 	 * ['source' => level | default | auto, 'name', 'fav' => [tile …], 'groups' => [['title', 'tiles' => [['label', 'icon', 'cond' => bool]]]], 'hidden' => n].
 	 * Conditions are not applied (the preview shows every tile, marked when it has one).
 	 */
@@ -1228,7 +1244,7 @@ final class NuHome
 	public static function autoLayout(?string $access = null): array
 	{
 		$access ??= (string)(self::$for['access'] ?? '');
-		// once per request (0.8.1341: the page and the side bar each built it – three statements a time); dropped by a write to its tables
+		// once per request (the page and the side bar each built it – three statements a time); dropped by a write to its tables
 		$u = NuAuth::user();
 		return NuMemo::get('homeauto:' . $access . '|' . (empty(self::$for['preview']) ? '' : 'p') . '|' . (string)($u['id'] ?? '') . '|' . nu_lang_choice(),
 			['zzzzsys_access', 'zzzzsys_report', 'zzzzsys_form', 'zzzzsys_nunext_user_access'], static fn(): array => self::autoLayoutNow($access));
@@ -1246,7 +1262,7 @@ final class NuHome
 		$forms = nu_forms();
 		$home = (string)(NuAcl::level($access)['sal_zzzzsys_form_id'] ?? '');
 		$fTiles = [];
-		// the signed-in user's own page (not the editor's preview): also the forms / reports of his additional access levels (0.8.585)
+		// the signed-in user's own page (not the editor's preview): also the forms / reports of his additional access levels
 		$u = NuAuth::user();
 		$lvls = empty(self::$for['preview']) && $u && (string)($u['access_id'] ?? '') === $access ? NuUserAccess::levels($u) : [$access];
 		if (!$lvls) $lvls = [$access];
@@ -1254,12 +1270,12 @@ final class NuHome
 		foreach ($db->all("SELECT DISTINCT slf_zzzzsys_form_id FROM zzzzsys_access_form WHERE slf_zzzzsys_access_id IN ($qm)", $lvls) as $r) {
 			$fid = (string)$r['slf_zzzzsys_form_id'];
 			$f = $forms[$fid] ?? null;
-			$uh = $fid === NuUserHome::FORM;                    // nuBuilder Forte's User Home is shown (0.8.602), other system forms not
+			$uh = $fid === NuUserHome::FORM;                    // nuBuilder Forte's User Home is shown, other system forms not
 			if (!$f || $f['type'] === 'subform' || (!$uh && (!empty($f['system']) || str_starts_with($fid, 'nu')))) continue;
 			$fTiles[$fid] = ['label' => mb_substr($f['description'] !== '' ? $f['description'] : $f['code'], 0, 60), 'hint' => $fid === $home ? t('home_form') : '',
 				'icon' => $f['type'] === 'launch' || $f['type'] === 'page' ? 'bi-window' : 'bi-table', 'color' => '', 'kind' => 'form', 'target' => $fid, 'record' => '', 'run' => 'window', 'newtab' => false];
 		}
-		// home form nuuserhome without a row in zzzzsys_access_form: the level may open it all the same (NuAcl::rights, 0.8.602)
+		// home form nuuserhome without a row in zzzzsys_access_form: the level may open it all the same (NuAcl::rights)
 		if ($home === NuUserHome::FORM && !isset($fTiles[$home]) && isset($forms[$home])) {
 			$fTiles[$home] = ['label' => mb_substr($forms[$home]['description'] !== '' ? $forms[$home]['description'] : $forms[$home]['code'], 0, 60), 'hint' => t('home_form'),
 				'icon' => 'bi-house-door', 'color' => '', 'kind' => 'form', 'target' => $home, 'record' => '', 'run' => 'window', 'newtab' => false];
@@ -1274,7 +1290,7 @@ final class NuHome
 						'color' => '', 'kind' => 'report', 'target' => (string)$r['zzzzsys_report_id'], 'record' => '', 'run' => 'window', 'newtab' => false];
 				}
 			}
-		} catch (Throwable) { /* no reports */ }
+		} catch (Throwable $ig) { nu_ignored($ig, 'no reports'); }
 		$key = static fn(string $p, string $id) => 'c_' . $p . substr(hash('sha256', $id), 0, 12);
 		foreach ([['g_forms', t('nav_forms'), 'f', $fTiles], ['g_reports', t('rpt_title_list'), 'r', $rTiles]] as [$gid, $title, $p, $tiles]) {
 			if (!$tiles) continue;
@@ -1287,7 +1303,7 @@ final class NuHome
 	}
 
 	/**
-	 * New form wizard (0.8.602): a tile for the form on the saved user start pages these access levels show – their own layout, else
+	 * New form wizard: a tile for the form on the saved user start pages these access levels show – their own layout, else
 	 * the default one ('*'); levels without a saved layout get it on the automatic page by their rights. The key is the one
 	 * autoLayout() uses, so the tile is not doubled. @return int layouts changed
 	 */
@@ -1346,7 +1362,7 @@ final class NuHome
 				$u = NuAuth::user();
 				if ((string)$p['sph_global'] === '1' || (!$preview && (!empty($u['globeadmin']) || NuAdmin::can('procedures', 'change')))) return true;
 				if ($preview && $acc === self::ALL_LEVELS) return true;
-				[$in, $lv] = $preview ? ['slp_zzzzsys_access_id = ?', [$acc]] : NuUserAccess::inSql('slp_zzzzsys_access_id', $u);   // + additional levels (0.8.585)
+				[$in, $lv] = $preview ? ['slp_zzzzsys_access_id = ?', [$acc]] : NuUserAccess::inSql('slp_zzzzsys_access_id', $u);   // + additional levels
 				return $db->tableExists('zzzzsys_access_php') && (bool)$db->value("SELECT COUNT(*) FROM zzzzsys_access_php WHERE $in AND slp_zzzzsys_php_id = ?", [...$lv, $target]);
 			case 'page':
 				return in_array($target, self::USER_PAGES, true) && !($target === 'security' && NuImpersonate::active())
@@ -1358,7 +1374,7 @@ final class NuHome
 	}
 
 	/**
-	 * Conditions of a tile or group (0.8.425): every kind given must match – permission items (any of them), team, department, position
+	 * Conditions of a tile or group: every kind given must match – permission items (any of them), team, department, position
 	 * (any value, case-insensitive). The editor page shows everything (conditions are marked there); the globeadmin always passes.
 	 */
 	public static function condOk(array $cond): bool
@@ -1372,7 +1388,7 @@ final class NuHome
 			$have = $k === 'permission' ? $f['permission'] : [$f[$k]];
 			if (!array_intersect($want, $have)) return false;
 		}
-		foreach ((array)($cond['fields'] ?? []) as $code => $vals) {   // custom user fields (0.8.454): the value is one of the listed ones
+		foreach ((array)($cond['fields'] ?? []) as $code => $vals) {   // custom user fields: the value is one of the listed ones
 			$want = array_map(static fn($x) => mb_strtolower(trim((string)$x)), (array)$vals);
 			if ($want && !in_array(mb_strtolower(trim((string)($f['fields'][$code] ?? ''))), $want, true)) return false;
 		}
@@ -1408,7 +1424,7 @@ final class NuHome
 			}
 			if ($list) $out[$k] = array_slice($list, 0, 20);
 		}
-		$fields = [];                                            // custom user fields (0.8.454): {code: [values]}
+		$fields = [];                                            // custom user fields: {code: [values]}
 		foreach (is_array($in['fields'] ?? null) ? $in['fields'] : [] as $code => $v) {
 			$code = strtolower((string)$code);
 			if (!isset(NuUserFields::all()[$code])) continue;
@@ -1440,13 +1456,14 @@ final class NuHome
 		$db = nu_db();
 		$out = ['permission' => [], 'team' => [], 'department' => [], 'position' => []];
 		try {
-			if ($db->tableExists('zzzzsys_permission_item')) $out['permission'] = array_map('strval', array_column($db->all('SELECT pme_ident FROM zzzzsys_permission_item WHERE pme_ident IS NOT NULL ORDER BY pme_ident'), 'pme_ident'));
+			if ($db->tableExists('zzzzsys_permission_item')) $out['permission'] = array_map('strval',
+				array_column($db->all('SELECT pme_ident FROM zzzzsys_permission_item WHERE pme_ident IS NOT NULL ORDER BY pme_ident'), 'pme_ident'));
 			foreach (['team' => 'sus_team', 'department' => 'sus_department', 'position' => 'sus_position'] as $k => $col) {
 				$out[$k] = array_values(array_unique(array_filter(array_map(static fn($v) => trim((string)$v), array_column($db->all("SELECT DISTINCT $col AS v FROM zzzzsys_user WHERE $col IS NOT NULL ORDER BY $col"), 'v')), static fn($v) => $v !== '')));
 				$out[$k] = array_slice($out[$k], 0, 300);
 			}
-		} catch (Throwable) { /* columns of an older nuBuilder */ }
-		// custom user fields (0.8.454): label, type and the values to offer (choices, or the values in use)
+		} catch (Throwable $ig) { nu_ignored($ig, 'columns of an older nuBuilder'); }
+		// custom user fields: label, type and the values to offer (choices, or the values in use)
 		$out['fields'] = [];
 		foreach (NuUserFields::all() as $code => $f) {
 			if ((string)$f['type'] === 'longtext') continue;
@@ -1484,7 +1501,7 @@ final class NuHome
 	public static function levelChoices(): array
 	{
 		$rows = self::userRows();
-		$empty = static fn(string $k): bool => isset($rows[$k]) && self::layoutEmpty((string)$rows[$k]['definition']);   // 0.8.1279: own, but no tiles
+		$empty = static fn(string $k): bool => isset($rows[$k]) && self::layoutEmpty((string)$rows[$k]['definition']);   // own, but no tiles
 		$out = [self::ALL_LEVELS => ['label' => t('home_u_default'), 'source' => isset($rows[self::ALL_LEVELS]) ? 'level' : 'auto', 'empty' => $empty(self::ALL_LEVELS)]];
 		foreach (NuAcl::levels() as $a) {
 			$id = (string)$a['zzzzsys_access_id'];
@@ -1495,7 +1512,7 @@ final class NuHome
 	}
 
 	/**
-	 * A tile page without a single tile (0.8.1279): no tile in any group and no favourite. Such a page of an access level only hides the
+	 * A tile page without a single tile: no tile in any group and no favourite. Such a page of an access level only hides the
 	 * default – saveUser() drops it, and the editor / Start pages panel mark old ones as empty.
 	 */
 	public static function layoutEmpty($def): bool
@@ -1532,7 +1549,7 @@ final class NuHome
 		self::$current = self::$rows = null;
 	}
 
-	/** Where a tile comes from (0.8.378): builtin (catalogue), pinned (a page of a tile's menu), own (c_…) or dynamic (x_…, start page hook). */
+	/** Where a tile comes from: builtin (catalogue), pinned (a page of a tile's menu), own (c_…) or dynamic (x_…, start page hook). */
 	public static function source(string $key): string
 	{
 		if (str_starts_with($key, 'x_')) return 'dynamic';
@@ -1541,7 +1558,7 @@ final class NuHome
 		return isset(self::subTiles()[$key]) ? 'pinned' : 'own';
 	}
 
-	// ------------------------------------------------------------------ start page per access level (0.8.1203)
+	// ------------------------------------------------------------------ start page per access level
 
 	/** Setting row: {levels: {access id: 'form'}} – access levels whose users open their Home form (sal_zzzzsys_form_id) instead of the tile page. */
 	public const START_SETTING = 'start_page';
@@ -1570,7 +1587,7 @@ final class NuHome
 	}
 
 	/**
-	 * true when the database came from nuBuilder Forte (0.8.1219, step 0044): it had access levels when nuBuilder Next set it up or was
+	 * true when the database came from nuBuilder Forte (step 0044): it had access levels when nuBuilder Next set it up or was
 	 * updated – new access levels with a Home form then start on it, as in Forte; a database set up in nuBuilder Next starts on tiles.
 	 */
 	public static function startForte(): bool
@@ -1587,7 +1604,7 @@ final class NuHome
 	}
 
 	/**
-	 * Step 0044 (0.8.1219): on a database with nuBuilder Forte's access levels every level with a Home form starts on it, as in Forte
+	 * Step 0044: on a database with nuBuilder Forte's access levels every level with a Home form starts on it, as in Forte
 	 * (levels already set to "Home form" stay); the database is marked as coming from Forte. A database without access levels (a new
 	 * nuBuilder Next installation) is left as it is. Returns the number of levels switched.
 	 */

@@ -19,7 +19,7 @@ final class NuFile
 		$T = static fn(string $t, string $l = '') => NuDDL::sqlType($t, $l);
 		$db->run('CREATE TABLE zzzzsys_file (zzzzsys_file_id ' . $T('id') . ' NOT NULL PRIMARY KEY, sfi_code ' . $T('text', '300') . ' NULL, '
 			. 'sfi_description ' . $T('text', '300') . ' NULL, sfi_group ' . $T('text', '300') . ' NULL, sfi_json ' . $T('longtext') . ' NULL, '
-			. 'sfi_system ' . $T('text', '1') . ' NULL)' . ($db->type === 'mysql' ? NuDDL::mysqlTableOptions() : ''));
+			. 'sfi_system ' . $T('text', '1') . ' NULL)' . $db->tableOptions());
 	}
 
 	/** Maximum upload size in bytes ($nuConfigFileMaxKB, default 300 KB – the whole file is kept in the database). */
@@ -91,7 +91,7 @@ final class NuFile
 	}
 
 	/**
-	 * May the signed-in user fetch this file through ?p=file (0.8.478, security assessment K3)? A file shown by image objects only by
+	 * May the signed-in user fetch this file through ?p=file (security assessment K3)? A file shown by image objects only by
 	 * users who can open one of those forms (or a form that has such a form as sub-form); files no image object uses (nuAttachImage …,
 	 * report images, branding) stay open to every signed-in user, as in nuBuilder. The globeadmin may always.
 	 */
@@ -119,7 +119,7 @@ final class NuFile
 	public static function size(int $bytes): string
 	{
 		if ($bytes <= 0) return '';
-		// 0.8.272: also GB / TB (free disk space, large backups) – one decimal from MB up, none below 10 KB
+		// also GB / TB (free disk space, large backups) – one decimal from MB up, none below 10 KB
 		if ($bytes < 1024) return $bytes . ' B';
 		foreach (['TB' => 1024 ** 4, 'GB' => 1024 ** 3, 'MB' => 1024 ** 2] as $unit => $f) {
 			if ($bytes >= $f) { $v = $bytes / $f; return ($v >= 100 ? (string)round($v) : (string)round($v, 1)) . ' ' . $unit; }

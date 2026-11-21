@@ -6,7 +6,7 @@ defined('NU_ROOT') || exit;
  * Runs a report and sends the PDF (nuBuilder's core/nurunpdf.php):
  *   GET  ?i=<token>                   a run prepared by the form API (nuRunReport: report + the form's hash variables)
  *   GET  ?c=<code or id>[&dl=1]       a run without a form (reports list, run objects outside a form) – hash: user and date variables
- *   GET  …&fmt=xlsx                   the same run as an Excel file (0.8.1324, NuReportXlsx)
+ *   GET  …&fmt=xlsx                   the same run as an Excel file (NuReportXlsx)
  *   POST action=save, i=<token>, tag, file_name   nuRunReportSave: writes the PDF to the temp folder → JSON {filename, id}
  *   POST action=email, i=<token>, to, subject, body, file_name   nuEmailReportPDF: sends the PDF as attachment → JSON {ok, message}
  */
@@ -38,11 +38,11 @@ if ($token !== '') {
 }
 if (!NuReport::canRun($report)) $fail(t('rpt_err_denied', (string)$report['sre_code']), 403);
 
-// A report can take a while (0.8.1341): the view / download gives up the session lock, so the user's other tabs go on working meanwhile.
+// A report can take a while: the view / download gives up the session lock, so the user's other tabs go on working meanwhile.
 // Not for a report whose data comes from a procedure (its code may use the session) and not for save / e-mail.
 if (!$json && !str_starts_with((string)$report['sre_zzzzsys_php_id'], 'PROCEDURE:')) nu_session_release();
 
-// Excel (0.8.1324): ?fmt=xlsx – the same run as a workbook (core/nureportxlsx.php: sheets Report + Data)
+// Excel: ?fmt=xlsx – the same run as a workbook (core/nureportxlsx.php: sheets Report + Data)
 if (!$json && ($_GET['fmt'] ?? '') === 'xlsx') {
 	try {
 		$xlsx = NuReportXlsx::build($report, $hash);

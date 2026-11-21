@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Own titles of the user fields Code / Additional 1 / 2 (0.8.799) – nuBuilder Forte's $nuConfigUserCodeLabel,
+ * Own titles of the user fields Code / Additional 1 / 2 – nuBuilder Forte's $nuConfigUserCodeLabel,
  * $nuConfigUserAdditional1Label, $nuConfigUserAdditional2Label (read by nu_user_label() in core/nuapp.php). The user form renames them
  * in place (globeadmin): the value is written where nu_cfg() reads it – nuBuilder Forte's settings table while
  * $nuConfigSettingsFromDB is on and the row exists, else nuconfig.php – so nuBuilder Forte shows the same title.

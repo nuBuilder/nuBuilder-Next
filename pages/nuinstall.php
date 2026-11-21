@@ -22,18 +22,18 @@ if ($p === 'lang') {                                   // language menu
 	parse_str((string)($_GET['r'] ?? ''), $back);
 	nu_redirect(nu_url('install', ['step' => is_string($back['step'] ?? null) ? $back['step'] : null]));
 }
-if (nu_is_post()) nu_csrf_verify();
+NuInstallPage::post(get_defined_vars());   // the POST actions (code review R7, nuinstallpage.php)
 
 // nuconfig.php exists already: only an installer session that waits for a hand-copied nuconfig.php may finish here
 $late = !NuInstall::needed();
-if ($late && !(is_array($_SESSION['nu_install'] ?? null) && !empty($_SESSION['nu_install']['auth']) && !empty($_SESSION['nu_install']['pending_config']))) {
+if ($late && !(is_array($_SESSION[NuSess::INSTALL] ?? null) && !empty($_SESSION[NuSess::INSTALL]['auth']) && !empty($_SESSION[NuSess::INSTALL]['pending_config']))) {
 	nu_redirect(nu_url('login'));
 }
 
-const NU_INS_STEPS = ['start', 'db', 'content', 'admin', 'options', 'libs', 'summary'];   // libs: library packs (0.8.405)
+const NU_INS_STEPS = ['start', 'db', 'content', 'admin', 'options', 'libs', 'summary'];   // libs: library packs
 
 // ------------------------------------------------------------------ state
-$S = &$_SESSION['nu_install'];
+$S = &$_SESSION[NuSess::INSTALL];
 if (!is_array($S)) {
 	$nubPath = NuInstall::nuBuilderPath();
 	$nc = NuInstall::nuBuilderConfig($nubPath);
@@ -53,12 +53,12 @@ if (!is_array($S)) {
 			'base_url' => ($https ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . $dir,
 			'timezone' => in_array(date_default_timezone_get(), ['UTC', ''], true) ? 'Europe/Zurich' : date_default_timezone_get(),
 			'timeout' => 120, 'nub_path' => (string)($nubPath ?? ''), 'shared' => false,
-			'langs' => array_values(array_unique([nu_lang(), 'en'])),     // languages to include (welcome e-mail templates, 0.8.693)
+			'langs' => array_values(array_unique([nu_lang(), 'en'])),     // languages to include (welcome e-mail templates)
 		],
 		'detect' => null, 'pending_config' => null,
 	];
 }
-// languages to include follow the language chosen for the installation (0.8.790) until the Options step was saved
+// languages to include follow the language chosen for the installation until the Options step was saved
 if (empty($S['opt_langs_set'])) $S['opt']['langs'] = array_values(array_unique([nu_lang(), 'en']));
 $step = (string)($_GET['step'] ?? NU_INS_STEPS[min($S['reached'], count(NU_INS_STEPS) - 1)]);
 if (!in_array($step, NU_INS_STEPS, true)) $step = 'start';
@@ -76,7 +76,7 @@ $token = $needsToken ? NuInstall::token() : null;
 // ------------------------------------------------------------------ actions
 if ($late) {
 	$step = 'summary';
-	if (NuInstall::validConfig(NuInstall::configPath())) $done = nu_install_finish($S);
+	if (NuInstall::validConfig(NuInstall::configPath())) $done = NuInstallPage::finish($S);
 	else $errors['_'] = t('ins_err_still_missing', NuInstall::configPath());
 } elseif (nu_is_post()) {
 	$action = nu_post('action');
@@ -125,7 +125,7 @@ if ($late) {
 			$prevDump = $S['content']['dump'] ?? null;
 			$S['content'] = ['choice' => in_array(nu_post('choice'), ['nubuilder', 'upload'], true) ? nu_post('choice') : 'nunext', 'confirm_other' => nu_check('confirm_other') === '1',
 				'dump' => $prevDump];
-			// nubuilder4.sql of any 4.x version (0.8.384): uploaded here or copied into _install/ – checked now and again before the import
+			// nubuilder4.sql of any 4.x version: uploaded here or copied into _install/ – checked now and again before the import
 			if ($S['content']['choice'] === 'upload' && $S['db']['type'] === 'mysql') {
 				$path = null;
 				$upErr = '';
@@ -153,12 +153,12 @@ if ($late) {
 			if ($action === 'check') { if ($S['opt']['nub_path'] !== '' && is_file($S['opt']['nub_path'] . '/nubuilder4.sql')) $S['content']['choice'] = 'nubuilder'; break; }
 			if ($S['content']['choice'] === 'nubuilder' && !is_file($S['opt']['nub_path'] . '/nubuilder4.sql')) $S['content']['choice'] = 'nunext';
 			if (($S['detect']['kind'] ?? '') === 'other' && !$S['content']['confirm_other']) { $errors['confirm_other'] = t('ins_err_confirm_other'); break; }
-			// existing nuBuilder Forte database (0.8.705 / 0.8.1008): a backup must be confirmed, the integrity check's problems need the tick
+			// existing nuBuilder Forte database: a backup must be confirmed, the integrity check's problems need the tick
 			if (($S['detect']['kind'] ?? '') === 'nubuilder') {
 				$S['content']['backup_ack'] = nu_check('backup_ack') === '1';
 				if (!$S['content']['backup_ack']) { $errors['backup_ack'] = t('ins_backup_needed'); break; }
 				$S['content']['ic_ack'] = nu_check('integrity_ack') === '1';
-				if (nu_install_integrity($S)['errors'] && !$S['content']['ic_ack']) { $errors['_'] = t('ic_ack_needed'); break; }
+				if (NuInstallPage::integrity($S)['errors'] && !$S['content']['ic_ack']) { $errors['_'] = t('ic_ack_needed'); break; }
 			}
 			$go('admin');
 
@@ -190,13 +190,13 @@ if ($late) {
 			if (!$errors) $go('libs');
 			break;
 
-		// library packs (0.8.405, core/nulibs.php): zips copied into _install/ or _update/ and the GitHub release "libraries";
+		// library packs (core/nulibs.php): zips copied into _install/ or _update/ and the GitHub release "libraries";
 		// the ticked ones are installed after nuconfig.php is written (nu_install_finish)
 		case 'libs':
 			if ($action === 'gh') { $S['libs_gh'] = NuLibs::ghCheck(NuGitHub::DEFAULT_REPO, false); break; }
 			if ($action === 'rescan') break;
 			$S['libs'] = array_values(array_filter(array_intersect(array_map('strval', (array)($_POST['slots'] ?? [])), array_keys(NuLibs::SLOTS)),
-				static fn($sl) => NuLibs::forDb($sl, (string)($S['db']['type'] ?? 'mysql'))));          // phpMyAdmin not on SQL Server (0.8.744)
+				static fn($sl) => NuLibs::forDb($sl, (string)($S['db']['type'] ?? 'mysql'))));          // phpMyAdmin not on SQL Server
 			$S['libs_set'] = true;
 			$go('summary');
 
@@ -208,7 +208,7 @@ if ($late) {
 				exit;
 			}
 			if ($action === 'recheck') {
-				if (NuInstall::validConfig(NuInstall::configPath())) { $done = nu_install_finish($S); break; }
+				if (NuInstall::validConfig(NuInstall::configPath())) { $done = NuInstallPage::finish($S); break; }
 				$errors['_'] = t('ins_err_still_missing', NuInstall::configPath());
 				break;
 			}
@@ -224,8 +224,8 @@ if ($late) {
 					$db = NuInstall::connect($d);
 				}
 				$det = NuInstall::detect($db);
-				if ($det['kind'] === 'nubuilder' && empty($S['content']['backup_ack'])) throw new RuntimeException(t('ins_backup_needed'));   // checked again (0.8.1008)
-				if ($det['kind'] === 'nubuilder' && nu_install_integrity($S)['errors'] && empty($S['content']['ic_ack'])) throw new RuntimeException(t('ic_ack_needed'));   // checked again (0.8.705)
+				if ($det['kind'] === 'nubuilder' && empty($S['content']['backup_ack'])) throw new RuntimeException(t('ins_backup_needed'));   // checked again
+				if ($det['kind'] === 'nubuilder' && NuInstallPage::integrity($S)['errors'] && empty($S['content']['ic_ack'])) throw new RuntimeException(t('ic_ack_needed'));   // checked again
 				$S['detect'] = $det;
 				$imported = 0;
 				if ($det['kind'] === 'empty' || ($det['kind'] === 'other' && $S['content']['confirm_other'])) {
@@ -237,7 +237,7 @@ if ($late) {
 					} else {
 						foreach (NuInstall::schemaFiles($S['content']['choice'], $db->type, $S['opt']['nub_path'] ?: null) as $f) $imported += NuInstall::importFile($db, $f);
 					}
-					// a nubuilder4.sql of an older 4.x version gets the structure of 4.9 (0.8.384; a 4.9 dump stays as it is)
+					// a nubuilder4.sql of an older 4.x version gets the structure of 4.9 (a 4.9 dump stays as it is)
 					if ($S['content']['choice'] !== 'nunext' && $db->type === 'mysql') $S['upgraded'] = NuInstall::upgradeTo49($db);
 					try { NuSettings::create($db); } catch (Throwable $e) { error_log('nuBuilder Next install, settings table: ' . $e->getMessage()); }   // nuBuilder's settings (zzzzsys_config)
 				}
@@ -247,7 +247,7 @@ if ($late) {
 					$S['pending_config'] = $cfg;              // write it yourself: download / copy, then "Check again"
 					break;
 				}
-				$done = nu_install_finish($S);
+				$done = NuInstallPage::finish($S);
 			} catch (Throwable $e) {
 				error_log('nuBuilder Next install: ' . $e->getMessage());
 				$errors['_'] = t('ins_err_install') . ' ' . $e->getMessage();
@@ -256,85 +256,19 @@ if ($late) {
 	}
 }
 
-/** Integrity check of the database the installer connects to (existing nuBuilder Forte database, 0.8.705). */
-function nu_install_integrity(array $S): array
-{
-	try {
-		NuDB::$override = NuInstall::connect($S['db']);
-		return NuIntegrity::run();
-	} catch (Throwable $e) {
-		return ['items' => [['id' => 'failed', 'level' => 'info', 'list' => [$e->getMessage()], 'count' => 1]], 'errors' => 0, 'warnings' => 0, 'infos' => 1, 'checks' => 0, 'ms' => 0];
-	} finally {
-		NuDB::$override = null;
-	}
-}
 
-/** After nuconfig.php exists: nuBuilder Next's tables and database steps, token removed. Returns the done data. */
-function nu_install_finish(?array &$S): array
-{
-	$out = ['imported' => (int)($S['imported'] ?? 0), 'upgraded' => $S['upgraded'] ?? null, 'steps' => [], 'error' => ''];
-	try {
-		NuSchema::allow();
-		NuSchema::create();
-		$existing = ($S['detect']['kind'] ?? '') === 'nubuilder';      // on an existing nuBuilder Forte database (marker file, 0.8.705)
-		NuInstall::setOrigin($existing ? 'nubuilder' : 'nunext');   // set up on a new database (0.8.380) – step 0014 keeps it
-		// safer defaults for NEW installations (0.8.478, security assessment C2 / K1): records only through the form's list, read-only
-		// and hidden fields never saved from the browser – existing installations keep their settings (the Security check names them)
-		if (!$existing) NuSecurity::save(['record_check' => true, 'protect_fields' => true]);
-		NuWelcome::setLangs((array)($S['opt']['langs'] ?? []), true);   // the welcome e-mail templates only in the chosen languages (0.8.693)
-		$out['steps'] = NuMigrate::run();
-	} catch (Throwable $e) {
-		$out['error'] = $e->getMessage();
-	}
-	$out['libs'] = nu_install_libs($S);
-	NuInstall::cleanup();
-	$out['admin'] = $S['admin']['user'];
-	$S = null;
-	unset($_SESSION['nu_install']);
-	return $out;
-}
 
-/**
- * Installs the library packs ticked on the step "Libraries" (0.8.405) – a failed one does not stop the installation (the update page
- * can install it later). Packs left in _install/ move to _update/, so the update page still offers them.
- * @return list<array{0: string, 1: string, 2: bool, 3: string}> title, version, ok, error
- */
-function nu_install_libs(?array $S): array
-{
-	$out = [];
-	$want = (array)($S['libs'] ?? []);
-	if ($want) {
-		try {
-			$ov = NuLibs::overview(true, $S['libs_gh'] ?? ['libs' => []], (string)($S['db']['type'] ?? 'mysql'));
-		} catch (Throwable $e) {
-			return [[t('upd_libs'), '', false, $e->getMessage()]];
-		}
-		foreach ($want as $sl) {
-			$best = $ov[$sl]['best'] ?? null;
-			try {
-				if (!$best) throw new RuntimeException(t('lp_err_nothing'));
-				$r = NuLibs::installCandidate($best, 'installer');
-				$out[] = [NuLibs::SLOTS[$sl]['title'], $r['version'], true, ''];
-			} catch (Throwable $e) {
-				error_log('nuBuilder Next install, library ' . $sl . ': ' . $e->getMessage());
-				$out[] = [NuLibs::SLOTS[$sl]['title'], (string)($best['version'] ?? ''), false, $e->getMessage()];
-			}
-		}
-	}
-	foreach (glob(NU_ROOT . '/_install/nunext-lib-*.zip') ?: [] as $f) @rename($f, NuUpdate::folderDir() . '/' . basename($f));
-	return $out;
-}
 
 // ------------------------------------------------------------------ view
 $title = t('ins_title');
 $reqs = NuInstall::requirements();
 $err = static fn(string $k) => isset($errors[$k]) ? ' is-invalid' : '';
 $fb = static fn(string $k) => isset($errors[$k]) ? '<div class="invalid-feedback">' . h($errors[$k]) . '</div>' : '';
-// required fields (0.8.421): a red star after the label (screen readers: the required attribute), a legend above the fields
+// required fields: a red star after the label (screen readers: the required attribute), a legend above the fields
 $req = ' <span class="text-danger" aria-hidden="true" title="' . h(t('val_legend_required')) . '">*</span>';
 $reqLegend = '<p class="small text-body-secondary mb-3"><span class="text-danger" aria-hidden="true">*</span> ' . h(t('val_legend_required')) . '</p>';
 NuBranding::$off = true;                              // no branding in the installer (database not ready)
-nu_head($title, nu_ts_head());   // time zone: searchable (0.8.536)
+nu_head($title, nu_ts_head());   // time zone: searchable
 ?>
 <body class="nu-center nu-login">
 <main class="nu-install">
@@ -342,7 +276,7 @@ nu_head($title, nu_ts_head());   // time zone: searchable (0.8.536)
 		<div class="d-flex align-items-center gap-2"><?= nu_brand_logo() ?><span class="small text-body-secondary"><?= h(NU_VERSION) ?></span></div>
 		<div class="d-flex gap-2"><?php nu_theme_menu(); ?><?php nu_lang_menu(); ?></div>
 	</div>
-	<?php if (!isset($done) && !function_exists('sodium_crypto_sign_verify_detached')):   // 0.8.788: library packs / updates cannot be checked
+	<?php if (!isset($done) && !function_exists('sodium_crypto_sign_verify_detached')):   // library packs / updates cannot be checked
 		$iniFile = ($S && !empty($S['auth'])) ? (string)(php_ini_loaded_file() ?: 'php.ini') : 'php.ini'; ?>
 		<div class="alert alert-warning small mb-3" role="note" id="insSodium">
 			<div class="fw-semibold mb-1"><i class="bi bi-shield-exclamation me-1" aria-hidden="true"></i><?= h(t('ins_sodium_title')) ?></div>
@@ -372,7 +306,8 @@ nu_head($title, nu_ts_head());   // time zone: searchable (0.8.536)
 				<h1 class="h4 mt-2"><?= h(t('ins_done_title')) ?></h1>
 				<p class="text-body-secondary"><?= h(t('ins_done_text', $done['admin'])) ?></p>
 				<?php if ($done['imported']): ?><p class="small mb-1"><?= h(t('ins_done_imported', $done['imported'])) ?></p><?php endif; ?>
-				<?php $up = $done['upgraded'] ?? null; if ($up && ($up['tables'] + $up['columns'] + $up['changed'])): ?><p class="small mb-1" id="insUpgraded"><?= h(t('ins_done_upgraded', $up['tables'], $up['columns'] + $up['changed'])) ?></p>
+				<?php $up = $done['upgraded'] ?? null; if ($up && ($up['tables'] + $up['columns'] + $up['changed'])): ?><p class="small mb-1"
+					id="insUpgraded"><?= h(t('ins_done_upgraded', $up['tables'], $up['columns'] + $up['changed'])) ?></p>
 					<p class="small text-body-secondary mb-1"><?= h(t('ins_done_upgraded_hint')) ?></p><?php endif; ?>
 				<?php if ($done['error'] !== ''): ?><div class="alert alert-warning small text-start"><?= h(t('ins_done_db_warning')) ?> <?= h($done['error']) ?></div><?php endif; ?>
 				<?php if (!empty($done['libs'])): ?><ul class="list-unstyled small text-start mx-auto mb-1 nuInsLibsDone" id="insLibsDone">
@@ -392,19 +327,21 @@ nu_head($title, nu_ts_head());   // time zone: searchable (0.8.536)
 			<!-- ================================================================ start -->
 			<h1 class="h4"><?= h(t('ins_welcome')) ?></h1>
 			<p class="text-body-secondary small"><?= h(t('ins_welcome_text')) ?></p>
-			<?php // language of the installation (0.8.790): the wizard's language, the first language to include and the default of the setup wizard ?>
+			<?php // language of the installation: the wizard's language, the first language to include and the default of the setup wizard ?>
 			<form method="get" action="index.php" class="row g-2 align-items-end mb-3" id="insLangForm">
 				<input type="hidden" name="p" value="lang"><input type="hidden" name="r" value="p=install&amp;step=start">
 				<div class="col-sm-7"><label class="form-label fw-semibold" for="insLang"><?= h(t('ins_lang')) ?></label>
 					<select class="form-select js-autosubmit" id="insLang" name="l">
-						<?php foreach (nu_lang_choices() as $code => $own): ?><option value="<?= h($code) ?>" lang="<?= h($code) ?>"<?= nu_lang_choice() === $code ? ' selected' : '' ?>><?= h($own) ?></option><?php endforeach; ?>
+						<?php foreach (nu_lang_choices() as $code => $own): ?><option value="<?= h($code) ?>"
+							lang="<?= h($code) ?>"<?= nu_lang_choice() === $code ? ' selected' : '' ?>><?= h($own) ?></option><?php endforeach; ?>
 					</select></div>
 				<noscript><div class="col-auto"><button class="btn btn-outline-secondary" type="submit"><?= h(t('ok')) ?></button></div></noscript>
 			</form>
 			<h2 class="h6 mt-3"><?= h(t('ins_server')) ?></h2>
-			<?php // server checks (0.8.1047, the owner picked mockup A): one summary line, passed checks folded below it, problems always listed
+			<?php // server checks (the owner picked mockup A): one summary line, passed checks folded below it, problems always listed
 			$clean = static fn(array $r): bool => $r[1] && empty($r[4]);            // passed without a note to read
-			$reqRow = static fn(array $r): string => '<i class="bi ' . ($clean($r) ? 'bi-check-circle text-success' : ($r[3] && !$r[1] ? 'bi-x-circle text-danger' : 'bi-exclamation-circle text-warning')) . '"></i>'
+			$reqRow = static fn(array $r): string => '<i class="bi '
+				. ($clean($r) ? 'bi-check-circle text-success' : ($r[3] && !$r[1] ? 'bi-x-circle text-danger' : 'bi-exclamation-circle text-warning')) . '"></i>'
 				. '<span class="me-auto text-nowrap">' . h($r[0]) . '</span><span class="text-body-secondary ' . (mb_strlen($r[2]) > 60 ? 'insReqLong' : 'text-end') . '">' . h($r[2]) . '</span>';
 			$reqOk = array_values(array_filter($reqs, $clean));
 			$reqBad = array_values(array_filter($reqs, static fn($r) => !$clean($r))); ?>
@@ -437,7 +374,8 @@ nu_head($title, nu_ts_head());   // time zone: searchable (0.8.536)
 						<?php if (isset($errors['token'])): ?><div class="text-danger small mb-2"><?= h($errors['token']) ?></div><?php endif; ?>
 					<?php endif; ?>
 				<?php endif; ?>
-				<div class="d-flex justify-content-end mt-3"><button class="btn btn-primary" type="submit" id="insNext"<?= NuInstall::requirementsOk() ? '' : ' disabled' ?>><?= h(t('ins_start')) ?> <i class="bi bi-arrow-right"></i></button></div>
+				<div class="d-flex justify-content-end mt-3"><button class="btn btn-primary" type="submit"
+					id="insNext"<?= NuInstall::requirementsOk() ? '' : ' disabled' ?>><?= h(t('ins_start')) ?> <i class="bi bi-arrow-right"></i></button></div>
 			</form>
 
 		<?php elseif ($step === 'db'): $d = $S['db']; ?>
@@ -453,20 +391,27 @@ nu_head($title, nu_ts_head());   // time zone: searchable (0.8.536)
 							<option value="mysql"<?= $d['type'] === 'mysql' ? ' selected' : '' ?>>MySQL / MariaDB</option>
 							<option value="sqlsrv"<?= $d['type'] === 'sqlsrv' ? ' selected' : '' ?><?= extension_loaded('pdo_sqlsrv') ? '' : ' disabled' ?>>Microsoft SQL Server</option>
 						</select></div>
-					<div class="col-sm-5"><label class="form-label" for="host"><?= h(t('ins_db_host')) ?><?= $req ?></label><input class="form-control" id="host" name="host" value="<?= h($d['host']) ?>" required></div>
-					<div class="col-sm-2"><label class="form-label" for="port"><?= h(t('ins_db_port')) ?></label><input class="form-control" id="port" name="port" inputmode="numeric" value="<?= h($d['port']) ?>"></div>
-					<div class="col-sm-4"><label class="form-label" for="name"><?= h(t('ins_db_name')) ?><?= $req ?></label><input class="form-control" id="name" name="name" value="<?= h($d['name']) ?>" required></div>
-					<div class="col-sm-4"><label class="form-label" for="user"><?= h(t('ins_db_user')) ?></label><input class="form-control" id="user" name="user" value="<?= h($d['user']) ?>" autocomplete="off"></div>
+					<div class="col-sm-5"><label class="form-label" for="host"><?= h(t('ins_db_host')) ?><?= $req ?></label><input class="form-control" id="host"
+						name="host" value="<?= h($d['host']) ?>" required></div>
+					<div class="col-sm-2"><label class="form-label" for="port"><?= h(t('ins_db_port')) ?></label><input class="form-control" id="port" name="port"
+						inputmode="numeric" value="<?= h($d['port']) ?>"></div>
+					<div class="col-sm-4"><label class="form-label" for="name"><?= h(t('ins_db_name')) ?><?= $req ?></label><input class="form-control" id="name"
+						name="name" value="<?= h($d['name']) ?>" required></div>
+					<div class="col-sm-4"><label class="form-label" for="user"><?= h(t('ins_db_user')) ?></label><input class="form-control" id="user" name="user"
+						value="<?= h($d['user']) ?>" autocomplete="off"></div>
 					<div class="col-sm-4"><label class="form-label" for="password"><?= h(t('ins_db_password')) ?></label>
 						<input class="form-control" type="password" id="password" name="password" autocomplete="new-password" placeholder="<?= $d['password'] !== '' ? '••••••••' : '' ?>">
 						<?php if ($d['password'] !== ''): ?><input type="hidden" name="keep_password" value="1"><div class="form-text"><?= h(t('ins_keep_password')) ?></div><?php endif; ?></div>
 					<div class="col-12 d-flex flex-wrap gap-4">
-						<div class="form-check"><input class="form-check-input" type="checkbox" id="create" name="create" value="1"<?= $d['create'] ? ' checked' : '' ?>><label class="form-check-label" for="create"><?= h(t('ins_db_create')) ?></label></div>
-						<div class="form-check insMssqlOnly"><input class="form-check-input" type="checkbox" id="trust" name="trust" value="1"<?= $d['trust'] ? ' checked' : '' ?>><label class="form-check-label" for="trust"><?= h(t('ins_db_trust')) ?></label></div>
+						<div class="form-check"><input class="form-check-input" type="checkbox" id="create" name="create"
+							value="1"<?= $d['create'] ? ' checked' : '' ?>><label class="form-check-label" for="create"><?= h(t('ins_db_create')) ?></label></div>
+						<div class="form-check insMssqlOnly"><input class="form-check-input" type="checkbox" id="trust" name="trust"
+							value="1"<?= $d['trust'] ? ' checked' : '' ?>><label class="form-check-label" for="trust"><?= h(t('ins_db_trust')) ?></label></div>
 					</div>
 				</div>
 				<?php if ($S['detect']): $k = $S['detect']['kind']; ?>
-					<div class="small mt-3 text-body-secondary" id="insDetect"><i class="bi bi-info-circle me-1"></i><?= h(t('ins_detect_' . $k, $S['detect']['tables'], $S['detect']['forms'], $S['detect']['users'])) ?></div>
+					<div class="small mt-3 text-body-secondary"
+						id="insDetect"><i class="bi bi-info-circle me-1"></i><?= h(t('ins_detect_' . $k, $S['detect']['tables'], $S['detect']['forms'], $S['detect']['users'])) ?></div>
 				<?php endif; ?>
 				<div class="d-flex justify-content-between mt-4">
 					<button class="btn btn-outline-secondary" type="submit" name="action" value="back" formnovalidate><i class="bi bi-arrow-left"></i> <?= h(t('ins_back')) ?></button>
@@ -480,12 +425,13 @@ nu_head($title, nu_ts_head());   // time zone: searchable (0.8.536)
 			<h1 class="h4"><?= h(t('ins_step_content')) ?></h1>
 			<form method="post" action="<?= h(nu_url('install', ['step' => 'content'])) ?>" enctype="multipart/form-data" novalidate id="insContentForm">
 				<?= nu_csrf_field() ?>
-				<?php if ($det['kind'] === 'nubuilder'): $icR = nu_install_integrity($S); ?>
+				<?php if ($det['kind'] === 'nubuilder'): $icR = NuInstallPage::integrity($S); ?>
 					<div class="alert alert-success" id="insKind"><i class="bi bi-database-check me-1"></i><?= h(t('ins_content_nubuilder', $det['forms'], $det['users'])) ?></div>
 					<input type="hidden" name="choice" value="nunext">
 					<div class="alert alert-warning" id="insBackup"><div class="fw-semibold mb-1"><i class="bi bi-shield-exclamation me-1"></i><?= h(t('ins_backup_title')) ?></div>
 						<div class="small mb-2"><?= h(t('ins_backup_text')) ?></div>
-						<div class="form-check mb-0"><input type="hidden" name="backup_ack" value="0"><input class="form-check-input<?= $err('backup_ack') ?>" type="checkbox" name="backup_ack" value="1" id="insBackupAck"<?= !empty($S['content']['backup_ack']) ? ' checked' : '' ?>>
+						<div class="form-check mb-0"><input type="hidden" name="backup_ack" value="0"><input class="form-check-input<?= $err('backup_ack') ?>"
+							type="checkbox" name="backup_ack" value="1" id="insBackupAck"<?= !empty($S['content']['backup_ack']) ? ' checked' : '' ?>>
 							<label class="form-check-label fw-semibold" for="insBackupAck"><?= h(t('ins_backup_ack')) ?></label><?= $fb('backup_ack') ?></div>
 					</div>
 					<div class="border rounded p-3 mb-3<?= $icR['errors'] ? ' border-danger' : '' ?>" id="insIntegrity">
@@ -494,21 +440,27 @@ nu_head($title, nu_ts_head());   // time zone: searchable (0.8.536)
 					</div>
 				<?php else: ?>
 					<div class="alert <?= $det['kind'] === 'other' ? 'alert-warning' : 'alert-info' ?>" id="insKind"><?= h(t('ins_content_' . $det['kind'], $det['tables'])) ?></div>
-					<div class="form-check mb-2"><input class="form-check-input" type="radio" name="choice" id="choice_nub" value="nubuilder"<?= $S['content']['choice'] === 'nubuilder' && $nubSql ? ' checked' : '' ?><?= $nubSql ? '' : ' disabled' ?>>
-						<label class="form-check-label" for="choice_nub"><b><?= h(t('ins_choice_nubuilder')) ?></b><br><span class="small text-body-secondary"><?= h($nubSql ? t('ins_choice_nubuilder_hint') : t('ins_choice_nubuilder_missing')) ?></span></label></div>
+					<div class="form-check mb-2"><input class="form-check-input" type="radio" name="choice" id="choice_nub"
+						value="nubuilder"<?= $S['content']['choice'] === 'nubuilder' && $nubSql ? ' checked' : '' ?><?= $nubSql ? '' : ' disabled' ?>>
+						<label class="form-check-label"
+							for="choice_nub"><b><?= h(t('ins_choice_nubuilder')) ?></b><br><span class="small text-body-secondary"><?= h($nubSql ? t('ins_choice_nubuilder_hint') : t('ins_choice_nubuilder_missing')) ?></span></label></div>
 					<div class="form-check mb-2"><input class="form-check-input" type="radio" name="choice" id="choice_nn" value="nunext"<?= $S['content']['choice'] === 'nunext' || !$nubSql ? ' checked' : '' ?>>
 						<label class="form-check-label" for="choice_nn"><b><?= h(t('ins_choice_nunext')) ?></b><br><span class="small text-body-secondary"><?= h(t('ins_choice_nunext_hint')) ?></span></label></div>
 					<div class="input-group input-group-sm has-validation mt-1 mb-3 ms-4 insNubPath">
 						<span class="input-group-text"><?= h(t('ins_opt_nub')) ?></span>
-						<input class="form-control<?= $err('nub_path') ?>" id="nub_path" name="nub_path" value="<?= h($S['opt']['nub_path']) ?>" placeholder="<?= h(dirname(NU_ROOT)) ?>" aria-label="<?= h(t('ins_opt_nub')) ?>">
+						<input class="form-control<?= $err('nub_path') ?>" id="nub_path" name="nub_path" value="<?= h($S['opt']['nub_path']) ?>"
+							placeholder="<?= h(dirname(NU_ROOT)) ?>" aria-label="<?= h(t('ins_opt_nub')) ?>">
 						<button class="btn btn-outline-secondary" type="submit" name="action" value="check" formnovalidate id="insCheckNub"><?= h(t('ins_check')) ?></button><?= $fb('nub_path') ?>
 					</div>
 					<?php $isMy = $S['db']['type'] === 'mysql'; $dumps = $isMy ? NuInstall::dumpCandidates() : []; $cd = $S['content']['dump'] ?? null; ?>
-					<div class="form-check mb-2"><input class="form-check-input" type="radio" name="choice" id="choice_up" value="upload"<?= $S['content']['choice'] === 'upload' && $isMy ? ' checked' : '' ?><?= $isMy ? '' : ' disabled' ?>>
-						<label class="form-check-label" for="choice_up"><b><?= h(t('ins_choice_upload')) ?></b><br><span class="small text-body-secondary"><?= h($isMy ? t('ins_choice_upload_hint', (string)nu_ini_get('upload_max_filesize')) : t('ins_choice_upload_mssql')) ?></span></label></div>
+					<div class="form-check mb-2"><input class="form-check-input" type="radio" name="choice" id="choice_up"
+						value="upload"<?= $S['content']['choice'] === 'upload' && $isMy ? ' checked' : '' ?><?= $isMy ? '' : ' disabled' ?>>
+						<label class="form-check-label"
+							for="choice_up"><b><?= h(t('ins_choice_upload')) ?></b><br><span class="small text-body-secondary"><?= h($isMy ? t('ins_choice_upload_hint', (string)nu_ini_get('upload_max_filesize')) : t('ins_choice_upload_mssql')) ?></span></label></div>
 					<?php if ($isMy): ?>
 					<div class="ms-4 mb-3 insDump" id="insDump">
-						<?php if ($cd): ?><div class="alert alert-success small py-2 mb-2" id="insDumpOk"><i class="bi bi-file-earmark-check me-1"></i><?= h(t('ins_dump_ok', $cd['name'], $cd['tables'], $cd['forms'])) ?></div><?php endif; ?>
+						<?php if ($cd): ?><div class="alert alert-success small py-2 mb-2"
+							id="insDumpOk"><i class="bi bi-file-earmark-check me-1"></i><?= h(t('ins_dump_ok', $cd['name'], $cd['tables'], $cd['forms'])) ?></div><?php endif; ?>
 						<div class="input-group input-group-sm has-validation">
 							<input class="form-control<?= $err('dump') ?>" type="file" id="dump" name="dump" accept=".sql,.gz,.zip" aria-label="<?= h(t('ins_choice_upload')) ?>">
 							<button class="btn btn-outline-secondary" type="submit" name="action" value="check_dump" id="insCheckDump"><?= h(t('ins_check')) ?></button><?= $fb('dump') ?>
@@ -523,7 +475,8 @@ nu_head($title, nu_ts_head());   // time zone: searchable (0.8.536)
 					</div>
 					<?php endif; ?>
 					<?php if ($det['kind'] === 'other'): ?>
-						<div class="form-check mt-3"><input class="form-check-input<?= $err('confirm_other') ?>" type="checkbox" id="confirm_other" name="confirm_other" value="1"<?= $S['content']['confirm_other'] ? ' checked' : '' ?>>
+						<div class="form-check mt-3"><input class="form-check-input<?= $err('confirm_other') ?>" type="checkbox" id="confirm_other" name="confirm_other"
+							value="1"<?= $S['content']['confirm_other'] ? ' checked' : '' ?>>
 							<label class="form-check-label" for="confirm_other"><?= h(t('ins_confirm_other')) ?></label><?= $fb('confirm_other') ?></div>
 					<?php endif; ?>
 				<?php endif; ?>
@@ -541,16 +494,26 @@ nu_head($title, nu_ts_head());   // time zone: searchable (0.8.536)
 				<?= nu_csrf_field() ?>
 				<div class="row g-3">
 					<div class="col-12"><?= $reqLegend ?></div>
-					<div class="col-sm-6"><label class="form-label" for="user"><?= h(t('ins_admin_user')) ?><?= $req ?></label><input class="form-control<?= $err('user') ?>" id="user" name="user" value="<?= h($a['user']) ?>" autocomplete="username" required><?= $fb('user') ?></div>
-					<div class="col-sm-6"><label class="form-label" for="email"><?= h(t('ins_admin_email')) ?><span id="insEmailReq"<?= $a['twofa'] ? '' : ' hidden' ?>><?= $req ?></span></label><input class="form-control<?= $err('email') ?>" type="email" id="email" name="email" value="<?= h($a['email']) ?>"<?= $a['twofa'] ? ' required' : '' ?>><?= $fb('email') ?></div>
+					<div class="col-sm-6"><label class="form-label"
+						for="user"><?= h(t('ins_admin_user')) ?><?= $req ?></label><input class="form-control<?= $err('user') ?>" id="user" name="user"
+						value="<?= h($a['user']) ?>" autocomplete="username" required><?= $fb('user') ?></div>
+					<div class="col-sm-6"><label class="form-label"
+						for="email"><?= h(t('ins_admin_email')) ?><span id="insEmailReq"<?= $a['twofa'] ? '' : ' hidden' ?>><?= $req ?></span></label><input class="form-control<?= $err('email') ?>"
+						type="email" id="email" name="email" value="<?= h($a['email']) ?>"<?= $a['twofa'] ? ' required' : '' ?>><?= $fb('email') ?></div>
 					<div class="col-sm-6"><label class="form-label" for="password"><?= h(t('ins_admin_password')) ?><?= $a['password'] === '' ? $req : '' ?></label>
-						<input class="form-control<?= $err('password') ?>" type="password" id="password" name="password" autocomplete="new-password" minlength="10"<?= $a['password'] === '' ? ' required' : '' ?> placeholder="<?= $a['password'] !== '' ? '••••••••' : '' ?>"><?= $fb('password') ?>
-						<div class="progress mt-2 insStrength" role="presentation"><div class="progress-bar" id="insStrength" data-labels="<?= h(json_encode([t('ins_pw_weak'), t('ins_pw_fair'), t('ins_pw_good'), t('ins_pw_strong')])) ?>" data-short="<?= h(t('ins_err_admin_pw')) ?>"></div></div>
+						<input class="form-control<?= $err('password') ?>" type="password" id="password" name="password" autocomplete="new-password"
+							minlength="10"<?= $a['password'] === '' ? ' required' : '' ?> placeholder="<?= $a['password'] !== '' ? '••••••••' : '' ?>"><?= $fb('password') ?>
+						<div class="progress mt-2 insStrength" role="presentation"><div class="progress-bar" id="insStrength"
+							data-labels="<?= h(json_encode([t('ins_pw_weak'), t('ins_pw_fair'), t('ins_pw_good'), t('ins_pw_strong')])) ?>"
+							data-short="<?= h(t('ins_err_admin_pw')) ?>"></div></div>
 						<div class="form-text" id="insStrengthText"><?= h(t('ins_pw_rules')) ?></div>
 						<?php if ($a['password'] !== ''): ?><input type="hidden" name="keep_password" value="1"><div class="form-text"><?= h(t('ins_keep_password')) ?></div><?php endif; ?></div>
 					<div class="col-sm-6"><label class="form-label" for="password2"><?= h(t('ins_admin_password2')) ?><?= $a['password'] === '' ? $req : '' ?></label>
-						<input class="form-control<?= $err('password2') ?>" type="password" id="password2" name="password2" autocomplete="new-password"<?= $a['password'] === '' ? ' required' : '' ?> data-mismatch="<?= h(t('ins_err_admin_pw2')) ?>"><?= $fb('password2') ?></div>
-					<div class="col-12"><div class="form-check"><input class="form-check-input" type="checkbox" id="twofa" name="twofa" value="1"<?= $a['twofa'] ? ' checked' : '' ?>><label class="form-check-label" for="twofa"><?= h(t('ins_admin_twofa')) ?></label></div></div>
+						<input class="form-control<?= $err('password2') ?>" type="password" id="password2" name="password2"
+							autocomplete="new-password"<?= $a['password'] === '' ? ' required' : '' ?>
+							data-mismatch="<?= h(t('ins_err_admin_pw2')) ?>"><?= $fb('password2') ?></div>
+					<div class="col-12"><div class="form-check"><input class="form-check-input" type="checkbox" id="twofa" name="twofa"
+						value="1"<?= $a['twofa'] ? ' checked' : '' ?>><label class="form-check-label" for="twofa"><?= h(t('ins_admin_twofa')) ?></label></div></div>
 					<div class="col-12 small text-body-secondary"><i class="bi bi-info-circle me-1"></i><?= h(t('ins_admin_plain')) ?></div>
 				</div>
 				<div class="d-flex justify-content-between mt-4">
@@ -567,18 +530,26 @@ nu_head($title, nu_ts_head());   // time zone: searchable (0.8.536)
 				<?= nu_csrf_field() ?>
 				<?= $reqLegend ?>
 				<div class="row g-3">
-					<div class="col-12"><label class="form-label" for="base_url"><?= h(t('ins_opt_url')) ?></label><input class="form-control<?= $err('base_url') ?>" id="base_url" name="base_url" value="<?= h($o['base_url']) ?>"><?= $fb('base_url') ?>
+					<div class="col-12"><label class="form-label" for="base_url"><?= h(t('ins_opt_url')) ?></label><input class="form-control<?= $err('base_url') ?>"
+						id="base_url" name="base_url" value="<?= h($o['base_url']) ?>"><?= $fb('base_url') ?>
 						<div class="form-text"><?= h(t('ins_opt_url_hint')) ?></div></div>
 					<div class="col-sm-8"><label class="form-label" for="timezone"><?= h(t('ins_opt_timezone')) ?><?= $req ?></label>
-						<select class="form-select nuListTomSelect<?= $err('timezone') ?>" id="timezone" name="timezone"><?php foreach (timezone_identifiers_list() as $tz): ?><option<?= $tz === $o['timezone'] ? ' selected' : '' ?>><?= h($tz) ?></option><?php endforeach; ?></select><?= $fb('timezone') ?></div>
-					<div class="col-sm-4"><label class="form-label" for="timeout"><?= h(t('ins_opt_timeout')) ?><?= $req ?></label><input class="form-control<?= $err('timeout') ?>" type="number" min="5" max="1440" id="timeout" name="timeout" value="<?= (int)$o['timeout'] ?>"><?= $fb('timeout') ?></div>
-					<div class="col-12"><label class="form-label" for="nub_path"><?= h(t('ins_opt_nub')) ?></label><input class="form-control<?= $err('nub_path') ?>" id="nub_path" name="nub_path" value="<?= h($o['nub_path']) ?>" placeholder="<?= h(dirname(NU_ROOT)) ?>"><?= $fb('nub_path') ?>
+						<select class="form-select nuListTomSelect<?= $err('timezone') ?>" id="timezone"
+							name="timezone"><?php foreach (timezone_identifiers_list() as $tz): ?><option<?= $tz === $o['timezone'] ? ' selected' : '' ?>><?= h($tz) ?></option><?php endforeach; ?></select><?= $fb('timezone') ?></div>
+					<div class="col-sm-4"><label class="form-label"
+						for="timeout"><?= h(t('ins_opt_timeout')) ?><?= $req ?></label><input class="form-control<?= $err('timeout') ?>" type="number" min="5" max="1440"
+						id="timeout" name="timeout" value="<?= (int)$o['timeout'] ?>"><?= $fb('timeout') ?></div>
+					<div class="col-12"><label class="form-label" for="nub_path"><?= h(t('ins_opt_nub')) ?></label><input class="form-control<?= $err('nub_path') ?>"
+						id="nub_path" name="nub_path" value="<?= h($o['nub_path']) ?>" placeholder="<?= h(dirname(NU_ROOT)) ?>"><?= $fb('nub_path') ?>
 						<div class="form-text"><?= h(t('ins_opt_nub_hint')) ?></div></div>
-					<div class="col-12"><div class="form-check"><input class="form-check-input<?= $err('shared') ?>" type="checkbox" id="shared" name="shared" value="1"<?= $o['shared'] ? ' checked' : '' ?>><label class="form-check-label" for="shared"><?= h(t('ins_opt_shared')) ?></label><?= $fb('shared') ?></div></div>
-					<?php // languages to include (0.8.693): the welcome e-mail templates are created for these only ?>
+					<div class="col-12"><div class="form-check"><input class="form-check-input<?= $err('shared') ?>" type="checkbox" id="shared" name="shared"
+						value="1"<?= $o['shared'] ? ' checked' : '' ?>><label class="form-check-label"
+						for="shared"><?= h(t('ins_opt_shared')) ?></label><?= $fb('shared') ?></div></div>
+					<?php // languages to include: the welcome e-mail templates are created for these only ?>
 					<fieldset class="col-12" id="insLangs"><legend class="form-label fs-6 mb-1"><?= h(t('ins_opt_langs')) ?><?= $req ?><?= nu_info_tip(t('ins_opt_langs_tip')) ?></legend>
 						<div class="d-flex flex-wrap gap-3<?= $err('langs') ?>"><?php foreach (NU_LANGS as $lc => [$native]): $lsel = in_array($lc, (array)($o['langs'] ?? []), true); ?>
-							<div class="form-check"><input class="form-check-input" type="checkbox" id="lang_<?= h($lc) ?>" name="langs[]" value="<?= h($lc) ?>"<?= $lsel ? ' checked' : '' ?>><label class="form-check-label" for="lang_<?= h($lc) ?>"><?= h($native) ?></label></div>
+							<div class="form-check"><input class="form-check-input" type="checkbox" id="lang_<?= h($lc) ?>" name="langs[]"
+								value="<?= h($lc) ?>"<?= $lsel ? ' checked' : '' ?>><label class="form-check-label" for="lang_<?= h($lc) ?>"><?= h($native) ?></label></div>
 						<?php endforeach; ?></div><?= $fb('langs') ?></fieldset>
 				</div>
 				<div class="d-flex justify-content-between mt-4">
@@ -590,15 +561,16 @@ nu_head($title, nu_ts_head());   // time zone: searchable (0.8.536)
 		<?php elseif ($step === 'libs'):
 			if (!isset($S['libs_gh'])) $S['libs_gh'] = NuLibs::ghCheck(NuGitHub::DEFAULT_REPO, false);       // once per installation; "Look again" below
 			$lv = NuLibs::overview(true, $S['libs_gh'], (string)($S['db']['type'] ?? 'mysql')); $lgh = $S['libs_gh']; ?>
-			<!-- ================================================================ libraries (0.8.405) -->
+			<!-- ================================================================ libraries -->
 			<h1 class="h4"><?= h(t('ins_step_libs')) ?></h1>
 			<p class="text-body-secondary small"><?= h(t('ins_libs_text')) ?></p>
-			<p class="small mb-2" id="insLibsGh"><?php if ($lgh['error'] !== ''): ?><i class="bi bi-exclamation-triangle text-warning me-1"></i><?= h(t('ins_libs_gh_off', $lgh['error'])) ?><?php else: ?><i class="bi bi-github me-1"></i><?= h(t('ins_libs_gh_ok', count($lgh['libs']))) ?><?php endif; ?></p>
+			<p class="small mb-2"
+				id="insLibsGh"><?php if ($lgh['error'] !== ''): ?><i class="bi bi-exclamation-triangle text-warning me-1"></i><?= h(t('ins_libs_gh_off', $lgh['error'])) ?><?php else: ?><i class="bi bi-github me-1"></i><?= h(t('ins_libs_gh_ok', count($lgh['libs']))) ?><?php endif; ?></p>
 			<form method="post" action="<?= h(nu_url('install', ['step' => 'libs'])) ?>" id="insLibsForm" data-nu-once>
 				<?= nu_csrf_field() ?>
 				<div class="list-group mb-2">
 				<?php foreach ($lv as $sl => $x): $best = $x['best'];
-					$checked = isset($S['libs_set']) ? in_array($sl, (array)($S['libs'] ?? []), true) : ($best && $x['pack'] === ''); ?><?php // 0.8.1049: every available pack ticked by default (also the optional ones) ?>
+					$checked = isset($S['libs_set']) ? in_array($sl, (array)($S['libs'] ?? []), true) : ($best && $x['pack'] === ''); ?><?php // every available pack ticked by default (also the optional ones) ?>
 					<label class="list-group-item d-flex gap-3 align-items-start nuInsLib" data-slot="<?= h($sl) ?>">
 						<input class="form-check-input flex-shrink-0 mt-1" type="checkbox" name="slots[]" value="<?= h($sl) ?>"<?= $checked && $best ? ' checked' : '' ?><?= $best ? '' : ' disabled' ?>>
 						<span class="flex-grow-1"><span class="fw-semibold"><?= h($x['title']) ?></span> <span class="small text-body-secondary">· <?= h(t('upd_libuse_' . $x['use'])) ?></span>
@@ -640,13 +612,15 @@ nu_head($title, nu_ts_head());   // time zone: searchable (0.8.536)
 					<dt class="col-sm-4"><?= h(t('ins_opt_url')) ?></dt><dd class="col-sm-8 text-break"><?= h($S['opt']['base_url']) ?></dd>
 					<dt class="col-sm-4"><?= h(t('ins_opt_timezone')) ?></dt><dd class="col-sm-8"><?= h($S['opt']['timezone']) ?> · <?= (int)$S['opt']['timeout'] ?> min</dd>
 					<dt class="col-sm-4">nuBuilder Forte</dt><dd class="col-sm-8 text-break"><?= h($S['opt']['nub_path'] ?: '–') ?><?= $S['opt']['shared'] ? ' · ' . h(t('ins_opt_shared_short')) : '' ?></dd>
-					<dt class="col-sm-4"><?= h(t('ins_step_libs')) ?></dt><dd class="col-sm-8" id="insSumLibs"><?= h(($S['libs'] ?? []) ? implode(', ', array_map(static fn($x) => NuLibs::SLOTS[$x]['title'], $S['libs'])) : '–') ?></dd>
+					<dt class="col-sm-4"><?= h(t('ins_step_libs')) ?></dt><dd class="col-sm-8"
+						id="insSumLibs"><?= h(($S['libs'] ?? []) ? implode(', ', array_map(static fn($x) => NuLibs::SLOTS[$x]['title'], $S['libs'])) : '–') ?></dd>
 					<dt class="col-sm-4"><?= h(t('ins_config_file')) ?></dt><dd class="col-sm-8 text-break"><code><?= h(NuInstall::configPath()) ?></code></dd>
 				</dl>
 				<form method="post" action="<?= h(nu_url('install', ['step' => 'summary'])) ?>" class="d-flex justify-content-between" id="insInstallForm">
 					<?= nu_csrf_field() ?>
 					<button class="btn btn-outline-secondary" type="submit" name="action" value="back" formnovalidate><i class="bi bi-arrow-left"></i> <?= h(t('ins_back')) ?></button>
-					<button class="btn btn-success" type="submit" name="action" value="install" id="insInstall" data-busy="<?= h(t('ins_installing')) ?>"><i class="bi bi-rocket-takeoff me-1"></i><?= h(t('ins_install')) ?></button>
+					<button class="btn btn-success" type="submit" name="action" value="install" id="insInstall"
+						data-busy="<?= h(t('ins_installing')) ?>"><i class="bi bi-rocket-takeoff me-1"></i><?= h(t('ins_install')) ?></button>
 				</form>
 			<?php endif; ?>
 		<?php endif; ?>

@@ -18,7 +18,8 @@
 	var GROUPS = [3, 4, 5, 6, 7];
 	var KEEP = 'KEEP EXACT HEIGHT';
 	var S = {zoom: 0, grid: true, snap: true, step: 4, sel: [], band: null, dirty: false, undo: [], redo: [], fields: null, fieldsError: '', tab: 'props', clip: null};
-	try { var saved = JSON.parse(localStorage.getItem('nuRdView') || '{}'); if (saved.zoom) S.zoom = saved.zoom; if (saved.grid === false) S.grid = false; if (saved.snap === false) S.snap = false; } catch (x) { /* ignore */ }
+	try { var saved = JSON.parse(localStorage.getItem('nuRdView')
+		|| '{}'); if (saved.zoom) S.zoom = saved.zoom; if (saved.grid === false) S.grid = false; if (saved.snap === false) S.snap = false; } catch (x) { /* ignore */ }
 	var ro = !D.canSave;
 
 	// ================================================================= helpers
@@ -155,11 +156,14 @@
 			el('div', {'class': 'btn-group btn-group-sm'}, [ui.undo, ui.redo]),
 			ro ? null : addGroup,
 			ui.align,
-			el('div', {'class': 'btn-group btn-group-sm'}, [btn('copy', M.duplicate + ' (Ctrl+D)', duplicateSel), btn('front', M.bring_front, function () { zSel(1); }), btn('back', M.send_back, function () { zSel(-1); }), btn('trash', M.delete + ' (Del)', deleteSel, {cls: 'btn-outline-danger'})]),
-			el('div', {'class': 'btn-group btn-group-sm align-items-center rdZoom'}, [btn('zoom-out', M.zoom + ' −', function () { zoom(-0.25); }), ui.zoomLbl, btn('zoom-in', M.zoom + ' +', function () { zoom(0.25); })]),
+			el('div', {'class': 'btn-group btn-group-sm'},
+				[btn('copy', M.duplicate + ' (Ctrl+D)', duplicateSel), btn('front', M.bring_front, function () { zSel(1); }),
+					btn('back', M.send_back, function () { zSel(-1); }), btn('trash', M.delete + ' (Del)', deleteSel, {cls: 'btn-outline-danger'})]),
+			el('div', {'class': 'btn-group btn-group-sm align-items-center rdZoom'},
+				[btn('zoom-out', M.zoom + ' −', function () { zoom(-0.25); }), ui.zoomLbl, btn('zoom-in', M.zoom + ' +', function () { zoom(0.25); })]),
 			el('div', {'class': 'btn-group btn-group-sm'}, [ui.gridBtn, ui.snapBtn]),
 			btn('file-earmark-pdf', M.preview, preview, {cls: 'btn-outline-primary', text: M.preview}),
-			// Reports with AI (0.8.1097, assets/js/nureportai.js): works on the saved layout – unsaved changes are saved first
+			// Reports with AI (assets/js/nureportai.js): works on the saved layout – unsaved changes are saved first
 			ro || !document.getElementById('raiDlg') ? null : btn('stars', M.ai_tip, function () {
 				if (window.nuReportAiOpen) window.nuReportAiOpen({back: 'designer', dirty: function () { return S.dirty; }, applied: function () { S.dirty = false; }});
 			}, {cls: 'btn-outline-primary rdAiBtn', text: M.ai}),
@@ -168,10 +172,10 @@
 		ui.left = el('aside', {'class': 'rdLeft', 'aria-label': M.fields});
 		ui.ruler = el('div', {'class': 'rdRuler', 'aria-hidden': 'true'});
 		ui.page = el('div', {'class': 'rdPage'});
-		ui.canvas = el('div', {'class': 'rdCanvas', tabindex: '-1'}, [el('div', {'class': 'rdPageWrap'}, [ui.ruler, ui.page])]);
+		ui.canvas = el('div', {'class': 'rdCanvas', tabindex: '0', role: 'region', 'aria-label': M.canvas || ''}, [el('div', {'class': 'rdPageWrap'}, [ui.ruler, ui.page])]);
 		ui.right = el('aside', {'class': 'rdRight', 'aria-label': M.props});
 		app.appendChild(bar);
-		// title in its own row below the toolbar (0.8.233): code – description · table / SQL source
+		// title in its own row below the toolbar: code – description · table / SQL source
 		app.appendChild(el('div', {'class': 'rdTitle'}, [el('span', {'class': 'fw-semibold', text: D.code + (D.description ? ' – ' + D.description : '')}),
 			D.source ? el('span', {'class': 'small text-body-secondary', text: D.source}) : null]));
 		app.appendChild(el('div', {'class': 'rdMain'}, [ui.left, ui.canvas, ui.right]));
@@ -200,7 +204,9 @@
 		p.appendChild(list);
 		function item(label, props, cls, hint) {
 			var ic = {rdFieldCol: 'input-cursor-text', rdFieldCrit: 'ui-checks', rdFieldSys: 'braces', rdFieldImg: 'image'}[cls] || 'dot';
-			var it = el('div', {'class': 'rdField ' + (cls || ''), draggable: ro ? 'false' : 'true', tabindex: '0', title: hint || label, 'data-text': label.toLowerCase()}, [icon(ic), el('span', {'class': 'text-truncate', text: label})]);
+			var it = el('div',
+				{'class': 'rdField ' + (cls || ''), draggable: ro ? 'false' : 'true', tabindex: '0', title: hint || label, 'data-text': label.toLowerCase()},
+				[icon(ic), el('span', {'class': 'text-truncate', text: label})]);
 			it.addEventListener('dragstart', function (e) { e.dataTransfer.setData('text/x-nurd', JSON.stringify(props)); e.dataTransfer.setData('text/plain', label); e.dataTransfer.effectAllowed = 'copy'; });
 			it.addEventListener('dblclick', function () { if (!ro) insertAt(props, null); });
 			it.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !ro) { e.preventDefault(); insertAt(props, null); } });
@@ -591,7 +597,7 @@
 			var v = d > 0 ? Math.max.apply(null, all.concat([0])) + 1 : Math.min.apply(null, all.concat([0])) - 1;
 			selected().forEach(function (f) { f.o.zIndex = v; });
 			// the PDF prints the objects of a band in their order (as nuBuilder Forte – the stacking number is not read there):
-			// "to front" moves them to the end of their band, "to back" to its start, so the print matches the designer (0.8.1313)
+			// "to front" moves them to the end of their band, "to back" to its start, so the print matches the designer
 			var moved = selected();
 			moved.forEach(function (f) { var list = sec(f.g, f.s).objects, i = list.indexOf(f.o); if (i >= 0) list.splice(i, 1); });
 			(d > 0 ? moved : moved.slice().reverse()).forEach(function (f) { var list = sec(f.g, f.s).objects; if (d > 0) list.push(f.o); else list.unshift(f.o); });
@@ -656,20 +662,25 @@
 	function sel(options, value) {
 		var s = el('select', {'class': 'form-select form-select-sm'});
 		options.forEach(function (o) { var op = el('option', {value: o[0], text: o[1]}); if (String(o[0]) === String(value)) op.selected = true; s.appendChild(op); });
-		if (value !== undefined && value !== null && String(value) !== '' && !options.some(function (o) { return String(o[0]) === String(value); })) s.appendChild(el('option', {value: value, text: value, selected: true}));
+		if (value !== undefined && value !== null && String(value) !== ''
+			&& !options.some(function (o) { return String(o[0]) === String(value); })) s.appendChild(el('option', {value: value, text: value, selected: true}));
 		return s;
 	}
 	function inp(type, value, attrs) {
-		var i = el('input', Object.assign({type: type, 'class': type === 'color' ? 'form-control form-control-sm form-control-color' : 'form-control form-control-sm', value: value === undefined || value === null ? '' : value}, attrs || {}));
+		var i = el('input',
+			Object.assign({type: type, 'class': type === 'color' ? 'form-control form-control-sm form-control-color' : 'form-control form-control-sm', value: value === undefined || value === null ? '' : value},
+				attrs || {}));
 		return i;
 	}
-	// content type of a field / label (0.8.874): its own contentType, else the report's "Fields contain HTML"
+	// content type of a field / label: its own contentType, else the report's "Fields contain HTML"
 	function contentOf(o) {
 		var c = String(o.contentType || '');
 		return c === 'text' || c === 'html' || c === 'md' ? c : (L.ishtml === 'Y' ? 'html' : 'text');
 	}
 	function infoTip(text) {
-		var s = el('span', {'class': 'nuInfoTip ms-1', tabindex: '0', role: 'img', 'aria-label': text, title: text, 'data-bs-toggle': 'tooltip', 'data-bs-custom-class': 'nuTipWide'}, [el('i', {'class': 'bi bi-info-circle'})]);
+		var s = el('span',
+			{'class': 'nuInfoTip ms-1', tabindex: '0', role: 'img', 'aria-label': text, title: text, 'data-bs-toggle': 'tooltip', 'data-bs-custom-class': 'nuTipWide'},
+			[el('i', {'class': 'bi bi-info-circle'})]);
 		if (window.nuBs) nuBs.tooltip(s);
 		return s;
 	}
@@ -692,8 +703,12 @@
 		var p = ui.right;
 		p.innerHTML = '';
 		var tabs = el('div', {'class': 'btn-group btn-group-sm w-100 mb-2', role: 'tablist'}, [
-			el('button', {type: 'button', 'class': 'btn btn-outline-secondary' + (S.tab === 'props' ? ' active' : ''), role: 'tab', 'aria-selected': S.tab === 'props' ? 'true' : 'false', text: M.props, onclick: function () { S.tab = 'props'; renderProps(); }}),
-			el('button', {type: 'button', 'class': 'btn btn-outline-secondary' + (S.tab === 'report' ? ' active' : ''), role: 'tab', 'aria-selected': S.tab === 'report' ? 'true' : 'false', text: M.report, onclick: function () { S.tab = 'report'; renderProps(); }})
+			el('button',
+				{type: 'button', 'class': 'btn btn-outline-secondary' + (S.tab === 'props' ? ' active' : ''), role: 'tab',
+					'aria-selected': S.tab === 'props' ? 'true' : 'false', text: M.props, onclick: function () { S.tab = 'props'; renderProps(); }}),
+			el('button',
+				{type: 'button', 'class': 'btn btn-outline-secondary' + (S.tab === 'report' ? ' active' : ''), role: 'tab',
+					'aria-selected': S.tab === 'report' ? 'true' : 'false', text: M.report, onclick: function () { S.tab = 'report'; renderProps(); }})
 		]);
 		p.appendChild(tabs);
 		if (S.tab === 'report') { p.appendChild(reportPanel()); return; }
@@ -735,7 +750,8 @@
 		if (kind !== 'image' && kind !== 'box') {
 			wrap.appendChild(propInput(M.format, 'format', sel(D.formats.map(function (f) { return [f[0], f[1] || '—']; }), common(objs, 'format'))));
 			if (objs.every(function (o) { return !isBox(o) && (o.objectType === 'field' || o.objectType === 'label'); })) {
-				var ctSel = sel([['', M.content_auto.replace('%s', L.ishtml === 'Y' ? M.content_html : M.content_text)], ['text', M.content_text], ['html', M.content_html], ['md', M.content_md]], common(objs, 'contentType'));
+				var ctSel = sel([['', M.content_auto.replace('%s', L.ishtml === 'Y' ? M.content_html : M.content_text)], ['text', M.content_text], ['html', M.content_html], ['md', M.content_md]],
+					common(objs, 'contentType'));
 				var ctProp = propInput(M.content_type, 'contentType', ctSel);
 				ctProp.insertBefore(infoTip(M.content_hint), ctSel);
 				wrap.appendChild(ctProp);
@@ -888,7 +904,8 @@
 		change(function () {
 			var list = groupList();
 			list.push({sortField: field, sortBy: 'a', sections: [
-				{id: '', top: 0, height: 28, label: field + ' Header', page_break: 0, margins: 0, color: '#FFFFFF', objects: [newObject('field', {fieldName: field, fontWeight: 'b', top: 4, left: 40, width: 300})]},
+				{id: '', top: 0, height: 28, label: field + ' Header', page_break: 0, margins: 0, color: '#FFFFFF',
+					objects: [newObject('field', {fieldName: field, fontWeight: 'b', top: 4, left: 40, width: 300})]},
 				{id: '', top: 0, height: 24, label: field + ' Footer', page_break: 0, margins: 0, color: '#FFFFFF', objects: []}]});
 			setGroups(list);
 		});
@@ -931,7 +948,7 @@
 		if (m && nuBs.ready()) nuBs.modal(m).show();
 		f.submit();
 	}
-	/** Excel of this layout (0.8.1324): the same post with fmt=xlsx – the file downloads, an error page shows in the preview. */
+	/** Excel of this layout: the same post with fmt=xlsx – the file downloads, an error page shows in the preview. */
 	function xlsx() {
 		var f = document.getElementById('rdPreviewForm');
 		if (!f) return;
@@ -946,7 +963,8 @@
 		var m = document.getElementById('rdHelpModal');
 		if (!m) {
 			m = el('div', {'class': 'modal fade', id: 'rdHelpModal', tabindex: '-1', 'aria-hidden': 'true'}, [el('div', {'class': 'modal-dialog modal-lg'}, [el('div', {'class': 'modal-content'}, [
-				el('div', {'class': 'modal-header py-2'}, [el('h2', {'class': 'modal-title fs-6', text: M.help}), el('button', {type: 'button', 'class': 'btn-close', 'data-bs-dismiss': 'modal', 'aria-label': 'Close'})]),
+				el('div', {'class': 'modal-header py-2'},
+					[el('h2', {'class': 'modal-title fs-6', text: M.help}), el('button', {type: 'button', 'class': 'btn-close', 'data-bs-dismiss': 'modal', 'aria-label': 'Close'})]),
 				el('div', {'class': 'modal-body small rdHelp'}, String(M.help_text || '').split(/\\n|\n/).map(function (l) { return el('p', {'class': 'mb-1', text: l}); }))])])]);
 			document.body.appendChild(m);
 		}

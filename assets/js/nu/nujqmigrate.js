@@ -1,4 +1,4 @@
-/* nuBuilder Next – jQuery Migrate messages of a form page (0.8.741, NuJquery): loaded after jquery-migrate.js (debug build) while Migrate
+/* nuBuilder Next – jQuery Migrate messages of a form page (NuJquery): loaded after jquery-migrate.js (debug build) while Migrate
    runs with warnings; sends new entries of jQuery.migrateMessages (Migrate 3: migrateWarnings) to ?p=jqwarn (Settings → Code → jQuery lists them per form). */
 (function () {
 	'use strict';

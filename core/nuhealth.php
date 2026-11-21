@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Health / status endpoint for monitoring tools (0.8.1335): index.php?p=health – served in index.php BEFORE nu_boot (no session, no
+ * Health / status endpoint for monitoring tools: index.php?p=health – served in index.php BEFORE nu_boot (no session, no
  * cookie), JSON, never cached.
  *   Without a key   {"status": "ok" | "fail"} only – the database answers or not (liveness; nothing about the installation).
  *   With the key    (header X-Health-Key, Authorization: Bearer <key> or ?key=): every check – database (reachable, ms), disk (free space
@@ -21,7 +21,7 @@ final class NuHealth
 	public static function settings(): array
 	{
 		$v = null;
-		try { $v = nu_setting_value(self::SETTING); } catch (Throwable) { /* no table yet */ }
+		try { $v = nu_setting_value(self::SETTING); } catch (Throwable $ig) { nu_ignored($ig, 'no table yet'); }
 		$j = is_string($v) ? json_decode($v, true) : null;
 		$j = is_array($j) ? $j : [];
 		return ['key' => is_string($j['key'] ?? null) ? $j['key'] : '',
@@ -83,7 +83,7 @@ final class NuHealth
 				'trust_cert' => $c['nuConfigDBTrustServerCertificate']]);
 			$db->value('SELECT 1');
 			NuDB::$override = $db;                                // the other checks read settings through it
-			try { nu_apply_timezone(); } catch (Throwable) { /* times in the server's zone */ }
+			try { nu_apply_timezone(); } catch (Throwable $ig) { nu_ignored($ig, 'times in the server\'s zone'); }
 			return [true, (int)round((microtime(true) - $t) * 1000), ''];
 		} catch (Throwable $e) {
 			error_log('nuBuilder Next health: ' . $e->getMessage());
@@ -112,7 +112,7 @@ final class NuHealth
 		$disk = [];
 		$low = false;
 		$dirs = ['program' => NU_ROOT];
-		try { $dirs['backups'] = NuUpdate::backupDir(); } catch (Throwable) { /* no backup folder */ }
+		try { $dirs['backups'] = NuUpdate::backupDir(); } catch (Throwable $ig) { nu_ignored($ig, 'no backup folder'); }
 		foreach ($dirs as $k => $dir) {
 			$free = function_exists('disk_free_space') && is_dir($dir) ? @disk_free_space($dir) : false;
 			if ($free === false) { $disk[$k] = null; continue; }
@@ -123,7 +123,7 @@ final class NuHealth
 		$checks['disk'] = ['status' => $low ? 'warn' : (array_filter($disk, static fn($v) => $v !== null) ? 'ok' : 'unknown'), 'free_mb' => $disk, 'min_mb' => $s['disk_mb']];
 		// backup: the newest one
 		$newest = null;
-		try { $b = NuUpdate::backups(); $newest = $b ? (int)strtotime((string)$b[0]['created']) : null; } catch (Throwable) { /* none */ }
+		try { $b = NuUpdate::backups(); $newest = $b ? (int)strtotime((string)$b[0]['created']) : null; } catch (Throwable $ig) { nu_ignored($ig, 'none'); }
 		$bAge = $newest ? self::hours($now - $newest) : null;
 		$checks['backup'] = ['status' => $newest === null ? 'warn' : ($s['backup_hours'] > 0 && $bAge > $s['backup_hours'] ? 'warn' : 'ok'),
 			'last' => $newest ? date('c', $newest) : null, 'age_hours' => $bAge, 'max_hours' => $s['backup_hours']];
@@ -133,7 +133,7 @@ final class NuHealth
 		$checks['cron'] = ['status' => $last === null ? 'warn' : ($s['cron_hours'] > 0 && $cAge > $s['cron_hours'] ? 'warn' : 'ok'),
 			'last' => $last ? date('c', $last) : null, 'age_hours' => $cAge, 'max_hours' => $s['cron_hours']];
 		$maint = false;
-		try { $maint = NuUpdate::maintenance() !== null; } catch (Throwable) { /* not readable */ }
+		try { $maint = NuUpdate::maintenance() !== null; } catch (Throwable $ig) { nu_ignored($ig, 'not readable'); }
 		$checks['maintenance'] = ['status' => $maint ? 'warn' : 'ok', 'on' => $maint];
 		$st = array_column($checks, 'status');
 		$status = in_array('fail', $st, true) ? 'fail' : (in_array('warn', $st, true) ? 'warn' : 'ok');

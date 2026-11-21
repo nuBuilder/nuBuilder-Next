@@ -98,7 +98,7 @@ $render = static function (string $tab, bool $full = true) use ($visible, $admin
 };
 
 /*
- * The built tabs are kept in temp/help/ (0.8.1342, review P5): building them reads ~100 files and parses them (about 50 ms) – the same for
+ * The built tabs are kept in temp/help/ (review P5): building them reads ~100 files and parses them (about 50 ms) – the same for
  * everybody who sees the same parts. Key: the files of the documentation (names + times, the program version, the language) and what
  * the reader sees (admin / preview / developer mode, and which of the forms named by data-acl he may open). Files of another key are
  * removed when a new one is written, so an update or a changed page simply builds anew.
@@ -180,8 +180,12 @@ nu_layout_start(t('help_title'), '');
 <?php else: ?>
 <?php if ($hasRef): ?>
 <ul class="nav nav-tabs mb-3" id="helpTabs" role="tablist">
-	<li class="nav-item" role="presentation"><button type="button" class="nav-link<?= $tab === 'guide' ? ' active' : '' ?>" id="helpTabGuide" data-help-tab="guide" role="tab" aria-controls="helpPaneGuide" aria-selected="<?= $tab === 'guide' ? 'true' : 'false' ?>"><i class="bi bi-book me-1"></i><?= h(t('help_tab_guide')) ?></button></li>
-	<li class="nav-item" role="presentation"><button type="button" class="nav-link<?= $tab === 'ref' ? ' active' : '' ?>" id="helpTabRef" data-help-tab="ref" role="tab" aria-controls="helpPaneRef" aria-selected="<?= $tab === 'ref' ? 'true' : 'false' ?>"><i class="bi bi-code-slash me-1"></i><?= h(t('help_tab_ref')) ?></button></li>
+	<li class="nav-item" role="presentation"><button type="button" class="nav-link<?= $tab === 'guide' ? ' active' : '' ?>" id="helpTabGuide"
+		data-help-tab="guide" role="tab" aria-controls="helpPaneGuide"
+		aria-selected="<?= $tab === 'guide' ? 'true' : 'false' ?>"><i class="bi bi-book me-1"></i><?= h(t('help_tab_guide')) ?></button></li>
+	<li class="nav-item" role="presentation"><button type="button" class="nav-link<?= $tab === 'ref' ? ' active' : '' ?>" id="helpTabRef"
+		data-help-tab="ref" role="tab" aria-controls="helpPaneRef"
+		aria-selected="<?= $tab === 'ref' ? 'true' : 'false' ?>"><i class="bi bi-code-slash me-1"></i><?= h(t('help_tab_ref')) ?></button></li>
 </ul>
 <?php endif; ?>
 <div class="row g-4">
@@ -190,7 +194,9 @@ nu_layout_start(t('help_title'), '');
 			<label class="visually-hidden" for="helpSearch"><?= h(t('search')) ?></label>
 			<input type="search" class="form-control mb-2" id="helpSearch" placeholder="<?= h(t('help_search')) ?>" value="<?= h((string)($_GET['q'] ?? '')) ?>" autocomplete="off">
 			<?php if ($hasRef): ?>
-			<div class="form-check form-switch small mb-2"><input class="form-check-input" type="checkbox" role="switch" id="helpAll"<?= ($_GET['all'] ?? '') === '1' ? ' checked' : '' ?>><label class="form-check-label" for="helpAll"><?= h(t('help_search_all')) ?></label></div>
+			<div class="form-check form-switch small mb-2"><input class="form-check-input" type="checkbox" role="switch"
+				id="helpAll"<?= ($_GET['all'] ?? '') === '1' ? ' checked' : '' ?>><label class="form-check-label"
+				for="helpAll"><?= h(t('help_search_all')) ?></label></div>
 			<?php endif; ?>
 			<?php if ($hasRef || str_contains($html, 'data-level="advanced"') || str_contains($html, 'data-level="detail"')): ?>
 			<div class="mb-2" id="helpLevelBox">
@@ -222,7 +228,8 @@ nu_layout_start(t('help_title'), '');
 		<?php endif; ?>
 	</div>
 </div>
-<script type="application/json" id="helpData"><?= json_encode(['found' => t('help_found'), 'index' => t('help_index'), 'failed' => t('help_ref_failed'), 'advanced' => t('help_advanced'), 'more' => t('help_detail_more')], JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) ?></script>
+<script type="application/json"
+	id="helpData"><?= json_encode(['found' => t('help_found'), 'index' => t('help_index'), 'failed' => t('help_ref_failed'), 'advanced' => t('help_advanced'), 'more' => t('help_detail_more')], JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) ?></script>
 <?php endif; ?>
 <?php
 nu_layout_end('<script src="' . nu_asset('assets/js/nuhelp.js') . '"></script>');

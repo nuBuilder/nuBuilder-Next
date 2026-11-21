@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Integrity check of an existing database (0.8.698): before an update (update page "Check package", unattended update, Update →
+ * Integrity check of an existing database: before an update (update page "Check package", unattended update, Update →
  * "Check the database") and before setting up nuBuilder Next on a database that already has nuBuilder's tables (?p=dbsetup).
  * Finds what would make an update fail or leave the installation broken: missing core tables, views in place of tables, unreadable
  * (damaged) tables, primary keys (missing, other column, duplicate or empty ids), missing / smaller columns, storage engines, character
@@ -92,7 +92,7 @@ final class NuIntegrity
 			foreach ($tables as $k => $x) {
 				if ($x['view']) continue;
 				try {
-					$db->value($db->type === 'sqlsrv' ? 'SELECT TOP 1 1 FROM ' . NuDB::ident($x['name']) : 'SELECT 1 FROM ' . NuDB::ident($x['name']) . ' LIMIT 1');
+					$db->value($db->firstRows('SELECT 1 AS x FROM ' . NuDB::ident($x['name']), 1));
 					$readable[$k] = $x['name'];
 				} catch (Throwable $e) {
 					$bad[] = $x['name'] . ': ' . self::short($e->getMessage());
@@ -286,7 +286,8 @@ final class NuIntegrity
 		$byEngine = [];
 		foreach ($tables as $x) if (!$x['view'] && $x['engine'] !== '') $byEngine[$x['engine']][] = $x['name'];
 		self::check('engine', 'info', static fn(): array => $group(array_filter($byEngine, static fn($k) => in_array(strtolower((string)$k), ['myisam', 'aria'], true), ARRAY_FILTER_USE_KEY)));
-		self::check('engine_other', 'warn', static fn(): array => $group(array_filter($byEngine, static fn($k) => !in_array(strtolower((string)$k), ['innodb', 'myisam', 'aria'], true), ARRAY_FILTER_USE_KEY)));
+		self::check('engine_other', 'warn',
+			static fn(): array => $group(array_filter($byEngine, static fn($k) => !in_array(strtolower((string)$k), ['innodb', 'myisam', 'aria'], true), ARRAY_FILTER_USE_KEY)));
 		// character sets: utf8mb3 (nuBuilder Forte's own install script) is a note – emoji are lost; anything else (latin1 …) a warning
 		$cs = ['utf8' => [], 'other' => []];
 		self::check('charset', 'warn', static function () use ($db, $tables, $group, &$cs): array {
@@ -350,7 +351,7 @@ final class NuIntegrity
 				};
 				if ($bad !== null) {
 					$n = (int)$db->value("SELECT COUNT(*) FROM $t WHERE $bad");
-					$ids = $n ? array_map('strval', array_column($db->all("SELECT $pk AS id FROM $t WHERE $bad ORDER BY $pk" . ($db->type === 'sqlsrv' ? ' OFFSET 0 ROWS FETCH NEXT 5 ROWS ONLY' : ' LIMIT 5')), 'id')) : [];
+					$ids = $n ? array_map('strval', array_column($db->all("SELECT $pk AS id FROM $t WHERE $bad ORDER BY $pk" . $db->limitTail(5)), 'id')) : [];
 				}
 			} catch (Throwable) {
 				$ids = null;                                       // no JSON functions (old server): read the values
@@ -386,7 +387,7 @@ final class NuIntegrity
 				$n = (int)$db->value("SELECT COUNT(*) $from WHERE $where");
 				if (!$n) continue;
 				$ids = array_map('strval', array_column($db->all("SELECT c.{$child}_id AS id $from WHERE $where ORDER BY c.{$child}_id"
-					. ($db->type === 'sqlsrv' ? ' OFFSET 0 ROWS FETCH NEXT 5 ROWS ONLY' : ' LIMIT 5')), 'id'));
+					. $db->limitTail(5)), 'id'));
 				$out[$k][] = "$child.$col → $parent: $n (" . implode(', ', $ids) . ($n > count($ids) ? ', …' : '') . ')';
 			}
 		}
@@ -421,10 +422,10 @@ final class NuIntegrity
 		$db = nu_db();
 		$t = self::SCRATCH;
 		$type = $db->type === 'sqlsrv' ? 'NVARCHAR(25)' : 'VARCHAR(25)';
-		try { $db->run("DROP TABLE $t"); } catch (Throwable) { /* not there */ }
+		try { $db->run("DROP TABLE $t"); } catch (Throwable) { /* expected when it is not there – not logged */ }
 		$steps = [
 			'CREATE' => "CREATE TABLE $t ({$t}_id $type NOT NULL PRIMARY KEY)",
-			'ALTER'  => $db->type === 'sqlsrv' ? "ALTER TABLE $t ADD c1 $type NULL" : "ALTER TABLE $t ADD COLUMN c1 $type NULL",
+			'ALTER'  => $db->addColumnSql($t, 'c1', "$type NULL"),
 			'INDEX'  => "CREATE INDEX ix_{$t}_c1 ON $t (c1)",
 			'DROP'   => "DROP TABLE $t",
 		];
@@ -432,7 +433,7 @@ final class NuIntegrity
 			try {
 				$db->run($sql);
 			} catch (Throwable $e) {
-				if ($what !== 'CREATE' && $what !== 'DROP') { try { $db->run("DROP TABLE $t"); } catch (Throwable) { /* keep the first error */ } }
+				if ($what !== 'CREATE' && $what !== 'DROP') { try { $db->run("DROP TABLE $t"); } catch (Throwable $ig) { nu_ignored($ig, 'keep the first error'); } }
 				return [$what . ': ' . self::short($e->getMessage())];
 			}
 		}

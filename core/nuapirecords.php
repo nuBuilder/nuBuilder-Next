@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Records of the application's forms through the REST API (0.8.1337) – api.php/v1/forms/{form}/records[/{id}]:
+ * Records of the application's forms through the REST API – api.php/v1/forms/{form}/records[/{id}]:
  * the same path as the form in the browser – NuRecord::save / delete (form rights, field data access, validation, validation rules,
  * Before / After Save and Delete, audit trail, webhooks, recycle bin), lists through the form's list query (Before Browse, browse SQL
  * = what the list shows, its search). Field names = the object ids of the form (sob_all_id), the primary key = "id"; sub-forms by
@@ -120,13 +120,15 @@ final class NuApiRecords
 		[$o, $col] = $f;
 		$cols = nu_db()->columns($meta->table());
 		$v = (string)$o['sob_all_validate'];
-		$i = ['name' => (string)$o['sob_all_id'], 'label' => self::label($o), 'type' => (string)$o['sob_all_type'] . (($o['sob_input_type'] ?? '') !== '' && $o['sob_all_type'] === 'input' ? ':' . $o['sob_input_type'] : ''),
+		$i = ['name' => (string)$o['sob_all_id'], 'label' => self::label($o), 'type' => (string)$o['sob_all_type']
+			. (($o['sob_input_type'] ?? '') !== '' && $o['sob_all_type'] === 'input' ? ':' . $o['sob_input_type'] : ''),
 			'column' => $col, 'db_type' => (string)($cols[$col]['type'] ?? ''), 'required' => $v === '1' || $v === '3', 'unique' => $v === '2' || $v === '3',
 			'read_only' => !NuFieldAccess::writable($o, false) || $o['sob_all_type'] === 'display' || $o['sob_all_type'] === 'calc',
 			'masked' => NuFieldAccess::masked($o)];
 		if ($o['sob_all_type'] === 'select') {
 			$src = (string)($o['sob_select_sql'] ?? '');
-			if (NuSelectSource::isFixed($src)) { try { $i['options'] = array_map(static fn($x) => ['value' => $x[0], 'text' => $x[1]], NuSelectSource::options($src)); } catch (Throwable) { /* none */ } }
+			if (NuSelectSource::isFixed($src)) { try { $i['options'] = array_map(static fn($x) => ['value' => $x[0], 'text' => $x[1]],
+				NuSelectSource::options($src)); } catch (Throwable $ig) { nu_ignored($ig, 'none'); } }
 			$i['multiple'] = (string)($o['sob_select_multiple'] ?? '') === '1';
 		}
 		if ($o['sob_all_type'] === 'lookup' && ($lf = NuLookup::form($o))) $i['lookup'] = $lf->code() ?: $lf->id;
@@ -284,7 +286,7 @@ final class NuApiRecords
 			try {
 				$f = NuBrowse::filtered($meta, $hash, ['search' => $q]);
 			} catch (Throwable $e) {
-				if (class_exists('NuDebugLog')) { try { NuDebugLog::write('API list of ' . $meta->code() . ":\n" . $e->getMessage()); } catch (Throwable) {} }
+				if (class_exists('NuDebugLog')) { try { NuDebugLog::write('API list of ' . $meta->code() . ":\n" . $e->getMessage()); } catch (Throwable $ig) { nu_ignored($ig); } }
 				throw new NuApiError(500, "The form's list query failed (see Debug results).");
 			}
 			$where[] = "t.$pk IN (SELECT nuT.nu_pk FROM (" . $f['inner'] . ') nuT' . ($f['where'] ? ' WHERE ' . implode(' AND ', $f['where']) : '') . ')';
@@ -540,20 +542,24 @@ final class NuApiRecords
 				$one = ['200' => ['description' => 'The record', 'headers' => ['ETag' => ['schema' => ['type' => 'string']]], 'content' => ['application/json' => ['schema' => $ref]]], 'default' => $err];
 				if ($read && $rt['list']) {
 					$params = [];
-					foreach (['q' => 'Search as in the list', 'sort' => 'field or -field, comma-separated', 'limit' => 'max 200 (default 50)', 'offset' => '', 'fields' => 'comma-separated', 'include' => 'sub-forms: names, all or none', 'expand' => 'lookup fields: names or all'] as $n => $d) {
+					foreach (['q' => 'Search as in the list', 'sort' => 'field or -field, comma-separated', 'limit' => 'max 200 (default 50)', 'offset' => '',
+						'fields' => 'comma-separated', 'include' => 'sub-forms: names, all or none', 'expand' => 'lookup fields: names or all'] as $n => $d) {
 						$params[] = ['name' => $n, 'in' => 'query', 'schema' => ['type' => in_array($n, ['limit', 'offset'], true) ? 'integer' : 'string'], 'description' => $d];
 					}
 					$paths[$base]['get'] = ['summary' => 'List – ' . $meta->description(), 'tags' => $tag, 'parameters' => $params,
 						'description' => 'Filters: <field>=value or <field>[op]=value with op eq, ne, gt, gte, lt, lte, like, starts, in (comma-separated), null (true / false).',
 						'responses' => ['200' => ['description' => 'Rows', 'content' => ['application/json' => ['schema' => ['type' => 'object', 'properties' => [
-							'data' => ['type' => 'array', 'items' => $ref], 'meta' => ['type' => 'object', 'properties' => ['total' => ['type' => 'integer'], 'limit' => ['type' => 'integer'], 'offset' => ['type' => 'integer']]]]]]]], 'default' => $err]];
+							'data' => ['type' => 'array', 'items' => $ref], 'meta' => ['type' => 'object', 'properties' => ['total' => ['type' => 'integer'], 'limit' => ['type' => 'integer'], 'offset' => ['type' => 'integer']]]]]]]],
+								'default' => $err]];
 				}
-				if ($write && $rt['create']) $paths[$base]['post'] = ['summary' => 'Create – ' . $meta->description(), 'tags' => $tag, 'requestBody' => ['required' => true, 'content' => ['application/json' => ['schema' => $refIn]]],
+				if ($write && $rt['create']) $paths[$base]['post'] = ['summary' => 'Create – ' . $meta->description(), 'tags' => $tag,
+					'requestBody' => ['required' => true, 'content' => ['application/json' => ['schema' => $refIn]]],
 					'responses' => ['201' => ['description' => 'Created', 'content' => ['application/json' => ['schema' => $ref]]], 'default' => $err]];
 				if ($read && $rt['read']) $paths[$base . '/{id}']['get'] = ['summary' => 'Read – ' . $meta->description(), 'tags' => $tag, 'parameters' => $idp, 'responses' => $one];
 				if ($write && $rt['update']) $paths[$base . '/{id}']['patch'] = ['summary' => 'Change – ' . $meta->description(), 'tags' => $tag, 'parameters' => [...$idp, $etag],
 					'requestBody' => ['required' => true, 'content' => ['application/json' => ['schema' => $refIn]]], 'responses' => $one];
-				if ($write && $rt['delete']) $paths[$base . '/{id}']['delete'] = ['summary' => 'Delete – ' . $meta->description(), 'tags' => $tag, 'parameters' => [...$idp, $etag], 'responses' => ['204' => ['description' => 'Deleted'], 'default' => $err]];
+				if ($write && $rt['delete']) $paths[$base . '/{id}']['delete'] = ['summary' => 'Delete – ' . $meta->description(), 'tags' => $tag,
+					'parameters' => [...$idp, $etag], 'responses' => ['204' => ['description' => 'Deleted'], 'default' => $err]];
 			}
 		}
 		$base = nu_base_url() . '/api.php';
@@ -588,7 +594,8 @@ final class NuApiRecords
 		}
 		foreach (self::subforms($meta) as $sid => [$so, $sub]) {
 			$rp = ['id' => ['type' => ['string', 'integer']]];
-			foreach (self::fields($sub, self::subTable($so, $sub)) as $f => $x) $rp[$f] = ['type' => [self::jsonType((string)(nu_db()->columns(self::subTable($so, $sub))[$x[1]]['type'] ?? '')), 'null'], 'title' => self::label($x[0])];
+			foreach (self::fields($sub, self::subTable($so, $sub)) as $f => $x) $rp[$f] = ['type' => [self::jsonType((string)(nu_db()->columns(self::subTable($so, $sub))[$x[1]]['type'] ?? '')), 'null'],
+				'title' => self::label($x[0])];
 			$props[$sid] = ['type' => 'array', 'title' => self::label($so), 'items' => ['type' => 'object', 'properties' => $rp]];
 			$in[$sid] = ['type' => 'array', 'items' => ['type' => 'object', 'properties' => $rp + ['_delete' => ['type' => 'boolean']]]];
 		}

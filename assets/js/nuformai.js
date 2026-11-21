@@ -1,5 +1,5 @@
-/* Form with AI (0.8.403, pages/nuformai.php): copy the prompt, check the pasted answer, create the draft.
-   0.8.810: one form or a small app (several forms), Paste button + check on paste, code in the plan, an open draft is continued,
+/* Form with AI (pages/nuformai.php): copy the prompt, check the pasted answer, create the draft.
+   one form or a small app (several forms), Paste button + check on paste, code in the plan, an open draft is continued,
    the app's forms listed after creating with "Publish all". */
 (function () {
 	'use strict';
@@ -19,7 +19,7 @@
 		var body = new URLSearchParams();
 		body.set('_csrf', csrf ? csrf.value : '');
 		Object.keys(data).forEach(function (k) {
-			if (Array.isArray(data[k])) data[k].forEach(function (v) { body.append(k + '[]', v); });   // tables[] (0.8.633)
+			if (Array.isArray(data[k])) data[k].forEach(function (v) { body.append(k + '[]', v); });   // tables[]
 			else body.set(k, data[k]);
 		});
 		return fetch(window.location.href, {method: 'POST', body: body, credentials: 'same-origin', headers: {Accept: 'application/json'}})
@@ -49,7 +49,7 @@
 	Array.prototype.forEach.call(document.querySelectorAll('input[name=faKind]'), function (r) { r.addEventListener('change', syncKind); });
 	syncKind();
 
-	// ---- wizard (0.8.843): 1 what · 2 existing tables + copy · 3 answer + check
+	// ---- wizard: 1 what · 2 existing tables + copy · 3 answer + check
 	function go(n, needReq) {
 		if (needReq && !reqEl.value.trim()) { n = 1; reqEl.classList.add('is-invalid'); reqEl.focus(); }
 		[1, 2, 3].forEach(function (k) {
@@ -103,7 +103,7 @@
 			.then(function () { b.disabled = false; });
 	});
 
-	// ---- 1a. "Ask AI" (0.8.1099, assets/js/nuaiask.js): the prompt goes to a configured AI service, the answer into step 3
+	// ---- 1a. "Ask AI" (assets/js/nuaiask.js): the prompt goes to a configured AI service, the answer into step 3
 	if (window.NuAiAsk && $('faAsk')) window.NuAiAsk.mount($('faAsk'), {
 		prompt: function () {
 			if (!reqEl.value.trim()) { go(1, true); return ''; }
@@ -118,7 +118,7 @@
 		check: function () { return check().then(function (d) { go(3); return d && d.errors ? d.errors : []; }); }
 	});
 
-	// ---- 1b. context file (0.8.961): functions, hash variables, guide, example forms – attached to the chat with the prompt
+	// ---- 1b. context file: functions, hash variables, guide, example forms – attached to the chat with the prompt
 	function download(blob, name) {
 		var url = URL.createObjectURL(blob), a = document.createElement('a');
 		a.href = url; a.download = name; a.className = 'd-none';
@@ -215,7 +215,8 @@
 	// ---- 3. create the draft / the app
 	function made(d) {
 		var box = $('faMade');
-		var h = '<div class="alert alert-success py-2 mt-3" id="faMadeOk"><i class="bi bi-check-circle me-1"></i>' + esc(fmt(L.fai_made, d.forms.length)) + '</div><ul class="list-group mb-2" id="faMadeList">';
+		var h = '<div class="alert alert-success py-2 mt-3" id="faMadeOk"><i class="bi bi-check-circle me-1"></i>' + esc(fmt(L.fai_made,
+			d.forms.length)) + '</div><ul class="list-group mb-2" id="faMadeList">';
 		d.forms.forEach(function (f) {
 			h += '<li class="list-group-item d-flex align-items-center gap-2"><span class="flex-grow-1"><strong>' + esc(f.description) + '</strong> <code class="small">' + esc(f.code) + '</code>'
 				+ ' <span class="badge bg-warning-subtle text-warning-emphasis faMadeSt" data-id="' + esc(f.id) + '">' + esc(L.builder_status_0) + '</span></span>'

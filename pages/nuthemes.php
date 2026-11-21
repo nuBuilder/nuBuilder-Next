@@ -3,18 +3,15 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Themes (0.8.632, core/nutheme.php): Admin tools → Themes – admin right "branding".
+ * Themes (core/nutheme.php): Admin tools → Themes – admin right "branding".
  *   list: the themes (5 built-in + own), who uses which (installation, access levels, users may choose), import
  *   ?edit=<own id>: editor with live preview (iframe ?p=themes&preview=1, draft values in the session – POST action=draft as JSON)
  *   ?preview=1: the preview page (sample of top bar, buttons, fields, tabs, list, form) with the draft stylesheet
  *   POST action pick (any signed-in user, user menu): own theme when the installation lets users choose
  * Other POST actions: duplicate, save, delete, export, import, use, who.
  */
-if (nu_is_post() && nu_post('action') === 'pick') {
-	try { NuTheme::pick(nu_post('theme')); } catch (Throwable $e) { nu_flash('danger', $e->getMessage()); }
-	$back = NuAuth::validNext(nu_post('back')) ?? nu_url('home');
-	nu_redirect($back);
-}
+['e' => $e]
+	= NuThemesPage::post(get_defined_vars());   // the POST actions (code review R7, nuthemespage.php)
 
 NuAdmin::require('branding');
 
@@ -29,7 +26,8 @@ if (isset($_GET['preview'])) {
 <body class="nu-app thPreviewBody">
 	<nav class="navbar nu-navbar border-bottom px-3 py-2">
 		<span class="navbar-brand d-flex align-items-center gap-2 m-0"><?= nu_brand_logo() ?></span>
-		<span class="d-flex align-items-center gap-1 ms-3 me-auto"><a class="nav-link active px-2" href="#"><i class="bi bi-house me-1"></i><?= h(t('nav_home')) ?></a><a class="nav-link px-2" href="#"><?= h(t('nav_users')) ?></a></span>
+		<span class="d-flex align-items-center gap-1 ms-3 me-auto"><a class="nav-link active px-2"
+			href="#"><i class="bi bi-house me-1"></i><?= h(t('nav_home')) ?></a><a class="nav-link px-2" href="#"><?= h(t('nav_users')) ?></a></span>
 		<button type="button" class="btn btn-sm btn-outline-secondary" tabindex="-1"><i class="bi bi-circle-half"></i></button>
 	</nav>
 	<main class="p-3">
@@ -44,11 +42,16 @@ if (isset($_GET['preview'])) {
 				</div>
 			</div>
 			<div class="card-body">
-				<ul class="nav nav-tabs mb-3"><li class="nav-item"><a class="nav-link active" href="#"><?= h(t('theme_pv_tab1')) ?></a></li><li class="nav-item"><a class="nav-link" href="#"><?= h(t('theme_pv_tab2')) ?></a></li><li class="nav-item"><a class="nav-link" href="#"><?= h(t('theme_pv_tab3')) ?></a></li></ul>
+				<ul class="nav nav-tabs mb-3"><li class="nav-item"><a class="nav-link active"
+					href="#"><?= h(t('theme_pv_tab1')) ?></a></li><li class="nav-item"><a class="nav-link"
+					href="#"><?= h(t('theme_pv_tab2')) ?></a></li><li class="nav-item"><a class="nav-link" href="#"><?= h(t('theme_pv_tab3')) ?></a></li></ul>
 				<div class="row g-3">
-					<div class="col-sm-6"><label class="form-label" for="pv1"><?= h(t('theme_pv_name')) ?> <span class="nuMark nuMarkRequired">*</span></label><input class="form-control" id="pv1" value="Anna Example" tabindex="-1"></div>
+					<div class="col-sm-6"><label class="form-label"
+						for="pv1"><?= h(t('theme_pv_name')) ?> <span class="nuMark nuMarkRequired">*</span></label><input class="form-control" id="pv1" value="Anna Example"
+						tabindex="-1"></div>
 					<div class="col-sm-6"><label class="form-label" for="pv2"><?= h(t('theme_pv_level')) ?></label><select class="form-select" id="pv2" tabindex="-1"><option>Manager</option></select></div>
-					<div class="col-12"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="pv3" checked tabindex="-1"><label class="form-check-label" for="pv3"><?= h(t('brand_preview_check')) ?></label></div></div>
+					<div class="col-12"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="pv3" checked
+						tabindex="-1"><label class="form-check-label" for="pv3"><?= h(t('brand_preview_check')) ?></label></div></div>
 				</div>
 				<p class="mt-3 mb-0 small"><span class="text-body-secondary"><?= h(t('theme_pv_muted')) ?></span> · <a href="#"><?= h(t('brand_preview_link')) ?></a></p>
 			</div>
@@ -84,7 +87,7 @@ if (nu_is_post()) {
 	}
 	if ($action === 'draft') {                                            // live preview: values of the editor into the session (JSON)
 		[$v, $d] = NuTheme::clean((array)($in['v'] ?? []), (array)($in['d'] ?? []));
-		$_SESSION['nu_theme_draft'] = ['v' => $v, 'd' => $d];
+		$_SESSION[NuSess::THEME_DRAFT] = ['v' => $v, 'd' => $d];
 		header('Content-Type: application/json; charset=utf-8');
 		$names = static fn(array $w) => ['text' => t('theme_warn', t('theme_k_' . $w[0]), t('theme_k_' . $w[1]), str_replace('.', ',', (string)$w[2]) . ' : 1')
 			. ($w[3] === 'dark' ? ' (' . t('theme_dark') . ')' : '')];
@@ -113,7 +116,7 @@ if (nu_is_post()) {
 			foreach (NuTheme::KEYS as $k => $def) { $v[$k] = nu_post('v_' . $k); if ($def[1] === 'color') $d[$k] = nu_post('d_' . $k); }
 			[$id, $errors] = NuTheme::save($id, nu_post('name'), $v, $d);
 			if ($errors) { foreach ($errors as $e) nu_flash('danger', $e); nu_redirect(nu_url('themes', ['edit' => nu_post('id')])); }
-			unset($_SESSION['nu_theme_draft']);
+			unset($_SESSION[NuSess::THEME_DRAFT]);
 			nu_flash('success', t('theme_saved'));
 			nu_redirect(nu_post('stay') === '1' ? nu_url('themes', ['edit' => $id]) : $back);
 		}
@@ -156,7 +159,7 @@ if (isset($_GET['edit'])) {
 	$t = NuTheme::get((string)$_GET['edit']);
 	if ($t && $t['builtin']) { nu_flash('info', t('theme_builtin_dup', $t['name'])); nu_redirect($back); }   // review D3: built-in themes are copied, not edited
 	if (!$t) { nu_flash('warning', t('err_not_found')); nu_redirect($back); }
-	$_SESSION['nu_theme_draft'] = ['v' => $t['v'], 'd' => $t['d']];
+	$_SESSION[NuSess::THEME_DRAFT] = ['v' => $t['v'], 'd' => $t['d']];
 	nu_layout_start(t('theme_edit_title', $t['name']), 'home', ['settings' => 'look', 'settings_page' => 'themes']);
 	?>
 <form method="post" action="<?= h(nu_url('themes')) ?>" id="thForm" data-nu-guard data-draft-url="<?= h(nu_url('themes')) ?>" data-csrf="<?= h(nu_csrf_token()) ?>">
@@ -167,8 +170,9 @@ if (isset($_GET['edit'])) {
 	<div class="card-body">
 		<div class="row g-4">
 			<div class="col-xl-6">
-				<div class="mb-3"><label class="form-label fw-semibold" for="thName"><?= h(t('theme_name')) ?> <span class="nuMark nuMarkRequired" title="<?= h(t('val_required')) ?>" aria-hidden="true">*</span></label>
-					<?php // names in use (0.8.694): checked while typing (assets/js/nuthemes.js) and again on the server ?>
+				<div class="mb-3"><label class="form-label fw-semibold" for="thName"><?= h(t('theme_name')) ?> <span class="nuMark nuMarkRequired"
+					title="<?= h(t('val_required')) ?>" aria-hidden="true">*</span></label>
+					<?php // names in use: checked while typing (assets/js/nuthemes.js) and again on the server ?>
 					<input class="form-control thNarrow" id="thName" name="name" maxlength="100" required value="<?= h($t['name']) ?>"
 						data-taken="<?= h((string)json_encode(array_values(array_map(static fn($x) => mb_strtolower(trim((string)$x['name'])), array_filter(NuTheme::all(), static fn($x) => $x['id'] !== $t['id']))), JSON_UNESCAPED_UNICODE)) ?>"
 						data-taken-msg="<?= h(t('theme_err_name_taken', '%s')) ?>"><div class="invalid-feedback" id="thNameMsg"></div></div>
@@ -176,7 +180,8 @@ if (isset($_GET['edit'])) {
 				<div class="accordion" id="thGroups">
 				<?php foreach (NuTheme::GROUPS as $gi => $g): ?>
 					<div class="accordion-item">
-						<h2 class="accordion-header"><button class="accordion-button<?= $gi ? ' collapsed' : '' ?>" type="button" data-bs-toggle="collapse" data-bs-target="#thG_<?= $g ?>" aria-expanded="<?= $gi ? 'false' : 'true' ?>" aria-controls="thG_<?= $g ?>"><?= h(t('theme_g_' . $g)) ?></button></h2>
+						<h2 class="accordion-header"><button class="accordion-button<?= $gi ? ' collapsed' : '' ?>" type="button" data-bs-toggle="collapse"
+							data-bs-target="#thG_<?= $g ?>" aria-expanded="<?= $gi ? 'false' : 'true' ?>" aria-controls="thG_<?= $g ?>"><?= h(t('theme_g_' . $g)) ?></button></h2>
 						<div id="thG_<?= $g ?>" class="accordion-collapse collapse<?= $gi ? '' : ' show' ?>"><div class="accordion-body">
 							<?php $hasColor = false; foreach (NuTheme::KEYS as $k => $def) if ($def[0] === $g && $def[1] === 'color') $hasColor = true; ?>
 							<?php if ($hasColor): ?><div class="row small text-body-secondary mb-1 d-none d-sm-flex"><div class="col-sm-4"></div><div class="col-sm-4"><i class="bi bi-sun me-1"></i><?= h(t('theme_light')) ?></div><div class="col-sm-4"><i class="bi bi-moon-stars me-1"></i><?= h(t('theme_dark')) ?></div></div><?php endif; ?>
@@ -186,8 +191,11 @@ if (isset($_GET['edit'])) {
 									<?php if ($def[1] === 'color'): ?>
 										<?php foreach (['v' => $val, 'd' => (string)($t['d'][$k] ?? '')] as $m => $cv): ?>
 										<div class="col-6 col-sm-4"><div class="input-group input-group-sm thColor">
-											<input type="color" class="form-control form-control-color thPick" value="<?= h($cv !== '' ? $cv : '#ffffff') ?>" aria-label="<?= h(t('theme_k_' . $k) . ' – ' . t($m === 'v' ? 'theme_light' : 'theme_dark')) ?>" tabindex="-1">
-											<input type="text" class="form-control thHex" id="<?= $m ?>_<?= $k ?>" name="<?= $m ?>_<?= $k ?>" value="<?= h($cv) ?>" placeholder="<?= h(t('theme_default')) ?>" maxlength="7" pattern="#?[0-9A-Fa-f]{3}([0-9A-Fa-f]{3})?" spellcheck="false" autocomplete="off" aria-label="<?= h(t('theme_k_' . $k) . ' – ' . t($m === 'v' ? 'theme_light' : 'theme_dark')) ?>">
+											<input type="color" class="form-control form-control-color thPick" value="<?= h($cv !== '' ? $cv : '#ffffff') ?>"
+												aria-label="<?= h(t('theme_k_' . $k) . ' – ' . t($m === 'v' ? 'theme_light' : 'theme_dark')) ?>" tabindex="-1">
+											<input type="text" class="form-control thHex" id="<?= $m ?>_<?= $k ?>" name="<?= $m ?>_<?= $k ?>" value="<?= h($cv) ?>"
+												placeholder="<?= h(t('theme_default')) ?>" maxlength="7" pattern="#?[0-9A-Fa-f]{3}([0-9A-Fa-f]{3})?" spellcheck="false" autocomplete="off"
+												aria-label="<?= h(t('theme_k_' . $k) . ' – ' . t($m === 'v' ? 'theme_light' : 'theme_dark')) ?>">
 										</div></div>
 										<?php endforeach; ?>
 									<?php elseif ($def[1] === 'select'): ?>
@@ -231,13 +239,14 @@ if (isset($_GET['edit'])) {
 
 // ------------------------------------------------------------------ list
 $s = NuTheme::settings();
-$mine = NuTheme::current(); $myChoices = NuTheme::choices(); $myPick = NuTheme::userPick();   // own theme (0.8.643): globeadmin always, others when users may choose
+$mine = NuTheme::current(); $myChoices = NuTheme::choices(); $myPick = NuTheme::userPick();   // own theme: globeadmin always, others when users may choose
 $levels = [];
 $levels = array_values(array_map(static fn($a) => ['id' => (string)$a['zzzzsys_access_id'], 'code' => $a['sal_code'], 'descr' => $a['sal_description']], NuAcl::levels()));
 $swatch = static function (array $t): string {
 	$v = $t['v'];
 	$c = [$v['accent'] ?? '#2f6fd6', $v['page_bg'] ?? '#f4f6f9', $v['btn_bg'] ?? '#f8f9fa', $v['nav_bg'] ?? ($v['surface'] ?? '#ffffff'), $v['fbtn_bg'] ?? ($v['accent'] ?? '#2f6fd6')];
-	return '<span class="thSwatch" aria-hidden="true">' . implode('', array_map(static fn($x) => '<span class="thSw" data-c="' . h($x) . '"></span>', $c)) . '</span>';   // colour set by nuthemes.js (CSP)
+	return '<span class="thSwatch" aria-hidden="true">' . implode('', array_map(static fn($x) => '<span class="thSw" data-c="' . h($x) . '"></span>', $c))
+		. '</span>';   // colour set by nuthemes.js (CSP)
 };
 nu_layout_start(t('theme_title'), 'home', ['settings' => 'look', 'settings_page' => 'themes']);
 ?>
@@ -264,7 +273,8 @@ nu_layout_start(t('theme_title'), 'home', ['settings' => 'look', 'settings_page'
 							<?php if ($mine === $t['id']): ?><span class="badge text-bg-success thMine"><i class="bi bi-person-check me-1"></i><?= h(t('theme_badge_mine')) ?></span><?php endif; ?>
 						</div>
 						<div class="d-flex flex-wrap gap-1 mt-auto pt-1">
-							<?php if (!$t['builtin'] && !$ro): ?><a class="btn btn-sm btn-outline-primary thEdit" href="<?= h(nu_url('themes', ['edit' => $t['id']])) ?>"><i class="bi bi-pencil me-1"></i><?= h(t('edit')) ?></a><?php endif; ?>
+							<?php if (!$t['builtin'] && !$ro): ?><a class="btn btn-sm btn-outline-primary thEdit"
+								href="<?= h(nu_url('themes', ['edit' => $t['id']])) ?>"><i class="bi bi-pencil me-1"></i><?= h(t('edit')) ?></a><?php endif; ?>
 							<?php if (!$ro): ?>
 							<form method="post" class="d-inline"><?= nu_csrf_field() ?><input type="hidden" name="action" value="duplicate"><input type="hidden" name="id" value="<?= h($t['id']) ?>">
 								<button class="btn btn-sm btn-outline-secondary thDup" type="submit" title="<?= h(t('theme_duplicate_tip')) ?>"><i class="bi bi-copy me-1"></i><?= h(t('theme_duplicate')) ?></button></form>
@@ -274,20 +284,26 @@ nu_layout_start(t('theme_title'), 'home', ['settings' => 'look', 'settings_page'
 							<?php endif; ?>
 							<?php endif; ?>
 							<?php if (isset($myChoices[$t['id']]) && $myPick !== $t['id']): ?>
-							<form method="post" class="d-inline"><?= nu_csrf_field() ?><input type="hidden" name="action" value="pick"><input type="hidden" name="theme" value="<?= h($t['id']) ?>"><input type="hidden" name="back" value="index.php?p=themes">
-								<button class="btn btn-sm btn-outline-secondary thUseMe" type="submit" title="<?= h(t('theme_use_me_tip')) ?>"><i class="bi bi-person-check me-1"></i><?= h(t('theme_use_me')) ?></button></form>
+							<form method="post" class="d-inline"><?= nu_csrf_field() ?><input type="hidden" name="action" value="pick"><input type="hidden" name="theme"
+								value="<?= h($t['id']) ?>"><input type="hidden" name="back" value="index.php?p=themes">
+								<button class="btn btn-sm btn-outline-secondary thUseMe" type="submit"
+									title="<?= h(t('theme_use_me_tip')) ?>"><i class="bi bi-person-check me-1"></i><?= h(t('theme_use_me')) ?></button></form>
 							<?php endif; ?>
 							<div class="dropdown ms-auto">
-								<button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="<?= h(t('more_actions')) ?>"><i class="bi bi-three-dots"></i></button>
+								<button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false"
+									aria-label="<?= h(t('more_actions')) ?>"><i class="bi bi-three-dots"></i></button>
 								<ul class="dropdown-menu dropdown-menu-end">
 									<?php if ($myPick === $t['id']): ?>
-									<li><form method="post"><?= nu_csrf_field() ?><input type="hidden" name="action" value="pick"><input type="hidden" name="theme" value=""><input type="hidden" name="back" value="index.php?p=themes">
+									<li><form method="post"><?= nu_csrf_field() ?><input type="hidden" name="action" value="pick"><input type="hidden" name="theme"
+										value=""><input type="hidden" name="back" value="index.php?p=themes">
 										<button class="dropdown-item thUseMeOff" type="submit"><i class="bi bi-person-x me-2"></i><?= h(t('theme_use_me_off')) ?></button></form></li>
 									<?php endif; ?>
 									<li><form method="post"><?= nu_csrf_field() ?><input type="hidden" name="action" value="export"><input type="hidden" name="id" value="<?= h($t['id']) ?>">
 										<button class="dropdown-item thExport" type="submit"><i class="bi bi-download me-2"></i><?= h(t('theme_export')) ?></button></form></li>
 									<?php if (!$t['builtin'] && !$ro): ?>
-									<li><form method="post" data-confirm="<?= h(t('theme_delete_confirm', $t['name'])) ?>" data-confirm-ok="<?= h(t('delete')) ?>" data-confirm-class="btn btn-danger"><?= nu_csrf_field() ?><input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="<?= h($t['id']) ?>">
+									<li><form method="post" data-confirm="<?= h(t('theme_delete_confirm', $t['name'])) ?>" data-confirm-ok="<?= h(t('delete')) ?>"
+										data-confirm-class="btn btn-danger"><?= nu_csrf_field() ?><input type="hidden" name="action" value="delete"><input type="hidden" name="id"
+										value="<?= h($t['id']) ?>">
 										<button class="dropdown-item text-danger thDelete" type="submit"><i class="bi bi-trash me-2"></i><?= h(t('delete')) ?></button></form></li>
 									<?php endif; ?>
 								</ul>
@@ -307,16 +323,20 @@ nu_layout_start(t('theme_title'), 'home', ['settings' => 'look', 'settings_page'
 		<form method="post" id="thWho" data-nu-guard>
 			<?= nu_csrf_field() ?><input type="hidden" name="action" value="who">
 			<div class="mb-3"><label class="form-label fw-semibold" for="thDefault"><?= h(t('theme_default_all')) ?></label>
-				<select class="form-select thNarrow" id="thDefault" name="default"<?= $ro ? ' disabled' : '' ?>><?php foreach ($all as $t): ?><option value="<?= h($t['id']) ?>"<?= $s['default'] === $t['id'] ? ' selected' : '' ?>><?= h($t['name']) ?></option><?php endforeach; ?></select></div>
+				<select class="form-select thNarrow" id="thDefault"
+					name="default"<?= $ro ? ' disabled' : '' ?>><?php foreach ($all as $t): ?><option value="<?= h($t['id']) ?>"<?= $s['default'] === $t['id'] ? ' selected' : '' ?>><?= h($t['name']) ?></option><?php endforeach; ?></select></div>
 			<?php if ($levels): ?>
-			<?php $nOwn = count(array_filter($levels, static fn($l) => ($s['levels'][$l['id']] ?? '') !== '')); // folded by default (0.8.695) ?>
-			<div class="mb-3"><button class="btn btn-link p-0 fw-semibold text-decoration-none text-body thLevelsToggle collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#thLevelsBox" aria-expanded="false" aria-controls="thLevelsBox" id="thLevelsBtn">
+			<?php $nOwn = count(array_filter($levels, static fn($l) => ($s['levels'][$l['id']] ?? '') !== '')); // folded by default ?>
+			<div class="mb-3"><button class="btn btn-link p-0 fw-semibold text-decoration-none text-body thLevelsToggle collapsed" type="button"
+				data-bs-toggle="collapse" data-bs-target="#thLevelsBox" aria-expanded="false" aria-controls="thLevelsBox" id="thLevelsBtn">
 					<i class="bi bi-chevron-right me-1 thChevron" aria-hidden="true"></i><?= h(t('theme_per_level')) ?></button>
 				<span class="badge rounded-pill text-bg-light border ms-1" title="<?= h(t('theme_levels_own', $nOwn)) ?>"><?= $nOwn ?> / <?= count($levels) ?></span>
-				<div class="collapse mt-2" id="thLevelsBox"><div class="table-responsive"><table class="table table-sm nu-table align-middle mb-0 thLevels"><thead><tr><th><?= h(t('nav_access')) ?></th><th><?= h(t('theme_title')) ?></th></tr></thead><tbody>
+				<div class="collapse mt-2"
+					id="thLevelsBox"><div class="table-responsive"><table class="table table-sm nu-table align-middle mb-0 thLevels"><thead><tr><th><?= h(t('nav_access')) ?></th><th><?= h(t('theme_title')) ?></th></tr></thead><tbody>
 				<?php foreach ($levels as $l): ?>
 					<tr><td><label for="thL_<?= h($l['id']) ?>"><span class="fw-medium"><?= h((string)$l['code']) ?></span> <span class="small text-body-secondary"><?= h((string)$l['descr']) ?></span></label></td>
-						<td><select class="form-select form-select-sm" id="thL_<?= h($l['id']) ?>" name="level[<?= h($l['id']) ?>]"<?= $ro ? ' disabled' : '' ?>><option value=""><?= h(t('theme_level_inherit')) ?></option>
+						<td><select class="form-select form-select-sm" id="thL_<?= h($l['id']) ?>"
+							name="level[<?= h($l['id']) ?>]"<?= $ro ? ' disabled' : '' ?>><option value=""><?= h(t('theme_level_inherit')) ?></option>
 							<?php foreach ($all as $t): ?><option value="<?= h($t['id']) ?>"<?= ($s['levels'][$l['id']] ?? '') === $t['id'] ? ' selected' : '' ?>><?= h($t['name']) ?></option><?php endforeach; ?></select></td></tr>
 				<?php endforeach; ?>
 				</tbody></table></div></div></div>
@@ -326,7 +346,9 @@ nu_layout_start(t('theme_title'), 'home', ['settings' => 'look', 'settings_page'
 				<label class="form-check-label" for="thChoice"><?= h(t('theme_user_choice')) ?></label><?= $tip(t('theme_user_choice_tip')) ?>
 			</div>
 			<div class="mb-3 ms-4" id="thAllowed"><div class="small text-body-secondary mb-1"><?= h(t('theme_allowed')) ?></div>
-				<?php foreach ($all as $t): ?><div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" name="allowed[]" value="<?= h($t['id']) ?>" id="thA_<?= h(str_replace(':', '_', $t['id'])) ?>"<?= in_array($t['id'], $s['allowed'], true) ? ' checked' : '' ?><?= $ro ? ' disabled' : '' ?>>
+				<?php foreach ($all as $t): ?><div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" name="allowed[]"
+					value="<?= h($t['id']) ?>"
+					id="thA_<?= h(str_replace(':', '_', $t['id'])) ?>"<?= in_array($t['id'], $s['allowed'], true) ? ' checked' : '' ?><?= $ro ? ' disabled' : '' ?>>
 					<label class="form-check-label" for="thA_<?= h(str_replace(':', '_', $t['id'])) ?>"><?= h($t['name']) ?></label></div><?php endforeach; ?>
 			</div>
 			<?php if (!$ro): ?><button class="btn nuBtnAct nuBtnSave" type="submit" id="thWhoSave"><i class="bi bi-floppy"></i><?= h(t('save')) ?></button><?php endif; ?>

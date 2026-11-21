@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Access levels list – columns, phone cards, filters and sort come from the chosen list view (0.8.329): catalogue in
+ * Access levels list – columns, phone cards, filters and sort come from the chosen list view: catalogue in
  * core/nulistdefs.php, rendering and views in core/nulistview.php.
  */
 NuAcl::require(NuAcl::FORM_ACCESS);

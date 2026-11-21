@@ -1,11 +1,11 @@
-/* z-index (0.8.666): every design layer stays below the sticky navbar (1020) – its menus (theme, language, user) open above them
-   Design mode on the form page (0.8.662, assets/js/nu/nudesign.js): bar at the top, properties panel on the right (a bottom sheet on phones) */
+/* z-index: every design layer stays below the sticky navbar (1020) – its menus (theme, language, user) open above them
+   Design mode on the form page (assets/js/nu/nudesign.js): bar at the top, properties panel on the right (a bottom sheet on phones and tablets up to 991 px) */
 .nuDesignMode { --nu-ds-panel: 340px; }
 .nuDesignMode .nuFormHeader, .nuDesignMode .nuDraftBanner { display: none !important; }
 .nuDesignMode .nuFormContainer { padding-top: 0 !important; }
 .nuDesignMode .nuArrange { display: none !important; }   /* the designer's floating Arrange panel: its actions are in the properties panel (Arrange) */
-@media (min-width: 768px) {
-	.nuDesignMode .nuFormContainer { margin-right: var(--nu-ds-panel); width: auto; }
+@media (min-width: 992px) {
+	.nuDesignMode .nuFormContainer { margin-right: var(--nu-ds-panel); width: auto; margin-left: 3.25rem; }
 }
 
 .nuDsBar { position: sticky; top: var(--nu-sticky-top, 57px); z-index: 1015; display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .6rem;
@@ -16,7 +16,7 @@
 .nuDsMenuNote { max-width: 260px; white-space: normal; }
 .nuDsTitle { flex: 0 1 auto; min-width: 0; max-width: 18rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 1rem; }
 .nuDsStatus { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--bs-secondary-color); font-size: .875rem; }
-@media (min-width: 768px) { .nuDsBar { flex-wrap: nowrap; } .nuDsSpacer { display: none; } .nuDsBar > .btn, .nuDsBar > .badge { flex: 0 0 auto; } }
+@media (min-width: 992px) { .nuDsBar { flex-wrap: nowrap; } .nuDsSpacer { display: none; } .nuDsBar > .btn, .nuDsBar > .badge { flex: 0 0 auto; } }
 .nuDsMsg { font-size: .875rem; color: var(--bs-success-text-emphasis); }
 .nuDsMsg.nuDsMsgErr { color: var(--bs-danger-text-emphasis); }
 .nuDsSpacer { flex: 1 1 auto; }
@@ -26,8 +26,8 @@
 
 .nuDsPanel { position: fixed; z-index: 1014; top: var(--nu-sticky-top, 57px); right: 0; bottom: 0; width: var(--nu-ds-panel); overflow-y: auto;
 	background: var(--bs-body-bg); border-left: 1px solid var(--bs-border-color); font-size: .875rem; }
-@media (max-width: 767.98px) {
-	/* phones (0.8.831): a one-line bar (the rest in the ⋯ menu) that slides away while scrolling down, a bottom sheet
+@media (max-width: 991.98px) {
+	/* phones: a one-line bar (the rest in the ⋯ menu) that slides away while scrolling down, a bottom sheet
 	   with three heights (peek / half / full) and quick actions above the selected object */
 	.nuDesignMode .nuFormContainer { padding-bottom: calc(var(--nu-ds-sheet-h, 5rem) + 1rem) !important; }
 	.nuDsBar { left: 0; max-width: 100vw; box-sizing: border-box; flex-wrap: nowrap; gap: .4rem; padding-top: .3rem; padding-bottom: .3rem;
@@ -60,7 +60,7 @@
 }
 .nuDsPhOnly, .nuDsDot { display: none; }
 .nuDsQuick { display: none; }
-@media (max-width: 767.98px) {
+@media (max-width: 991.98px) {
 	.nuDsPhOnly { display: inline-flex; }
 	.nuDsQuick:not([hidden]) { display: flex; }
 	.nuDsDot { display: inline-block; flex: 0 0 auto; width: .7rem; height: .7rem; border-radius: 50%; background: var(--bs-secondary-color); }
@@ -96,7 +96,7 @@
 .nuDsHiddenBadge { position: absolute; z-index: 22; top: -.7rem; right: 0; padding: 0 .4rem; border-radius: .6rem; font-size: .75rem; line-height: 1.3rem; white-space: nowrap;
 	background: var(--bs-warning-bg-subtle); color: var(--bs-warning-text-emphasis); pointer-events: none; }
 
-/* icon bar + Structure / Add (0.8.663) */
+/* icon bar + Structure / Add */
 .nuDsRail { position: fixed; z-index: 1014; top: var(--nu-sticky-top, 57px); left: 0; bottom: 0; width: 3.25rem; display: flex; flex-direction: column; align-items: center;
 	gap: .35rem; padding: .6rem 0; background: var(--bs-body-bg); border-right: 1px solid var(--bs-border-color); }
 .nuDsRailBtn { width: 2.6rem; height: 2.6rem; border: 0; border-radius: .5rem; background: none; color: var(--bs-secondary-color); font-size: 1.15rem;
@@ -104,12 +104,12 @@
 .nuDsRailBtn:hover { background: var(--bs-tertiary-bg); color: var(--bs-body-color); }
 .nuDsRailBtn[aria-pressed="true"], .nuDsBarTool[aria-pressed="true"] { background: var(--bs-primary-bg-subtle); color: var(--bs-primary-text-emphasis); }
 .nuDsBarTool { display: none; }
-@media (min-width: 768px) { .nuDesignMode .nuFormContainer { margin-left: 3.25rem; } }
-@media (max-width: 767.98px) { .nuDsRail { display: none; } .nuDsBarTool { display: inline-flex; } }
+@media (min-width: 992px) { }
+@media (max-width: 991.98px) { .nuDsRail { display: none; } .nuDsBarTool { display: inline-flex; } }
 .nuDsFly { position: fixed; z-index: 1016; top: var(--nu-sticky-top, 57px); left: 3.25rem; bottom: 0; width: 19rem; display: flex; flex-direction: column;
 	background: var(--bs-body-bg); border-right: 1px solid var(--bs-border-color); box-shadow: .5rem 0 1.5rem rgba(0, 0, 0, .12); font-size: .875rem; }
 .nuDsFly[hidden] { display: none; }
-@media (max-width: 767.98px) { .nuDsFly { left: 0; right: 0; width: auto; z-index: 1016; } }
+@media (max-width: 991.98px) { .nuDsFly { left: 0; right: 0; width: auto; z-index: 1016; } }
 .nuDsFlyHead { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: .85rem 1rem .5rem; }
 .nuDsFlySearch { padding: 0 1rem .5rem; }
 .nuDsFlySub { padding: .7rem 1rem .3rem; font-size: .75rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--bs-secondary-color); }
@@ -134,7 +134,7 @@
 .nuDsEl:hover { border-color: var(--bs-primary); }
 .nuDsDropping #nuEditForm .tab-pane.active { outline: 2px dashed var(--bs-primary); outline-offset: 4px; }
 
-/* tabs on the form (0.8.663) */
+/* tabs on the form */
 .nuDsTabs .nav-item { cursor: grab; }
 .nuDsTabHidden .nuTab { font-style: italic; color: var(--bs-secondary-color) !important; }   /* usability review G10: was opacity .55 (contrast) */
 .nuDsTabsWrap { display: flex; align-items: flex-end; gap: .25rem; border-bottom: var(--bs-nav-tabs-border-width, 1px) solid var(--bs-border-color); }
@@ -161,18 +161,18 @@
 .nuDsPanel .ts-wrapper { font-size: .82rem; }
 @media (min-width: 1200px) { .nuDsFlyOpen .nuDesignMode .nuFormContainer { margin-left: 22.25rem; } }   /* wide screens: the open panel pushes the form */
 
-/* code window (0.8.665) */
+/* code window */
 .nuDsLabelRow { display: flex; align-items: center; justify-content: space-between; gap: .25rem; }
 .nuDsLabelRow .form-label { margin-bottom: .2rem; }
 .nuDsCodeBtn { padding: 0 .25rem; line-height: 1; }
 .nuDsCodeBar { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-bottom: .5rem; }
 #nuDsCodeDlg .CodeMirror { border: 1px solid var(--bs-border-color); border-radius: .35rem; font-size: .85rem; }
 
-/* workspace (0.8.668): code, history, changes of the draft – full width below the navbar, above the bar, panel and flyout */
+/* workspace: code, history, changes of the draft – full width below the navbar, above the bar, panel and flyout */
 .nuDsWork { position: fixed; z-index: 1017; top: var(--nu-sticky-top, 57px); left: 3.25rem; right: 0; bottom: 0; display: flex; flex-direction: column;
 	background: var(--bs-body-bg); border-left: 1px solid var(--bs-border-color); }
 .nuDsWork[hidden] { display: none; }
-@media (max-width: 767.98px) { .nuDsWork { left: 0; border-left: 0; } }
+@media (max-width: 991.98px) { .nuDsWork { left: 0; border-left: 0; } }
 html.nuDsWorkOpen body { overflow: hidden; }
 .nuDsWorkHead { display: flex; flex-wrap: wrap; align-items: flex-end; gap: .5rem 1rem; padding: .5rem 1rem 0; border-bottom: 1px solid var(--bs-border-color); --nu-tab-surface: var(--bs-body-bg); }
 .nuDsWorkTabs { border-bottom: 0; flex: 1 1 auto; }
@@ -192,7 +192,7 @@ html.nuDsWorkOpen body { overflow: hidden; }
 .nuDsCodeEd { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
 .nuDsCodeEd .CodeMirror { flex: 1 1 auto; min-height: 16rem; border: 1px solid var(--bs-border-color); border-radius: .375rem; font-size: .85rem; }
 .nuDsCodeName { font-size: .9rem; margin-right: .5rem; }
-@media (max-width: 767.98px) {
+@media (max-width: 991.98px) {
 	.nuDsCodeLayout { flex-direction: column; }
 	.nuDsCodeList { flex: 0 0 auto; flex-direction: row; flex-wrap: wrap; }
 	.nuDsCodeGroup { display: none; }
@@ -210,12 +210,16 @@ html.nuDsWorkOpen body { overflow: hidden; }
 .nuDsDiffFold { color: var(--bs-secondary-color); }
 .nuDsPubSum { max-height: 40vh; overflow: auto; }
 
-/* 0.8.669: format buttons next to a format select, tool buttons, the list's columns */
+/* the column menu of the list (right-click on a title) – the object menu's look (nuform.css .nuObjMenu) */
+.nuObjMenu .nuOmWidth { width: 5.5rem; }
+.nuObjMenu .nuOmWidthRow .dropdown-item { cursor: default; }
+
+/* format buttons next to a format select, tool buttons, the list's columns */
 .nuDsField:has(> .nuDsFmtBtns) { display: grid; grid-template-columns: 1fr auto; column-gap: .35rem; align-items: end; }
-.nuDsField > :is(.nuDsLabel, .nuDsLabelRow):is(.nuDsFmtBtns ~ *, :has(~ .nuDsFmtBtns)) { grid-column: 1 / -1; }   /* asked from the label (0.8.1342) */
+.nuDsField > :is(.nuDsLabel, .nuDsLabelRow):is(.nuDsFmtBtns ~ *, :has(~ .nuDsFmtBtns)) { grid-column: 1 / -1; }   /* asked from the label */
 .nuDsFmtBtns { display: flex; gap: .25rem; }
 .nuDsTools { display: flex; flex-wrap: wrap; gap: .4rem; }
-.nuDsBrowse th.nuBrowseTitle { cursor: grab; position: relative; }
+.nuDsBrowse th.nuBrowseTitle { cursor: grab; position: relative; cursor: context-menu; }
 .nuDsBrowse th.nuBrowseTitle:hover { box-shadow: inset 0 0 0 1px var(--bs-primary-border-subtle); }
 .nuDsBrowse th.nuDsColSel { box-shadow: inset 0 0 0 2px var(--bs-primary); background: var(--bs-primary-bg-subtle); }
 .nuDsBrowse th.nuDsDropBefore { box-shadow: inset 3px 0 0 var(--bs-primary); }
@@ -223,12 +227,12 @@ html.nuDsWorkOpen body { overflow: hidden; }
 .nuDsBrowse tbody { cursor: default; }
 .nuDsColAddTh { width: 2.5rem; }
 
-/* attribute editor (assets/js/nuattreditor.js) – moved here from the builder's CSS (0.8.670) */
+/* attribute editor (assets/js/nuattreditor.js) – moved here from the builder's CSS */
 .nuAttrPreviewBox { padding: .4rem .6rem; border: 1px solid var(--bs-border-color); border-radius: var(--bs-border-radius); background: var(--bs-tertiary-bg); overflow-wrap: anywhere; }
 .nuAttrPreview { color: var(--bs-body-color); font-size: .8rem; white-space: pre-wrap; }
 .nuAttrHead { padding-inline-end: 2.6rem; }
 
-/* 0.8.671: Structure filters and folded tab sections, shortcuts */
+/* Structure filters and folded tab sections, shortcuts */
 .nuDsFlyFilters { display: grid; grid-template-columns: 1fr 1fr; gap: .35rem; margin-top: .4rem; }
 .nuDsTreeTab { display: flex; align-items: center; gap: .25rem; }
 .nuDsTreeFold { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; border: 0; background: none; padding: 0; color: inherit; font: inherit; text-align: start; cursor: pointer; }
@@ -238,12 +242,7 @@ html.nuDsWorkOpen body { overflow: hidden; }
 .nuDsKeys th { white-space: nowrap; width: 1%; padding-inline-end: 1rem; font-weight: normal; }
 .nuDsKeys kbd { font-size: .75rem; }
 
-/* 0.8.672: the column menu of the list (right-click on a title) – the object menu's look (nuform.css .nuObjMenu) */
-.nuObjMenu .nuOmWidth { width: 5.5rem; }
-.nuObjMenu .nuOmWidthRow .dropdown-item { cursor: default; }
-.nuDsBrowse th.nuBrowseTitle { cursor: context-menu; }
-
-/* badge rules of a list column (0.8.688) */
+/* badge rules of a list column */
 .nuDsBadgeRules { display: flex; flex-direction: column; gap: .35rem; margin-top: .35rem; }
 .nuDsBadgeRule { display: grid; grid-template-columns: minmax(0, 7.5rem) minmax(0, 1fr) 2.2rem auto; gap: .3rem; align-items: center; }
 .nuDsBadgeRule .form-control-color { padding: .15rem; height: calc(1.5em + .5rem + 2px); }
@@ -256,11 +255,11 @@ html.nuDsWorkOpen body { overflow: hidden; }
 /* messages of the form's own code in design mode (review H1) */
 .nuDsFormMsgs .nuDsFormMsgsN { font-variant-numeric: tabular-nums; }
 
-/* Publish options menu (0.8.797) */
+/* Publish options menu */
 .nuDsPubMenu { min-width: 20rem; max-width: min(24rem, 92vw); }
 .nuDsPubMenu .dropdown-item-text { white-space: normal; }
 
-/* validation rules (0.8.812): list in the panel, condition rows in the editor */
+/* validation rules: list in the panel, condition rows in the editor */
 .nuDsRuleList { display: flex; flex-direction: column; gap: .25rem; margin-bottom: .5rem; }
 .nuDsRule { display: flex; align-items: flex-start; gap: .4rem; padding: .3rem .4rem; border: 1px solid var(--bs-border-color); border-radius: .375rem; }
 .nuDsRule.nuDsRuleOff { opacity: .6; }
@@ -279,12 +278,12 @@ html.nuDsWorkOpen body { overflow: hidden; }
 	background: var(--bs-primary); color: #fff; text-align: center; }
 .nuDsRailCount[hidden] { display: none; }
 .nuDsFlyRules { padding: .5rem .75rem; overflow: auto; }
-/* rule editor errors (0.8.816): on top of the dialogue, sticky while it scrolls */
+/* rule editor errors: on top of the dialogue, sticky while it scrolls */
 .nuDsRuleErr { position: sticky; top: -1rem; z-index: 3; margin: -.25rem 0 .75rem; box-shadow: 0 .25rem .5rem rgba(0, 0, 0, .08); }
 .nuDsRuleErr[hidden] { display: none; }
 .nuDsCond.nuDsCondBad { border-color: var(--bs-danger); box-shadow: 0 0 0 .2rem rgba(var(--bs-danger-rgb), .2); }
 
-/* List flyout (0.8.820) */
+/* List flyout */
 .nuDsFlySub { font-size: .8rem; text-transform: uppercase; letter-spacing: .03em; color: var(--bs-secondary-color); margin: .9rem 0 .4rem; }
 .nuDsFlySub:first-child { margin-top: .25rem; }
 .nuDsListCols { display: flex; flex-direction: column; gap: .35rem; }
@@ -292,7 +291,7 @@ html.nuDsWorkOpen body { overflow: hidden; }
 .nuDsListColOff { opacity: .6; }
 .nuDsListColNo { font-size: .75rem; color: var(--bs-secondary-color); min-width: 1rem; text-align: end; }
 
-/* Browse list in the workspace (0.8.822): settings and code on the left, the columns as a table on the right */
+/* Browse list in the workspace: settings and code on the left, the columns as a table on the right */
 .nuDsWorkList { display: grid; grid-template-columns: minmax(16rem, 22rem) minmax(0, 1fr); gap: 1.5rem; padding: 1rem 1.25rem; align-items: start; overflow: auto; }
 @media (max-width: 991.98px) { .nuDsWorkList { grid-template-columns: minmax(0, 1fr); } }
 .nuDsListColTable { margin-bottom: .5rem; }
@@ -304,15 +303,19 @@ html.nuDsWorkOpen body { overflow: hidden; }
 .nuDsListColTable td.nuDsLcBtns { white-space: nowrap; width: 1%; }
 .nuDsListColTable td.nuDsLcBtns .btn { margin-inline: .15rem; }
 .nuDsListColTable tr.nuDsListColOff td { opacity: .6; }
-/* drag and drop of the columns (0.8.823) */
+/* drag and drop of the columns */
 .nuDsListGrip { display: inline-flex; align-items: center; gap: .1rem; cursor: grab; color: var(--bs-secondary-color); user-select: none; }
 .nuDsListGrip:active { cursor: grabbing; }
 .nuDsListColTable tr.nuDsListDragging td { opacity: .4; }
 .nuDsListColTable tr.nuDsDropBefore td { box-shadow: inset 0 2px 0 var(--bs-primary); }
 .nuDsListColTable tr.nuDsDropAfter td { box-shadow: inset 0 -2px 0 var(--bs-primary); }
-@media (max-width: 767.98px) { .nuDsPanel .nuDsSecTabs { top: 1.4rem; } }
+@media (max-width: 991.98px) { .nuDsPanel .nuDsSecTabs { top: 1.4rem; } }
 
-/* Add → Input: the kind of input (0.8.846) */
+/* columns tree of the list: rows can be dragged */
+#nuDsColTree .nuDsTreeRow { cursor: grab; }
+#nuDsColTree .nuDsTreeRow.nuDsListDragging { opacity: .4; }
+#nuDsColTree .nuDsTreeRow.nuDsDropAfter { box-shadow: inset 0 -2px 0 var(--bs-primary); }
+/* Add → Input: the kind of input */
 .nuDsElMore { position: relative; }
 .nuDsElSub { font-size: .75rem; color: var(--bs-secondary-color); }
 .nuDsFlyHeadSub { align-items: center; gap: .5rem; }
@@ -327,23 +330,19 @@ html.nuDsWorkOpen body { overflow: hidden; }
 .nuDsKindChip:hover { border-color: var(--bs-primary); background: var(--bs-primary-bg-subtle); }
 .nuDsKindDone { margin: .2rem 1rem .6rem; padding: .35rem .6rem; border-radius: .4rem; background: var(--bs-success-bg-subtle); color: var(--bs-success-text-emphasis); font-size: .78rem; }
 .nuDsKind span { overflow-wrap: anywhere; hyphens: auto; }
-/* columns tree of the list (0.8.946): rows can be dragged */
-#nuDsColTree .nuDsTreeRow { cursor: grab; }
-#nuDsColTree .nuDsTreeRow.nuDsListDragging { opacity: .4; }
-#nuDsColTree .nuDsTreeRow.nuDsDropAfter { box-shadow: inset 0 -2px 0 var(--bs-primary); }
-/* responsive containers (0.8.959) */
+/* responsive containers */
 .nuDsGrid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; }
 .nuDesignMode .nuHideSm, .nuDesignMode .nuHideMd, .nuDesignMode .nuHideLg { display: block !important; opacity: .45; }
 .nuDesignMode .nuStack { outline: 1px dashed var(--bs-border-color); outline-offset: 2px; }
 
-/* Set the tab order by position (0.8.1301): in the form's Layout section and floating over the form while the numbers are shown */
+/* Set the tab order by position: in the form's Layout section and floating over the form while the numbers are shown */
 .nuDsOrderPos { align-self: flex-start; }
 .nuDsOrderFloat { position: fixed; left: calc(3.25rem + 1.25rem); bottom: 1.25rem; z-index: 1013; background: var(--bs-body-bg); border-radius: var(--bs-border-radius); box-shadow: 0 4px 16px rgba(20, 30, 50, .18); }
 .nuDsOrderFloat .nuDsField { margin: 0; }
 .nuDsOrderNote { max-width: 22rem; }
-@media (max-width: 767.98px) { .nuDsOrderFloat { left: 1rem; bottom: calc(var(--nu-ds-sheet-h, 0px) + 1rem); } }
+@media (max-width: 991.98px) { .nuDsOrderFloat { left: 1rem; bottom: calc(var(--nu-ds-sheet-h, 0px) + 1rem); } }
 
-/* properties panel (0.8.1305, option A of the canvas "Design mode properties panel"): chips of the sections stay at the top, a click
+/* properties panel (option A of the canvas "Design mode properties panel"): chips of the sections stay at the top, a click
    jumps there, the section in view is marked; folded sections show their values in one line */
 .nuDsChips { position: sticky; top: 0; z-index: 3; display: flex; flex-wrap: wrap; align-items: center; gap: .3rem; padding: .45rem .75rem .55rem;
 	background: var(--bs-body-bg); border-top: 1px solid var(--bs-border-color); box-shadow: 0 4px 8px rgba(20, 30, 50, .05); }

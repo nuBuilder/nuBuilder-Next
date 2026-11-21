@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Search (0.8.321) – the list behind Ctrl+K (assets/js/nupalette.js, every page of the globeadmin) and the search field of the start
+ * Search – the list behind Ctrl+K (assets/js/nupalette.js, every page of the globeadmin) and the search field of the start
  * page (assets/js/nuhome.js): tiles of the start page, the pages and actions behind them (NuHome::subTiles), own tiles, forms,
  * procedures and reports. ?p=palette answers it as JSON. Each entry also carries its English words, so "Benutzer" and "users" both find
  * the users page.
@@ -15,14 +15,14 @@ final class NuPalette
 	{
 		$items = self::build();
 		// English words of the same entries (searching in English works in every language)
-		$prev = [$_SESSION['nu_lang'] ?? null, $_SESSION['nu_lang_variant'] ?? null];
+		$prev = [$_SESSION[NuSess::LANG] ?? null, $_SESSION[NuSess::LANG_VARIANT] ?? null];
 		if (nu_lang() !== 'en') {
 			nu_set_lang('en-GB');
 			try {
 				$en = array_column(self::build(true), 'label', 'id');
 			} finally {
-				if ($prev[0] === null) unset($_SESSION['nu_lang']); else $_SESSION['nu_lang'] = $prev[0];
-				if ($prev[1] === null) unset($_SESSION['nu_lang_variant']); else $_SESSION['nu_lang_variant'] = $prev[1];
+				if ($prev[0] === null) unset($_SESSION[NuSess::LANG]); else $_SESSION[NuSess::LANG] = $prev[0];
+				if ($prev[1] === null) unset($_SESSION[NuSess::LANG_VARIANT]); else $_SESSION[NuSess::LANG_VARIANT] = $prev[1];
 			}
 			foreach ($items as &$it) if (isset($en[$it['id']]) && $en[$it['id']] !== $it['label']) $it['kw'] = trim($it['kw'] . ' ' . $en[$it['id']]);
 			unset($it);
@@ -39,7 +39,7 @@ final class NuPalette
 		$cat = NuHome::catalog();
 		$gPages = t('pal_group_pages');
 		$layout = NuHome::layout();
-		$ga = (bool)NuAuth::user()['globeadmin'];                // admin roles (0.8.323): only what the role and the access level allow
+		$ga = (bool)NuAuth::user()['globeadmin'];                // admin roles: only what the role and the access level allow
 		foreach ($cat as $k => [$route, $icon, $label, $hint]) {
 			if (!$ga && !NuHome::visible($k, $layout)) continue;
 			$target = is_array($route) && isset($route['post']) ? ['post' => (string)$route['post']] : ['url' => is_array($route) ? nu_url($route[0], $route[1]) : nu_url($route)];
@@ -56,17 +56,19 @@ final class NuPalette
 			$r = NuHome::resolve((string)$k, $layout);
 			if ($r && $r['href']) $add('t:' . $k, (string)$r['label'], t('pal_group_own'), (string)$r['icon'], ['url' => (string)$r['href']], (string)$r['hint']);
 		}
-		try {                                                      // user help pages (0.8.1023): those this user may read
+		try {                                                      // user help pages: those this user may read
 			$hb = NuUserHelp::bases();
-			foreach (NuUserHelp::readableCodes() as $hc => $_) $add('h:' . $hc, NuUserHelp::titleOf((string)$hc), t('uh_title'), 'bi-question-circle', ['url' => nu_url('userhelp', ['c' => (string)$hc])], trim((string)($hb[$hc]['keywords'] ?? '')));
-		} catch (Throwable) { /* no help table yet */ }
+			foreach (NuUserHelp::readableCodes() as $hc => $_) $add('h:' . $hc, NuUserHelp::titleOf((string)$hc), t('uh_title'), 'bi-question-circle',
+				['url' => nu_url('userhelp', ['c' => (string)$hc])], trim((string)($hb[$hc]['keywords'] ?? '')));
+		} catch (Throwable $ig) { nu_ignored($ig, 'no help table yet'); }
 		$db = nu_db();
 		foreach (nu_forms() as $id => $f) {
 			if ($f['type'] === 'subform' || $f['system']) continue;    // nuBuilder's own forms: reached through the pages above
 			if (!$ga && !NuAcl::can((string)$id)) continue;
-			$st = NuFormStatus::of((string)$id);                          // 0.8.808: archived forms only for those who may open them, maintenance named
+			$st = NuFormStatus::of((string)$id);                          // archived forms only for those who may open them, maintenance named
 			if ($st === NuFormStatus::ARCHIVED && NuFormStatus::blocked($st)) continue;
-			$add('f:' . $id, self::name((string)$f['description'], (string)$f['code']), t('pal_group_forms'), 'bi-ui-checks-grid', ['url' => nu_url('form', ['f' => (string)$id])], $f['code'] . ($st === NuFormStatus::MAINT ? ' · ' . t('builder_status_2') : ''));
+			$add('f:' . $id, self::name((string)$f['description'], (string)$f['code']), t('pal_group_forms'), 'bi-ui-checks-grid',
+				['url' => nu_url('form', ['f' => (string)$id])], $f['code'] . ($st === NuFormStatus::MAINT ? ' · ' . t('builder_status_2') : ''));
 		}
 		if (!$ga && !NuAcl::can(NuAcl::FORM_PROCEDURE)) return self::reports($out, $ga);
 		try {
@@ -74,11 +76,11 @@ final class NuPalette
 				$add('p:' . $p['zzzzsys_php_id'], self::name((string)$p['sph_description'], (string)$p['sph_code']), t('pal_group_procedures'), 'bi-filetype-php',
 					['url' => nu_url('procedures', ['id' => (string)$p['zzzzsys_php_id']])], (string)$p['sph_code']);
 			}
-		} catch (Throwable) { /* no procedures table */ }
+		} catch (Throwable $ig) { nu_ignored($ig, 'no procedures table'); }
 		return self::reports($out, $ga);
 	}
 
-	/** A description that says nothing ("-", "....", empty – no letter or digit) gives way to the code (0.8.723). */
+	/** A description that says nothing ("-", "....", empty – no letter or digit) gives way to the code. */
 	private static function name(string $desc, string $code): string
 	{
 		$desc = trim($desc);
@@ -101,7 +103,7 @@ final class NuPalette
 						['url' => nu_url('reports', ['id' => (string)$r['zzzzsys_report_id']])], (string)$r['sre_code']);
 				}
 			}
-		} catch (Throwable) { /* no reports */ }
+		} catch (Throwable $ig) { nu_ignored($ig, 'no reports'); }
 		return $out;
 	}
 }

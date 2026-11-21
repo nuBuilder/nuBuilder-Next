@@ -16,11 +16,11 @@ final class NuTrail
 	{
 		$trail = array_values(array_map(static fn($c) => ['title' => (string)$c['title'], 'url' => (string)$c['url']], array_slice($trail, -15)));
 		$key = substr(hash('sha256', json_encode($trail)), 0, 12);
-		$all = $_SESSION['nu_bt'] ?? [];
+		$all = $_SESSION[NuSess::TRAIL] ?? [];
 		unset($all[$key]);
 		$all[$key] = $trail;
 		if (count($all) > self::MAX) $all = array_slice($all, -self::MAX, null, true);
-		$_SESSION['nu_bt'] = $all;
+		$_SESSION[NuSess::TRAIL] = $all;
 		return $key;
 	}
 
@@ -28,7 +28,7 @@ final class NuTrail
 	public static function get(?string $key): ?array
 	{
 		if ($key === null || !preg_match('/^[0-9a-f]{12}$/', $key)) return null;
-		return $_SESSION['nu_bt'][$key] ?? null;
+		return $_SESSION[NuSess::TRAIL][$key] ?? null;
 	}
 
 	/** URL of the current request without one-off parameters. */

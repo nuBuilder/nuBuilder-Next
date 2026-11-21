@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * nuBuilder Forte's "User Home" (0.8.602): the launch form nuuserhome. Forte's Fast Form builder puts a run button for every new
+ * nuBuilder Forte's "User Home": the launch form nuuserhome. Forte's Fast Form builder puts a run button for every new
  * form on its tab "Fast Forms" (nufastforms); the globeadmin home links to it, an access level may have it as its home form.
  * The New form wizard does the same here (same rows as nuBuilder Forte's nuFFInsertRunButton, so Forte shows the button too);
  * the start page has a built-in tile "User Home"; a user whose access level has nuuserhome as home form may open it (NuAcl::rights)
@@ -20,7 +20,7 @@ final class NuUserHome
 	}
 
 	/**
-	 * Creates User Home when the database has none (0.8.618) – as nuBuilder Forte's installation does: the form row and its two tabs
+	 * Creates User Home when the database has none – as nuBuilder Forte's installation does: the form row and its two tabs
 	 * (Main, Fast Forms) from install/nuuserhome.json (nuBuilder Forte 4.9's nubuilder4.sql, same ids), only the columns the tables have.
 	 * Runs on installation and with every update (NuMigrate::run); an existing User Home is never changed. @return bool true = created
 	 */
@@ -74,7 +74,7 @@ final class NuUserHome
 		$lv = NuUserAccess::levels($u);
 		if (!$lv) return false;
 		try {
-			// the Home forms of the user's levels, read once per request (0.8.1341: was one COUNT per form asked about – 7 on a form page)
+			// the Home forms of the user's levels, read once per request (was one COUNT per form asked about – 7 on a form page)
 			$homes = NuMemo::get('homeforms:' . implode('|', $lv), ['zzzzsys_access'], static function () use ($lv): array {
 				$out = [];
 				foreach ($lv as $lid) {

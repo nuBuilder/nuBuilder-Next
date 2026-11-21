@@ -1,10 +1,10 @@
-/* Access level form (0.8.485): "Add form…" as a searchable Tom Select. The rights grid itself is in nuapp.js – it reacts to the
+/* Access level form: "Add form…" as a searchable Tom Select. The rights grid itself is in nuapp.js – it reacts to the
    select's change event (adds the row, empties the select); here the picked item is cleared again and forms already in the grid
    are greyed out whenever the list opens. */
 (function () {
 	'use strict';
-	// Users card (0.8.583): Active (default) · Archived · All
-	// + search over login and name (0.8.1297): every word must occur; Enter does not send the form, Esc clears
+	// Users card: Active (default) · Archived · All
+	// + search over login and name: every word must occur; Enter does not send the form, Esc clears
 	var uf = document.getElementById('accUserFilter'), ul = document.getElementById('accUserList'), us = document.getElementById('accUserSearch');
 	var apply = function () {
 		var v = (uf.querySelector('input:checked') || {}).value || 'active', n = 0;
@@ -49,7 +49,7 @@
 	ts.on('item_add', function () { window.setTimeout(function () { ts.clear(true); ts.blur(); }, 0); });
 })();
 
-/* "Use two-factor authentication" (0.8.511): the note on $nuConfig2FAUser (and its switch-on button) only while the switch is on */
+/* "Use two-factor authentication": the note on $nuConfig2FAUser (and its switch-on button) only while the switch is on */
 (function () {
 	'use strict';
 	var sw = document.getElementById('sal_use_2fa'), note = document.getElementById('nu2faCfgNote');
@@ -59,7 +59,7 @@
 	sync();
 })();
 
-// the button next to Home form opens the chosen form in a new tab (0.8.693, as the access level button of the user form)
+// the button next to Home form opens the chosen form in a new tab (as the access level button of the user form)
 (function () {
 	'use strict';
 	var sel = document.getElementById('sal_zzzzsys_form_id'), link = document.getElementById('homeFormOpen');
@@ -72,7 +72,7 @@
 		else { link.removeAttribute('aria-disabled'); link.removeAttribute('tabindex'); }
 	}
 	sel.addEventListener('change', sync);
-	// no Home form chosen = the tile page (0.8.1269): clearing the field switches the start page back to Tiles
+	// no Home form chosen = the tile page: clearing the field switches the start page back to Tiles
 	sel.addEventListener('change', function () {
 		var tiles = document.getElementById('accStartTiles');
 		if (sel.value === '' && tiles && !tiles.checked) { tiles.checked = true; tiles.dispatchEvent(new Event('change', {bubbles: true})); }
@@ -80,7 +80,7 @@
 	sync();
 })();
 
-// Form rights: sortable columns (0.8.693) – form name, each right (ticked first), data mode / form type; the order is kept per browser
+// Form rights: sortable columns – form name, each right (ticked first), data mode / form type; the order is kept per browser
 (function () {
 	'use strict';
 	var table = document.querySelector('table.nu-rights'), body = table && table.querySelector('.js-rights-body');
@@ -116,7 +116,7 @@
 	} catch (e) { /* no storage */ }
 })();
 
-// tab Start page (0.8.1213): the note "users land on the Home form" follows the choice
+// tab Start page: the note "users land on the Home form" follows the choice
 (function () {
 	'use strict';
 	var note = document.getElementById('accStartFormNote'), form = document.getElementById('accStartForm'), tiles = document.getElementById('accStartTiles');
@@ -127,7 +127,7 @@
 	sync();
 })();
 
-// a new access level on a database from nuBuilder Forte (0.8.1219): picking a Home form also picks "Home form" as start page, as in
+// a new access level on a database from nuBuilder Forte: picking a Home form also picks "Home form" as start page, as in
 // Forte – until the user chooses the start page himself
 (function () {
 	'use strict';

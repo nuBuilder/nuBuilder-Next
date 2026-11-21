@@ -22,7 +22,7 @@
 	});
 })();
 
-/* #access opens the tab Access levels (link of the reports list, 0.8.688). */
+/* #access opens the tab Access levels (link of the reports list). */
 (function () {
 	'use strict';
 	if (location.hash !== '#access' || !window.nuBs || !nuBs.ready()) return;

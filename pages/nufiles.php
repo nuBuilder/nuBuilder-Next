@@ -32,7 +32,7 @@ if ($id !== '' && !$isNew) {
 	$file = $db->one("SELECT * FROM $T WHERE zzzzsys_file_id = ?$hideNu", [$id]);
 	if (!$file) { http_response_code(404); nu_fatal(t('record_not_found'), '', true); }
 }
-// clone (0.8.680, as nuBuilder Forte): ?id=new&clone=<id> opens a copy (with the stored file) that is saved only with Save
+// clone (as nuBuilder Forte): ?id=new&clone=<id> opens a copy (with the stored file) that is saved only with Save
 $cloneId = $isNew ? (string)($_GET['clone'] ?? '') : '';
 $src = null;
 if ($cloneId !== '') {
@@ -55,42 +55,17 @@ $upload = static function (array &$errors): ?array {
 	return ['content' => (string)file_get_contents($f['tmp_name']), 'name' => (string)$f['name']];
 };
 
-if (nu_is_post()) {
-	$action = nu_post('action');
-	if ($sysLocked && in_array($action, ['save', 'delete'], true)) NuAcl::require('__globeadmin_only__');
-	if ($action === 'save') {
-		NuAcl::require(NuAcl::FORM_FILE, $file ? 'save' : ($src ? 'clone' : 'create'));
-		$in = ['sfi_code' => nu_post('sfi_code'), 'sfi_description' => nu_post('sfi_description'), 'sfi_group' => nu_post('sfi_group')];
-		$up = $upload($errors);
-		$newId = '';
-		if (!$errors) [$newId, $errors] = NuFile::save($in, $up, $file ? $id : '', ($file ?? $src)['sfi_json'] ?? null);   // a clone keeps the file of its source
-		if (!$errors) {
-			NuLog::write($file ? 'file_changed' : 'file_created', $T, (string)$newId, ['code' => $in['sfi_code']] + ($src ? ['clone_of' => $cloneId] : []) + ($up ? ['name' => NuFile::cleanName($up['name']), 'size' => strlen($up['content'])] : []));
-			nu_flash('success', t('saved'));
-			nu_redirect(nu_url('files', ['id' => $newId]));
-		}
-	}
-	if ($action === 'delete' && $file) {
-		NuAcl::require(NuAcl::FORM_FILE, 'delete');
-		$used = NuFile::usage($id);
-		if ($used) {
-			$errors['_'] = t('file_err_used', implode(', ', array_map(static fn($u) => trim(($u['sfo_code'] ?? '') . ' · ' . $u['sob_all_id'], ' ·'), $used)));
-		} else {
-			$db->delete($T, 'zzzzsys_file_id', $id);
-			NuLog::write('file_deleted', $T, $id, ['code' => (string)$file['sfi_code']]);
-			nu_flash('success', t('file_deleted'));
-			nu_redirect(nu_url('files'));
-		}
-	}
-}
+['sysLocked' => $sysLocked, 'file' => $file, 'src' => $src, 'errors' => $errors, 'id' => $id, 'T' => $T, 'cloneId' => $cloneId, 'db' => $db]
+	= NuFilesPage::post(get_defined_vars());   // the POST actions (code review R7, nufilespage.php)
 
 // ------------------------------------------------------------------ list (also Print / CSV)
 if ($id === '') {
-	// list: columns, filters and sort of the chosen list view (0.8.334, core/nulistdefs.php)
+	// list: columns, filters and sort of the chosen list view (core/nulistdefs.php)
 	NuListView::page('files', [
 		'before' => NuListView::crumbs([[t('nav_forms'), nu_url('forms')], [t('file_title')]]), 'active' => 'forms',
 		'title_extra' => NuListView::infoTip(t('file_hint', (int)(NuFile::maxBytes() / 1024))),
-		'buttons' => $rights['add'] ? '<a class="btn nuAddBtn" title="' . h(t('file_new')) . '" href="' . h(nu_url('files', ['id' => 'new'])) . '"><i class="bi bi-plus-lg me-1"></i>' . h(t('add')) . '</a>' : '',
+		'buttons' => $rights['add'] ? '<a class="btn nuAddBtn" title="' . h(t('file_new')) . '" href="' . h(nu_url('files', ['id' => 'new']))
+			. '"><i class="bi bi-plus-lg me-1"></i>' . h(t('add')) . '</a>' : '',
 	]);
 	return;
 }
@@ -124,10 +99,12 @@ nu_layout_start(t('file_title'), 'forms');
 	$used = $file ? NuFile::usage($id) : [];
 	$row = static fn(string $k, string $label, string $control, bool $req = false) =>
 		'<div class="row g-2 mb-3 align-items-start"><label class="col-sm-3 col-form-label text-sm-end" for="' . $k . '">' . h($label)
-		. ($req ? ' <span class="text-danger">*</span>' : '') . ($k === 'sfi_code' ? nu_unique_mark($req) : '') . '</label><div class="col-sm-9">' . $control . '</div></div>';   // key: unique (0.8.627)
+		. ($req ? ' <span class="text-danger">*</span>' : '') . ($k === 'sfi_code' ? nu_unique_mark($req) : '') . '</label><div class="col-sm-9">' . $control . '</div></div>';   // key: unique
 	$groupList = array_column($db->all("SELECT DISTINCT sfi_group FROM $T WHERE sfi_group IS NOT NULL AND sfi_group <> '' ORDER BY sfi_group"), 'sfi_group');
 	?>
-	<form method="post" data-nu-focus-first data-nu-guard id="fileForm"<?= $src ? ' data-nu-clone="' . h(t('form_clone_badge')) . '"' : '' ?> enctype="multipart/form-data" novalidate data-max="<?= NuFile::maxBytes() ?>" data-too-big="<?= h(t('file_err_size', (int)(NuFile::maxBytes() / 1024))) ?>">
+	<form method="post" data-nu-focus-first data-nu-guard id="fileForm"<?= $src ? ' data-nu-clone="' . h(t('form_clone_badge')) . '"' : '' ?>
+		enctype="multipart/form-data" novalidate data-max="<?= NuFile::maxBytes() ?>"
+		data-too-big="<?= h(t('file_err_size', (int)(NuFile::maxBytes() / 1024))) ?>">
 		<?= nu_csrf_field() ?>
 		<input type="hidden" name="MAX_FILE_SIZE" value="<?= NuFile::maxBytes() ?>">
 		<input type="hidden" name="action" value="save">
@@ -141,9 +118,10 @@ nu_layout_start(t('file_title'), 'forms');
 				<a class="btn nuBtnAct" href="<?= h(nu_url('files', ['id' => 'new', 'clone' => $id])) ?>" id="fileClone"><i class="bi bi-copy me-1"></i><?= h(t('clone')) ?></a>
 			<?php endif; ?>
 			<?php if ($file && $rights['delete'] && !$sysLocked): ?>
-				<button class="btn nuBtnAct nuBtnDel" type="submit" name="action" value="delete" formnovalidate data-confirm-submit="<?= h(t('file_delete_confirm')) ?>"><i class="bi bi-trash me-1"></i><?= h(t('delete')) ?></button>
+				<button class="btn nuBtnAct nuBtnDel" type="submit" name="action" value="delete" formnovalidate
+					data-confirm-submit="<?= h(t('file_delete_confirm')) ?>"><i class="bi bi-trash me-1"></i><?= h(t('delete')) ?></button>
 			<?php endif; ?>
-			<?php if ($file): ?><?= NuFormInfo::record($T, (string)$id, ['code' => (string)$file['sfi_code']]) /* (i) record info (0.8.501) */ ?><?php endif; ?>
+			<?php if ($file): ?><?= NuFormInfo::record($T, (string)$id, ['code' => (string)$file['sfi_code']]) /* (i) record info */ ?><?php endif; ?>
 			</div>
 		</div>
 		<?php if ($sysLocked): ?><div class="alert alert-info py-2 small"><?= h(t('file_system_locked')) ?></div><?php endif; ?>

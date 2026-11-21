@@ -40,7 +40,7 @@ if ($id !== '' && !$isNew) {
 	$item = $db->one("SELECT * FROM $T i WHERE i.zzzzsys_item_id = ?$hideNu", [$id]);
 	if (!$item) { http_response_code(404); nu_fatal(t('record_not_found'), '', true); }
 }
-// clone (0.8.680, as nuBuilder Forte): ?id=new&clone=<id> opens a copy that is saved only with Save
+// clone (as nuBuilder Forte): ?id=new&clone=<id> opens a copy that is saved only with Save
 $cloneId = $isNew ? (string)($_GET['clone'] ?? '') : '';
 $src = null;
 if ($cloneId !== '') {
@@ -50,36 +50,16 @@ if ($cloneId !== '') {
 }
 $errors = [];
 
-if (nu_is_post()) {
-	$action = nu_post('action');
-	if ($action === 'save') {
-		NuAcl::require(NuAcl::FORM_ITEM, $item ? 'save' : ($src ? 'clone' : 'create'));
-		$in = [];
-		foreach (array_keys(NuItem::FIELDS) as $k) $in[$k] = is_string($_POST[$k] ?? null) ? str_replace("\r\n", "\n", (string)$_POST[$k]) : '';
-		$in['itm_active'] = nu_check('itm_active');
-		[$newId, $errors] = NuItem::save($in, $item ? $id : '');
-		if (!$errors) {
-			$after = $db->one("SELECT * FROM $T WHERE zzzzsys_item_id = ?", [$newId]) ?? [];
-			NuLog::write($item ? 'item_changed' : 'item_created', $T, (string)$newId, $item ? ['fields' => NuLog::diff($item, $after)] : ['value' => $in['itm_value']] + ($src ? ['clone_of' => $cloneId] : []));
-			nu_flash('success', t('saved'));
-			nu_redirect(nu_url('items', ['id' => $newId, 'tab' => nu_post('tab') ?: null]));
-		}
-	}
-	if ($action === 'delete' && $item) {
-		NuAcl::require(NuAcl::FORM_ITEM, 'delete');
-		$db->delete($T, 'zzzzsys_item_id', $id);
-		NuLog::write('item_deleted', $T, $id, ['value' => (string)$item['itm_value']]);
-		nu_flash('success', t('item_deleted'));
-		nu_redirect(nu_url('items'));
-	}
-}
+['item' => $item, 'src' => $src, 'k' => $k, 'errors' => $errors, 'id' => $id, 'db' => $db, 'T' => $T]
+	= NuItemsPage::post(get_defined_vars());   // the POST actions (code review R7, nuitemspage.php)
 
 // ------------------------------------------------------------------ list (also Print / CSV)
 if ($id === '') {
-	// list: columns, filters and sort of the chosen list view (0.8.334, core/nulistdefs.php)
+	// list: columns, filters and sort of the chosen list view (core/nulistdefs.php)
 	NuListView::page('items', [
 		'before' => NuListView::crumbs([[t('nav_forms'), nu_url('forms')], [t('item_title')]]), 'active' => 'forms', 'head' => NuBuilderLib::fontAwesomeTag(),
-		'buttons' => $rights['add'] ? '<a class="btn nuAddBtn" title="' . h(t('item_new')) . '" href="' . h(nu_url('items', ['id' => 'new'])) . '"><i class="bi bi-plus-lg me-1"></i>' . h(t('add')) . '</a>' : '',
+		'buttons' => $rights['add'] ? '<a class="btn nuAddBtn" title="' . h(t('item_new')) . '" href="' . h(nu_url('items', ['id' => 'new']))
+			. '"><i class="bi bi-plus-lg me-1"></i>' . h(t('add')) . '</a>' : '',
 	]);
 	return;
 }
@@ -126,23 +106,27 @@ nu_layout_start(t('item_title'), 'forms', ['head' => $head]);
 		<input type="hidden" name="tab" id="itemTab" value="<?= h($tab) ?>">
 		<div class="nuTitleBar nuRecHead mb-3">
 			<h1 class="h4 mb-0"><?= h($item ? (string)$item['itm_value'] : t('item_new')) ?></h1>
-			<div class="d-flex flex-wrap gap-2 align-items-center">   <!-- buttons in their own row (0.8.474) -->
+			<div class="d-flex flex-wrap gap-2 align-items-center">   <!-- buttons in their own row -->
 			<a class="btn nuBtnAct" href="<?= h(nu_url('items')) ?>"><i class="bi bi-arrow-left me-1"></i><?= h(t('back')) ?></a>
 			<?php if (!$locked): ?><button data-nu-save class="btn nuBtnAct nuBtnSave" type="submit" id="itemSave"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button><?php endif; ?>
 			<?php if ($item && $rights['clone']): ?>
 				<a class="btn nuBtnAct" href="<?= h(nu_url('items', ['id' => 'new', 'clone' => $id])) ?>" id="itemClone"><i class="bi bi-copy me-1"></i><?= h(t('clone')) ?></a>
 			<?php endif; ?>
 			<?php if ($item && $rights['delete']): ?>
-				<button class="btn nuBtnAct nuBtnDel" type="submit" name="action" value="delete" formnovalidate data-confirm-submit="<?= h(t('item_delete_confirm')) ?>"><i class="bi bi-trash me-1"></i><?= h(t('delete')) ?></button>
+				<button class="btn nuBtnAct nuBtnDel" type="submit" name="action" value="delete" formnovalidate
+					data-confirm-submit="<?= h(t('item_delete_confirm')) ?>"><i class="bi bi-trash me-1"></i><?= h(t('delete')) ?></button>
 			<?php endif; ?>
-			<?php if ($item): ?><?= NuFormInfo::record($T, (string)$id) /* (i) record info (0.8.501) */ ?><?php endif; ?>
+			<?php if ($item): ?><?= NuFormInfo::record($T, (string)$id) /* (i) record info */ ?><?php endif; ?>
 			</div>
 		</div>
 		<div class="card shadow-sm itemCard">
 			<div class="card-header pb-0 border-bottom-0">
 				<ul class="nav nav-tabs card-header-tabs" role="tablist">
-					<li class="nav-item" role="presentation"><button class="nav-link<?= $tab === 'main' ? ' active' : '' ?>" data-bs-toggle="tab" data-bs-target="#itemMain" data-tab="main" type="button" role="tab"><?= h(t('item_tab_main')) ?></button></li>
-					<li class="nav-item" role="presentation"><button class="nav-link<?= $tab === 'additional' ? ' active' : '' ?>" data-bs-toggle="tab" data-bs-target="#itemAdditional" data-tab="additional" type="button" role="tab" id="itemAdditionalTab"><?= h(t('item_tab_additional')) ?></button></li>
+					<li class="nav-item" role="presentation"><button class="nav-link<?= $tab === 'main' ? ' active' : '' ?>" data-bs-toggle="tab"
+						data-bs-target="#itemMain" data-tab="main" type="button" role="tab"><?= h(t('item_tab_main')) ?></button></li>
+					<li class="nav-item" role="presentation"><button class="nav-link<?= $tab === 'additional' ? ' active' : '' ?>" data-bs-toggle="tab"
+						data-bs-target="#itemAdditional" data-tab="additional" type="button" role="tab"
+						id="itemAdditionalTab"><?= h(t('item_tab_additional')) ?></button></li>
 				</ul>
 			</div>
 			<fieldset class="card-body tab-content"<?= $locked ? ' disabled' : '' ?>>
@@ -153,7 +137,10 @@ nu_layout_start(t('item_title'), 'forms', ['head' => $head]);
 						. '<datalist id="itemGroups">' . implode('', array_map(static fn($g) => '<option value="' . h($g) . '">', array_column($db->all("SELECT DISTINCT itm_group FROM $T WHERE itm_group IS NOT NULL ORDER BY itm_group"), 'itm_group'))) . '</datalist>') ?>
 					<?= $row('itm_category', t('item_category'), '<input class="form-control' . $err('itm_category') . '" id="itm_category" name="itm_category" maxlength="255" value="' . h($v('itm_category')) . '">' . $fb('itm_category')) ?>
 					<?= $row('itm_object_id', t('item_object'), '<select id="itm_object_id" name="itm_object_id" class="itemObject' . $err('itm_object_id') . '" data-url="' . h(nu_url('items') . '&objects=') . '" placeholder="' . h(t('item_object_ph')) . '">'
-						. '<option value=""></option>' . ($obj ? '<option value="' . h($obj['zzzzsys_object_id']) . '" selected>' . h(trim(($obj['sfo_code'] ? $obj['sfo_code'] . ' · ' : '') . $obj['sob_all_id'])) . '</option>' : ($objId !== '' ? '<option value="' . h($objId) . '" selected>' . h($objId) . '</option>' : ''))
+						. '<option value=""></option>'
+							. ($obj ? '<option value="' . h($obj['zzzzsys_object_id']) . '" selected>'
+								. h(trim(($obj['sfo_code'] ? $obj['sfo_code'] . ' · ' : '') . $obj['sob_all_id']))
+								. '</option>' : ($objId !== '' ? '<option value="' . h($objId) . '" selected>' . h($objId) . '</option>' : ''))
 						. '</select>' . $fb('itm_object_id') . ($obj && trim(strip_tags((string)$obj['sob_all_label'])) !== '' ? '<div class="form-text">' . h(strip_tags((string)$obj['sob_all_label'])) . '</div>' : '')) ?>
 					<?= $row('itm_sort_order', t('item_sort_order'), '<input class="form-control itemSort' . $err('itm_sort_order') . '" id="itm_sort_order" name="itm_sort_order" inputmode="numeric" value="' . h($v('itm_sort_order')) . '">' . $fb('itm_sort_order')) ?>
 					<?= $row('itm_tag', t('item_tags'), '<input class="form-control' . $err('itm_tag') . '" id="itm_tag" name="itm_tag" maxlength="1000" value="' . h($v('itm_tag')) . '">' . $fb('itm_tag')) ?>

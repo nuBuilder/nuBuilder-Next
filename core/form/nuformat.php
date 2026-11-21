@@ -20,6 +20,13 @@ final class NuFormat
 {
 	public const TYPES = ['D' => 'Date', 'N' => 'Number', 'T' => 'Text'];
 	public const MAX_KEY = 30;                  // sob_input_format / sob_calc_format are varchar(30) in nuBuilder
+
+	/** What a list column holds, from its format: 'date' (D|…), 'number' (N|…) or 'text' – advanced search and the pivot read it. */
+	public static function kind(string $format): string
+	{
+		$f = strtoupper(substr($format, 0, 2));
+		return $f === 'D|' ? 'date' : ($f === 'N|' ? 'number' : 'text');
+	}
 	public const NEGATIVE = ['minus', 'brackets', 'red', 'red_brackets'];
 
 	/** Common formats offered even when they are not (yet) in zzzzsys_format. */
@@ -112,10 +119,10 @@ final class NuFormat
 		$s = self::numberSpec($pattern);
 		$n = (float)$value;
 		$body = $s['prefix'] . number_format(abs($n), $s['places'], $s['dec'], $s['sep']) . $s['suffix'];
-		// a negative value that rounds to 0 keeps its minus ("-0.0") as nuBuilder Forte's formatting (toFixed) shows it (0.8.965);
+		// a negative value that rounds to 0 keeps its minus ("-0.0") as nuBuilder Forte's formatting (toFixed) shows it;
 		// brackets (nuBuilder Next's saved formats) only for values that are not 0 after rounding
 		if ($n >= 0 || (str_ends_with($negative, 'brackets') && round(abs($n), $s['places']) == 0)) return $body;
-		// minus after the prefix, as nuBuilder's addFormatting (€ -99,95 – 0.8.364); brackets around the whole value
+		// minus after the prefix, as nuBuilder's addFormatting (€ -99,95); brackets around the whole value
 		return str_ends_with($negative, 'brackets') ? "($body)" : $s['prefix'] . '-' . substr($body, strlen($s['prefix']));
 	}
 
@@ -277,7 +284,7 @@ final class NuFormat
 		$T = static fn(string $t, string $l = '') => NuDDL::sqlType($t, $l);
 		$db->run('CREATE TABLE zzzzsys_format (zzzzsys_format_id ' . $T('id') . ' NOT NULL PRIMARY KEY, srm_type ' . $T('text', '10') . ' NULL, '
 			. 'srm_default ' . $T('text', '1') . ' NULL, srm_format ' . $T('text', '300') . ' NULL, srm_currency ' . $T('text', '25') . ' NULL, srm_json ' . $T('longtext') . ' NULL)'
-			. ($db->type === 'mysql' ? NuDDL::mysqlTableOptions() : ''));
+			. $db->tableOptions());
 	}
 
 	/**
@@ -361,7 +368,8 @@ final class NuFormat
 		$db = nu_db();
 		$out = [];
 		if ($db->tableExists('zzzzsys_object')) {
-			foreach ($db->all('SELECT o.sob_all_zzzzsys_form_id AS f, o.sob_all_id AS id FROM zzzzsys_object o WHERE o.sob_input_format = ? OR o.sob_calc_format = ? ORDER BY o.sob_all_zzzzsys_form_id, o.sob_all_id', [$key, $key]) as $r) {
+			foreach ($db->all('SELECT o.sob_all_zzzzsys_form_id AS f, o.sob_all_id AS id FROM zzzzsys_object o WHERE o.sob_input_format = ? OR o.sob_calc_format = ? ORDER BY o.sob_all_zzzzsys_form_id, o.sob_all_id',
+				[$key, $key]) as $r) {
 				$out[] = ['form' => (string)$r['f'], 'object' => (string)$r['id']];
 			}
 		}

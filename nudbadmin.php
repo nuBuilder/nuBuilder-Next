@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 /*
- * Adminer through nuBuilder Next (0.8.282) – Adminer itself is NOT part of the package: copy adminer.php (or
+ * Adminer through nuBuilder Next – Adminer itself is NOT part of the package: copy adminer.php (or
  * adminer-<version>.php, 4.8.1 or newer; 4.x, 5.x and 6.x) to third_party/adminer/. That folder gets a deny-all .htaccess; Adminer
  * runs only through this file:
  *   1. only for a globeadmin who opened it from nuBuilder Next (Admin tools, start page, form ⋮ menu): NuVendor::launch() writes
@@ -19,7 +19,7 @@ declare(strict_types=1);
 const NU_ROOT = __DIR__;
 
 // Adminer 6's service worker (?file=worker.js) keeps Adminer's files in the browser's Cache Storage by version – files of a damaged
-// adminer.php (see below) stayed there, and only a hard reload got past it (0.8.289). Served here instead: a worker that deletes those
+// adminer.php (see below) stayed there, and only a hard reload got past it. Served here instead: a worker that deletes those
 // caches and keeps nothing (the browser's normal cache still holds Adminer's files). Static script, no access check needed.
 if (($_GET['file'] ?? '') === 'worker.js') {
 	header('Content-Type: text/javascript; charset=utf-8');
@@ -48,8 +48,8 @@ function nu_adm_t(string $key): string
 }
 
 /**
- * Adminer's folder (as NuLibs, 0.8.409): the active pack vendor/packs/adminer-<version>/ (vendor/packs/nunext-libs.php), else an old pack of
- * 0.8.405–0.8.408 (third_party/nunext-libs.php, only while vendor/packs/ has no Adminer entry), else the hand copy third_party/adminer.
+ * Adminer's folder (as NuLibs): the active pack vendor/packs/adminer-<version>/ (vendor/packs/nunext-libs.php), else an old pack of
+ * (third_party/nunext-libs.php, only while vendor/packs/ has no Adminer entry), else the hand copy third_party/adminer.
  */
 function nu_adm_dir(): string
 {
@@ -79,7 +79,7 @@ function nu_adm_fail(string $key, int $code = 403): never
 	exit('Adminer: ' . nu_adm_t($key));
 }
 
-// Adminer designs next to adminer.php (third_party/adminer/adminer.css, adminer-dark.css – 0.8.290): that folder is blocked for the
+// Adminer designs next to adminer.php (third_party/adminer/adminer.css, adminer-dark.css): that folder is blocked for the
 // browser, so they are served here (only these two names). Adminer itself looks for them in the current folder (see css() below).
 if (isset($_GET['nu_css'])) {
 	$nuCss = (string)$_GET['nu_css'];
@@ -108,7 +108,7 @@ if ($nuAdmFile === '') {
 if ($nuAdmFile === '') nu_adm_fail('adm_err_missing', 404);
 
 // A copy with Windows line endings (FTP in text mode, a Windows editor, git autocrlf) breaks Adminer: its packed texts contain line
-// breaks, so every text shows as a number and its scripts fail (0.8.287). The official files have no "\r" – such a copy is repaired
+// breaks, so every text shows as a number and its scripts fail. The official files have no "\r" – such a copy is repaired
 // once into a hidden file next to it (.nunext-lf-<size>-<time>.php) and that one is used. The Security check reports it.
 $nuFh = @fopen($nuAdmFile, 'rb');
 $nuHead = $nuFh ? (string)fread($nuFh, 8192) : '';
@@ -147,7 +147,7 @@ try {
 	$st = $nuPdo->prepare('SELECT sss_access, sss_time FROM zzzzsys_session WHERE zzzzsys_session_id = ?');
 	$st->execute([$nuSid]);
 	$nuRow = $st->fetch(PDO::FETCH_ASSOC);
-	// SQL Server named instance (host\INSTANCE, e.g. SQLEXPRESS – 0.8.790): Adminer 6 accepts only host[:port], so the instance's TCP port
+	// SQL Server named instance (host\INSTANCE, e.g. SQLEXPRESS): Adminer 6 accepts only host[:port], so the instance's TCP port
 	// is looked up with the connection that works – the port of this connection, else the instance's TCP setting in the registry
 	$nuInstPort = '';
 	if ($nuIsMs && str_contains((string)$nuConfigDBHost, '\\') && $nuPort === '') {
@@ -205,7 +205,7 @@ $GLOBALS['nuAdmPassword'] = (string)$nuConfigDBPassword;
 // Adminer's session: own cookie, only for this file
 header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: same-origin');
-// PHP messages never into Adminer's output (0.8.286): with display_errors on (development servers) a warning – e.g. Adminer 6's
+// PHP messages never into Adminer's output: with display_errors on (development servers) a warning – e.g. Adminer 6's
 // ini_set('session.use_trans_sid') while this session is active, or Adminer 4's PHP 8 notices – lands in the page, its JSON and
 // its scripts (ReferenceErrors in the browser). They still go to the server's error log (log_errors). Adminer sets its own error
 // handler, so this is done with display_errors.

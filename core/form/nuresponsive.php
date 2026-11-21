@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Responsive containers of the auto and grid layouts (0.8.959) – stored in an object's sob_all_json "nunext" (nuBuilder Forte ignores it,
+ * Responsive containers of the auto and grid layouts – stored in an object's sob_all_json "nunext" (nuBuilder Forte ignores it,
  * the pixel positions stay, so Forte keeps showing the form in its absolute layout):
  *   content box  stack {dir: v | h | g, wrap, gap, align, justify, cols: {lg, md, sm}, phone_v}
  *                v = one under the other, h = side by side (wrap: onto the next line when there is no room; phone_v: one under the

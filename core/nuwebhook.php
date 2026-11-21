@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Webhooks (0.8.715): after a record of a chosen form is inserted, updated or deleted, nuBuilder Next calls a URL (n8n, Zapier,
+ * Webhooks: after a record of a chosen form is inserted, updated or deleted, nuBuilder Next calls a URL (n8n, Zapier,
  * Teams, other systems).
  *   zzzzsys_nunext_webhook       the definitions: name, forms (JSON list of form ids), events (JSON: insert / update / delete), url,
  *                                secret (sealed with $nuConfigSecretKey), fields (empty = all), template (empty = the standard JSON)
@@ -350,7 +350,8 @@ final class NuWebhook
 		}
 		$event = $d['events'][0] ?? 'update';
 		$pk = $meta ? $meta->primaryKey() : '';
-		$payload = self::payload($d, 'test-' . nu_id(), $event, $meta ? $meta->id : '', $meta ? $meta->code() : '', $meta ? $meta->table() : '', (string)($row[$pk] ?? 'test'), $row, $event === 'update' ? $row : [], 'test');
+		$payload = self::payload($d, 'test-' . nu_id(), $event, $meta ? $meta->id : '', $meta ? $meta->code() : '', $meta ? $meta->table() : '',
+			(string)($row[$pk] ?? 'test'), $row, $event === 'update' ? $row : [], 'test');
 		$body = self::body($d, $payload, $row);
 		$r = self::send($d, (string)$payload['delivery'], $event, $body);
 		NuLog::write('webhook_tested', self::T, $d['id'], ['code' => $r['code'], 'error' => $r['error']]);
@@ -401,7 +402,8 @@ final class NuWebhook
 	{
 		$pin = null;
 		$p = parse_url($url);
-		if ($url === '' || !is_array($p) || empty($p['host']) || !in_array(strtolower((string)($p['scheme'] ?? '')), ['http', 'https'], true) || isset($p['user']) || isset($p['pass'])) return t('wh_err_url');
+		if ($url === '' || !is_array($p) || empty($p['host']) || !in_array(strtolower((string)($p['scheme'] ?? '')), ['http', 'https'], true)
+			|| isset($p['user']) || isset($p['pass'])) return t('wh_err_url');
 		$allow = $allowPrivate ?? self::settings()['allow_private'];      // $allowPrivate: another feature's own setting (AI providers)
 		$scheme = strtolower((string)$p['scheme']);
 		if ($scheme !== 'https' && !$allow) return t('wh_err_https');
@@ -452,7 +454,7 @@ final class NuWebhook
 
 	private static function seal(string $s): string
 	{
-		return NuSecret::seal($s, 'webhook|');   // 0.8.1326: one implementation (core/nusecret.php)
+		return NuSecret::seal($s, 'webhook|');   // one implementation (core/nusecret.php)
 	}
 
 	private static function open(string $s): string

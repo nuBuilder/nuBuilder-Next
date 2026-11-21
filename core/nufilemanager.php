@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * File Manager (0.8.479, handover "nuFiles" C1 / C9): the page form nuFiles (apps/nufiles/ since 0.8.481, shipped with nuBuilder Next) replaces
+ * File Manager (handover "nuFiles" C1 / C9): the page form nuFiles (apps/nufiles/, shipped with nuBuilder Next) replaces
  * Tiny File Manager. Every entry point (admin menu, start page tile, ⋮ menu of forms, nuVendorLogin('TFM')) opens ?p=filemanager, which
  * redirects to the page – or, while the page form does not exist yet, lets the globeadmin create it with default settings.
  * Admin right 'filemanager' (change) shows the entries; the page itself follows the form's access levels (the globeadmin always).

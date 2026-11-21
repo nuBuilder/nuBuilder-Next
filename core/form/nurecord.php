@@ -26,10 +26,10 @@ final class NuRecord
 		if ($sql === '') $sql = 'SELECT * FROM ' . NuDB::ident($table);
 		[$inner, $order] = NuBrowse::splitOrder(NuHash::replace($sql, NuHash::forForm($sub, $parentId), NuHash::SQL));
 		$pk = NuDB::ident($sub->primaryKey());
-		return nu_db()->all("SELECT * FROM ($inner) nuT WHERE nuT.$fk = ? ORDER BY " . NuDB::uniqueOrder(($order !== '' ? $order . ', ' : '') . $pk), [$parentId]);   // sub-form rows: no repeated item (SQL Server, 0.8.792)
+		return nu_db()->all("SELECT * FROM ($inner) nuT WHERE nuT.$fk = ? ORDER BY " . NuDB::uniqueOrder(($order !== '' ? $order . ', ' : '') . $pk), [$parentId]);   // sub-form rows: no repeated item (SQL Server)
 	}
 
-	// ================================================================= nuBuilder's <table>_nulog (0.8.349)
+	// ================================================================= nuBuilder's <table>_nulog
 
 	/**
 	 * The record log column of nuBuilder (core/nudata.php): <table>_nulog, JSON {"added": {"user", "time"}, "edited": {"user", "time"}}
@@ -63,7 +63,7 @@ final class NuRecord
 
 	/**
 	 * nuBuilder Forte writes "viewed" {user, time} into <table>_nulog each time a record is opened (core/nuform.php, getform) – the
-	 * same here before the record is read (0.8.965); a column that is empty or no JSON object gets Forte's "added" {unknown, 0}.
+	 * same here before the record is read; a column that is empty or no JSON object gets Forte's "added" {unknown, 0}.
 	 * Not in demo mode; never stops the page.
 	 */
 	public static function nulogViewed(NuFormMeta $meta, string $recordId): void
@@ -130,7 +130,7 @@ final class NuRecord
 
 		if ($meta->table() === '' || $meta->primaryKey() === '') return self::fail(t('form_err_no_table'));
 		$oldRow = $isNew ? [] : (self::load($meta, $recordId) ?? null);
-		// 0.8.1211, as nuBuilder Forte: a record id that is not in the table – the form was opened empty under that id; the UPDATE of
+		// as nuBuilder Forte: a record id that is not in the table – the form was opened empty under that id; the UPDATE of
 		// the main record changes nothing, the sub-form rows are saved with this id as their foreign key
 		$ghost = !$isNew && $oldRow === null;
 		if ($ghost) $oldRow = [];
@@ -141,24 +141,24 @@ final class NuRecord
 		$columns = $db->columns($meta->table());
 		if (!$columns) return self::fail(t('form_err_table_missing', $meta->table()));
 
-		// concurrent edits (0.8.401): fields someone else changed since the form was opened – before Before Save runs
+		// concurrent edits: fields someone else changed since the form was opened – before Before Save runs
 		$checkCc = !$isNew && !$ghost && empty($p['cc_force']) && is_array($p['cc'] ?? null);
 		if ($checkCc && ($c = NuConflict::check($meta, $recordId, $p, false))) return ['ok' => false, 'conflict' => $c];
 
 		NuPhp::reset();
 		NuPhp::$subforms = self::nuSubformObjects($meta, $posted);
-		// fields of a new record left empty are not written, but they are hash variables ('') as in nuBuilder Forte (0.8.977)
+		// fields of a new record left empty are not written, but they are hash variables ('') as in nuBuilder Forte
 		$blank = $isNew && is_array($p['untouched'] ?? null) ? array_fill_keys(array_filter(array_map('strval', $p['untouched']), static fn($f) => preg_match('/^\w{1,100}$/', $f) === 1), '') : [];
 		$hash = NuHash::forForm($meta, $isNew ? '-1' : $recordId, $values + $blank, $props);
-		$formData = self::nuFormData($meta, $isNew ? '-1' : $recordId, $values, $edited);   // nuBuilder's #nuFORMdata# (0.8.462)
+		$formData = self::nuFormData($meta, $isNew ? '-1' : $recordId, $values, $edited);   // nuBuilder's #nuFORMdata#
 		$hash['nuFORMdata'] = $formData;
-		self::$accessHash = NuHash::forForm($meta, $isNew ? '-1' : $recordId, [], $props);   // access conditions (0.8.382): as when the form was drawn
+		self::$accessHash = NuHash::forForm($meta, $isNew ? '-1' : $recordId, [], $props);   // access conditions: as when the form was drawn
 
 		// --------------------------------------------------- validation (sob_all_validate)
 		$errors = self::validate($meta, $values, $posted, $isNew ? null : $recordId);
 		if ($errors) return ['ok' => false, 'errors' => $errors];
 
-		// --------------------------------------------------- validation rules of the form (0.8.812, NuFormRules) – before Before Save
+		// --------------------------------------------------- validation rules of the form (NuFormRules) – before Before Save
 		if (NuFormRules::of($meta)) {
 			$rv = [];
 			foreach (array_keys(NuFormRules::fieldsOf($meta)) as $f) {
@@ -166,14 +166,14 @@ final class NuRecord
 				$c = self::column($oldRow, $f);
 				$rv[$f] = $c !== null ? $oldRow[$c] : '';
 			}
-			$rr = NuFormRules::run($meta, $rv, $posted, is_array($p['rules_ok'] ?? null) ? $p['rules_ok'] : [], $hash);   // hash variables as in Before Save (0.8.814)
+			$rr = NuFormRules::run($meta, $rv, $posted, is_array($p['rules_ok'] ?? null) ? $p['rules_ok'] : [], $hash);   // hash variables as in Before Save
 			if ($rr['errors']) return ['ok' => false, 'errors' => $rr['errors']] + ($rr['warnings'] ? ['rules_warn' => $rr['warnings']] : []);
 			if ($rr['warnings']) return ['ok' => false, 'rules_warn' => $rr['warnings']];
 		}
 
 		// --------------------------------------------------- before save
-		// global hook nu_before_save, then the form's Before Save (0.8.462, as nuBuilder 4.9)
-		// $nudata = nuBuilder Forte's variable of these hooks (nuEvalSafe($code, $nudata)) – the same objects as #nuFORMdata# (0.8.922)
+		// global hook nu_before_save, then the form's Before Save (as nuBuilder 4.9)
+		// $nudata = nuBuilder Forte's variable of these hooks (nuEvalSafe($code, $nudata)) – the same objects as #nuFORMdata#
 		if (!NuProcedure::hook('nu_before_save', $hash, ['nudata' => $formData])) return ['ok' => false] + self::hookResult();
 		if (!NuPhp::run($meta->php('BS'), $hash, 'Before Save', ['nudata' => $formData])) return ['ok' => false] + NuPhp::result();
 		$jsBefore = NuPhp::$js;
@@ -181,57 +181,19 @@ final class NuRecord
 
 		$written = [];
 		$audit = ['form_id' => $meta->id, 'form_code' => $meta->code(), 'source' => 'form', 'action' => $isNew && !empty($p['clone']) ? 'clone' : null];
-		NuAudit::begin();                                         // audit trail (0.8.350): main record and sub-form rows share one change
+		NuAudit::begin();                                         // audit trail: main record and sub-form rows share one change
 		try {
-		// clone (0.8.480): the source record, when the user may see it – for the fields he cannot write
+		// clone: the source record, when the user may see it – for the fields he cannot write
 		$cloneFrom = $isNew && !empty($p['clone']) ? trim((string)($p['clone_from'] ?? '')) : '';
 		$cloneSrc = $cloneFrom !== '' && NuFieldAccess::rulesOfForm($meta->id) && self::visible($meta, $cloneFrom) ? self::load($meta, $cloneFrom) : null;
 		$newId = $db->transaction(function (NuDB $db) use ($meta, $isNew, $ghost, $recordId, $values, $edited, $columns, $table, $pk, $posted, $oldRow, $audit, &$written, $checkCc, $p, $cloneSrc) {
 			if ($checkCc && ($c = NuConflict::check($meta, $recordId, $p, true))) throw new NuConflictFound($c);   // again, with the rows locked
-			$row = [];
-			foreach ($meta->objects as $o) {
-				$f = (string)$o['sob_all_id'];
-				// display objects: written only when edited (nuRefreshDisplayObject / nuSetValue) and their column exists – as nuBuilder Forte (0.8.989)
-				$display = $o['sob_all_type'] === 'display';
-				if ($display && !isset($edited[$f])) continue;
-				if (!$display && !in_array($o['sob_all_type'], self::SAVED_TYPES, true) || ($o['sob_input_type'] ?? '') === 'button' || NuRender::isUppy($o)) continue;   // Uppy: files go to the server folder (0.8.459)
-				if ($isNew && ($o['sob_input_type'] ?? '') === 'nuAutoNumber' && $o['sob_all_type'] === 'input'
-					&& ($col = self::column($columns, $f)) !== null && ($n = NuAutoNumber::next((string)$o['zzzzsys_object_id'])) !== null) {
-					$row[$col] = $n;                                   // nuBuilder: new records get the next number (nuAutoNumber / nuUpdateCounter)
-					continue;
-				}
-				// a clone takes the locked values (protected, masked, withheld) of its source from the database, never from the browser (0.8.480)
-				if ($cloneSrc && $f !== $meta->primaryKey() && (string)$o['sob_all_cloneable'] !== '0' && in_array(NuFieldAccess::mode($o), ['prot', 'mask', 'wh'], true)) {
-					if (($col = self::column($columns, $f)) !== null && ($sc = self::column($cloneSrc, $f)) !== null && $cloneSrc[$sc] !== null) $row[$col] = $cloneSrc[$sc];
-					continue;
-				}
-				if (!array_key_exists($f, $values) || $f === $meta->primaryKey()) continue;
-				if (!NuFieldAccess::writable($o, $isNew)) { self::dropped($meta, $f); continue; }   // read only / hidden (protect_fields), field data access (0.8.480)
-				$col = self::column($columns, $f);
-				if ($col === null) continue;
-				if (!$isNew && !isset($edited[$f])) continue;
-				if ($isNew && !isset($edited[$f]) && self::untouchedEmpty($o, $values[$f])) continue;   // as nuBuilder: not written – column default / NULL (0.8.364)
-				$v = self::dbValue($values[$f], $columns[$col]);
-				if ($isNew && $v === null) continue;                 // empty date/number on insert: keep the column default
-				$row[$col] = $v;
-			}
+			$row = self::rowOf($meta, $edited, $isNew, $columns, $cloneSrc, $values);
 
-			// nuBuilder notes / code snippets: "Updated on" follows every save (MySQL does it for cot_updated_on, MSSQL does not)
-			$stamp = ['zzzzsys_note' => 'not_updated_on', 'zzzzsys_code_snippet' => 'cot_updated_on'][strtolower($table)] ?? null;
-			if ($stamp !== null && ($c = self::column($columns, $stamp)) !== null) $row[$c] = self::dbValue(date('Y-m-d H:i:s'), $columns[$c]);
-
-			// audit columns (forms created with "audit"): set by the server, never taken from the browser
-			if (!empty($meta->settings()['audit'])) {
-				$user = NuAuth::user();
-				$now  = date('Y-m-d H:i:s');
-				$who  = $user['globeadmin'] ? 'globeadmin' : $user['login'];
-				$set  = $isNew ? ['created_at' => $now, 'created_by' => $who] : ['updated_at' => $now, 'updated_by' => $who];
-				foreach (array_keys(NuDDL::AUDIT) as $a) if (($c = self::column($columns, $a)) !== null) unset($row[$c]);
-				foreach ($set as $a => $v) if (($c = self::column($columns, $a)) !== null) $row[$c] = self::dbValue($v, $columns[$c]);
-			}
+			$row = self::serverColumns($table, $columns, $row, $meta, $isNew);
 
 			// nuBuilder's <table>_nulog: added on insert, edited when a field of the record itself is written – a save that only changed
-			// sub-form rows leaves the main record's log as it was, as nuBuilder Forte (no UPDATE of an unedited row, 0.8.976)
+			// sub-form rows leaves the main record's log as it was, as nuBuilder Forte (no UPDATE of an unedited row)
 			$nl = self::nulogColumn($columns, $meta->table());
 			if ($nl !== null) unset($row[$nl]);
 			$written = $row;
@@ -239,7 +201,7 @@ final class NuRecord
 
 			if ($isNew) {
 				$pkCol = self::column($columns, $meta->primaryKey());
-				if ($pkCol !== null && !$columns[$pkCol]['auto']) $row = [$pkCol => nu_new_key($columns[$pkCol])] + $row;   // UUID for a 36-character key (0.8.622)
+				if ($pkCol !== null && !$columns[$pkCol]['auto']) $row = [$pkCol => nu_new_key($columns[$pkCol])] + $row;   // UUID for a 36-character key
 				$db->insert($table, $row ?: [$pk => nu_new_key($pkCol !== null ? $columns[$pkCol] : null)]);
 				$id = isset($row[$pkCol]) && !$columns[$pkCol]['auto'] ? (string)$row[$pkCol] : $db->lastInsertId();
 				NuAudit::record('insert', $meta->table(), (string)$id, [], $written, array_filter($audit));
@@ -250,7 +212,7 @@ final class NuRecord
 			}
 
 			foreach ($posted as $sfId => $sf) self::saveSubform($meta, (string)$sfId, is_array($sf) ? $sf : [], $id, $audit);
-			// webhooks (0.8.715): queued in this transaction (gone again with a rollback), sent once the page has answered
+			// webhooks: queued in this transaction (gone again with a rollback), sent once the page has answered
 			$whEvent = $isNew ? 'insert' : 'update';
 			if (!$ghost && NuWebhook::of($meta->id, $whEvent)) NuWebhook::queue($meta->id, $meta->code(), $meta->table(), $whEvent, (string)$id, (array)$db->one("SELECT * FROM $table WHERE $pk = ?", [$id]), $isNew ? [] : (array)$oldRow);
 			return $id;
@@ -260,20 +222,13 @@ final class NuRecord
 		} finally {
 			NuAudit::end();
 		}
-		NuBrowse::forgetValues();                                   // list filter choices may have changed (0.8.761)
+		NuBrowse::forgetValues();                                   // list filter choices may have changed
 
 		// --------------------------------------------------- after save
 		NuPhp::$js = $jsBefore;
 		$hash['RECORD_ID'] = $newId;
 		if (isset($formData[0]->rows[0][0])) $formData[0]->rows[0][0] = (string)$newId;   // nuFORMdata of After Save: the saved record
-		if (nu_cfg('nuConfigLogRecordChanges') && !(NuAudit::on() && NuAudit::audited($meta->table()))) {   // the audit trail replaces these log entries
-			$changes = NuLog::diff($oldRow, $written);
-			$subs = array_filter(array_map(static fn($sf) => count($sf['rows'] ?? []), $posted));
-			if ($changes || $isNew || $subs) {
-				NuLog::write($isNew ? 'record_inserted' : 'record_updated', $meta->code(), (string)$newId,
-					array_filter(['table' => $meta->table(), 'fields' => $changes, 'subform_rows' => $subs ?: null]));
-			}
-		}
+		self::logChanges($meta, $oldRow, $written, $posted, $isNew, $newId);
 		$hash[$meta->primaryKey()] = $newId;
 		NuPhp::$openRecord = null;
 		NuPhp::run($meta->php('AS'), $hash, 'After Save', ['nudata' => $formData]);
@@ -282,9 +237,74 @@ final class NuRecord
 		return ['ok' => true, 'record_id' => $newId] + $open + NuPhp::result();
 	}
 
+	/** The main record's columns to write: saved objects the user may write and changed; for new records autonumbers, for a clone the locked values of its source. */
+	private static function rowOf(NuFormMeta $meta, array $edited, bool $isNew, array $columns, $cloneSrc, array $values): array
+	{
+		$row = [];
+		foreach ($meta->objects as $o) {
+			$f = (string)$o['sob_all_id'];
+			// display objects: written only when edited (nuRefreshDisplayObject / nuSetValue) and their column exists – as nuBuilder Forte
+			$display = $o['sob_all_type'] === 'display';
+			if ($display && !isset($edited[$f])) continue;
+			if (!$display && !in_array($o['sob_all_type'], self::SAVED_TYPES, true) || ($o['sob_input_type'] ?? '') === 'button' || NuRender::isUppy($o)) continue;   // Uppy: files go to the server folder
+			if ($isNew && ($o['sob_input_type'] ?? '') === 'nuAutoNumber' && $o['sob_all_type'] === 'input'
+				&& ($col = self::column($columns, $f)) !== null && ($n = NuAutoNumber::next((string)$o['zzzzsys_object_id'])) !== null) {
+				$row[$col] = $n;                                   // nuBuilder: new records get the next number (nuAutoNumber / nuUpdateCounter)
+				continue;
+			}
+			// a clone takes the locked values (protected, masked, withheld) of its source from the database, never from the browser
+			if ($cloneSrc && $f !== $meta->primaryKey() && (string)$o['sob_all_cloneable'] !== '0' && in_array(NuFieldAccess::mode($o), ['prot', 'mask', 'wh'], true)) {
+				if (($col = self::column($columns, $f)) !== null && ($sc = self::column($cloneSrc, $f)) !== null && $cloneSrc[$sc] !== null) $row[$col] = $cloneSrc[$sc];
+				continue;
+			}
+			if (!array_key_exists($f, $values) || $f === $meta->primaryKey()) continue;
+			if (!NuFieldAccess::writable($o, $isNew)) { self::dropped($meta, $f); continue; }   // read only / hidden (protect_fields), field data access
+			$col = self::column($columns, $f);
+			if ($col === null) continue;
+			if (!$isNew && !isset($edited[$f])) continue;
+			if ($isNew && !isset($edited[$f]) && self::untouchedEmpty($o, $values[$f])) continue;   // as nuBuilder: not written – column default / NULL
+			$v = self::dbValue($values[$f], $columns[$col]);
+			if ($isNew && $v === null) continue;                 // empty date/number on insert: keep the column default
+			$row[$col] = $v;
+		}
+		return $row;
+	}
+
+	/** Columns the server sets on every save: "Updated on" of notes / code snippets and the audit columns of forms created with "audit" – never taken from the browser. */
+	private static function serverColumns(string $table, array $columns, array $row, NuFormMeta $meta, bool $isNew): array
+	{
+		// nuBuilder notes / code snippets: "Updated on" follows every save (MySQL does it for cot_updated_on, MSSQL does not)
+		$stamp = ['zzzzsys_note' => 'not_updated_on', 'zzzzsys_code_snippet' => 'cot_updated_on'][strtolower($table)] ?? null;
+		if ($stamp !== null && ($c = self::column($columns, $stamp)) !== null) $row[$c] = self::dbValue(date('Y-m-d H:i:s'), $columns[$c]);
+
+		// audit columns (forms created with "audit"): set by the server, never taken from the browser
+		if (!empty($meta->settings()['audit'])) {
+			$user = NuAuth::user();
+			$now  = date('Y-m-d H:i:s');
+			$who  = $user['globeadmin'] ? 'globeadmin' : $user['login'];
+			$set  = $isNew ? ['created_at' => $now, 'created_by' => $who] : ['updated_at' => $now, 'updated_by' => $who];
+			foreach (array_keys(NuDDL::AUDIT) as $a) if (($c = self::column($columns, $a)) !== null) unset($row[$c]);
+			foreach ($set as $a => $v) if (($c = self::column($columns, $a)) !== null) $row[$c] = self::dbValue($v, $columns[$c]);
+		}
+		return $row;
+	}
+
+	/** The log entries record_inserted / record_updated of a save – only while the audit trail does not cover the table. */
+	private static function logChanges(NuFormMeta $meta, array $oldRow, array $written, array $posted, bool $isNew, $newId): void
+	{
+		if (nu_cfg('nuConfigLogRecordChanges') && !(NuAudit::on() && NuAudit::audited($meta->table()))) {   // the audit trail replaces these log entries
+			$changes = NuLog::diff($oldRow, $written);
+			$subs = array_filter(array_map(static fn($sf) => count($sf['rows'] ?? []), $posted));
+			if ($changes || $isNew || $subs) {
+				NuLog::write($isNew ? 'record_inserted' : 'record_updated', $meta->code(), (string)$newId,
+					array_filter(['table' => $meta->table(), 'fields' => $changes, 'subform_rows' => $subs ?: null]));
+			}
+		}
+	}
+
 	/**
 	 * A field of a NEW record the user did not touch and that is empty (an unticked checkbox counts as empty): nuBuilder sends only
-	 * edited fields (core/nudata.php – a field with a start value is marked edited), so such a column keeps its default / NULL (0.8.364).
+	 * edited fields (core/nudata.php – a field with a start value is marked edited), so such a column keeps its default / NULL.
 	 */
 	private static function untouchedEmpty(array $o, mixed $v): bool
 	{
@@ -331,15 +351,15 @@ final class NuRecord
 			$data = [];
 			foreach ($sub->objects as $so) {
 				$f = (string)$so['sob_all_id'];
-				$display = $so['sob_all_type'] === 'display';   // display objects only when edited (0.8.989)
-				if (!$display && !in_array($so['sob_all_type'], self::SAVED_TYPES, true) || ($so['sob_input_type'] ?? '') === 'button' || NuRender::isUppy($so)) continue;   // Uppy: files go to the server folder (0.8.459)
+				$display = $so['sob_all_type'] === 'display';   // display objects only when edited
+				if (!$display && !in_array($so['sob_all_type'], self::SAVED_TYPES, true) || ($so['sob_input_type'] ?? '') === 'button' || NuRender::isUppy($so)) continue;   // Uppy: files go to the server folder
 				if (!array_key_exists($f, $vals)) continue;
 				if ($display && !isset($ed[$f])) continue;
-				if (!NuFieldAccess::writable($so, $rowPk === '')) { self::dropped($sub, $f); continue; }   // field data access per row (0.8.480)
+				if (!NuFieldAccess::writable($so, $rowPk === '')) { self::dropped($sub, $f); continue; }   // field data access per row
 				$col = self::column($columns, $f);
 				if ($col === null || $col === $pkCol || $col === $fkCol || $col === $nl) continue;
 				if ($rowPk !== '' && !isset($ed[$f])) continue;
-				if ($rowPk === '' && !isset($ed[$f]) && self::untouchedEmpty($so, $vals[$f])) continue;   // new row: as the main form (0.8.364)
+				if ($rowPk === '' && !isset($ed[$f]) && self::untouchedEmpty($so, $vals[$f])) continue;   // new row: as the main form
 				$data[$col] = self::dbValue($vals[$f], $columns[$col]);
 			}
 
@@ -366,7 +386,7 @@ final class NuRecord
 
 	// ================================================================= delete
 
-	/** Answer when a global hook stopped (0.8.462): its errors, or its $error text. */
+	/** Answer when a global hook stopped: its errors, or its $error text. */
 	private static function hookResult(): array
 	{
 		$r = NuPhp::result();
@@ -378,16 +398,16 @@ final class NuRecord
 	{
 		$row = self::load($meta, $recordId);
 		if (!$row || !self::visible($meta, $recordId)) return self::fail(t('record_not_found'));
-		if ($c = NuConflict::checkDelete($meta, $recordId, $in)) return ['ok' => false, 'conflict' => $c];   // changed since it was opened (0.8.401)
+		if ($c = NuConflict::checkDelete($meta, $recordId, $in)) return ['ok' => false, 'conflict' => $c];   // changed since it was opened
 
 		NuPhp::reset();
 		$hash = NuHash::forForm($meta, $recordId, $row, $props);
-		if (!NuProcedure::hook('nu_before_delete', $hash)) return ['ok' => false] + self::hookResult();   // global hook (0.8.462)
+		if (!NuProcedure::hook('nu_before_delete', $hash)) return ['ok' => false] + self::hookResult();   // global hook
 		if (!NuPhp::run($meta->php('BD'), $hash, 'Before Delete')) return ['ok' => false] + NuPhp::result();
 
 		NuAudit::begin();
 		$recycleId = null;
-		$recycle = NuRecycle::days($meta) > 0 && !NuDemo::active();             // recycle bin (0.8.1325): a copy of the record + sub-form rows
+		$recycle = NuRecycle::days($meta) > 0 && !NuDemo::active();             // recycle bin: a copy of the record + sub-form rows
 		if ($recycle) NuSchema::ensure();                                      // no DDL inside the transaction
 		try {
 		nu_db()->transaction(function (NuDB $db) use ($meta, $recordId, $row, $recycle, &$recycleId) {
@@ -414,7 +434,7 @@ final class NuRecord
 			if ($recycle) $recycleId = NuRecycle::keep($meta, $recordId, $row, $kept);
 			$db->delete(NuDB::ident($meta->table()), NuDB::ident($meta->primaryKey()), $recordId);
 			NuAudit::record('delete', $meta->table(), $recordId, $row, [], $ctx);
-			NuWebhook::queue($meta->id, $meta->code(), $meta->table(), 'delete', $recordId, $row);   // webhooks (0.8.715)
+			NuWebhook::queue($meta->id, $meta->code(), $meta->table(), 'delete', $recordId, $row);   // webhooks
 		});
 		} finally {
 			NuAudit::end();
@@ -435,7 +455,7 @@ final class NuRecord
 	{
 		if ($field === '') return null;
 		if (isset($columns[$field])) return $field;
-		foreach (array_keys($columns) as $c) if (strcasecmp((string)$c, $field) === 0) return (string)$c;   // a column named "1" is an int key (0.8.957)
+		foreach (array_keys($columns) as $c) if (strcasecmp((string)$c, $field) === 0) return (string)$c;   // a column named "1" is an int key
 		return null;
 	}
 
@@ -462,8 +482,8 @@ final class NuRecord
 		foreach ($meta->objects as $o) {
 			$v = (string)$o['sob_all_validate'];
 			if (!in_array($v, ['1', '2', '3'], true) || !in_array($o['sob_all_type'], self::SAVED_TYPES, true) || NuRender::isUppy($o)) continue;
-			if (($o['sob_input_type'] ?? '') === 'button') continue;   // a button holds no value – nuBuilder Forte never validates it (0.8.960)
-			if (self::hiddenFor($o) || !NuFieldAccess::writable($o, $recordId === null)) continue;   // what the user cannot write is not checked from the post (0.8.480)
+			if (($o['sob_input_type'] ?? '') === 'button') continue;   // a button holds no value – nuBuilder Forte never validates it
+			if (self::hiddenFor($o) || !NuFieldAccess::writable($o, $recordId === null)) continue;   // what the user cannot write is not checked from the post
 			$f = (string)$o['sob_all_id'];
 			$label = self::label($o);
 			$val = $values[$f] ?? '';
@@ -535,13 +555,13 @@ final class NuRecord
 		$on ??= (bool)NuSecurity::get('protect_fields');
 		$a = self::accessOf($o);
 		$closed = $a === '1' || $a === '2' || $a === '4' || ($a === '3' && !NuAuth::user()['globeadmin']);
-		// an access condition (access 9) is enforced always: what it hides or makes read only is never taken from the browser (0.8.382)
+		// an access condition (access 9) is enforced always: what it hides or makes read only is never taken from the browser
 		if ((string)$o['sob_all_access'] === '9') return $closed;
 		return $on && $closed;
 	}
 
 	/**
-	 * nuBuilder's access condition (0.8.382, nuGetObjectAccess() in nuBuilder's core/nuform.php): an object with access 9 runs
+	 * nuBuilder's access condition (nuGetObjectAccess() in nuBuilder's core/nuform.php): an object with access 9 runs
 	 * sob_all_access_condition (SQL with the form's hash variables); the first value of the single row is its access – 0 editable,
 	 * 1 read only, 2 hidden, 3 hidden for users, 4 hidden for users + read only for the globeadmin. No row or several rows = 0, as
 	 * nuBuilder. An error hides the object (nuBuilder would show it) – a broken condition must not open a protected field.
@@ -560,7 +580,7 @@ final class NuRecord
 		$key = (string)($o['zzzzsys_object_id'] ?? '') . "\x1f" . (string)($hash['RECORD_ID'] ?? '') . "\x1f" . hash('sha256', $cond);
 		if (isset(self::$accessCache[$key])) return self::$accessCache[$key];
 		try {
-			$sql = NuHash::sql($cond, $hash);                  // bound with $nuDevSelectQueryRunParameterised (0.8.873)
+			$sql = NuHash::sql($cond, $hash);                  // bound with $nuDevSelectQueryRunParameterised
 			$rows = nu_db()->readOnly(static fn() => nu_db()->all($sql));
 			$v = count($rows) === 1 ? (string)(array_values($rows[0])[0] ?? '0') : '0';
 			$v = in_array($v, ['0', '1', '2', '3', '4'], true) ? $v : '0';
@@ -581,11 +601,11 @@ final class NuRecord
 	{
 		if (!NuSecurity::get('record_check') || $recordId === '' || $recordId === '-1') return true;
 		if (NuAuth::user()['globeadmin'] && empty(NuAuth::user()['demo'])) return true;
-		if (NuFormMeta::recordCheckOff((string)($meta->form['sfo_json'] ?? ''))) return true;   // the form's own setting (0.8.1234)
-		if (self::recordAllowed($meta->id, $recordId)) return true;                              // nuNextRecordCheck(false) in Before Edit (0.8.1234)
+		if (NuFormMeta::recordCheckOff((string)($meta->form['sfo_json'] ?? ''))) return true;   // the form's own setting
+		if (self::recordAllowed($meta->id, $recordId)) return true;                              // nuNextRecordCheck(false) in Before Edit
 		if (trim((string)$meta->form['sfo_browse_sql']) === '' || $meta->primaryKey() === '') return true;
 		try {
-			[$inner] = NuBrowse::build(NuBrowse::innerSql($meta, NuHash::forForm($meta, $recordId, [], [])), $meta->primaryKey(), []);   // as the list (0.8.382)
+			[$inner] = NuBrowse::build(NuBrowse::innerSql($meta, NuHash::forForm($meta, $recordId, [], [])), $meta->primaryKey(), []);   // as the list
 			return (bool)nu_db()->value('SELECT COUNT(*) FROM (' . $inner . ') nuT WHERE nuT.nu_pk = ?', [$recordId]);
 		} catch (Throwable $e) {
 			error_log('nuBuilder Next record check ' . $meta->code() . ': ' . $e->getMessage());
@@ -594,11 +614,11 @@ final class NuRecord
 	}
 
 	/**
-	 * nuNextRecordCheck(false) in Before Edit (0.8.1234): this record of this form may be opened although the form's list does not show it –
+	 * nuNextRecordCheck(false) in Before Edit: this record of this form may be opened although the form's list does not show it –
 	 * kept in the session (12 hours, at most 200 records) so its Save / Delete pass too. $formRecordCheck = what Before Edit set (null = not called).
 	 */
 	public static ?bool $formRecordCheck = null;
-	private const RC_KEY = 'nu_record_ok', RC_HOURS = 12, RC_MAX = 200;
+	private const RC_KEY = NuSess::RECORD_OK, RC_HOURS = 12, RC_MAX = 200;
 
 	public static function allowRecord(string $formId, string $recordId): void
 	{
@@ -615,7 +635,7 @@ final class NuRecord
 		return $t > 0 && $t > time() - self::RC_HOURS * 3600;
 	}
 
-	/** Hidden for this user: nuBuilder's access 2 / 3 / 4, or field data access hide / withheld (0.8.480, NuFieldAccess). */
+	/** Hidden for this user: nuBuilder's access 2 / 3 / 4, or field data access hide / withheld (NuFieldAccess). */
 	public static function hiddenFor(array $o): bool
 	{
 		return NuFieldAccess::hidden($o);
@@ -628,7 +648,7 @@ final class NuRecord
 		$k = $meta->id . '.' . $field;
 		if (isset($seen[$k]) || !NuFieldAccess::rulesOfForm($meta->id)) return;
 		$seen[$k] = true;
-		try { NuDebugLog::write('field access: ' . $meta->code() . '.' . $field . ' not saved (' . (NuAuth::user()['login'] ?? '') . ')', 'fieldaccess'); } catch (Throwable) {}
+		try { NuDebugLog::write('field access: ' . $meta->code() . '.' . $field . ' not saved (' . (NuAuth::user()['login'] ?? '') . ')', 'fieldaccess'); } catch (Throwable $ig) { nu_ignored($ig); }
 	}
 
 	private static function label(array $o): string
@@ -640,13 +660,13 @@ final class NuRecord
 	/** Posted subforms in nuBuilder's nuSubformObject() shape, for BS/AS hooks. */
 	/**
 	 * nuBuilder's nuFORMdata (nuform.js nuFORM.data()): the edit form ('nuBuilder4EditForm') and its sub-forms as objects with fields
-	 * (ID first, nuDelete last), rows, edited, deleted – for nuGetNuDataValue() / nuSetNuDataValue() in Before / After Save (0.8.462).
+	 * (ID first, nuDelete last), rows, edited, deleted – for nuGetNuDataValue() / nuSetNuDataValue() in Before / After Save.
 	 * The objects are shared with the hash, so a change made through nuSetNuDataValue() is seen by applyFormData().
 	 * @return list<stdClass>
 	 */
 	private static function nuFormData(NuFormMeta $meta, string $recordId, array $values, array $edited): array
 	{
-		// as nuBuilder Forte's nuFORM.data(): ID, nuDelete, then the fields (0.8.984 – nuDelete was last)
+		// as nuBuilder Forte's nuFORM.data(): ID, nuDelete, then the fields (nuDelete was last)
 		$fields = ['ID', 'nuDelete'];
 		foreach ($meta->objects as $o) {
 			if (in_array($o['sob_all_type'], self::SAVED_TYPES, true) && !NuRender::isUppy($o) && $o['sob_all_type'] !== 'subform') $fields[] = (string)$o['sob_all_id'];
@@ -715,7 +735,7 @@ final class NuRecord
 			$fields[] = 'nuDelete';
 			$rows = $deleted = $editedRows = [];
 			foreach ($sf['rows'] ?? [] as $r) {
-				$row = [(string)($r['pk'] ?? '') !== '' ? (string)$r['pk'] : '-1'];   // a new row's ID is -1, as nuBuilder Forte (0.8.956)
+				$row = [(string)($r['pk'] ?? '') !== '' ? (string)$r['pk'] : '-1'];   // a new row's ID is -1, as nuBuilder Forte
 				$ed  = [0];
 				$edited = array_flip((array)($r['edited'] ?? []));
 				foreach (array_slice($fields, 1, -1) as $f) { $row[] = $r['values'][$f] ?? ''; $ed[] = isset($edited[$f]) ? 1 : 0; }
@@ -725,7 +745,7 @@ final class NuRecord
 				$editedRows[] = $ed;
 			}
 			// nuBuilder Forte always sends the blank add row last (ID -1, deleted) when rows can be added – code such as
-			// "for ($i = 0; $i < count($rows) - 1; $i++)" counts on it (0.8.956); the browser does not post an untouched blank row
+			// "for ($i = 0; $i < count($rows) - 1; $i++)" counts on it; the browser does not post an untouched blank row
 			if ((string)($o['sob_subform_add'] ?? '') === '1') {
 				$blank = ['-1'];
 				foreach (array_slice($fields, 1, -1) as $f) {

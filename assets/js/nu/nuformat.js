@@ -38,8 +38,8 @@
 		if (isNaN(n) || !/^\s*-?[\d.,]+\s*$/.test(String(v))) return String(v);
 		var s = numberSpec(p), fixed = Math.abs(n).toFixed(s.places).split('.');
 		var body = s.prefix + fixed[0].replace(/\B(?=(\d{3})+(?!\d))/g, s.sep) + (s.places ? s.dec + fixed[1] : '') + s.suffix;
-		if (n >= 0 || (/brackets$/.test(negative || '') && +Math.abs(n).toFixed(s.places) === 0)) return body;   // "-0.0" as nuBuilder Forte (0.8.965)
-		// minus after the prefix, as nuBuilder's addFormatting (€ -99,95 – 0.8.364); brackets around the whole value
+		if (n >= 0 || (/brackets$/.test(negative || '') && +Math.abs(n).toFixed(s.places) === 0)) return body;   // "-0.0" as nuBuilder Forte
+		// minus after the prefix, as nuBuilder's addFormatting (€ -99,95); brackets around the whole value
 		return /brackets$/.test(negative || '') ? '(' + body + ')' : s.prefix + '-' + body.slice(s.prefix.length);
 	}
 
@@ -106,7 +106,8 @@
 		var parts = {}, tokens = [];
 		var re = p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(DTOK, function (k) {
 			tokens.push(k);
-			return {yyyy: '(\\d{4})', yy: '(\\d{2})', mmmm: '([A-Za-z]+)', mmm: '([A-Za-z]+)', mm: '(\\d{1,2})', dddd: '([A-Za-z]+)', ddd: '([A-Za-z]+)', dd: '(\\d{1,2})', hh: '(\\d{1,2})', nn: '(\\d{1,2})', ss: '(\\d{1,2})'}[k];
+			return {yyyy: '(\\d{4})', yy: '(\\d{2})', mmmm: '([A-Za-z]+)', mmm: '([A-Za-z]+)', mm: '(\\d{1,2})', dddd: '([A-Za-z]+)', ddd: '([A-Za-z]+)',
+				dd: '(\\d{1,2})', hh: '(\\d{1,2})', nn: '(\\d{1,2})', ss: '(\\d{1,2})'}[k];
 		});
 		var m = new RegExp('^' + re + '$').exec(v) || new RegExp('^' + re).exec(v);
 		if (!m) {
@@ -140,7 +141,7 @@
 	}
 
 	/**
-	 * A typed or pasted number → '1234.56' (0.8.344). Accepts other notations than the field's own (Excel, calculators, PDFs):
+	 * A typed or pasted number → '1234.56'. Accepts other notations than the field's own (Excel, calculators, PDFs):
 	 * currency signs, letters, spaces (also no-break / thin) and apostrophes are dropped; calculator and typographic minus signs,
 	 * a trailing minus and brackets mean negative. Decimal separator: with both '.' and ',' the last one; with one kind only, several
 	 * of them are thousands separators; a single one is the decimal separator when it is the field's own or is not followed by exactly

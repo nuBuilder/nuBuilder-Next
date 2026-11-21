@@ -1,4 +1,4 @@
-/* Audit trail (0.8.351): the Delete dialog – counts the rows of the chosen selection, a date field for "before a date",
+/* Audit trail: the Delete dialog – counts the rows of the chosen selection, a date field for "before a date",
    typing DELETE for the whole audit trail. The form posts to the list's URL, so the server sees the same search and filters. */
 (function () {
 	'use strict';

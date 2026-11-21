@@ -1,5 +1,5 @@
 /* global nuBs */
-/* Data export (0.8.758): the list's JSON upload button and the editor of an export's datasets (tables with columns / conditions / sort,
+/* Data export: the list's JSON upload button and the editor of an export's datasets (tables with columns / conditions / sort,
    typed SQL, SQL builder queries; preview and count through POST JSON actions of pages/nudataexport.php). The model is kept in the hidden
    input #dxpDatasets (JSON) and sent with the form. */
 (function () {
@@ -163,7 +163,9 @@
 				chk.checked = !!d.reimport; chk.disabled = ro;
 				chk.addEventListener('change', function () { d.reimport = chk.checked; dirty(); });
 				body.appendChild(el('div', {class: 'form-check mt-3'}, [chk, el('label', {class: 'form-check-label', for: 'dxpReimport', text: T.dxp_reimport}),
-					el('span', {class: 'nuInfoTip ms-1', tabindex: '0', role: 'img', 'data-bs-toggle': 'tooltip', 'data-bs-custom-class': 'nuTipWide', 'aria-label': T.dxp_reimport_tip, title: T.dxp_reimport_tip}, [el('i', {class: 'bi bi-info-circle'})])]));
+					el('span',
+						{class: 'nuInfoTip ms-1', tabindex: '0', role: 'img', 'data-bs-toggle': 'tooltip', 'data-bs-custom-class': 'nuTipWide', 'aria-label': T.dxp_reimport_tip, title: T.dxp_reimport_tip},
+						[el('i', {class: 'bi bi-info-circle'})])]));
 				if (window.nuBs && nuBs.tooltip) $$('[data-bs-toggle=tooltip]', body).forEach(function (x) { nuBs.tooltip(x); });
 			});
 		}
@@ -180,7 +182,8 @@
 		var none = !d.columns.length;
 		cols.forEach(function (c) { if (!seen[c.name]) rows.push({on: none && !c.secret, col: c.name, head: '', fmt: '', meta: c}); });
 		var card = el('div', {class: 'mb-3'});
-		var top = el('div', {class: 'd-flex align-items-center gap-2 mb-1'}, [el('span', {class: 'small fw-semibold', text: T.dxp_columns}), el('span', {class: 'small text-body-secondary', id: 'dxpColCount'})]);
+		var top = el('div', {class: 'd-flex align-items-center gap-2 mb-1'},
+			[el('span', {class: 'small fw-semibold', text: T.dxp_columns}), el('span', {class: 'small text-body-secondary', id: 'dxpColCount'})]);
 		if (!ro) {
 			var all = el('button', {type: 'button', class: 'btn btn-link btn-sm p-0', id: 'dxpColsAll', text: T.dxp_all_cols});
 			var nn = el('button', {type: 'button', class: 'btn btn-link btn-sm p-0', id: 'dxpColsNone', text: T.dxp_none_cols});
@@ -375,7 +378,8 @@
 			panel.appendChild(el('div', {class: 'mb-1 small text-body-secondary', text: T.dxp_sql_hint}));
 			panel.appendChild(el('div', {class: 'd-flex gap-2 align-items-start mb-2'}, [tools, el('div', {class: 'flex-grow-1 dxpSqlWrap'}, [ta])]));
 			if (window.CodeMirror) {
-				var cm = CodeMirror.fromTextArea(ta, {mode: 'text/x-sql', lineNumbers: true, lineWrapping: true, matchBrackets: true, indentUnit: 4, tabSize: 4, indentWithTabs: true, readOnly: ro ? 'nocursor' : false});
+				var cm = CodeMirror.fromTextArea(ta,
+					{mode: 'text/x-sql', lineNumbers: true, lineWrapping: true, matchBrackets: true, indentUnit: 4, tabSize: 4, indentWithTabs: true, readOnly: ro ? 'nocursor' : false});
 				cm.getWrapperElement().classList.add('dxpCM');
 				cm.on('change', function () { cm.save(); d.sql = ta.value; dirty(); });
 				editors[ta.id] = cm;
@@ -459,13 +463,16 @@
 			var tb = el('tbody');
 			r.rows.forEach(function (row) {
 				var tr = el('tr');
-				row.forEach(function (v, k) { tr.appendChild(el('td', {class: v === null ? 'text-body-tertiary fst-italic' : (['int', 'decimal'].indexOf(r.cols[k].kind) >= 0 ? 'text-end' : ''), text: v === null ? 'NULL' : v})); });
+				row.forEach(function (v,
+					k) { tr.appendChild(el('td', {class: v === null ? 'text-body-tertiary fst-italic' : (['int', 'decimal'].indexOf(r.cols[k].kind) >= 0 ? 'text-end' : ''), text: v === null ? 'NULL' : v})); });
 				tb.appendChild(tr);
 			});
 			t.appendChild(tb);
 			body.appendChild(el('div', {class: 'table-responsive'}, [t]));
 			if (window.nuBs) nuBs.modal(dlg).show();
-		}, function (e) { if (msg && e !== 'cancel' && !(e && e.message === 'cancel')) { msg.textContent = typeof e === 'string' ? e : '⚠'; msg.className = 'small ms-1 text-danger'; } else if (msg) msg.textContent = ''; });
+		},
+			function (e) { if (msg && e !== 'cancel'
+				&& !(e && e.message === 'cancel')) { msg.textContent = typeof e === 'string' ? e : '⚠'; msg.className = 'small ms-1 text-danger'; } else if (msg) msg.textContent = ''; });
 	}
 
 	render();

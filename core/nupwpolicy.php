@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Password policy (0.8.745): settings row 'pw_policy' – rules for new passwords (minimum length at least $nuConfigPasswordMinLength,
+ * Password policy: settings row 'pw_policy' – rules for new passwords (minimum length at least $nuConfigPasswordMinLength,
  * optional character classes, not the login / name, known leaked passwords: Have I Been Pwned range API with k-anonymity – only the first
  * 5 characters of the SHA-1 hash leave the server – and / or the offline list install/common-passwords.txt), the same check at sign-in
  * (remembered 30 days per password; a hit = forced change), optional regular change (users: global + per access level, the shortest
@@ -31,11 +31,7 @@ final class NuPwPolicy
 	public static function settings(): array
 	{
 		if (NuMemo::find('set:pwpolicy', $kept)) return $kept;   // NuMemo (code review R9): a write to the settings drops it
-		$s = [];
-		try {
-			$v = nu_setting_value(self::KEY);
-			$s = is_string($v) ? (json_decode($v, true) ?: []) : [];
-		} catch (Throwable) { /* no settings table yet */ }
+		$s = nu_setting_json(self::KEY);
 		return NuMemo::keep('set:pwpolicy', ['zzzzsys_nunext_setting'], self::clean($s));
 	}
 
@@ -96,7 +92,7 @@ final class NuPwPolicy
 	public static function minLength(): int
 	{
 		$cfg = 8;
-		try { $cfg = max(1, (int)nu_cfg('nuConfigPasswordMinLength')); } catch (Throwable) { /* installer */ }
+		try { $cfg = max(1, (int)nu_cfg('nuConfigPasswordMinLength')); } catch (Throwable $ig) { nu_ignored($ig, 'installer'); }
 		return max($cfg, (int)self::settings()['min_len']);
 	}
 
@@ -110,7 +106,7 @@ final class NuPwPolicy
 	private static bool $jsDone = false;
 
 	/** The rules as a checklist below a password field; assets/js/nupwrules.js ticks them while typing (leak / name: on saving).
-	 *  $onType: hidden until the field holds at least one character (user form, 0.8.768). */
+	 *  $onType: hidden until the field holds at least one character (user form). */
 	public static function rulesHtml(string $forId, bool $onType = false): string
 	{
 		$r = self::clientRules();
@@ -120,7 +116,8 @@ final class NuPwPolicy
 		$server = [];
 		if ($s['not_name']) $server[] = t('pw_pol_name');
 		if ($s['leak'] !== 'off') $server[] = t('pw_rules_leak');
-		$html = '<div class="form-text nuPwRules" data-for="' . h($forId) . '" data-min="' . (int)$r['min'] . '"' . ($onType ? ' data-on-type="1" hidden' : '') . '><span>' . h(t('pw_rules_title')) . '</span><ul class="list-unstyled mb-0 mt-1">';
+		$html = '<div class="form-text nuPwRules" data-for="' . h($forId) . '" data-min="' . (int)$r['min'] . '"'
+			. ($onType ? ' data-on-type="1" hidden' : '') . '><span>' . h(t('pw_rules_title')) . '</span><ul class="list-unstyled mb-0 mt-1">';
 		foreach ($items as $k => $txt) $html .= '<li data-rule="' . h($k) . '"><i class="bi bi-dot" aria-hidden="true"></i> ' . h($txt) . '</li>';
 		foreach ($server as $txt) $html .= '<li class="nuPwRuleServer"><i class="bi bi-dot" aria-hidden="true"></i> ' . h($txt) . '</li>';
 		$html .= '</ul></div>';
@@ -232,7 +229,7 @@ final class NuPwPolicy
 	{
 		$s = self::settings();
 		$over = [];
-		try {   // 0.8.827: levels() takes the user row (a string threw a TypeError here, so the overrides never applied)
+		try {   // levels() takes the user row (a string threw a TypeError here, so the overrides never applied)
 			$r = NuAuth::userRow($userId);
 			$levels = $r ? NuUserAccess::levels(['id' => $userId, 'access_id' => (string)$r['sus_zzzzsys_access_id']]) : [];
 		} catch (Throwable) { $levels = []; }
@@ -282,10 +279,10 @@ final class NuPwPolicy
 			if ($reason === '' && $e['left'] !== null && $e['left'] < 0) $reason = 'expired';
 			if ($reason !== '') {
 				nu_db()->update('zzzzsys_user', ['sus_change_password' => '1'], 'zzzzsys_user_id', $userId);
-				$_SESSION['nu_pw_reason'] = $reason;
+				$_SESSION[NuSess::PW_REASON] = $reason;
 				NuLog::write('pw_forced', 'zzzzsys_user', $userId, ['reason' => $reason], ['id' => $userId]);
 			} elseif ($e['left'] !== null && $e['left'] <= (int)$s['warn']) {
-				$_SESSION['nu_pw_soon'] = max(0, $e['left']);
+				$_SESSION[NuSess::PW_SOON] = max(0, $e['left']);
 			}
 		} catch (Throwable $x) {
 			error_log('nuBuilder Next password policy: ' . $x->getMessage());
@@ -307,7 +304,7 @@ final class NuPwPolicy
 			$msgs = [];
 			if (!empty($g['leak']['hit'])) $msgs[] = t('ga_pw_leaked');
 			if ($s['ga_expire'] > 0 && (int)$g['since'] + $s['ga_expire'] * 86400 < time()) $msgs[] = t('ga_pw_expired', $s['ga_expire']);
-			if ($msgs) $_SESSION['nu_pw_ga'] = $msgs;
+			if ($msgs) $_SESSION[NuSess::PW_GA] = $msgs;
 		} catch (Throwable $x) {
 			error_log('nuBuilder Next password policy: ' . $x->getMessage());
 		}
@@ -316,15 +313,15 @@ final class NuPwPolicy
 	/** Reminders after the sign-in (nu_layout_start → a flash once): expiring soon, globeadmin reminders. */
 	public static function flashes(): void
 	{
-		if (isset($_SESSION['nu_pw_soon'])) {
-			$d = (int)$_SESSION['nu_pw_soon'];
-			unset($_SESSION['nu_pw_soon']);
-			$_SESSION['nu_flash'][] = ['warning', t('pw_expires_soon', $d), false, [nu_url('password'), t('pw_change_now')]];
+		if (isset($_SESSION[NuSess::PW_SOON])) {
+			$d = (int)$_SESSION[NuSess::PW_SOON];
+			unset($_SESSION[NuSess::PW_SOON]);
+			$_SESSION[NuSess::FLASH][] = ['warning', t('pw_expires_soon', $d), false, [nu_url('password'), t('pw_change_now')]];
 		}
-		if (isset($_SESSION['nu_pw_ga'])) {
-			$m = (array)$_SESSION['nu_pw_ga'];
-			unset($_SESSION['nu_pw_ga']);
-			$_SESSION['nu_flash'][] = ['warning', implode(' ', $m), false, NuAdmin::can('configfile', 'change') ? [nu_url('configfile'), t('cfg_title')] : null];
+		if (isset($_SESSION[NuSess::PW_GA])) {
+			$m = (array)$_SESSION[NuSess::PW_GA];
+			unset($_SESSION[NuSess::PW_GA]);
+			$_SESSION[NuSess::FLASH][] = ['warning', implode(' ', $m), false, NuAdmin::can('configfile', 'change') ? [nu_url('configfile'), t('cfg_title')] : null];
 		}
 	}
 
@@ -343,7 +340,7 @@ final class NuPwPolicy
 				$left = (int)floor(($t + $days * 86400 - time()) / 86400);
 				if ($left < 0) $exp++; elseif ($left <= $s['warn']) $soon++;
 			}
-		} catch (Throwable) { /* no user table */ }
+		} catch (Throwable $ig) { nu_ignored($ig, 'no user table'); }
 		return [$exp, $soon];
 	}
 }

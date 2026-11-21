@@ -1,5 +1,5 @@
 /* global nuBs */
-/* Admin role form (0.8.739, own columns 0.8.1022): sortable rights table – by name, area, full access or the chosen level
+/* Admin role form (own columns): sortable rights table – by name, area, full access or the chosen level
    (None / View / Change: ticked first). The third click on a title goes back to the order of the groups. Kept per browser. */
 (function () {
 	'use strict';
@@ -45,7 +45,7 @@
 	} catch (e) { /* no storage */ }
 })();
 
-/* Test the role as a user (0.8.1318): dialogue #admTestDlg – a user must be chosen, Full access asks first, unsaved changes of the role
+/* Test the role as a user: dialogue #admTestDlg – a user must be chosen, Full access asks first, unsaved changes of the role
    form are named (the test uses the saved role); ?test=1 opens it (row button of the Admin roles list). */
 (function () {
 	'use strict';
@@ -70,7 +70,7 @@
 	}
 }());
 
-/* Changed rights marked until saved (0.8.1323): rows whose level differs from the saved role (tr data-orig) get .admChanged and a
+/* Changed rights marked until saved: rows whose level differs from the saved role (tr data-orig) get .admChanged and a
    "was: …" note; the header shows the count, "Show changed only" and Undo (back to the saved levels). Existing roles only. */
 (function () {
 	'use strict';

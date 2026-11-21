@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Form type "page" (0.8.387): a form whose content is a PHP file in custom/pages/<form code>/index.php. nuBuilder Next checks the
+ * Form type "page": a form whose content is a PHP file in custom/pages/<form code>/index.php. nuBuilder Next checks the
  * login and the form's view right, then includes the file with one object, $nu (NuPageContext – the stable page API).
  *
  *   index.php?p=form&f=<code>   → NuPage::wrapper(): iframe inside nuBuilder Next, or a redirect to the raw URL
@@ -28,7 +28,7 @@ final class NuPage
 	];
 
 	/**
-	 * Page API versions (0.8.388). A page declares the version it is written for with $nu->api(<n>) (none = 1). Rules:
+	 * Page API versions. A page declares the version it is written for with $nu->api(<n>) (none = 1). Rules:
 	 * within one version methods are only added, never removed or changed; a breaking change raises the version, and the previous
 	 * one keeps running for at least 6 months / 20 releases through an adapter class NuPageContextV<n> (extends the current one).
 	 * Deprecated methods: API_DEPRECATED (method => [since, replacement]) – a call writes a notice to the debug log once a day per
@@ -61,7 +61,7 @@ final class NuPage
 	}
 
 	/**
-	 * Pages that come with nuBuilder Next (0.8.481): program files in apps/<code>/ (replaced by every update, closed to the web by
+	 * Pages that come with nuBuilder Next: program files in apps/<code>/ (replaced by every update, closed to the web by
 	 * apps/.htaccess). A folder of the same name in custom/pages/ takes precedence (an own copy). Their data stays in custom/pages/<code>/_data.
 	 */
 	public const BUILTIN = ['nufiles'];
@@ -84,7 +84,7 @@ final class NuPage
 		return str_starts_with($f, $root) ? substr($f, strlen($root)) : $f;
 	}
 
-	/** The entry file of a page, confined to the pages folder (realpath); null when missing or outside. $draft: of its draft (0.8.599). */
+	/** The entry file of a page, confined to the pages folder (realpath); null when missing or outside. $draft: of its draft. */
 	public static function file(string $code, bool $draft = false): ?string
 	{
 		$folder = self::folder($code);
@@ -140,7 +140,7 @@ final class NuPage
 		$row = null;
 		try {
 			if (nu_db()->tableExists(self::TABLE)) $row = nu_db()->one('SELECT * FROM ' . self::TABLE . ' WHERE zzzzsys_nunext_page_id = ?', [$formId]);
-		} catch (Throwable) {}
+		} catch (Throwable $ig) { nu_ignored($ig); }
 		$d = self::defaults();
 		if ($row) {
 			$d['open_mode'] = in_array((string)$row['open_mode'], self::MODES, true) ? (string)$row['open_mode'] : 'tab';
@@ -186,7 +186,7 @@ final class NuPage
 	/** Removes the settings row (form deleted). The files stay. */
 	public static function forget(string $formId): void
 	{
-		try { if (nu_db()->tableExists(self::TABLE)) nu_db()->delete(self::TABLE, 'zzzzsys_nunext_page_id', $formId); } catch (Throwable) {}
+		try { if (nu_db()->tableExists(self::TABLE)) nu_db()->delete(self::TABLE, 'zzzzsys_nunext_page_id', $formId); } catch (Throwable $ig) { nu_ignored($ig); }
 	}
 
 	/** Deletes a page form (form row, tabs, objects, rights, settings row) – the files stay. */
@@ -268,12 +268,12 @@ final class NuPage
 		$meta = $f !== '' ? (NuFormMeta::load($f) ?? NuFormMeta::byCode($f)) : null;
 		if (!$meta || $meta->type() !== 'page') self::fail(404, 'not_found', t('err_not_found'));
 		if (!NuAcl::can($meta->id)) self::fail(403, 'forbidden', t('err_forbidden'), t('err_forbidden_hint'));
-		// a form never published (status Draft) opens for designers only – as other forms (0.8.386)
+		// a form never published (status Draft) opens for designers only – as other forms
 		if ((string)($meta->form['sfo_status'] ?? '') === '0' && !NuAcl::can(NuAcl::FORM_FORM)) self::fail(403, 'forbidden', t('draft_not_published'), $meta->description());
 		return $meta;
 	}
 
-	/** Context of the URL that is carried from the wrapper to the page: r, ps, pf, pr, bt, cbt (0.8.422), iframe. */
+	/** Context of the URL that is carried from the wrapper to the page: r, ps, pf, pr, bt, cbt, iframe. */
 	public static function carried(): array
 	{
 		$out = [];
@@ -301,7 +301,7 @@ final class NuPage
 		$bare = ($carry['iframe'] ?? '') === '1';
 		unset($carry['iframe'], $carry['cbt']);
 		$title = $meta->description() !== '' ? $meta->description() : $meta->code();
-		// trail for the forms the page opens (0.8.422): this page's breadcrumbs + the page itself, so their Back returns here
+		// trail for the forms the page opens: this page's breadcrumbs + the page itself, so their Back returns here
 		if (!$bare) $carry['cbt'] = NuTrail::store(array_merge(NuTrail::get(is_string($_GET['bt'] ?? null) ? $_GET['bt'] : null) ?? [], [['title' => $title, 'url' => NuTrail::currentUrl()]]));
 		$src = self::rawUrl($meta, $carry);
 		if ($s['open_mode'] !== 'iframe' && !$bare) nu_redirect($src);
@@ -353,13 +353,13 @@ final class NuPage
 		$u = NuAuth::user();
 		$ga = !empty($u['globeadmin']) && empty($u['demo']);
 		if (!self::validCode($code)) self::fail(500, 'page_code', t('page_err_code_title'), $ga ? t('page_err_code', $code) : '');
-		$draft = NuPageVersion::viewing($code);            // a designer switched to the draft (0.8.599)
+		$draft = NuPageVersion::viewing($code);            // a designer switched to the draft
 		$file = self::file($code, $draft);
 		if ($file === null) {
 			if ($ga) self::fail(404, 'page_missing', t('page_err_missing_title'), t('page_err_missing', self::shownFolder($code) . 'index.php'));
 			self::fail(404, 'not_found', t('err_not_found'));
 		}
-		// API version (0.8.388): an unsupported version stops before the page runs; an older supported one gets its adapter class
+		// API version: an unsupported version stops before the page runs; an older supported one gets its adapter class
 		$declared = self::declaredApi((string)@file_get_contents($file));
 		if ($declared !== null && !in_array($declared, self::API_SUPPORTED, true)) {
 			self::fail(500, 'page_api', t('page_api_title'), $ga ? t('page_api_unsupported', (string)$declared, implode(', ', self::API_SUPPORTED)) : '');
@@ -376,7 +376,8 @@ final class NuPage
 			if (!headers_sent()) http_response_code(500);
 			$msg = $ga ? $e['message'] . ' – ' . self::relPath((string)$e['file']) . ':' . $e['line'] : '';
 			if (self::wantsJson()) { if (!headers_sent()) header('Content-Type: application/json; charset=utf-8'); echo json_encode(['error' => 'server'] + ($msg !== '' ? ['message' => $msg] : [])); return; }
-			echo '<!doctype html><meta charset="utf-8"><title>' . h(t('err_unexpected')) . '</title><body><h1>' . h(t('err_unexpected')) . '</h1><p>' . h($msg !== '' ? $msg : t('err_unexpected_hint')) . '</p></body>';
+			echo '<!doctype html><meta charset="utf-8"><title>' . h(t('err_unexpected')) . '</title><body><h1>' . h(t('err_unexpected')) . '</h1><p>'
+				. h($msg !== '' ? $msg : t('err_unexpected_hint')) . '</p></body>';
 		});
 		$cwd = getcwd();
 		chdir(dirname($file));
@@ -400,7 +401,7 @@ final class NuPage
 	}
 
 	/**
-	 * Draft view (0.8.599): a small bar with a link back to the live version, added before </body> of an HTML answer (not to JSON,
+	 * Draft view: a small bar with a link back to the live version, added before </body> of an HTML answer (not to JSON,
 	 * files or fetch answers). Inline styles – the page's own CSP may drop them; the text and link stay.
 	 */
 	private static function draftBanner(string $code): void
@@ -415,7 +416,8 @@ final class NuPage
 		if ($pos === false) return;
 		$bar = '<div id="nuPageDraftBar" role="status" style="position:fixed;right:12px;bottom:12px;z-index:2147483000;background:#b45309;color:#fff;'
 			. 'font:600 13px/1.4 system-ui,sans-serif;padding:6px 12px;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.25)">'
-			. h(t('page_draft_bar')) . ' · <a href="' . h(nu_url('page', ['f' => $code, 'nudraft' => '0'] + array_diff_key(self::carried(), ['iframe' => 1]))) . '" style="color:#fff;text-decoration:underline">'
+			. h(t('page_draft_bar')) . ' · <a href="' . h(nu_url('page', ['f' => $code, 'nudraft' => '0'] + array_diff_key(self::carried(), ['iframe' => 1])))
+				. '" style="color:#fff;text-decoration:underline">'
 			. h(t('page_draft_bar_live')) . '</a></div>';
 		ob_clean();
 		echo substr($out, 0, $pos) . $bar . substr($out, $pos);
@@ -439,7 +441,7 @@ final class NuPage
 		$code = $meta->code();
 		$rel = (string)($_GET['file'] ?? '');
 		$folder = self::folder($code);
-		if ($folder !== '' && NuPageVersion::viewing($code)) $folder .= '/' . NuPageVersion::DRAFT;   // draft view (0.8.599)
+		if ($folder !== '' && NuPageVersion::viewing($code)) $folder .= '/' . NuPageVersion::DRAFT;   // draft view
 		$ext = strtolower(pathinfo($rel, PATHINFO_EXTENSION));
 		if ($folder === '' || !self::validAssetPath($rel) || !isset(self::ASSET_TYPES[$ext])) self::fail(404, 'not_found', t('err_not_found'));
 		$base = realpath($folder . '/assets');
@@ -473,7 +475,7 @@ final class NuPage
 		return (bool)preg_match('~^[A-Za-z0-9._/ -]+$~', $rel);
 	}
 
-	// ================================================================= API versions (0.8.388)
+	// ================================================================= API versions
 
 	/** What this nuBuilder Next offers to pages – also written into the update manifest (page_api) by dev/release.py. */
 	public static function apiInfo(): array
@@ -521,7 +523,7 @@ final class NuPage
 		return $out;
 	}
 
-	/** The files of a page folder without _data, the draft and the versions (0.8.599). */
+	/** The files of a page folder without _data, the draft and the versions. */
 	private static function codeFiles(string $folder): RecursiveIteratorIterator
 	{
 		$top = rtrim(str_replace('\\', '/', $folder), '/');
@@ -545,20 +547,22 @@ final class NuPage
 		foreach ($scan['php'] as $name => $files) {
 			$where = implode(', ', array_slice(array_unique($files), 0, 3));
 			if (!isset($methods[$name])) $issues[] = ['level' => 'error', 'text' => t('page_api_unknown', '$nu->' . $name . '()', $where)];
-			elseif (isset($api['deprecated'][$name])) $issues[] = ['level' => 'warning', 'text' => t('page_api_deprecated', '$nu->' . $name . '()', (string)$api['deprecated'][$name][0], (string)$api['deprecated'][$name][1], $where)];
+			elseif (isset($api['deprecated'][$name])) $issues[] = ['level' => 'warning',
+				'text' => t('page_api_deprecated', '$nu->' . $name . '()', (string)$api['deprecated'][$name][0], (string)$api['deprecated'][$name][1], $where)];
 		}
 		$js = array_flip((array)($api['js'] ?? []));
 		foreach ($scan['js'] as $name => $files) {
 			$where = implode(', ', array_slice(array_unique($files), 0, 3));
 			if (!isset($js[$name])) $issues[] = ['level' => 'error', 'text' => t('page_api_unknown', 'NuPage.' . $name, $where)];
-			elseif (isset($api['js_deprecated'][$name])) $issues[] = ['level' => 'warning', 'text' => t('page_api_deprecated', 'NuPage.' . $name, (string)$api['js_deprecated'][$name][0], (string)$api['js_deprecated'][$name][1], $where)];
+			elseif (isset($api['js_deprecated'][$name])) $issues[] = ['level' => 'warning',
+				'text' => t('page_api_deprecated', 'NuPage.' . $name, (string)$api['js_deprecated'][$name][0], (string)$api['js_deprecated'][$name][1], $where)];
 		}
 		return $issues;
 	}
 
 	/**
-	 * Settings keys a page reads (0.8.391): every $nu->setting('key'[, default]) in its PHP files – key => [defaults, files, dynamic].
-	 * A key followed by a concatenation ($nu->setting('clients.' . $c)) is a dynamic key: its literal part ends with '.'.
+	 * Settings keys a page reads: every $nu->setting('key'[, default]) in its PHP files – key => [defaults, files, dynamic].
+	 * A key followed by a concatenation ($nu->setting('clients.'. $c)) is a dynamic key: its literal part ends with '.'.
 	 * all = the page also calls $nu->settings() (reads everything – no key can be called unused).
 	 * @return array{keys: array<string, array{defaults: list<string>, files: list<string>, dynamic: bool}>, all: bool}
 	 */
@@ -590,7 +594,7 @@ final class NuPage
 		return $out;
 	}
 
-	/** Built-in examples of the settings JSON (0.8.394, form builder → Examples): label key => [JSON, how a page reads it]. */
+	/** Built-in examples of the settings JSON (form builder → Examples): label key => [JSON, how a page reads it]. */
 	public const SETTING_SAMPLES = [
 		'page_sample_lists' => ['{"title": "Order board", "statuses": ["open", "in progress", "done"], "colours": {"open": "#1d6fd8", "done": "#2e7d32"}}',
 			"\$nu->setting('statuses', [])  ·  \$nu->setting('colours.done', '#333')"],
@@ -668,15 +672,15 @@ final class NuPage
 	public static function noteDeprecated(string $code, string $what): void
 	{
 		$key = $code . '|' . $what . '|' . date('Y-m-d');
-		if (isset($_SESSION['nu_page_dep'][$key])) return;
+		if (isset($_SESSION[NuSess::PAGE_DEP][$key])) return;
 		try {
 			$msg = 'Deprecated in page ' . $code . ': ' . $what;
 			$since = strtotime('today');
 			if (nu_db()->tableExists(NuDebugLog::TABLE) && (int)nu_db()->value('SELECT COUNT(*) FROM ' . NuDebugLog::TABLE . ' WHERE deb_message = ? AND deb_added >= ?', [$msg, $since]) === 0) {
 				NuDebugLog::write($msg, 'page:' . $code);
 			}
-			if (session_status() === PHP_SESSION_ACTIVE) $_SESSION['nu_page_dep'][$key] = 1;
-		} catch (Throwable) {}
+			if (session_status() === PHP_SESSION_ACTIVE) $_SESSION[NuSess::PAGE_DEP][$key] = 1;
+		} catch (Throwable $ig) { nu_ignored($ig); }
 	}
 
 	/** The $nu class for a declared version: the current one, or the adapter NuPageContextV<n> of an older version that is still supported. */
@@ -1069,11 +1073,11 @@ class NuPageContext
 		return nu_url('pageasset', ['f' => $this->meta->code(), 'file' => $path, 'v' => $m ? base_convert((string)$m, 10, 36) : null]);
 	}
 
-	/** Libraries of nuBuilder Next a page may load with vendor() (0.8.479). */
+	/** Libraries of nuBuilder Next a page may load with vendor(). */
 	public const VENDOR_LIBS = ['bootstrap' => 'NU_BS', 'bootstrap-icons' => 'NU_BI', 'codemirror' => 'NU_CODEMIRROR', 'jquery' => 'NU_JQUERY', 'jquery4' => 'NU_JQUERY4',
 		'tom-select' => 'NU_TOMSELECT', 'apexcharts' => 'NU_APEXCHARTS'];
 
-	/** URL of a file of a bundled library, with a version stamp (0.8.479): vendor('codemirror', 'codemirror-bundle.js'). */
+	/** URL of a file of a bundled library, with a version stamp: vendor('codemirror', 'codemirror-bundle.js'). */
 	public function vendor(string $lib, string $file): string
 	{
 		$const = self::VENDOR_LIBS[$lib] ?? null;
@@ -1082,17 +1086,17 @@ class NuPageContext
 		return nu_asset(constant($const) . '/' . $file);
 	}
 
-	/** The password was confirmed (or typed at the login) less than reauth_minutes ago (0.8.479). */
+	/** The password was confirmed (or typed at the login) less than reauth_minutes ago. */
 	public function recentAuth(): bool { return NuSecurity::recentAuth(); }
 
-	/** URL of the password confirmation; afterwards it returns to $back (a URL of this installation; '' = this page) (0.8.479). */
+	/** URL of the password confirmation; afterwards it returns to $back (a URL of this installation; '' = this page). */
 	public function reauthUrl(string $back = ''): string
 	{
-		$_SESSION['nu_reauth_next'] = NuAuth::validNext($back !== '' ? $back : $this->url()) ?? $this->url();
+		$_SESSION[NuSess::REAUTH_NEXT] = NuAuth::validNext($back !== '' ? $back : $this->url()) ?? $this->url();
 		return nu_url('reauth');
 	}
 
-	/** A private folder of the page that is never served: <page folder>/_data (deny-all .htaccess, empty index.html) (0.8.479). */
+	/** A private folder of the page that is never served: <page folder>/_data (deny-all .htaccess, empty index.html). */
 	public function dataDir(): string
 	{
 		$d = NuPage::dir() . '/' . $this->meta->code() . '/_data';             // built-in pages too: in custom/pages/, never touched by updates
@@ -1100,10 +1104,10 @@ class NuPageContext
 		return $d;
 	}
 
-	/** Could a web server run this file name, or obey it (.php, .phtml, .htaccess, x.php.pdf …)? Same rule as uploads (0.8.479). */
+	/** Could a web server run this file name, or obey it (.php, .phtml, .htaccess, x.php.pdf …)? Same rule as uploads. */
 	public function dangerousName(string $name): bool { return NuSecurity::dangerousUploadName($name); }
 
-	/** URL of a form (id or code) – list, or a record ('-1' = new); with the breadcrumb trail back to this page (0.8.422). */
+	/** URL of a form (id or code) – list, or a record ('-1' = new); with the breadcrumb trail back to this page. */
 	public function formUrl(string $form, ?string $record = null): string
 	{
 		return nu_url('form', ['f' => $form, 'r' => $record, 'pf' => $this->meta->id, 'pr' => $this->recordId(), 'bt' => $this->trailKey() ?: null]);
@@ -1112,7 +1116,7 @@ class NuPageContext
 	private ?string $trailKey = null;
 
 	/**
-	 * Breadcrumb trail of the forms this page opens (0.8.422) – their Back returns: on its own page (the wrapper passes cbt) to this
+	 * Breadcrumb trail of the forms this page opens – their Back returns: on its own page (the wrapper passes cbt) to this
 	 * page; in a launch form's iframe to that form (its description); else to this page after the trail it was opened with.
 	 */
 	protected function trailKey(): string
@@ -1140,12 +1144,12 @@ class NuPageContext
 	}
 
 	/**
-	 * A new Excel workbook (NuXlsx, 0.8.398): $x = $nu->excel('Orders'); $x->sheet('Orders')->header([...])->rows($rows);
+	 * A new Excel workbook (NuXlsx): $x = $nu->excel('Orders'); $x->sheet('Orders')->header([...])->rows($rows);
 	 * $x->download('orders.xlsx') – see custom/PAGE_GUIDE.md "Excel export".
 	 */
 	public function excel(string $title = ''): NuXlsx { return NuXlsx::create($title !== '' ? $title : $this->meta->description()); }
 
-	/** PhpSpreadsheet (library pack, 0.8.755): loads its classes – true when \\PhpOffice\\PhpSpreadsheet\\… can be used. */
+	/** PhpSpreadsheet (library pack): loads its classes – true when \\PhpOffice\\PhpSpreadsheet\\… can be used. */
 	public function spreadsheet(): bool { return NuSpreadsheet::available() && NuSpreadsheet::load(); }
 
 	/** Rows of one sheet of an .xlsx / .xls / .ods file as texts (formulas: the saved result); RuntimeException without the pack. */
@@ -1202,12 +1206,12 @@ class NuPageContext
 		NuDebugLog::write($message . ($data ? "\n" . json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : ''), 'page:' . $this->meta->code());
 	}
 
-	/** The page's own session store ($_SESSION['nu_page'][<form code>]), by reference. Read-only after releaseSession(). */
+	/** The page's own session store ($_SESSION[NuSess::PAGE][<form code>]), by reference. Read-only after releaseSession(). */
 	public function &session(): array
 	{
 		$k = $this->meta->code();
-		if (!isset($_SESSION['nu_page'][$k]) || !is_array($_SESSION['nu_page'][$k])) $_SESSION['nu_page'][$k] = [];
-		return $_SESSION['nu_page'][$k];
+		if (!isset($_SESSION[NuSess::PAGE][$k]) || !is_array($_SESSION[NuSess::PAGE][$k])) $_SESSION[NuSess::PAGE][$k] = [];
+		return $_SESSION[NuSess::PAGE][$k];
 	}
 
 	/** Ends the session lock for slow work (other tabs of the user go on); $nu->session() is read-only afterwards. */
@@ -1241,7 +1245,7 @@ class NuPageContext
 	{
 		if ($this->secrets === null) {
 			$f = $this->dir . '/secrets.php';
-			if (!is_file($f)) $f = NuPage::dir() . '/' . $this->meta->code() . '/secrets.php';   // a draft reads the live one (0.8.599)
+			if (!is_file($f)) $f = NuPage::dir() . '/' . $this->meta->code() . '/secrets.php';   // a draft reads the live one
 			$v = is_file($f) ? (static fn(string $__f) => require $__f)($f) : [];
 			$this->secrets = is_array($v) ? $v : [];
 		}

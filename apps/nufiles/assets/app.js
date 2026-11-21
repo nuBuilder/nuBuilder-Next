@@ -390,7 +390,8 @@
 		// phones
 		var cur = items[items.length - 1], up = null;
 		for (var j = items.length - 2; j >= 0; j--) if (items[j].href) { up = items[j]; break; }
-		if (up) ph.appendChild(el('a', {'class': 'nuf-ph-up', href: up.href, title: t('up') + ': ' + up.label, 'aria-label': t('up') + ': ' + up.label}, [icon('chevron-left'), el('span', {text: up.label})]));
+		if (up) ph.appendChild(el('a', {'class': 'nuf-ph-up', href: up.href, title: t('up') + ': ' + up.label, 'aria-label': t('up') + ': ' + up.label},
+			[icon('chevron-left'), el('span', {text: up.label})]));
 		var dd = el('div', {'class': 'dropdown nuf-ph-cur'});
 		var btn = el('button', {type: 'button', 'class': 'nuf-ph-title', 'data-bs-toggle': items.length > 1 ? 'dropdown' : null, 'aria-expanded': 'false',
 			'aria-label': t('path') + ': ' + items.map(function (x) { return x.label; }).join(' / ')}, [
@@ -400,7 +401,8 @@
 		if (items.length > 1) {
 			var ul = el('ul', {'class': 'dropdown-menu nuf-ph-menu'});
 			items.forEach(function (it, i) {
-				var kids = [el('span', {'class': 'nuf-ph-ind', 'aria-hidden': 'true'}, [icon(it.icon || (i === items.length - 1 ? 'folder2-open' : 'folder2'))]), el('span', {'class': 'nuf-ph-nm', text: it.label})];
+				var kids = [el('span', {'class': 'nuf-ph-ind', 'aria-hidden': 'true'}, [icon(it.icon || (i === items.length - 1 ? 'folder2-open' : 'folder2'))]),
+					el('span', {'class': 'nuf-ph-nm', text: it.label})];
 				var a = it.href ? el('a', {'class': 'dropdown-item', href: it.href}, kids) : el('span', {'class': 'dropdown-item active', 'aria-current': 'page'}, kids);
 				a.style.paddingLeft = (0.75 + Math.min(i, 8) * 0.7) + 'rem';
 				ul.appendChild(el('li', {}, [a]));
@@ -423,7 +425,10 @@
 		if (!ol.offsetParent || items.length < 4 || !tooWide()) return;
 		var more = el('li', {'class': 'breadcrumb-item nuf-crumb-more dropdown'});
 		var ul = el('ul', {'class': 'dropdown-menu'});
-		more.appendChild(el('button', {type: 'button', 'class': 'btn btn-link btn-sm p-0 nuf-crumb-more-btn', 'data-bs-toggle': 'dropdown', 'data-bs-popper-config': '{"strategy":"fixed"}', 'aria-expanded': 'false', 'aria-label': t('more_levels'), title: t('more_levels')}, [icon('three-dots')]));
+		more.appendChild(el('button',
+			{type: 'button', 'class': 'btn btn-link btn-sm p-0 nuf-crumb-more-btn', 'data-bs-toggle': 'dropdown',
+				'data-bs-popper-config': '{"strategy":"fixed"}', 'aria-expanded': 'false', 'aria-label': t('more_levels'), title: t('more_levels')},
+			[icon('three-dots')]));
 		more.appendChild(ul);
 		ol.insertBefore(more, ol.children[1]);
 		var lis = ol.querySelectorAll('li[data-i]');
@@ -688,7 +693,10 @@
 		if (boot.features.chmod && !boot.readonly && !state.share.readonly) add(t('chmod'), 'shield-lock', function () { chmodDlg(it, p); });   // globeadmin
 		if (can('delete')) { items.push(el('li', {}, [el('hr', {'class': 'dropdown-divider'})])); add(t('delete'), 'trash3', function () { remove([p]); }, 'text-danger'); }
 		return el('div', {'class': 'dropdown'}, [
-			el('button', {type: 'button', 'class': 'btn btn-sm btn-link text-body nuf-more', 'data-bs-toggle': 'dropdown', 'aria-expanded': 'false', 'aria-label': t('actions'), 'data-bs-popper-config': '{"strategy":"fixed"}'}, [icon('three-dots-vertical')]),
+			el('button',
+				{type: 'button', 'class': 'btn btn-sm btn-link text-body nuf-more', 'data-bs-toggle': 'dropdown', 'aria-expanded': 'false',
+					'aria-label': t('actions'), 'data-bs-popper-config': '{"strategy":"fixed"}'},
+				[icon('three-dots-vertical')]),
 			el('ul', {'class': 'dropdown-menu dropdown-menu-end'}, items)
 		]);
 	}
@@ -910,11 +918,13 @@
 				if (v !== null && !dir && (v & 73)) w.push(t('chmod_warn_exec'));
 				warn.textContent = w.join(' ');
 			}
-			var head = el('tr', {}, [el('th')].concat(bits.map(function (b) { return el('th', {'class': 'text-center fw-normal small', text: t(b[0] === 'exec' && dir ? 'chmod_exec_dir' : 'chmod_' + b[0])}); })));
+			var head = el('tr', {},
+				[el('th')].concat(bits.map(function (b) { return el('th', {'class': 'text-center fw-normal small', text: t(b[0] === 'exec' && dir ? 'chmod_exec_dir' : 'chmod_' + b[0])}); })));
 			var body = who.map(function (w) {
 				return el('tr', {}, [el('th', {'class': 'fw-normal small', text: t('chmod_' + w[0])})].concat(bits.map(function (b) {
 					var bit = b[1] << w[1];
-					var box = el('input', {type: 'checkbox', 'class': 'form-check-input', 'aria-label': t('chmod_' + w[0]) + ' – ' + t(b[0] === 'exec' && dir ? 'chmod_exec_dir' : 'chmod_' + b[0]), 'data-bit': String(bit)});
+					var box = el('input',
+						{type: 'checkbox', 'class': 'form-check-input', 'aria-label': t('chmod_' + w[0]) + ' – ' + t(b[0] === 'exec' && dir ? 'chmod_exec_dir' : 'chmod_' + b[0]), 'data-bit': String(bit)});
 					box.addEventListener('change', fromBoxes);
 					boxes.push({box: box, bit: bit});
 					return el('td', {'class': 'text-center'}, [box]);
@@ -1015,7 +1025,9 @@
 		api('list', {share: share.id, path: path}).then(function (d) {
 			if (pick.share !== share || pick.path !== path) return;
 			list.textContent = '';
-			if (path) list.appendChild(el('button', {type: 'button', 'class': 'list-group-item list-group-item-action', onclick: function () { pickLoad(share, parent(path)); }}, [icon('arrow-90deg-up'), ' ..']));
+			if (path) list.appendChild(el('button',
+				{type: 'button', 'class': 'list-group-item list-group-item-action', onclick: function () { pickLoad(share, parent(path)); }},
+				[icon('arrow-90deg-up'), ' ..']));
 			d.items.filter(function (i) { return i.type === 'dir' && !i.outside; }).forEach(function (i) {
 				list.appendChild(el('button', {type: 'button', 'class': 'list-group-item list-group-item-action', onclick: function () { pickLoad(share, join(path, i.name)); }},
 					[el('i', {'class': 'bi bi-folder-fill nuf-ico-dir', 'aria-hidden': 'true'}), ' ', i.name]));
@@ -1505,7 +1517,7 @@
 	if (!window.location.hash && boot.shares && boot.shares.length) {
 		var last = null;
 		try { last = localStorage.getItem('nufLast'); } catch (e) { last = null; }
-		// the globeadmin starts in the web root (share "webroot" of the default settings, 0.8.1315); others in the share used last
+		// the globeadmin starts in the web root (share "webroot" of the default settings); others in the share used last
 		var start = boot.user && boot.user.globeadmin && shareById('webroot') ? 'webroot' : (shareById(last) ? last : boot.shares[0].id);
 		history.replaceState(null, '', '#/' + encodeURIComponent(start) + '/');
 	}

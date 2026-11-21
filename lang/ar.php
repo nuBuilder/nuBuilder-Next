@@ -152,6 +152,7 @@ return [
 	'hf_empty' => 'فارغة',
 	'hf_empty_tip' => 'لا تحتوي صفحة المربعات هذه على مربعات – لا ترى مستويات الوصول الخاصة بها أي شيء عليها. افتحها وأضف مربعات، أو استخدم الافتراضي مجدداً.',
 	'form_blank_page' => 'صفحة فارغة (النظام)',
+	'uhome_empty_tab' => 'لا توجد أزرار في هذا التبويب بعد. أضفها في وضع التصميم، أو دع معالج النموذج الجديد يضيف زرًا لكل نموذج جديد (بعد الإنشاء ← User Home).',
 	'nav_users' => 'المستخدمون',
 	'nav_access' => 'مستويات الوصول',
 	'nav_logout' => 'تسجيل الخروج',
@@ -7022,6 +7023,7 @@ return [
 	'rd_search' => 'بحث',
 	'rd_no_fields' => 'ليس لمصدر البيانات أعمدة.',
 	'rd_fields_error' => 'تعذّرت قراءة الحقول:',
+	'rd_canvas' => 'تخطيط التقرير – تنقل مفاتيح الأسهم العناصر المحددة',
 	'rd_criteria' => 'حقول نموذج البدء',
 	'rd_system' => 'الصفحة والنظام',
 	'rd_images' => 'الصور (الملفات)',
@@ -7187,7 +7189,7 @@ return [
 	'sqb_empty' => 'أضف جدولًا من القائمة.',
 	'sqb_run_failed' => 'فشل الاستعلام:',
 	'sqb_columns' => 'الأعمدة',
-	// security check (0.8.207, Admin tools → Security check, core/nusecurity.php)
+	// security check (Admin tools → Security check, core/nusecurity.php)
 	'secchk_title' => 'فحص الأمان',
 	'ipa_title' => 'الوصول حسب IP',
 	'sso_title' => 'تسجيل الدخول الموحد (SSO)',

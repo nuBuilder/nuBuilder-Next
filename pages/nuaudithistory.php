@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * History of one record (audit trail, 0.8.350): ?p=audithistory&f=<form id>&r=<record id> – opened from the ⋮ menu of the edit form
+ * History of one record (audit trail): ?p=audithistory&f=<form id>&r=<record id> – opened from the ⋮ menu of the edit form
  * or from a row of the audit trail. All changes of the record and of its sub-form rows, newest first, one block per save.
  * Rights: view on the form (the record must be visible to the user while it exists); restoring needs save on the form.
  */
@@ -18,17 +18,10 @@ if ($exists && !NuRecord::visible($meta, $rid)) NuAcl::require('-');
 $canRestore = NuAcl::can($meta->id, 'save') && !NuDemo::active();
 $self = nu_url('audithistory', ['f' => $meta->id, 'r' => $rid]);
 
-if (nu_is_post() && nu_post('action') === 'restore') {
-	if (!$canRestore) NuAcl::require('-');
-	try {
-		nu_flash('success', NuAudit::restore(nu_post('id'), $meta->id));
-	} catch (RuntimeException $e) {
-		nu_flash('danger', $e->getMessage());
-	}
-	nu_redirect($self);
-}
+['canRestore' => $canRestore, 'meta' => $meta]
+	= NuAudithistoryPage::post(get_defined_vars());   // the POST actions (code review R7, nuaudithistorypage.php)
 
-$changes = NuAudit::historyFor($meta, $rid);                     // only the columns this user sees on the form (0.8.367)
+$changes = NuAudit::historyFor($meta, $rid);                     // only the columns this user sees on the form
 $restoreBtn = static function (string $id, string $label, string $confirm, string $icon = 'bi-arrow-counterclockwise') use ($canRestore): string {
 	if (!$canRestore) return '';
 	return '<form method="post" class="d-inline" data-confirm="' . h($confirm) . '" data-confirm-ok="' . h(t('aud_restore')) . '">' . nu_csrf_field()
@@ -44,7 +37,8 @@ nu_layout_start(t('aud_history'), 'audit');
 		<div class="small text-body-secondary"><?= h($meta->description() ?: $meta->code()) ?> · <?= h($meta->table()) ?> #<?= h($rid) ?><?= $exists ? '' : ' · <span class="badge bg-danger-subtle text-danger-emphasis">' . h(t('aud_record_gone')) . '</span>' ?></div>
 		<div class="d-flex flex-wrap gap-2 align-items-center">
 			<?= nu_back_button(null, $exists ? nu_url('form', ['f' => $meta->id, 'r' => $rid]) : nu_url('form', ['f' => $meta->id])) ?>
-			<?php if (NuAcl::can(NuAcl::FORM_AUDIT)): ?><a class="btn btn-outline-secondary" href="<?= h(nu_url('audit', ['table' => $meta->table(), 'record' => $rid])) ?>"><i class="bi bi-clock-history me-1"></i><?= h(t('aud_title')) ?></a><?php endif; ?>
+			<?php if (NuAcl::can(NuAcl::FORM_AUDIT)): ?><a class="btn btn-outline-secondary"
+				href="<?= h(nu_url('audit', ['table' => $meta->table(), 'record' => $rid])) ?>"><i class="bi bi-clock-history me-1"></i><?= h(t('aud_title')) ?></a><?php endif; ?>
 		</div>
 	</div>
 	<div class="card-body">

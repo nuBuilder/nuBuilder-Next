@@ -22,7 +22,7 @@
 
 	// ------------------------------------------------------------------ live preview
 	var timer = null, seq = 0;
-	var locale = document.documentElement.lang || undefined;   // de-CH / de-DE / en-US … (language variant, 0.8.315)
+	var locale = document.documentElement.lang || undefined;   // de-CH / de-DE / en-US … (language variant)
 	function fmt(n) { return Number(n).toLocaleString(locale); }
 	function showStats(chars) {
 		if (stats) stats.textContent = (form.getAttribute('data-stats') || '%s').replace('%s', fmt(chars));
@@ -49,7 +49,7 @@
 	});
 	showStats(result.value.length);
 
-	// ------------------------------------------------------------------ "Ask AI" with a configured AI service (0.8.1099, nuaiask.js)
+	// ------------------------------------------------------------------ "Ask AI" with a configured AI service (nuaiask.js)
 	var askHost = document.getElementById('pgAsk');
 	if (window.NuAiAsk && askHost) window.NuAiAsk.mount(askHost, {
 		prompt: function () { return result.value; },
@@ -103,7 +103,7 @@
 		b.addEventListener('click', function (e) { if (!window.confirm(b.getAttribute('data-confirm-submit'))) e.preventDefault(); });
 	});
 
-	// ------------------------------------------------------------------ AI context file (0.8.991, as Form with AI): download, attach to the chat
+	// ------------------------------------------------------------------ AI context file (as Form with AI): download, attach to the chat
 	var ctxBox = document.getElementById('pgCtx'), ctxMsg = document.getElementById('pgCtxMsg');
 	if (ctxBox) ctxBox.addEventListener('click', function (e) {
 		var b = e.target.closest('[data-nu-ctx]');

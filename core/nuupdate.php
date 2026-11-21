@@ -21,7 +21,7 @@ defined('NU_ROOT') || exit;
 final class NuUpdate
 {
 	/**
-	 * nuBuilder's hook nu_after_update (0.8.462, gap analysis B5): the procedure runs once after an update's database steps (update
+	 * nuBuilder's hook nu_after_update (gap analysis B5): the procedure runs once after an update's database steps (update
 	 * page, unattended update) – as after nuBuilder's own system update. @return string its error text, '' = ran fine or none there
 	 */
 	public static function afterUpdateHook(): string
@@ -55,7 +55,7 @@ final class NuUpdate
 	}
 
 	/**
-	 * Public Ed25519 key of the nuBuilder Next releases (0.8.207). dev/release.py signs signedPayload() of the manifest with the
+	 * Public Ed25519 key of the nuBuilder Next releases. dev/release.py signs signedPayload() of the manifest with the
 	 * matching private key (kept outside the project); inspect() checks it. Unsigned packages can still be installed (warning).
 	 */
 	public const SIGN_PUBLIC = 'LiYkLwQop/lalch3M/Kk07lL2MdPQxTI2lPJKELpsLk=';
@@ -85,12 +85,14 @@ final class NuUpdate
 	/** Paths an update may never write or delete. */
 	public static function isProtected(string $rel): bool
 	{
-		return $rel === 'nuconfig.php' || str_starts_with($rel, NU_PACKS . '/') || str_starts_with($rel, 'third_party/') || str_starts_with($rel, '_backup/') || str_starts_with($rel, '_update/') || str_starts_with($rel, '_install/') || str_starts_with($rel, '_libsrc/') || str_starts_with($rel, 'temp/') || $rel === 'install.allow'
+		return $rel === 'nuconfig.php' || str_starts_with($rel, NU_PACKS . '/') || str_starts_with($rel, 'third_party/') || str_starts_with($rel, '_backup/')
+			|| str_starts_with($rel, '_update/') || str_starts_with($rel, '_install/') || str_starts_with($rel, '_libsrc/') || str_starts_with($rel, 'temp/')
+			|| $rel === 'install.allow'
 			|| (str_starts_with($rel, 'custom/') && !self::shippedCustom($rel));
 	}
 
 	/**
-	 * Page forms (0.8.387): of custom/ only these files come with nuBuilder Next – the rest (custom/pages/<form code>/, custom/lib/) belongs
+	 * Page forms: of custom/ only these files come with nuBuilder Next – the rest (custom/pages/<form code>/, custom/lib/) belongs
 	 * to the installation and is never written, deleted or restored by an update. Built-in pages (File Manager) live in apps/ (NuPage::BUILTIN).
 	 */
 	public static function shippedCustom(string $rel): bool
@@ -119,7 +121,7 @@ final class NuUpdate
 	}
 
 	/**
-	 * Libraries: replaced when a package brings them, never deleted. vendor/bundled/ since 0.8.409; assets/vendor/ (the place before) and
+	 * Libraries: replaced when a package brings them, never deleted. vendor/bundled/; assets/vendor/ (the place before) and
 	 * lib/ stay untouched on installations of earlier versions (removed by a later version, when the upgrade baseline moves).
 	 */
 	public static function isLibrary(string $rel): bool
@@ -136,7 +138,7 @@ final class NuUpdate
 	/** The manifest of the installed version, or null (versions before 0.8.0 have none). */
 	public static function installedManifest(): ?array
 	{
-		static $cache = null, $mtime = null;                     // 0.8.827: the update page decoded the ~600-entry file 2–3 times per request
+		static $cache = null, $mtime = null;                     // the update page decoded the ~600-entry file 2–3 times per request
 		$f = NU_ROOT . '/' . self::MANIFEST;
 		$t = is_file($f) ? (int)filemtime($f) : 0;
 		if ($mtime === $t && $t > 0) return $cache;
@@ -198,7 +200,7 @@ final class NuUpdate
 	/**
 	 * nuBuilder's setting $nuConfigEnableDatabaseUpdate (nuconfig.php, or zzzzsys_config with $nuConfigSettingsFromDB): set to
 	 * false, updates are not allowed – no upload / install of a package, no rollback, no "Apply" of the database structure
-	 * (0.8.281). Not set or true = allowed. Backups, downloads and the automatic database steps of the installed version stay.
+	 *. Not set or true = allowed. Backups, downloads and the automatic database steps of the installed version stay.
 	 */
 	public static function enabled(): bool
 	{
@@ -240,7 +242,7 @@ final class NuUpdate
 	public static function requirements(): array
 	{
 		$dirs = [NU_ROOT];
-		foreach (['core', 'core/form', 'pages', 'assets/js', 'assets/js/nu', 'assets/css', 'lang', 'docs', 'install'] as $d) if (is_dir(NU_ROOT . '/' . $d)) $dirs[] = NU_ROOT . '/' . $d;
+		foreach (['core', 'core/form', 'core/lists', 'pages', 'assets/js', 'assets/js/nu', 'assets/css', 'lang', 'docs', 'install'] as $d) if (is_dir(NU_ROOT . '/' . $d)) $dirs[] = NU_ROOT . '/' . $d;
 		$notWritable = array_values(array_filter($dirs, static fn($d) => !is_writable($d)));
 		$free = function_exists('disk_free_space') ? @disk_free_space(NU_ROOT) : false;   // may be disabled (disable_functions)
 		$bdir = self::backupDir();
@@ -258,10 +260,10 @@ final class NuUpdate
 		];
 	}
 
-	/** Free disk space for the requirements: "1.8 TB free of 1.9 TB (92 %)" – GB / TB instead of thousands of MB (0.8.272). */
+	/** Free disk space for the requirements: "1.8 TB free of 1.9 TB (92 %)" – GB / TB instead of thousands of MB. */
 	private static function spaceText(float $free): string
 	{
-		$total = function_exists('disk_total_space') ? @disk_total_space(NU_ROOT) : false;   // 0.8.273: hosts may disable it
+		$total = function_exists('disk_total_space') ? @disk_total_space(NU_ROOT) : false;   // hosts may disable it
 		$f = NuFile::size((int)$free);
 		if (!$total || $total <= 0) return $f;
 		return t('upd_req_space_of', $f, NuFile::size((int)$total), (int)round($free / $total * 100));
@@ -271,7 +273,7 @@ final class NuUpdate
 	 * Reads and checks a package. @return array{ok: bool, errors: string[], version: string, manifest: array, prefix: string}
 	 */
 	/**
-	 * Packages put into <nuBuilder Next>/_update/ by FTP (0.8.372): installed from there instead of an upload (big packages, upload
+	 * Packages put into <nuBuilder Next>/_update/ by FTP: installed from there instead of an upload (big packages, upload
 	 * limits). The folder is never part of a package nor touched by an update (isProtected), the web is kept out (deny-all .htaccess).
 	 */
 	public static function folderDir(): string
@@ -298,7 +300,8 @@ final class NuUpdate
 		$out = [];
 		foreach (glob($dir . '/*.zip') ?: [] as $f) {
 			$name = basename($f);
-			if (!self::folderName($name) || !is_file($f) || str_starts_with($name, 'nunext-lib-') || str_starts_with($name, 'dbreset-')) continue;   // dbreset-*: uploads of Reset database (0.8.847)     // library packs: NuLibs (0.8.405)
+			if (!self::folderName($name) || !is_file($f) || str_starts_with($name, 'nunext-lib-')
+				|| str_starts_with($name, 'dbreset-')) continue;   // dbreset-*: uploads of Reset database     // library packs: NuLibs
 			$p = ['name' => $name, 'size' => (int)@filesize($f), 'time' => (int)@filemtime($f), 'version' => '', 'signature' => '', 'ok' => false];
 			if (class_exists('ZipArchive')) {
 				$z = new ZipArchive();
@@ -383,9 +386,9 @@ final class NuUpdate
 				throw new RuntimeException(t('upd_err_copy', $e->getMessage()) . ' ' . t('upd_restored'), 0, $e);
 			}
 			self::resetCaches();
-			$_SESSION['nu_update'] = ['from' => NU_VERSION, 'to' => (string)$m['version'], 'backup' => $backup, 'changes' => $m['changes'] ?? []];
+			$_SESSION[NuSess::UPDATE] = ['from' => NU_VERSION, 'to' => (string)$m['version'], 'backup' => $backup, 'changes' => $m['changes'] ?? []];
 			NuLog::write('nunext_update', '', '', ['from' => NU_VERSION, 'to' => $m['version'], 'backup' => $backup]);
-			try { self::autoCleanup(); } catch (Throwable $e) { error_log('nuBuilder Next backup clean-up: ' . $e->getMessage()); }   // 0.8.451, never stops the update
+			try { self::autoCleanup(); } catch (Throwable $e) { error_log('nuBuilder Next backup clean-up: ' . $e->getMessage()); }   // never stops the update
 			return $backup;
 		} finally {
 			self::rmTree($stage);
@@ -403,7 +406,7 @@ final class NuUpdate
 			foreach ($info['manifest']['files'] as $rel => $f) {
 				$data = $z->getFromName($info['prefix'] . $rel);
 				if ($data === false || !hash_equals((string)$f['sha256'], hash('sha256', $data))) throw new RuntimeException(t('upd_err_checksum', (string)$rel));
-				$files = $info['manifest']['files'];                          // a source map comment whose map is not delivered (0.8.574)
+				$files = $info['manifest']['files'];                          // a source map comment whose map is not delivered
 				if (($x = NuLibs::stripSourceMap((string)$rel, $data, static fn($r) => isset($files[$r]))) !== null) $data = $x;
 				$dest = $stage . '/' . $rel;
 				if (!is_dir(dirname($dest))) mkdir(dirname($dest), 0700, true);
@@ -467,7 +470,8 @@ final class NuUpdate
 				if ($f->isFile() && !self::isProtected($rel) && !self::isLibrary($rel)) $files[] = $rel;
 			}
 		}
-		foreach (['index.php', 'api.php', 'nucron.php', '.htaccess', 'nuconfig-sample.php', 'README.md', 'CHANGELOG.md', 'LICENSE', 'TODO.md', self::MANIFEST, 'docs/.htaccess'] as $f) if (is_file(NU_ROOT . '/' . $f)) $files[] = $f;
+		foreach (['index.php', 'api.php', 'nucron.php', '.htaccess', 'nuconfig-sample.php', 'README.md', 'CHANGELOG.md', 'LICENSE', 'TODO.md', self::MANIFEST,
+			'docs/.htaccess'] as $f) if (is_file(NU_ROOT . '/' . $f)) $files[] = $f;
 		$files = array_values(array_unique($files));
 		sort($files);
 		return $files;
@@ -482,7 +486,7 @@ final class NuUpdate
 
 	/**
 	 * Backup zip: program files + nuBuilder Next's tables (JSON) and, optionally, an SQL dump (db/database.sql.gz, see core/nusqldump.php):
-	 * $sqlScope 'none' | 'nubuilder' (all zzzzsys_* tables, 0.8.615) | 'nunext' (nuBuilder Next's tables) | 'all' (the whole database);
+	 * $sqlScope 'none' | 'nubuilder' (all zzzzsys_* tables) | 'nunext' (nuBuilder Next's tables) | 'all' (the whole database);
 	 * $withoutLogs leaves out the rows of log tables.
 	 * Never two at the same time (lock); while it runs a marker file says so – if the server stops the script (time limit), the next
 	 * page view reports it (interrupted()). Returns the file name inside backupDir().
@@ -501,7 +505,7 @@ final class NuUpdate
 		try {
 			self::loadDump();   // NuSqlDump::LOG_TABLES for the JSON copies
 			$withSql = in_array($sqlScope, ['nubuilder', 'nunext', 'all'], true) && self::loadDump() && NuSqlDump::available();
-			// enough free space? (0.8.1032) – a backup that fills the disk can break the database server too; unknown space = no check
+			// enough free space? – a backup that fills the disk can break the database server too; unknown space = no check
 			if (self::loadDump() && ($p = NuSqlDump::spaceProblem($dir, NuSqlDump::backupNeed($withSql ? $sqlScope : 'none', $withoutLogs)))) throw new RuntimeException($p);
 			@file_put_contents($dir . '/' . self::RUNNING, json_encode(['name' => $name, 'since' => time(), 'reason' => $reason, 'sql' => $withSql ? $sqlScope : 'none']));
 			$sql = null;
@@ -515,14 +519,14 @@ final class NuUpdate
 			if ($z->open($path, ZipArchive::CREATE | ZipArchive::EXCL) !== true) throw new RuntimeException(t('upd_err_backup'));
 			$files = self::programFiles();
 			foreach ($files as $rel) $z->addFile(NU_ROOT . '/' . $rel, 'files/' . $rel);
-			// "Include custom pages" (0.8.387): the installation's page folders as a copy (custom/…) – never restored by a rollback
+			// "Include custom pages": the installation's page folders as a copy (custom/…) – never restored by a rollback
 			$pages = [];
 			if ($withPages) foreach (self::customFiles() as $rel => $abs) { $z->addFile($abs, 'custom/' . substr($rel, 7)); $pages[] = $rel; }
 			$tables = [];
 			$tableErrors = [];
 			$db = nu_db();
 			foreach ($db->type === 'sqlite' ? [] : self::nunextTables() as $t) {
-				// rows streamed into a temp file next to the backup (0.8.1209, a forum report): $db->all() + one json_encode of a large table
+				// rows streamed into a temp file next to the backup (a forum report): $db->all() + one json_encode of a large table
 				// (the log) ran out of memory whatever memory_limit said. Without logs: the log table's rows are left out, as in the SQL dump.
 				$tf = $dir . '/.' . $name . '.' . $t . '.json.tmp';
 				try {
@@ -541,7 +545,8 @@ final class NuUpdate
 				$z->setCompressionName(self::SQL_ENTRY, ZipArchive::CM_STORE);   // already gzip
 			}
 			$z->addFromString('backup.json', json_encode(['product' => 'nuNext', 'version' => NU_VERSION, 'created' => date('c'), 'reason' => $reason,
-				'by' => (string)(NuAuth::currentRaw()['login'] ?? ''), 'files' => $files, 'tables' => $tables, 'table_errors' => (object)$tableErrors, 'sql' => $sql, 'custom' => $pages], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+				'by' => (string)(NuAuth::currentRaw()['login'] ?? ''), 'files' => $files, 'tables' => $tables, 'table_errors' => (object)$tableErrors, 'sql' => $sql, 'custom' => $pages],
+					JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
 			if (!$z->close()) throw new RuntimeException(t('upd_err_backup'));
 			@chmod($path, 0600);
 			self::$lastSql = $sql;
@@ -556,7 +561,7 @@ final class NuUpdate
 	}
 
 	/**
-	 * One table as a JSON array in $file, row by row (0.8.1209): unbuffered on MySQL, so neither the result set nor the JSON text is
+	 * One table as a JSON array in $file, row by row: unbuffered on MySQL, so neither the result set nor the JSON text is
 	 * held in memory; $empty = only "[]" (rows left out). A row that cannot be encoded fails the table (no silent half rows).
 	 */
 	public static function tableJson(NuDB $db, string $table, string $file, bool $empty = false): int
@@ -584,7 +589,7 @@ final class NuUpdate
 			if (fwrite($fp, $n ? "\n]" : ']') === false) throw new RuntimeException(t('upd_err_backup'));
 		} finally {
 			fclose($fp);
-			if ($buffered !== null) { try { $pdo->setAttribute(nu_pdo_mysql_buffered(), $buffered); } catch (Throwable) {} }
+			if ($buffered !== null) { try { $pdo->setAttribute(nu_pdo_mysql_buffered(), $buffered); } catch (Throwable $ig) { nu_ignored($ig); } }
 		}
 		return $n;
 	}
@@ -669,7 +674,8 @@ final class NuUpdate
 	private static function nunextTables(): array
 	{
 		$out = [];
-		foreach (['zzzzsys_nunext_log', 'zzzzsys_nunext_form_history', 'zzzzsys_nunext_form_draft', 'zzzzsys_nunext_page', 'zzzzsys_nunext_user_2fa', 'zzzzsys_nunext_token', 'zzzzsys_nunext_session', NuMigrate::TABLE] as $t) {
+		foreach (['zzzzsys_nunext_log', 'zzzzsys_nunext_form_history', 'zzzzsys_nunext_form_draft', 'zzzzsys_nunext_page', 'zzzzsys_nunext_user_2fa',
+			'zzzzsys_nunext_token', 'zzzzsys_nunext_session', NuMigrate::TABLE] as $t) {
 			if (nu_db()->tableExists($t)) $out[] = $t;
 		}
 		return $out;
@@ -699,7 +705,7 @@ final class NuUpdate
 		return is_file($f) ? $f : null;
 	}
 
-	// ================================================================= deleting several backups, clean-up rule (0.8.451)
+	// ================================================================= deleting several backups, clean-up rule
 
 	public const CLEANUP_SETTING = 'backup_cleanup';
 
@@ -746,8 +752,7 @@ final class NuUpdate
 		try {
 			$raw = nu_setting_value(self::CLEANUP_SETTING);
 			$v = is_string($raw) ? (array)(json_decode($raw, true) ?: []) : [];
-		} catch (Throwable) {
-		}
+		} catch (Throwable $ig) { nu_ignored($ig); }
 		$mode = ($v['mode'] ?? '') === 'age' ? 'age' : 'keep';
 		return ['mode' => $mode, 'n' => max(1, min(9999, (int)($v['n'] ?? ($mode === 'age' ? 90 : 10)))), 'auto' => !empty($v['auto'])];
 	}
@@ -873,7 +878,7 @@ final class NuMigrate
 	public static bool $earlier = false;
 	public const ENTRY_NOTICE = 'entry_files_notice';
 
-	/** 0.8.825: api.php, cron.php, oauth.php and dbadmin.php got the nu prefix – the globeadmin sees a notice until hidden ($on false = hide). */
+	/** api.php, cron.php, oauth.php and dbadmin.php got the nu prefix – the globeadmin sees a notice until hidden ($on false = hide). */
 	public static function entryNotice(?bool $on = null): bool
 	{
 		try {
@@ -881,7 +886,8 @@ final class NuMigrate
 			$db = nu_db();
 			$has = nu_setting_has(self::ENTRY_NOTICE);
 			if ($on === null) return $has;
-			if ($on && !$has) $db->insert('zzzzsys_nunext_setting', ['zzzzsys_nunext_setting_id' => self::ENTRY_NOTICE, 'setting_value' => NU_VERSION, 'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => 'update']);
+			if ($on && !$has) $db->insert('zzzzsys_nunext_setting',
+				['zzzzsys_nunext_setting_id' => self::ENTRY_NOTICE, 'setting_value' => NU_VERSION, 'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => 'update']);
 			if (!$on && $has) $db->delete('zzzzsys_nunext_setting', 'zzzzsys_nunext_setting_id', self::ENTRY_NOTICE);
 			return $on;
 		} catch (Throwable) {
@@ -934,7 +940,7 @@ final class NuMigrate
 				$db = nu_db();
 				$t = 'zzzzsys_nunext_passkey';
 				if (!$db->tableExists($t) || !isset(array_change_key_case($db->columns($t))['backup'])) return;
-				$q = $db->type === 'sqlsrv' ? '[backup]' : '`backup`';
+				$q = $db->quoteName('backup');
 				$db->run("UPDATE $t SET backed_up = $q WHERE backed_up IS NULL");
 				$db->run("ALTER TABLE $t DROP COLUMN $q");
 				NuDB::forgetColumns($t);
@@ -953,7 +959,7 @@ final class NuMigrate
 	}
 
 	/**
-	 * What each step changes, for the preview of an update (install/db_changes.json, 0.8.346): id => list of [table, kind, what];
+	 * What each step changes, for the preview of an update (install/db_changes.json): id => list of [table, kind, what];
 	 * kind: table (created when missing), column, type, data. Add an entry for every new step.
 	 */
 	public const CHANGES = [
@@ -1011,7 +1017,7 @@ final class NuMigrate
 		'0045-recycle' => [['zzzzsys_nunext_recycle', 'table', 'created when missing']],
 	];
 
-	/** 0.8.438: the start page hook procedures got the codes nu_home / nu_home_user – existing ones are renamed once (not when the new code is taken). */
+	/** the start page hook procedures got the codes nu_home / nu_home_user – existing ones are renamed once (not when the new code is taken). */
 	public static function renameHomeHooks(): void
 	{
 		$db = nu_db();
@@ -1037,7 +1043,7 @@ final class NuMigrate
 	}
 
 	/** Ids of the steps already applied in this database. @return string[] */
-	/** Ids of all database steps this version knows (integrity check: steps of a newer version in the database, 0.8.698). @return list<string> */
+	/** Ids of all database steps this version knows (integrity check: steps of a newer version in the database). @return list<string> */
 	public static function stepIds(): array
 	{
 		return array_map('strval', array_keys(self::steps()));
@@ -1055,7 +1061,7 @@ final class NuMigrate
 		if ($db->tableExists(self::TABLE)) return;
 		$T = static fn(string $t, string $l = '') => NuDDL::sqlType($t, $l);
 		$db->run('CREATE TABLE ' . self::TABLE . ' (' . self::TABLE . '_id ' . $T('text', '50') . ' NOT NULL PRIMARY KEY, applied_at ' . $T('datetime') . ' NULL, '
-			. 'version ' . $T('text', '20') . ' NULL, description ' . $T('text', '255') . ' NULL)' . ($db->type === 'mysql' ? NuDDL::mysqlTableOptions() : ''));
+			. 'version ' . $T('text', '20') . ' NULL, description ' . $T('text', '255') . ' NULL)' . $db->tableOptions());
 	}
 
 	/** @return array<int, array{id: string, description: string, applied: ?string, version: ?string}> */
@@ -1086,14 +1092,14 @@ final class NuMigrate
 				'version' => NU_VERSION, 'description' => mb_substr($desc, 0, 255)]);
 			$applied[] = $id;
 		}
-		// checked with every run (installation, each update), not only once: a database without it gets nuBuilder Forte's User Home (0.8.618)
+		// checked with every run (installation, each update), not only once: a database without it gets nuBuilder Forte's User Home
 		if (!in_array('0026-user-home', $applied, true)) {
 			try { NuUserHome::ensure(); } catch (Throwable $e) { error_log('nuBuilder Next User Home: ' . $e->getMessage()); }
 		}
-		if (!in_array('0028-welcome-templates', $applied, true)) {   // the read-only welcome templates (0.8.658), also every run
+		if (!in_array('0028-welcome-templates', $applied, true)) {   // the read-only welcome templates, also every run
 			try { NuWelcome::ensureTemplates(); } catch (Throwable $e) { error_log('nuBuilder Next welcome templates: ' . $e->getMessage()); }
 		}
-		if (!in_array('0036-pwreset-templates', $applied, true)) {   // the read-only password reset templates (0.8.901), also every run
+		if (!in_array('0036-pwreset-templates', $applied, true)) {   // the read-only password reset templates, also every run
 			try { NuPwReset::ensureTemplates(); } catch (Throwable $e) { error_log('nuBuilder Next password reset templates: ' . $e->getMessage()); }
 		}
 		if ($applied) NuLog::write('nunext_migration', self::TABLE, '', ['steps' => $applied]);

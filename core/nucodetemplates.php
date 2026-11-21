@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Templates of Admin tools → Custom code (0.8.524): ready-made snippets per tab, inserted at the cursor (▾ Templates) or picked in a
+ * Templates of Admin tools → Custom code: ready-made snippets per tab, inserted at the cursor (▾ Templates) or picked in a
  * preview dialogue (assets/js/nuglobalcode.js). Built-in only. Title / description = texts ctpl_<id> / ctpl_<id>_d; the code itself is
  * code (English comments). Examples use nu:pageload listeners where several may be combined – only the skeleton defines nuOnPageLoad.
  */

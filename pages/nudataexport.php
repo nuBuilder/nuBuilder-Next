@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Data export (0.8.758, core/nudataexport.php): list of the saved exports (NuListDefs 'exports') · ?id=new | ?id=<id> the editor ·
+ * Data export (core/nudataexport.php): list of the saved exports (NuListDefs 'exports') · ?id=new | ?id=<id> the editor ·
  * ?run=<id> runs one (asks for parameters first when the SQL has #placeholders#) · ?json=<id> downloads the definition as JSON ·
  * POST import_json uploads one. Admin right dataexport: view = run, change = edit. JSON actions of the editor (POST, nothing stored):
  * tables, columns, preview, count, check.
@@ -22,40 +22,8 @@ if ($id === 'new' && !$canChange) NuAdmin::require('dataexport', 'change');
 $errors = [];
 
 // ------------------------------------------------------------------ JSON actions of the editor
-if (nu_is_post() && in_array(nu_post('action'), ['tables', 'columns', 'preview', 'count', 'check'], true)) {
-	NuAdmin::require('dataexport', 'change');
-	$action = nu_post('action');
-	try {
-		if ($action === 'tables') {
-			$tables = [];
-			foreach (NuDataExport::tables() as $n => $t) $tables[] = ['name' => $n, 'view' => $t['view'], 'system' => $t['system']];
-			$selects = [];
-			if (NuSqlSelect::available()) foreach (nu_db()->all('SELECT zzzzsys_select_id, sse_code, sse_description FROM zzzzsys_select ORDER BY sse_code') as $r) $selects[] = ['id' => (string)$r['zzzzsys_select_id'], 'code' => (string)$r['sse_code'], 'name' => (string)$r['sse_description']];
-			$json(['ok' => true, 'tables' => $tables, 'selects' => $selects]);
-		}
-		if ($action === 'columns') {
-			$cols = [];
-			foreach (NuDataExport::columns(nu_post('table')) as $n => $c) $cols[] = ['name' => $n, 'kind' => $c['kind'], 'pk' => $c['pk'], 'secret' => $c['secret'], 'type' => $c['type']];
-			$json(['ok' => true, 'columns' => $cols]);
-		}
-		$d = NuDataExport::cleanDataset(json_decode((string)($_POST['dataset'] ?? ''), true));
-		$values = json_decode((string)($_POST['values'] ?? ''), true);
-		$values = is_array($values) ? array_map('strval', array_filter($values, 'is_scalar')) : [];
-		if ($action === 'check') {
-			$e = NuDataExport::checkDataset($d);
-			$json(['ok' => $e === '', 'message' => $e, 'params' => $e === '' ? NuDataExport::params(['datasets' => [$d]]) : []]);
-		}
-		if ($action === 'count') $json(['ok' => true, 'count' => NuDataExport::count($d, $values)]);
-		$e = NuDataExport::checkDataset($d);
-		if ($e !== '') $json(['ok' => false, 'message' => $e]);
-		$p = NuDataExport::preview($d, $values);
-		$json(['ok' => true, 'cols' => $p['cols'], 'rows' => $p['rows'], 'params' => NuDataExport::params(['datasets' => [$d]])]);
-	} catch (Throwable $x) {
-		$msg = $x->getMessage();
-		if (!NuAuth::user()['globeadmin'] && $x instanceof PDOException) $msg = t('dxp_err_query');
-		$json(['ok' => false, 'message' => $msg]);
-	}
-}
+['x' => $x]
+	= NuDataexportPage::post(get_defined_vars());   // the POST actions (code review R7, nudataexportpage.php)
 
 // ------------------------------------------------------------------ running
 $runExport = $runId !== '' ? NuDataExport::get($runId) : null;
@@ -119,8 +87,10 @@ if (nu_is_post()) {
 			nu_redirect(nu_url('dataexport', ['id' => $newId]));
 		}
 		nu_flash('danger', t('err_check_form'));
-		$export = ['id' => $export ? $export['id'] : '', 'code' => (string)$in['code'], 'name' => (string)$in['name'], 'description' => (string)$in['description'], 'format' => (string)$in['format'] === 'csv' ? 'csv' : 'xlsx',
-			'filename' => (string)$in['filename'], 'options' => NuDataExport::cleanOptions($in['options']), 'datasets' => array_map([NuDataExport::class, 'cleanDataset'], json_decode($in['datasets'], true) ?: []),
+		$export = ['id' => $export ? $export['id'] : '', 'code' => (string)$in['code'], 'name' => (string)$in['name'],
+			'description' => (string)$in['description'], 'format' => (string)$in['format'] === 'csv' ? 'csv' : 'xlsx',
+			'filename' => (string)$in['filename'], 'options' => NuDataExport::cleanOptions($in['options']),
+				'datasets' => array_map([NuDataExport::class, 'cleanDataset'], json_decode($in['datasets'], true) ?: []),
 			'last_run_at' => '', 'runs' => 0, 'updated_at' => '', 'updated_by' => ''];
 		$id = $export['id'] !== '' ? $export['id'] : 'new';
 	} elseif ($export && $action === 'delete') {
@@ -159,9 +129,11 @@ if ($id === '') {
 	$buttons = '';
 	if ($canChange) {
 		$buttons = '<a class="btn nuAddBtn" href="' . h(nu_url('dataexport', ['id' => 'new'])) . '" id="dxpNew"><i class="bi bi-plus-lg me-1"></i>' . h(t('add')) . '</a>'
-			. '<form method="post" action="' . h(nu_url('dataexport')) . '" enctype="multipart/form-data" class="d-inline" id="dxpImportForm">' . nu_csrf_field() . '<input type="hidden" name="action" value="import_json">'
+			. '<form method="post" action="' . h(nu_url('dataexport')) . '" enctype="multipart/form-data" class="d-inline" id="dxpImportForm">' . nu_csrf_field()
+				. '<input type="hidden" name="action" value="import_json">'
 			. '<input type="file" name="json_file" accept=".json,application/json" class="d-none" id="dxpImportFile">'
-			. '<button type="button" class="btn btn-outline-secondary" id="dxpImportBtn" title="' . h(t('dxp_import_json_tip')) . '"><i class="bi bi-upload me-1"></i>' . h(t('dxp_import_json')) . '</button></form>';
+			. '<button type="button" class="btn btn-outline-secondary" id="dxpImportBtn" title="' . h(t('dxp_import_json_tip'))
+				. '"><i class="bi bi-upload me-1"></i>' . h(t('dxp_import_json')) . '</button></form>';
 	}
 	echo NuListView::card($st, ['title_extra' => NuListView::infoTip(t('dxp_hint')), 'buttons' => $buttons]);
 	nu_layout_end(NuListView::foot() . nu_ts_foot() . '<script src="' . nu_asset('assets/js/nudataexport.js') . '"></script>');
@@ -194,7 +166,8 @@ echo NuListView::crumbs([[t('dxp_title'), nu_url('dataexport')], [$export ? $e['
 $fieldErr = static fn(string $f) => isset($errors[$f]) ? '<div class="invalid-feedback d-block">' . h($errors[$f]) . '</div>' : '';
 ?>
 <form method="post" action="<?= h(nu_url('dataexport', ['id' => $id])) ?>" id="dxpForm" data-nu-guard>
-	<?= nu_csrf_field() ?><input type="hidden" name="action" value="save"><input type="hidden" name="datasets" id="dxpDatasets" value="<?= h((string)json_encode($e['datasets'], JSON_UNESCAPED_UNICODE)) ?>">
+	<?= nu_csrf_field() ?><input type="hidden" name="action" value="save"><input type="hidden" name="datasets" id="dxpDatasets"
+		value="<?= h((string)json_encode($e['datasets'], JSON_UNESCAPED_UNICODE)) ?>">
 	<div class="nuTitleBar nuRecHead">
 		<h1 class="h4 mb-0"><i class="bi bi-file-earmark-arrow-down me-2"></i><?= h($export ? $e['name'] : t('dxp_new')) ?></h1>
 		<?php if ($export): ?><div class="nuTitleSub small text-body-secondary"><code><?= h($e['code']) ?></code> · <?= h(t('dxp_runs')) ?>: <?= (int)$e['runs'] ?><?= $e['last_run_at'] !== '' ? ' · ' . h(t('dxp_last_run')) . ' ' . h(date(nu_dfmt('d.m.Y H:i'), (int)strtotime($e['last_run_at']))) : '' ?></div><?php endif; ?>
@@ -217,7 +190,8 @@ $fieldErr = static fn(string $f) => isset($errors[$f]) ? '<div class="invalid-fe
 			<?php endif; ?>
 		</div>
 	</div>
-	<?php if ($params): ?><div class="alert alert-info small py-2" id="dxpParamsNote"><i class="bi bi-braces me-1"></i><?= h(t('dxp_params_note', implode(', ', array_map(static fn($p) => "#$p#", $params)))) ?></div><?php endif; ?>
+	<?php if ($params): ?><div class="alert alert-info small py-2"
+		id="dxpParamsNote"><i class="bi bi-braces me-1"></i><?= h(t('dxp_params_note', implode(', ', array_map(static fn($p) => "#$p#", $params)))) ?></div><?php endif; ?>
 	<div class="row g-3">
 		<div class="col-lg-4">
 			<div class="card shadow-sm mb-3">
@@ -230,7 +204,8 @@ $fieldErr = static fn(string $f) => isset($errors[$f]) ? '<div class="invalid-fe
 					<div class="mb-3">
 						<label class="form-label" for="dxpCode"><?= h(t('dxp_code')) ?></label>
 						<?= nu_info_tip(t('dxp_code_tip')) ?>
-						<input class="form-control font-monospace<?= isset($errors['code']) ? ' is-invalid' : '' ?>" id="dxpCode" name="code" value="<?= h($e['code']) ?>" maxlength="50" pattern="[a-z0-9_]*"<?= $ro ? ' readonly' : '' ?>>
+						<input class="form-control font-monospace<?= isset($errors['code']) ? ' is-invalid' : '' ?>" id="dxpCode" name="code"
+							value="<?= h($e['code']) ?>" maxlength="50" pattern="[a-z0-9_]*"<?= $ro ? ' readonly' : '' ?>>
 						<?= $fieldErr('code') ?>
 					</div>
 					<div class="mb-3">
@@ -256,9 +231,11 @@ $fieldErr = static fn(string $f) => isset($errors[$f]) ? '<div class="invalid-fe
 					<h2 class="h6"><?= h(t('dxp_csv_options')) ?></h2>
 					<div class="row g-2">
 						<div class="col-6"><label class="form-label small" for="dxpCsvSep"><?= h(t('csv_separator')) ?></label>
-							<select class="form-select form-select-sm" id="dxpCsvSep" name="csv_sep"<?= $ro ? ' disabled' : '' ?>><?php foreach (NuDataExport::CSV_SEPS as $k => $v): ?><option value="<?= h($k) ?>"<?= $csv['sep'] === $k ? ' selected' : '' ?>><?= h(t('csv_sep_' . $k)) ?></option><?php endforeach; ?></select></div>
+							<select class="form-select form-select-sm" id="dxpCsvSep"
+								name="csv_sep"<?= $ro ? ' disabled' : '' ?>><?php foreach (NuDataExport::CSV_SEPS as $k => $v): ?><option value="<?= h($k) ?>"<?= $csv['sep'] === $k ? ' selected' : '' ?>><?= h(t('csv_sep_' . $k)) ?></option><?php endforeach; ?></select></div>
 						<div class="col-6"><label class="form-label small" for="dxpCsvEol"><?= h(t('dxp_csv_eol')) ?></label>
-							<select class="form-select form-select-sm" id="dxpCsvEol" name="csv_eol"<?= $ro ? ' disabled' : '' ?>><option value="crlf"<?= $csv['eol'] === 'crlf' ? ' selected' : '' ?>>CRLF (Windows / Excel)</option><option value="lf"<?= $csv['eol'] === 'lf' ? ' selected' : '' ?>>LF</option></select></div>
+							<select class="form-select form-select-sm" id="dxpCsvEol"
+								name="csv_eol"<?= $ro ? ' disabled' : '' ?>><option value="crlf"<?= $csv['eol'] === 'crlf' ? ' selected' : '' ?>>CRLF (Windows / Excel)</option><option value="lf"<?= $csv['eol'] === 'lf' ? ' selected' : '' ?>>LF</option></select></div>
 						<div class="col-6"><label class="form-label small" for="dxpCsvDate"><?= h(t('dxp_csv_date')) ?></label>
 							<input class="form-control form-control-sm" id="dxpCsvDate" name="csv_date" value="<?= h($csv['date']) ?>" list="dxpDateFmts"<?= $ro ? ' readonly' : '' ?>>
 							<datalist id="dxpDateFmts"><option value="Y-m-d"><option value="d.m.Y"><option value="d/m/Y"><option value="m/d/Y"></datalist></div>
@@ -266,15 +243,24 @@ $fieldErr = static fn(string $f) => isset($errors[$f]) ? '<div class="invalid-fe
 							<input class="form-control form-control-sm" id="dxpCsvDatetime" name="csv_datetime" value="<?= h($csv['datetime']) ?>" list="dxpDatetimeFmts"<?= $ro ? ' readonly' : '' ?>>
 							<datalist id="dxpDatetimeFmts"><option value="Y-m-d H:i:s"><option value="Y-m-d H:i"><option value="d.m.Y H:i"><option value="d/m/Y H:i"></datalist></div>
 						<div class="col-6"><label class="form-label small" for="dxpCsvDecimal"><?= h(t('dxp_csv_decimal')) ?></label>
-							<select class="form-select form-select-sm" id="dxpCsvDecimal" name="csv_decimal"<?= $ro ? ' disabled' : '' ?>><option value="."<?= $csv['decimal'] === '.' ? ' selected' : '' ?>>1234.50</option><option value=","<?= $csv['decimal'] === ',' ? ' selected' : '' ?>>1234,50</option></select></div>
+							<select class="form-select form-select-sm" id="dxpCsvDecimal"
+								name="csv_decimal"<?= $ro ? ' disabled' : '' ?>><option value="."<?= $csv['decimal'] === '.' ? ' selected' : '' ?>>1234.50</option><option value=","<?= $csv['decimal'] === ',' ? ' selected' : '' ?>>1234,50</option></select></div>
 						<div class="col-6"><label class="form-label small" for="dxpCsvBool"><?= h(t('dxp_csv_bool')) ?></label>
-							<select class="form-select form-select-sm" id="dxpCsvBool" name="csv_bool"<?= $ro ? ' disabled' : '' ?>><?php foreach (['1/0', 'true/false', 'yes/no'] as $b): ?><option value="<?= h($b) ?>"<?= $csv['bool'] === $b ? ' selected' : '' ?>><?= h($b) ?></option><?php endforeach; ?></select></div>
+							<select class="form-select form-select-sm" id="dxpCsvBool"
+								name="csv_bool"<?= $ro ? ' disabled' : '' ?>><?php foreach (['1/0', 'true/false', 'yes/no'] as $b): ?><option value="<?= h($b) ?>"<?= $csv['bool'] === $b ? ' selected' : '' ?>><?= h($b) ?></option><?php endforeach; ?></select></div>
 						<div class="col-6"><label class="form-label small" for="dxpCsvNull"><?= h(t('dxp_csv_null')) ?></label>
-							<input class="form-control form-control-sm" id="dxpCsvNull" name="csv_null" value="<?= h($csv['null']) ?>" maxlength="20" placeholder="<?= h(t('dxp_csv_null_ph')) ?>"<?= $ro ? ' readonly' : '' ?>></div>
+							<input class="form-control form-control-sm" id="dxpCsvNull" name="csv_null" value="<?= h($csv['null']) ?>" maxlength="20"
+								placeholder="<?= h(t('dxp_csv_null_ph')) ?>"<?= $ro ? ' readonly' : '' ?>></div>
 						<div class="col-12 pt-1">
-							<div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="dxpCsvHead" name="csv_head" value="1"<?= $csv['head'] ? ' checked' : '' ?><?= $ro ? ' disabled' : '' ?>><label class="form-check-label small" for="dxpCsvHead"><?= h(t('csv_header')) ?></label></div>
-							<div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="dxpCsvBom" name="csv_bom" value="1"<?= $csv['bom'] ? ' checked' : '' ?><?= $ro ? ' disabled' : '' ?>><label class="form-check-label small" for="dxpCsvBom"><?= h(t('csv_bom')) ?></label></div>
-							<div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="dxpCsvProtect" name="csv_protect" value="1"<?= $csv['protect'] ? ' checked' : '' ?><?= $ro ? ' disabled' : '' ?>><label class="form-check-label small" for="dxpCsvProtect"><?= h(t('dxp_csv_protect')) ?></label>
+							<div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="dxpCsvHead" name="csv_head"
+								value="1"<?= $csv['head'] ? ' checked' : '' ?><?= $ro ? ' disabled' : '' ?>><label class="form-check-label small"
+								for="dxpCsvHead"><?= h(t('csv_header')) ?></label></div>
+							<div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="dxpCsvBom" name="csv_bom"
+								value="1"<?= $csv['bom'] ? ' checked' : '' ?><?= $ro ? ' disabled' : '' ?>><label class="form-check-label small"
+								for="dxpCsvBom"><?= h(t('csv_bom')) ?></label></div>
+							<div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="dxpCsvProtect" name="csv_protect"
+								value="1"<?= $csv['protect'] ? ' checked' : '' ?><?= $ro ? ' disabled' : '' ?>><label class="form-check-label small"
+								for="dxpCsvProtect"><?= h(t('dxp_csv_protect')) ?></label>
 								<?= nu_info_tip(t('dxp_csv_protect_tip')) ?></div>
 						</div>
 					</div>
@@ -299,11 +285,14 @@ $fieldErr = static fn(string $f) => isset($errors[$f]) ? '<div class="invalid-fe
 </form>
 <?php if ($export && !$ro): ?>
 <form method="post" action="<?= h(nu_url('dataexport', ['id' => $e['id']])) ?>" id="dxpDupForm" class="d-none"><?= nu_csrf_field() ?><input type="hidden" name="action" value="duplicate"></form>
-<form method="post" action="<?= h(nu_url('dataexport', ['id' => $e['id']])) ?>" id="dxpDelForm" class="d-none" data-confirm="<?= h(t('dxp_delete_confirm', $e['name'])) ?>" data-confirm-ok="<?= h(t('delete')) ?>" data-confirm-class="btn btn-danger"><?= nu_csrf_field() ?><input type="hidden" name="action" value="delete"></form>
+<form method="post" action="<?= h(nu_url('dataexport', ['id' => $e['id']])) ?>" id="dxpDelForm" class="d-none"
+	data-confirm="<?= h(t('dxp_delete_confirm', $e['name'])) ?>" data-confirm-ok="<?= h(t('delete')) ?>"
+	data-confirm-class="btn btn-danger"><?= nu_csrf_field() ?><input type="hidden" name="action" value="delete"></form>
 <?php endif; ?>
 <div class="modal fade" id="dxpPreviewDlg" tabindex="-1" aria-labelledby="dxpPreviewTitle" aria-hidden="true">
 	<div class="modal-dialog modal-xl modal-dialog-scrollable"><div class="modal-content">
-		<div class="modal-header"><h2 class="modal-title h6" id="dxpPreviewTitle"><?= h(t('dxp_preview')) ?></h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?= h(t('close')) ?>"></button></div>
+		<div class="modal-header"><h2 class="modal-title h6" id="dxpPreviewTitle"><?= h(t('dxp_preview')) ?></h2><button type="button" class="btn-close"
+			data-bs-dismiss="modal" aria-label="<?= h(t('close')) ?>"></button></div>
 		<div class="modal-body" id="dxpPreviewBody"></div>
 	</div></div>
 </div>

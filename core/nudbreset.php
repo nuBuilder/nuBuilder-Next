@@ -3,13 +3,13 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Reset database (0.8.628, developer mode only): deletes ALL tables of the database and imports a nuBuilder Forte (4.x) SQL file –
+ * Reset database (developer mode only): deletes ALL tables of the database and imports a nuBuilder Forte (4.x) SQL file –
  * nubuilder4.sql of any 4.x (made 4.9 with NuInstall::upgradeTo49) or a complete dump of a nuBuilder database with the application's
  * tables – then creates nuBuilder Next's tables (NuSchema + NuMigrate, origin "nunext": set up by nuBuilder Next itself, not blocked as
  * an existing database) and optionally the sample application. nuconfig.php, files, library packs, custom pages and backups stay.
  * Page: Admin tools → Reset database (pages/nudbreset.php, globeadmin, recent password, typed database name, optional full backup).
  * Command line: php nucron.php reset --sql=<file> [--backup] [--sample] --yes. MySQL / MariaDB only.
- * Fresh installation from a package (0.8.844): a signed nunext.zip (any version, also older or the same) – its files are installed
+ * Fresh installation from a package: a signed nunext.zip (any version, also older or the same) – its files are installed
  * (NuUpdate::install, backup first), library packs replaced by the package's own (_install/), ALL tables deleted and the database built
  * from the package's install scripts; the database steps and the sample application run on the next request with the new code
  * (finishFresh(), ?p=dbreset&fresh=1). nuconfig.php, custom/ and the backups stay.
@@ -82,7 +82,7 @@ final class NuDbReset
 		return $dest;
 	}
 
-	/** An upload of this page (_update/dbreset-*) – deleted after its run or Cancel (0.8.847). */
+	/** An upload of this page (_update/dbreset-*) – deleted after its run or Cancel. */
 	public static function isUpload(string $path): bool
 	{
 		return (bool)preg_match('/^dbreset-[0-9a-f]{8}\.(sql|sql\.gz|zip)$/i', basename($path)) && dirname($path) === NuUpdate::folderDir();
@@ -113,13 +113,14 @@ final class NuDbReset
 	/** Dry run: the file read and checked (only allowed statements), what it creates, what would be deleted. */
 	public static function check(string $path): array
 	{
-		nu_time_limit(0);   // 0.8.1148: a large file takes longer than max_execution_time to read through
+		nu_time_limit(0);   // a large file takes longer than max_execution_time to read through
 		if (self::isPackage($path)) return self::checkPackage($path);
-		// read line by line (0.8.1031): no size limit, routines / triggers between DELIMITER lines
+		// read line by line: no size limit, routines / triggers between DELIMITER lines
 		try { $chk = NuInstall::checkDump(NuSqlImport::statements($path), true); } catch (RuntimeException $e) { return ['ok' => false, 'error' => $e->getMessage()]; }
 		$tables = self::currentTables();
 		clearstatcache();
-		return $chk + ['file' => basename($path), 'bytes' => NuSqlImport::size($path), 'fsize' => (int)@filesize($path), 'mtime' => (int)@filemtime($path), 'current' => $tables, 'database' => (string)nu_db()->value('SELECT DATABASE()')];
+		return $chk + ['file' => basename($path), 'bytes' => NuSqlImport::size($path), 'fsize' => (int)@filesize($path), 'mtime' => (int)@filemtime($path),
+			'current' => $tables, 'database' => (string)nu_db()->value('SELECT DATABASE()')];
 	}
 
 	/**
@@ -130,7 +131,7 @@ final class NuDbReset
 	{
 		if (!self::available()) throw new RuntimeException(t('dbr_err_unavailable'));
 		nu_time_limit(0);
-		nu_ignore_abort();   // 0.8.1290: a closed tab / dropped connection must not stop the reset half way
+		nu_ignore_abort();   // a closed tab / dropped connection must not stop the reset half way
 		$chk = NuInstall::checkDump(NuSqlImport::statements($path), true);
 		if (!$chk['ok']) throw new RuntimeException($chk['error']);
 		$out = ['backup' => '', 'dropped' => 0, 'statements' => 0, 'upgraded' => [], 'steps' => [], 'sample' => ''];
@@ -160,15 +161,15 @@ final class NuDbReset
 			try { NuSample::install(); $out['sample'] = 'ok'; } catch (Throwable $e) { $out['sample'] = $e->getMessage(); }
 		}
 		if (PHP_SAPI !== 'cli' && session_status() === PHP_SESSION_ACTIVE && ($u = NuAuth::user())) {   // stay signed in: the sessions table is new
-			unset($_SESSION['nu_sess']);
-			try { NuSessions::touch($u); } catch (Throwable) {}
+			unset($_SESSION[NuSess::SESS]);
+			try { NuSessions::touch($u); } catch (Throwable $ig) { nu_ignored($ig); }
 		}
 		NuLog::write('database_reset', $dbName, '', ['file' => basename($path), 'dropped' => $out['dropped'], 'statements' => $out['statements'],
 			'backup' => $out['backup'], 'sample' => $out['sample'], 'via' => $via]);
 		return $out;
 	}
 
-	// ------------------------------------------------------------------ the reset in steps (0.8.1290)
+	// ------------------------------------------------------------------ the reset in steps
 	/*
 	 * A large file takes minutes; web hosts end a request long before (a proxy answers 503 / 504). From the page the reset therefore
 	 * runs as a JOB in short steps: startJob() writes a job file next to the upload (_update/, deny-all) and gives the page a random
@@ -312,7 +313,7 @@ final class NuDbReset
 							$fin = NuSqlImport::slice($db, (string)$j['work'], $st, $until, true);
 						} finally {
 							$j['st'] = $st;
-							try { $db->exec('SET FOREIGN_KEY_CHECKS = 1'); } catch (Throwable) {}
+							try { $db->exec('SET FOREIGN_KEY_CHECKS = 1'); } catch (Throwable $ig) { nu_ignored($ig); }
 						}
 						if ($fin) $j['phase'] = 'finish';
 						break;
@@ -330,7 +331,7 @@ final class NuDbReset
 			$j['error'] = $e->getMessage();
 			$j['failed_in'] = $j['phase'];
 			$j['phase'] = 'error';
-			try { self::jobWrite($j); } catch (Throwable) {}
+			try { self::jobWrite($j); } catch (Throwable $ig) { nu_ignored($ig); }
 		} finally {
 			if (in_array($j['phase'], ['done', 'error'], true)) self::jobClean($j);
 			flock($lock, LOCK_UN);
@@ -366,12 +367,12 @@ final class NuDbReset
 	 */
 	public static function afterJob(): void
 	{
-		$tok = $_SESSION['nu_dbreset']['job'] ?? '';
-		if (!is_string($tok) || $tok === '' || !empty($_SESSION['nu_dbreset']['stayed'])) return;
+		$tok = $_SESSION[NuSess::DB_RESET]['job'] ?? '';
+		if (!is_string($tok) || $tok === '' || !empty($_SESSION[NuSess::DB_RESET]['stayed'])) return;
 		$j = self::job($tok);
 		if (!$j || $j['phase'] !== 'done') return;
-		unset($_SESSION['nu_sess'], $_SESSION['nu_schema'], $_SESSION['nu_db_ready']);
-		$_SESSION['nu_dbreset']['stayed'] = true;
+		unset($_SESSION[NuSess::SESS], $_SESSION[NuSess::SCHEMA], $_SESSION[NuSess::DB_READY]);
+		$_SESSION[NuSess::DB_RESET]['stayed'] = true;
 	}
 
 	/** Dry run of a fresh installation: the package checked (signature must be valid), its version, packs, what would be deleted. */
@@ -419,7 +420,7 @@ final class NuDbReset
 	{
 		if (!self::available()) throw new RuntimeException(t('dbr_err_unavailable'));
 		nu_time_limit(0);
-		nu_ignore_abort();   // 0.8.1290: a closed tab / dropped connection must not stop the reset half way
+		nu_ignore_abort();   // a closed tab / dropped connection must not stop the reset half way
 		$chk = self::checkPackage($path);
 		if (!$chk['ok']) throw new RuntimeException($chk['error']);
 		$info = NuUpdate::inspect($path);
@@ -431,7 +432,7 @@ final class NuDbReset
 		error_log('nuBuilder Next: fresh installation of ' . $info['version'] . ' on ' . $dbName . ' (' . $via . ')');
 		$out = ['version' => $info['version'], 'from' => $from, 'backup' => '', 'dropped' => 0, 'statements' => 0, 'packs' => []];
 		$out['backup'] = NuUpdate::install($path, $info, $backup ? 'all' : 'none');      // maintenance mode on, files copied
-		unset($_SESSION['nu_update']);
+		unset($_SESSION[NuSess::UPDATE]);
 		// library packs: the package's own only
 		$tmp = rtrim(sys_get_temp_dir(), '/\\') . '/nunext-fresh-' . bin2hex(random_bytes(6));
 		@mkdir($tmp, 0700, true);
@@ -478,11 +479,11 @@ final class NuDbReset
 		NuInstall::setOrigin('nunext');
 		NuSecurity::save(['record_check' => true, 'protect_fields' => true]);
 		if (PHP_SAPI !== 'cli' && session_status() === PHP_SESSION_ACTIVE && ($u = NuAuth::user())) {
-			unset($_SESSION['nu_sess']);
-			try { NuSessions::touch($u); } catch (Throwable) {}
+			unset($_SESSION[NuSess::SESS]);
+			try { NuSessions::touch($u); } catch (Throwable $ig) { nu_ignored($ig); }
 		}
-		unset($_SESSION['nu_schema'], $_SESSION['nu_db_ready']);
-		$_SESSION['nu_dbreset_fresh'] = $out + ['sample' => $sample, 'file' => basename($path)];
+		unset($_SESSION[NuSess::SCHEMA], $_SESSION[NuSess::DB_READY]);
+		$_SESSION[NuSess::DB_RESET_FRESH] = $out + ['sample' => $sample, 'file' => basename($path)];
 		NuLog::write('database_fresh', $dbName, '', ['file' => basename($path), 'from' => $from, 'to' => $info['version'], 'dropped' => $out['dropped'],
 			'statements' => $out['statements'], 'backup' => $out['backup'], 'packs' => array_map(static fn($p) => $p[0] . ($p[1] ? '' : ' (failed)'), $out['packs']), 'via' => $via]);
 		return $out;
@@ -494,9 +495,9 @@ final class NuDbReset
 	 */
 	public static function finishFresh(): ?array
 	{
-		$r = $_SESSION['nu_dbreset_fresh'] ?? null;
+		$r = $_SESSION[NuSess::DB_RESET_FRESH] ?? null;
 		if (!is_array($r)) return null;
-		unset($_SESSION['nu_dbreset_fresh']);
+		unset($_SESSION[NuSess::DB_RESET_FRESH]);
 		$r['steps'] = [];
 		try { NuSchema::allow(); NuSchema::create(); $r['steps'] = NuMigrate::run(); } catch (Throwable $e) { $r['error'] = $e->getMessage(); }
 		$want = !empty($r['sample']);
@@ -506,7 +507,7 @@ final class NuDbReset
 		}
 		NuUpdate::maintenanceOff();
 		NuUpdate::resetCaches();
-		$_SESSION['nu_schema'] = NuSchema::VERSION . '/' . NU_VERSION;
+		$_SESSION[NuSess::SCHEMA] = NuSchema::VERSION . '/' . NU_VERSION;
 		return $r;
 	}
 

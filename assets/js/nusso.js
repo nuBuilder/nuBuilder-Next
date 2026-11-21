@@ -1,4 +1,4 @@
-/* nuBuilder Next: Settings → Security → Single sign-on (0.8.863, pages/nusso.php) – the provider kind sets the address and button
+/* nuBuilder Next: Settings → Security → Single sign-on (pages/nusso.php) – the provider kind sets the address and button
  * placeholders, rows of the group map are added / removed, the default level shows only while users are created. */
 (function () {
 	'use strict';

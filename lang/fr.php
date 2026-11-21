@@ -152,6 +152,7 @@ return [
 	'hf_empty' => 'vide',
 	'hf_empty_tip' => 'Cette page de tuiles n’a aucune tuile – ses niveaux d’accès n’y voient rien. Ouvrez-la et ajoutez des tuiles, ou utilisez de nouveau la valeur par défaut.',
 	'form_blank_page' => 'Page vide (système)',
+	'uhome_empty_tab' => 'Aucun bouton sur cet onglet pour l\'instant. Ajoutez-les en mode conception, ou laissez l\'assistant Nouveau formulaire en ajouter un pour chaque nouveau formulaire (Après la création → User Home).',
 	'nav_users' => 'Utilisateurs',
 	'nav_access' => 'Niveaux d\'accès',
 	'nav_logout' => 'Se déconnecter',
@@ -7021,6 +7022,7 @@ return [
 	'rd_search' => 'Rechercher',
 	'rd_no_fields' => 'La source de données n\'a pas de colonnes.',
 	'rd_fields_error' => 'Les champs n\'ont pas pu être lus :',
+	'rd_canvas' => 'Mise en page du rapport – les flèches déplacent les objets sélectionnés',
 	'rd_criteria' => 'Champs du formulaire de lancement',
 	'rd_system' => 'Page et système',
 	'rd_images' => 'Images (fichiers)',
@@ -7186,7 +7188,7 @@ return [
 	'sqb_empty' => 'Ajoutez une table de la liste.',
 	'sqb_run_failed' => 'La requête a échoué :',
 	'sqb_columns' => 'Colonnes',
-	// security check (0.8.207, Admin tools → Security check, core/nusecurity.php)
+	// security check (Admin tools → Security check, core/nusecurity.php)
 	'secchk_title' => 'Contrôle de sécurité',
 	'ipa_title' => 'Accès IP',
 	'sso_title' => 'Authentification unique (SSO)',

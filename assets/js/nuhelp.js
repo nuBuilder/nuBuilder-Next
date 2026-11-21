@@ -3,7 +3,7 @@
  * needed), both assembled by pages/nuhelp.php from docs/toc.json. Each tab has its own index: chapters (sections with
  * data-nu-level="1"), their pages (data-nu-level="2") and the h3 of a page, folded until the page is opened or searched.
  * The search runs in the open tab, or in both with "Search both tabs". A link or #hash to an id of the other tab opens that tab.
- * Reading level (0.8.884; radios name="helpLevel", remembered in this browser as nunext-help-level): Essentials hides passages with
+ * Reading level (radios name="helpLevel", remembered in this browser as nunext-help-level): Essentials hides passages with
  * data-level="detail" (each group gets a small "…" button that opens it in place) and details.doc-src, Standard shows them, and only
  * Everything shows topics with data-level="advanced". A link, #hash or search hit inside hidden content still reaches it (Essentials:
  * the passage opens; advanced: the level becomes Everything). ?tab=ref is kept in the address.
@@ -199,7 +199,7 @@
 		return hits;
 	};
 
-	// ------------------------------------------------------------------ function references (0.8.399, core/nufnref.php)
+	// ------------------------------------------------------------------ function references (core/nufnref.php)
 	/** Global search: in a group of a function reference only the matching functions (all when the group title matches). */
 	Pane.prototype.fnFilter = function (sec, words) {
 		Array.prototype.forEach.call(sec.querySelectorAll('[data-nu-search-skip]'), function (el) { el.hidden = words.length > 0; });   // own search + A–Z index
@@ -213,7 +213,7 @@
 			grp.nuFnShown = words.length ? n : undefined;
 			grp.classList.toggle('nuFnGroupOut', words.length > 0 && n === 0);
 		});
-		// the tabs PHP / JavaScript (0.8.456): a tab counts as a part of the index – its matches decide whether it is listed
+		// the tabs PHP / JavaScript: a tab counts as a part of the index – its matches decide whether it is listed
 		Array.prototype.forEach.call(sec.querySelectorAll('.nuFnPane'), function (pane) {
 			var n = 0;
 			Array.prototype.forEach.call(pane.querySelectorAll('.nuFnGroup'), function (g) { n += g.nuFnShown || 0; });
@@ -269,7 +269,7 @@
 			}
 			if (t.classList.contains('nuFnOutG') || t.closest('[hidden]:not([role="tabpanel"])')) { input.value = ''; run(); }
 		});
-		// tabs PHP / JavaScript of the function reference (0.8.456)
+		// tabs PHP / JavaScript of the function reference
 		Array.prototype.forEach.call(body.querySelectorAll('[data-nu-fn-tab]'), function (b) {
 			b.addEventListener('click', function () { fnTab(b.getAttribute('data-nu-fn-tab')); });
 		});

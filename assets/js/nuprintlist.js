@@ -1,4 +1,4 @@
-// Print view of the lists (?p=<list>&export=print, core/nulistexport.php – 0.8.397): the × after a column title hides that column;
+// Print view of the lists (?p=<list>&export=print, core/nulistexport.php): the × after a column title hides that column;
 // Undo shows the last hidden one again, Reset view shows all. The hidden columns are remembered per list in this browser
 // (localStorage, by column title); Copy table, printing, Export Excel and Export CSV take only the visible columns.
 (function () {
@@ -23,7 +23,7 @@
 		info.textContent = stack.length ? info.getAttribute('data-text').replace('%s', String(stack.length)) : '';
 		info.classList.toggle('d-none', !stack.length);
 		try { localStorage.setItem(key, JSON.stringify(stack.map(function (i) { return titles[i]; }))); } catch (e) { /* private mode */ }
-		// Export Excel / Export CSV take the visible columns only (?cols=0,2,… – 0.8.398)
+		// Export Excel / Export CSV take the visible columns only (?cols=0,2,…)
 		var cols = stack.length ? titles.map(function (t, i) { return i; }).filter(function (i) { return !hidden[i]; }).join(',') : '';
 		var xl = document.getElementById('nuXlsxButton');
 		if (xl) {

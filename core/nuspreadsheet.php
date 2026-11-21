@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * PhpSpreadsheet as a library pack (0.8.755, slot phpspreadsheet – built by dev/pss_assemble.py): Excel (.xlsx, .xls) and OpenDocument (.ods)
+ * PhpSpreadsheet as a library pack (slot phpspreadsheet – built by dev/pss_assemble.py): Excel (.xlsx, .xls) and OpenDocument (.ods)
  * files for the CSV import, nuNextReadSpreadsheet() in form code and $nu->spreadsheet() in page forms. The classes are loaded only when
  * needed (core/nuapp.php registers an autoloader for PhpOffice\PhpSpreadsheet\…).
  *
@@ -20,7 +20,7 @@ final class NuSpreadsheet
 	/**
 	 * Spreadsheets are read into memory as a whole (the library cannot stream them): reading a sheet needs about MEM_FACTOR times its
 	 * unpacked XML (measured with the pack: 12–19×; a 1 MB .xlsx of 200,000 numbers unpacks to 6.6 MB and needs ~125 MB). Instead of a
-	 * fixed file size (10 MB until 0.8.1094) the sheet is checked against the server's memory_limit before it is loaded (memoryCheck).
+	 * fixed file size the sheet is checked against the server's memory_limit before it is loaded (memoryCheck).
 	 */
 	public const MEM_FACTOR = 20;
 	/** Memory kept free for the page itself (bytes). */
@@ -181,7 +181,7 @@ final class NuSpreadsheet
 		if (!$names) throw new RuntimeException(t('imp_err_sheet'));
 		$idx = is_int($sheet) ? $sheet : array_search($sheet, $names, true);
 		if ($idx === false || !isset($names[$idx])) throw new RuntimeException(t('pss_err_no_sheet', (string)$sheet));
-		self::memoryCheck($file, $ext, (string)$names[$idx], (int)$idx);   // 0.8.1094: instead of a fixed 10 MB file limit
+		self::memoryCheck($file, $ext, (string)$names[$idx], (int)$idx);   // instead of a fixed 10 MB file limit
 		try {
 			$r = self::reader($file, $ext);
 			$r->setReadEmptyCells(false);

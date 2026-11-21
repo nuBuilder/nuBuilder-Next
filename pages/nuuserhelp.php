@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * User help pages – the reader (0.8.1023, core/nuuserhelp.php). Everyone signed in; what a user sees depends on the page's access
+ * User help pages – the reader (core/nuuserhelp.php). Everyone signed in; what a user sees depends on the page's access
  * levels and the [[level: …]] parts of its text.
  *   ?p=userhelp[&c=<code>]           contents + one page (no code: the first page)
  *   ?p=userhelp&q=<words>            search
@@ -40,7 +40,8 @@ $navTree = static function (array $items, int $depth = 0) use (&$navTree, $code,
 	$o = '<ul class="nuUhNavList' . ($depth ? ' nuUhNavSub' : '') . '">';
 	foreach ($items as $it) {
 		$cur = $it['code'] === $code;
-		$o .= '<li><a class="nuUhNavLink' . ($cur ? ' active' : '') . (!$it['active'] ? ' nuUhInactive' : '') . '" href="' . h(nu_url('userhelp', ['c' => $it['code']] + $keep)) . '"' . ($cur ? ' aria-current="page"' : '')
+		$o .= '<li><a class="nuUhNavLink' . ($cur ? ' active' : '') . (!$it['active'] ? ' nuUhInactive' : '') . '" href="'
+			. h(nu_url('userhelp', ['c' => $it['code']] + $keep)) . '"' . ($cur ? ' aria-current="page"' : '')
 			. ' data-code="' . h($it['code']) . '">' . h($it['title']) . '</a>' . $navTree($it['children'], $depth + 1) . '</li>';
 	}
 	return $o . '</ul>';
@@ -74,7 +75,8 @@ echo NuListView::crumbs($crumbs);
 					<option value="<?= h((string)$a['zzzzsys_access_id']) ?>"<?= $as === (string)$a['zzzzsys_access_id'] ? ' selected' : '' ?>><?= h((string)$a['sal_code']) ?> – <?= h((string)$a['sal_description']) ?></option>
 				<?php endforeach; ?>
 			</select>
-			<?php if ($as === ''): ?><div class="form-check form-switch"><input class="form-check-input js-autosubmit" type="checkbox" role="switch" name="marks" value="0" id="nuUhMarks"<?= $marks === false ? ' checked' : '' ?>>
+			<?php if ($as === ''): ?><div class="form-check form-switch"><input class="form-check-input js-autosubmit" type="checkbox" role="switch"
+				name="marks" value="0" id="nuUhMarks"<?= $marks === false ? ' checked' : '' ?>>
 				<label class="form-check-label" for="nuUhMarks"><?= h(t('uh_hide_marks')) ?></label></div><?php endif; ?>
 			<a class="btn btn-sm btn-outline-secondary mt-2" href="<?= h(nu_url('helppages')) ?>" id="nuUhManage"><i class="bi bi-journal-bookmark me-1"></i><?= h(t('uh_admin_title')) ?></a>
 		</form>
@@ -92,9 +94,12 @@ echo NuListView::crumbs($crumbs);
 		<div class="d-flex flex-wrap align-items-start gap-2 mb-3">
 			<h1 class="h3 mb-0 me-auto" id="nuUhTitle"><?= h($page['title']) ?></h1>
 			<?php if (!$page['active']): ?><span class="badge text-bg-secondary"><?= h(t('uh_inactive')) ?></span><?php endif; ?>
-			<button type="button" class="btn btn-sm btn-outline-secondary d-print-none" id="nuUhPrint" title="<?= h(t('print')) ?>"><i class="bi bi-printer" aria-hidden="true"></i><span class="visually-hidden"><?= h(t('print')) ?></span></button>
-			<?php if (NuUserHelp::canEdit()): ?><a class="btn btn-sm btn-outline-primary d-print-none" href="<?= h(nu_url('helppages', ['id' => $page['id']])) ?>" id="nuUhEdit"><i class="bi bi-pencil me-1"></i><?= h(t('edit')) ?></a>
-				<a class="btn btn-sm btn-outline-secondary d-print-none" href="<?= h(nu_url('helppages', ['id' => 'new', 'parent' => $page['code']])) ?>" id="nuUhSub"><i class="bi bi-plus-lg me-1"></i><?= h(t('uh_new_sub')) ?></a><?php endif; ?>
+			<button type="button" class="btn btn-sm btn-outline-secondary d-print-none" id="nuUhPrint" title="<?= h(t('print')) ?>"><i class="bi bi-printer"
+				aria-hidden="true"></i><span class="visually-hidden"><?= h(t('print')) ?></span></button>
+			<?php if (NuUserHelp::canEdit()): ?><a class="btn btn-sm btn-outline-primary d-print-none"
+				href="<?= h(nu_url('helppages', ['id' => $page['id']])) ?>" id="nuUhEdit"><i class="bi bi-pencil me-1"></i><?= h(t('edit')) ?></a>
+				<a class="btn btn-sm btn-outline-secondary d-print-none" href="<?= h(nu_url('helppages', ['id' => 'new', 'parent' => $page['code']])) ?>"
+					id="nuUhSub"><i class="bi bi-plus-lg me-1"></i><?= h(t('uh_new_sub')) ?></a><?php endif; ?>
 		</div>
 		<article class="nuUhArticle" id="nuUhArticle"><?= $page['html'] ?></article>
 		<?php if ($page['children']): ?>
@@ -105,7 +110,9 @@ echo NuListView::crumbs($crumbs);
 		<div class="text-center text-body-secondary py-5" id="nuUhNone">
 			<i class="bi bi-journal-bookmark display-5 d-block mb-2" aria-hidden="true"></i>
 			<p class="mb-3"><?= h($code !== '' ? t('uh_not_found') : t('uh_empty')) ?></p>
-			<?php if (NuUserHelp::canEdit()): ?><a class="btn btn-primary" href="<?= h(nu_url('helppages', ['id' => 'new', 'code' => $code !== '' && preg_match(NuUserHelp::CODE_RE, $code) ? $code : null])) ?>" id="nuUhCreate"><i class="bi bi-plus-lg me-1"></i><?= h(t('uh_new')) ?></a><?php endif; ?>
+			<?php if (NuUserHelp::canEdit()): ?><a class="btn btn-primary"
+				href="<?= h(nu_url('helppages', ['id' => 'new', 'code' => $code !== '' && preg_match(NuUserHelp::CODE_RE, $code) ? $code : null])) ?>"
+				id="nuUhCreate"><i class="bi bi-plus-lg me-1"></i><?= h(t('uh_new')) ?></a><?php endif; ?>
 		</div>
 	<?php endif; ?>
 	</div>

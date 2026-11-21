@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * SMTP login with OAuth 2 (XOAUTH2, 0.8.445) – Google, Microsoft 365 or another provider, without Composer / League libraries.
+ * SMTP login with OAuth 2 (XOAUTH2) – Google, Microsoft 365 or another provider, without Composer / League libraries.
  *   Settings: row 'mail_oauth' of zzzzsys_nunext_setting (JSON) – provider, tenant (Microsoft), client id, client secret, refresh token,
  *             account (the mailbox), connected time, cached access token + expiry, and for "other" the authorize / token address and scope.
  *             Client secret, refresh and access token are encrypted with $nuConfigSecretKey (libsodium; "enc:"), never sent to the browser.
@@ -36,8 +36,7 @@ final class NuMailOAuth
 		try {
 			$raw = nu_setting_value(self::SETTING);
 			$v = is_string($raw) ? (array)(json_decode($raw, true) ?: []) : [];
-		} catch (Throwable) {
-		}
+		} catch (Throwable $ig) { nu_ignored($ig); }
 		foreach (self::SECRET as $k) $v[$k] = isset($v[$k]) ? self::open((string)$v[$k]) : '';
 		$v += ['provider' => 'google', 'tenant' => 'common', 'client_id' => '', 'account' => '', 'connected_at' => '', 'access_expires' => 0,
 			'auth_url' => '', 'token_url' => '', 'scope' => ''];
@@ -215,7 +214,7 @@ final class NuMailOAuth
 
 	private static function seal(string $s): string
 	{
-		return NuSecret::seal($s, '');   // 0.8.1326: one implementation (core/nusecret.php)
+		return NuSecret::seal($s, '');   // one implementation (core/nusecret.php)
 	}
 
 	private static function open(string $s): string

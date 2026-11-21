@@ -1,4 +1,4 @@
-/* nuBuilder Next: Settings → Security → IP access (0.8.722, pages/nuipaccess.php) – the ranges field of a rule shows only for
+/* nuBuilder Next: Settings → Security → IP access (pages/nuipaccess.php) – the ranges field of a rule shows only for
  * "Own ranges", the count of exceptions follows the selects, the filter of the access levels. */
 (function () {
 	'use strict';

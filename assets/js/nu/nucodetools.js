@@ -1,12 +1,12 @@
 /* global nuBs */
 /* nuBuilder Next – toolbar of the code editors (CodeMirror 5): undo / redo, search, replace, toggle comment, show invisibles, format.
  * Used by the form runtime (double-click editor), the form builder and the procedure page. No inline scripts (CSP).
- * 0.8.476: a click on the editor's label (label[for=<textarea id>], or opt.label; without one: a clipboard button in the toolbar) opens
+ * a click on the editor's label (label[for=<textarea id>], or opt.label; without one: a clipboard button in the toolbar) opens
  * Copy / Paste / Paste (replace existing).
  *
  *   NuCodeTools.attach(cm, host, {lang: 'PHP'|'SQL'|'JS'|'HTML'|'CSS', db: 'mysql'|'sqlsrv', readOnly: bool, compact: bool,
- *                                 snippets: [[name, description, code], …]  (0.8.593: a second tab of the Insert menu), noInsert: true (no Insert menu),
- *                                 scope: 0–3 | null  (0.8.714: nuBuilder Forte's snippet scope – 0 Forms / Custom Code, 1 Setup / Header, 2 SQL,
+ *                                 snippets: [[name, description, code], …]  (a second tab of the Insert menu), noInsert: true (no Insert menu),
+ *                                 scope: 0–3 | null  (nuBuilder Forte's snippet scope – 0 Forms / Custom Code, 1 Setup / Header, 2 SQL,
  *                                 3 Procedures/PHP; default from lang: SQL 2, PHP 3, else 0; the snippets come from ?p=snippetlist on first use),
  *                                 fullscreen: function () → bool  (own full screen, e.g. a modal; default: toolbar + editor fill the window),
  *                                 noFull: true (no full-screen button – the editor fills the window already)})
@@ -30,58 +30,138 @@
 	var LANG = (document.documentElement.lang || 'en').toLowerCase().slice(0, 2);
 	var TEXTS = {
 		en: {undo: 'Undo (Ctrl+Z)', redo: 'Redo (Ctrl+Y)', find: 'Search (Ctrl+F)', replace: 'Replace (Ctrl+H)', comment: 'Toggle comment (Ctrl+/)',
-			invisibles: 'Show spaces and tabs', full: 'Full screen (F11)', fullExit: 'Exit full screen (F11 / Esc)', format: 'Format code (Shift+Alt+F)', formatErr: 'Cannot format: ', loadErr: 'The formatter could not be loaded.',
-			copy: 'Copy', paste: 'Paste', pasteAll: 'Paste (replace existing)', copied: 'Copied', pasteHere: 'Paste the text here (Ctrl+V or long press), then Insert:', insert: 'Insert', clip: 'Copy / paste', clipErr: 'The clipboard could not be used.'},
+			invisibles: 'Show spaces and tabs', full: 'Full screen (F11)', fullExit: 'Exit full screen (F11 / Esc)', format: 'Format code (Shift+Alt+F)',
+				formatErr: 'Cannot format: ', loadErr: 'The formatter could not be loaded.',
+			copy: 'Copy', paste: 'Paste', pasteAll: 'Paste (replace existing)', copied: 'Copied',
+				pasteHere: 'Paste the text here (Ctrl+V or long press), then Insert:', insert: 'Insert', clip: 'Copy / paste',
+				clipErr: 'The clipboard could not be used.'},
 		de: {undo: 'Rückgängig (Strg+Z)', redo: 'Wiederholen (Strg+Y)', find: 'Suchen (Strg+F)', replace: 'Ersetzen (Strg+H)', comment: 'Zeilen aus-/einkommentieren (Strg+/)',
-			invisibles: 'Leerzeichen und Tabs anzeigen', full: 'Vollbild (F11)', fullExit: 'Vollbild beenden (F11 / Esc)', format: 'Code formatieren (Umschalt+Alt+F)', formatErr: 'Formatieren nicht möglich: ', loadErr: 'Formatierer konnte nicht geladen werden.',
-			copy: 'Kopieren', paste: 'Einfügen', pasteAll: 'Einfügen (Bestehendes ersetzen)', copied: 'Kopiert', pasteHere: 'Text hier einfügen (Strg+V oder lange tippen), dann Einfügen:', insert: 'Einfügen', clip: 'Kopieren / Einfügen', clipErr: 'Die Zwischenablage konnte nicht verwendet werden.'},
+			invisibles: 'Leerzeichen und Tabs anzeigen', full: 'Vollbild (F11)', fullExit: 'Vollbild beenden (F11 / Esc)',
+				format: 'Code formatieren (Umschalt+Alt+F)', formatErr: 'Formatieren nicht möglich: ', loadErr: 'Formatierer konnte nicht geladen werden.',
+			copy: 'Kopieren', paste: 'Einfügen', pasteAll: 'Einfügen (Bestehendes ersetzen)', copied: 'Kopiert',
+				pasteHere: 'Text hier einfügen (Strg+V oder lange tippen), dann Einfügen:', insert: 'Einfügen', clip: 'Kopieren / Einfügen',
+				clipErr: 'Die Zwischenablage konnte nicht verwendet werden.'},
 		fr: {undo: 'Annuler (Ctrl+Z)', redo: 'Rétablir (Ctrl+Y)', find: 'Rechercher (Ctrl+F)', replace: 'Remplacer (Ctrl+H)', comment: 'Commenter / décommenter (Ctrl+/)',
-			invisibles: 'Afficher espaces et tabulations', full: 'Plein écran (F11)', fullExit: 'Quitter le plein écran (F11 / Échap)', format: 'Formater le code (Maj+Alt+F)', formatErr: 'Formatage impossible : ', loadErr: 'Le formateur n\'a pas pu être chargé.',
-			copy: 'Copier', paste: 'Coller', pasteAll: 'Coller (remplacer l\'existant)', copied: 'Copié', pasteHere: 'Collez le texte ici (Ctrl+V ou appui long), puis Insérer :', insert: 'Insérer', clip: 'Copier / coller', clipErr: 'Le presse-papiers n\'a pas pu être utilisé.'},
+			invisibles: 'Afficher espaces et tabulations', full: 'Plein écran (F11)', fullExit: 'Quitter le plein écran (F11 / Échap)',
+				format: 'Formater le code (Maj+Alt+F)', formatErr: 'Formatage impossible : ', loadErr: 'Le formateur n\'a pas pu être chargé.',
+			copy: 'Copier', paste: 'Coller', pasteAll: 'Coller (remplacer l\'existant)', copied: 'Copié',
+				pasteHere: 'Collez le texte ici (Ctrl+V ou appui long), puis Insérer :', insert: 'Insérer', clip: 'Copier / coller',
+				clipErr: 'Le presse-papiers n\'a pas pu être utilisé.'},
 		it: {undo: 'Annulla (Ctrl+Z)', redo: 'Ripeti (Ctrl+Y)', find: 'Cerca (Ctrl+F)', replace: 'Sostituisci (Ctrl+H)', comment: 'Commenta / decommenta (Ctrl+/)',
-			invisibles: 'Mostra spazi e tabulazioni', full: 'Schermo intero (F11)', fullExit: 'Esci da schermo intero (F11 / Esc)', format: 'Formatta codice (Maiusc+Alt+F)', formatErr: 'Impossibile formattare: ', loadErr: 'Impossibile caricare il formattatore.',
-			copy: 'Copia', paste: 'Incolla', pasteAll: 'Incolla (sostituisci esistente)', copied: 'Copiato', pasteHere: 'Incolla qui il testo (Ctrl+V o pressione prolungata), poi Inserisci:', insert: 'Inserisci', clip: 'Copia / incolla', clipErr: 'Impossibile usare gli appunti.'},
+			invisibles: 'Mostra spazi e tabulazioni', full: 'Schermo intero (F11)', fullExit: 'Esci da schermo intero (F11 / Esc)',
+				format: 'Formatta codice (Maiusc+Alt+F)', formatErr: 'Impossibile formattare: ', loadErr: 'Impossibile caricare il formattatore.',
+			copy: 'Copia', paste: 'Incolla', pasteAll: 'Incolla (sostituisci esistente)', copied: 'Copiato',
+				pasteHere: 'Incolla qui il testo (Ctrl+V o pressione prolungata), poi Inserisci:', insert: 'Inserisci', clip: 'Copia / incolla',
+				clipErr: 'Impossibile usare gli appunti.'},
 		es: {undo: 'Deshacer (Ctrl+Z)', redo: 'Rehacer (Ctrl+Y)', find: 'Buscar (Ctrl+F)', replace: 'Reemplazar (Ctrl+H)', comment: 'Comentar / descomentar (Ctrl+/)',
-			invisibles: 'Mostrar espacios y tabulaciones', full: 'Pantalla completa (F11)', fullExit: 'Salir de pantalla completa (F11 / Esc)', format: 'Formatear código (Mayús+Alt+F)', formatErr: 'No se puede formatear: ', loadErr: 'No se pudo cargar el formateador.',
-			copy: 'Copiar', paste: 'Pegar', pasteAll: 'Pegar (reemplazar lo existente)', copied: 'Copiado', pasteHere: 'Pega el texto aquí (Ctrl+V o pulsación larga) y luego Insertar:', insert: 'Insertar', clip: 'Copiar / pegar', clipErr: 'No se pudo usar el portapapeles.'},
+			invisibles: 'Mostrar espacios y tabulaciones', full: 'Pantalla completa (F11)', fullExit: 'Salir de pantalla completa (F11 / Esc)',
+				format: 'Formatear código (Mayús+Alt+F)', formatErr: 'No se puede formatear: ', loadErr: 'No se pudo cargar el formateador.',
+			copy: 'Copiar', paste: 'Pegar', pasteAll: 'Pegar (reemplazar lo existente)', copied: 'Copiado',
+				pasteHere: 'Pega el texto aquí (Ctrl+V o pulsación larga) y luego Insertar:', insert: 'Insertar', clip: 'Copiar / pegar',
+				clipErr: 'No se pudo usar el portapapeles.'},
 		pt: {undo: 'Anular (Ctrl+Z)', redo: 'Refazer (Ctrl+Y)', find: 'Pesquisar (Ctrl+F)', replace: 'Substituir (Ctrl+H)', comment: 'Comentar / descomentar (Ctrl+/)',
-			invisibles: 'Mostrar espaços e tabulações', full: 'Ecrã inteiro (F11)', fullExit: 'Sair do ecrã inteiro (F11 / Esc)', format: 'Formatar código (Shift+Alt+F)', formatErr: 'Não é possível formatar: ', loadErr: 'Não foi possível carregar o formatador.',
-			copy: 'Copiar', paste: 'Colar', pasteAll: 'Colar (substituir o existente)', copied: 'Copiado', pasteHere: 'Cole o texto aqui (Ctrl+V ou toque longo) e depois Inserir:', insert: 'Inserir', clip: 'Copiar / colar', clipErr: 'Não foi possível usar a área de transferência.'},
+			invisibles: 'Mostrar espaços e tabulações', full: 'Ecrã inteiro (F11)', fullExit: 'Sair do ecrã inteiro (F11 / Esc)',
+				format: 'Formatar código (Shift+Alt+F)', formatErr: 'Não é possível formatar: ', loadErr: 'Não foi possível carregar o formatador.',
+			copy: 'Copiar', paste: 'Colar', pasteAll: 'Colar (substituir o existente)', copied: 'Copiado',
+				pasteHere: 'Cole o texto aqui (Ctrl+V ou toque longo) e depois Inserir:', insert: 'Inserir', clip: 'Copiar / colar',
+				clipErr: 'Não foi possível usar a área de transferência.'},
 		ru: {undo: 'Отменить (Ctrl+Z)', redo: 'Повторить (Ctrl+Y)', find: 'Найти (Ctrl+F)', replace: 'Заменить (Ctrl+H)', comment: 'Закомментировать / раскомментировать (Ctrl+/)',
-			invisibles: 'Показывать пробелы и табуляции', full: 'Во весь экран (F11)', fullExit: 'Выйти из полноэкранного режима (F11 / Esc)', format: 'Форматировать код (Shift+Alt+F)', formatErr: 'Не удалось отформатировать: ', loadErr: 'Не удалось загрузить форматировщик.',
-			copy: 'Копировать', paste: 'Вставить', pasteAll: 'Вставить (заменить существующее)', copied: 'Скопировано', pasteHere: 'Вставьте текст сюда (Ctrl+V или долгое нажатие), затем «Вставить»:', insert: 'Вставить', clip: 'Копировать / вставить', clipErr: 'Не удалось использовать буфер обмена.'},
+			invisibles: 'Показывать пробелы и табуляции', full: 'Во весь экран (F11)', fullExit: 'Выйти из полноэкранного режима (F11 / Esc)',
+				format: 'Форматировать код (Shift+Alt+F)', formatErr: 'Не удалось отформатировать: ', loadErr: 'Не удалось загрузить форматировщик.',
+			copy: 'Копировать', paste: 'Вставить', pasteAll: 'Вставить (заменить существующее)', copied: 'Скопировано',
+				pasteHere: 'Вставьте текст сюда (Ctrl+V или долгое нажатие), затем «Вставить»:', insert: 'Вставить', clip: 'Копировать / вставить',
+				clipErr: 'Не удалось использовать буфер обмена.'},
 		zh: {undo: '撤销（Ctrl+Z）', redo: '重做（Ctrl+Y）', find: '查找（Ctrl+F）', replace: '替换（Ctrl+H）', comment: '切换注释（Ctrl+/）',
 			invisibles: '显示空格和制表符', full: '全屏（F11）', fullExit: '退出全屏（F11 / Esc）', format: '格式化代码（Shift+Alt+F）', formatErr: '无法格式化：', loadErr: '无法加载格式化工具。',
 			copy: '复制', paste: '粘贴', pasteAll: '粘贴（替换现有内容）', copied: '已复制', pasteHere: '在此粘贴文本（Ctrl+V 或长按），然后点击插入：', insert: '插入', clip: '复制 / 粘贴', clipErr: '无法使用剪贴板。'},
 		nl: {undo: 'Ongedaan maken (Ctrl+Z)', redo: 'Opnieuw (Ctrl+Y)', find: 'Zoeken (Ctrl+F)', replace: 'Vervangen (Ctrl+H)', comment: 'Commentaar aan/uit (Ctrl+/)',
-			invisibles: 'Spaties en tabs tonen', full: 'Volledig scherm (F11)', fullExit: 'Volledig scherm sluiten (F11 / Esc)', format: 'Code opmaken (Shift+Alt+F)', formatErr: 'Opmaken niet mogelijk: ', loadErr: 'De opmaker kon niet worden geladen.',
-			copy: 'Kopiëren', paste: 'Plakken', pasteAll: 'Plakken (bestaande vervangen)', copied: 'Gekopieerd', pasteHere: 'Plak de tekst hier (Ctrl+V of lang drukken), dan Invoegen:', insert: 'Invoegen', clip: 'Kopiëren / plakken', clipErr: 'Het klembord kon niet worden gebruikt.'},
+			invisibles: 'Spaties en tabs tonen', full: 'Volledig scherm (F11)', fullExit: 'Volledig scherm sluiten (F11 / Esc)',
+				format: 'Code opmaken (Shift+Alt+F)', formatErr: 'Opmaken niet mogelijk: ', loadErr: 'De opmaker kon niet worden geladen.',
+			copy: 'Kopiëren', paste: 'Plakken', pasteAll: 'Plakken (bestaande vervangen)', copied: 'Gekopieerd',
+				pasteHere: 'Plak de tekst hier (Ctrl+V of lang drukken), dan Invoegen:', insert: 'Invoegen', clip: 'Kopiëren / plakken',
+				clipErr: 'Het klembord kon niet worden gebruikt.'},
 		pl: {undo: 'Cofnij (Ctrl+Z)', redo: 'Ponów (Ctrl+Y)', find: 'Szukaj (Ctrl+F)', replace: 'Zamień (Ctrl+H)', comment: 'Przełącz komentarz (Ctrl+/)',
-			invisibles: 'Pokaż spacje i tabulatory', full: 'Pełny ekran (F11)', fullExit: 'Zamknij pełny ekran (F11 / Esc)', format: 'Formatuj kod (Shift+Alt+F)', formatErr: 'Nie można sformatować: ', loadErr: 'Nie udało się załadować formatera.',
-			copy: 'Kopiuj', paste: 'Wklej', pasteAll: 'Wklej (zastąp istniejące)', copied: 'Skopiowano', pasteHere: 'Wklej tutaj tekst (Ctrl+V lub długie naciśnięcie), potem Wstaw:', insert: 'Wstaw', clip: 'Kopiuj / wklej', clipErr: 'Nie udało się użyć schowka.'},
+			invisibles: 'Pokaż spacje i tabulatory', full: 'Pełny ekran (F11)', fullExit: 'Zamknij pełny ekran (F11 / Esc)',
+				format: 'Formatuj kod (Shift+Alt+F)', formatErr: 'Nie można sformatować: ', loadErr: 'Nie udało się załadować formatera.',
+			copy: 'Kopiuj', paste: 'Wklej', pasteAll: 'Wklej (zastąp istniejące)', copied: 'Skopiowano',
+				pasteHere: 'Wklej tutaj tekst (Ctrl+V lub długie naciśnięcie), potem Wstaw:', insert: 'Wstaw', clip: 'Kopiuj / wklej',
+				clipErr: 'Nie udało się użyć schowka.'},
 		ar: {undo: 'تراجع (Ctrl+Z)', redo: 'إعادة (Ctrl+Y)', find: 'بحث (Ctrl+F)', replace: 'استبدال (Ctrl+H)', comment: 'تبديل التعليق (Ctrl+/)',
-			invisibles: 'إظهار المسافات وعلامات الجدولة', full: 'ملء الشاشة (F11)', fullExit: 'إنهاء ملء الشاشة (F11 / Esc)', format: 'تنسيق الشيفرة (Shift+Alt+F)', formatErr: 'تعذّر التنسيق: ', loadErr: 'تعذّر تحميل أداة التنسيق.',
-			copy: 'نسخ', paste: 'لصق', pasteAll: 'لصق (استبدال الموجود)', copied: 'تم النسخ', pasteHere: 'الصق النص هنا (Ctrl+V أو ضغط مطوّل) ثم إدراج:', insert: 'إدراج', clip: 'نسخ / لصق', clipErr: 'تعذّر استخدام الحافظة.'}
+			invisibles: 'إظهار المسافات وعلامات الجدولة', full: 'ملء الشاشة (F11)', fullExit: 'إنهاء ملء الشاشة (F11 / Esc)',
+				format: 'تنسيق الشيفرة (Shift+Alt+F)', formatErr: 'تعذّر التنسيق: ', loadErr: 'تعذّر تحميل أداة التنسيق.',
+			copy: 'نسخ', paste: 'لصق', pasteAll: 'لصق (استبدال الموجود)', copied: 'تم النسخ', pasteHere: 'الصق النص هنا (Ctrl+V أو ضغط مطوّل) ثم إدراج:',
+				insert: 'إدراج', clip: 'نسخ / لصق', clipErr: 'تعذّر استخدام الحافظة.'}
 	};
-	// Insert menu and suggestions while typing (0.8.593)
+	// Insert menu and suggestions while typing
 	var TEXTS_INS = {
-		"en": {"ins": "Insert function or snippet (Ctrl+Space while typing)", "insLabel": "Insert", "insFns": "Functions", "insSnips": "Snippets", "insSearch": "Search functions…", "insAll": "All groups", "insCall": "Insert call", "insExample": "Insert example", "insHelp": "Help", "insParams": "Parameters", "insReturns": "Returns", "insResult": "Result", "insNone": "Nothing found.", "insNext": "nuBuilder Next only", "insKeys": "Enter: insert call · Shift+Enter: insert example", "insErr": "The function list could not be loaded."}, "de": {"ins": "Funktion oder Snippet einfügen (beim Tippen Strg+Leertaste)", "insLabel": "Einfügen", "insFns": "Funktionen", "insSnips": "Snippets", "insSearch": "Funktionen suchen…", "insAll": "Alle Gruppen", "insCall": "Aufruf einfügen", "insExample": "Beispiel einfügen", "insHelp": "Hilfe", "insParams": "Parameter", "insReturns": "Rückgabe", "insResult": "Ergebnis", "insNone": "Nichts gefunden.", "insNext": "nur nuBuilder Next", "insKeys": "Enter: Aufruf einfügen · Umschalt+Enter: Beispiel einfügen", "insErr": "Die Funktionsliste konnte nicht geladen werden."}, "fr": {"ins": "Insérer une fonction ou un extrait (Ctrl+Espace en tapant)", "insLabel": "Insérer", "insFns": "Fonctions", "insSnips": "Extraits", "insSearch": "Rechercher des fonctions…", "insAll": "Tous les groupes", "insCall": "Insérer l'appel", "insExample": "Insérer l'exemple", "insHelp": "Aide", "insParams": "Paramètres", "insReturns": "Retour", "insResult": "Résultat", "insNone": "Rien trouvé.", "insNext": "nuBuilder Next seulement", "insKeys": "Entrée : insérer l'appel · Maj+Entrée : insérer l'exemple", "insErr": "La liste des fonctions n'a pas pu être chargée."}, "it": {"ins": "Inserisci funzione o snippet (Ctrl+Spazio mentre scrivi)", "insLabel": "Inserisci", "insFns": "Funzioni", "insSnips": "Snippet", "insSearch": "Cerca funzioni…", "insAll": "Tutti i gruppi", "insCall": "Inserisci chiamata", "insExample": "Inserisci esempio", "insHelp": "Guida", "insParams": "Parametri", "insReturns": "Restituisce", "insResult": "Risultato", "insNone": "Nessun risultato.", "insNext": "solo nuBuilder Next", "insKeys": "Invio: inserisci chiamata · Maiusc+Invio: inserisci esempio", "insErr": "Impossibile caricare l'elenco delle funzioni."}, "es": {"ins": "Insertar función o fragmento (Ctrl+Espacio al escribir)", "insLabel": "Insertar", "insFns": "Funciones", "insSnips": "Fragmentos", "insSearch": "Buscar funciones…", "insAll": "Todos los grupos", "insCall": "Insertar llamada", "insExample": "Insertar ejemplo", "insHelp": "Ayuda", "insParams": "Parámetros", "insReturns": "Devuelve", "insResult": "Resultado", "insNone": "Nada encontrado.", "insNext": "solo nuBuilder Next", "insKeys": "Intro: insertar llamada · Mayús+Intro: insertar ejemplo", "insErr": "No se pudo cargar la lista de funciones."}, "pt": {"ins": "Inserir função ou excerto (Ctrl+Espaço ao escrever)", "insLabel": "Inserir", "insFns": "Funções", "insSnips": "Excertos", "insSearch": "Pesquisar funções…", "insAll": "Todos os grupos", "insCall": "Inserir chamada", "insExample": "Inserir exemplo", "insHelp": "Ajuda", "insParams": "Parâmetros", "insReturns": "Devolve", "insResult": "Resultado", "insNone": "Nada encontrado.", "insNext": "só nuBuilder Next", "insKeys": "Enter: inserir chamada · Shift+Enter: inserir exemplo", "insErr": "Não foi possível carregar a lista de funções."}, "nl": {"ins": "Functie of fragment invoegen (Ctrl+Spatie tijdens het typen)", "insLabel": "Invoegen", "insFns": "Functies", "insSnips": "Fragmenten", "insSearch": "Functies zoeken…", "insAll": "Alle groepen", "insCall": "Aanroep invoegen", "insExample": "Voorbeeld invoegen", "insHelp": "Help", "insParams": "Parameters", "insReturns": "Geeft terug", "insResult": "Resultaat", "insNone": "Niets gevonden.", "insNext": "alleen nuBuilder Next", "insKeys": "Enter: aanroep invoegen · Shift+Enter: voorbeeld invoegen", "insErr": "De functielijst kon niet worden geladen."}, "pl": {"ins": "Wstaw funkcję lub fragment (Ctrl+Spacja podczas pisania)", "insLabel": "Wstaw", "insFns": "Funkcje", "insSnips": "Fragmenty", "insSearch": "Szukaj funkcji…", "insAll": "Wszystkie grupy", "insCall": "Wstaw wywołanie", "insExample": "Wstaw przykład", "insHelp": "Pomoc", "insParams": "Parametry", "insReturns": "Zwraca", "insResult": "Wynik", "insNone": "Nic nie znaleziono.", "insNext": "tylko nuBuilder Next", "insKeys": "Enter: wstaw wywołanie · Shift+Enter: wstaw przykład", "insErr": "Nie udało się załadować listy funkcji."}, "ru": {"ins": "Вставить функцию или фрагмент (Ctrl+Пробел при вводе)", "insLabel": "Вставить", "insFns": "Функции", "insSnips": "Фрагменты", "insSearch": "Поиск функций…", "insAll": "Все группы", "insCall": "Вставить вызов", "insExample": "Вставить пример", "insHelp": "Справка", "insParams": "Параметры", "insReturns": "Возвращает", "insResult": "Результат", "insNone": "Ничего не найдено.", "insNext": "только nuBuilder Next", "insKeys": "Enter: вставить вызов · Shift+Enter: вставить пример", "insErr": "Не удалось загрузить список функций."}, "zh": {"ins": "插入函数或代码片段（输入时按 Ctrl+空格）", "insLabel": "插入", "insFns": "函数", "insSnips": "代码片段", "insSearch": "搜索函数…", "insAll": "所有分组", "insCall": "插入调用", "insExample": "插入示例", "insHelp": "帮助", "insParams": "参数", "insReturns": "返回", "insResult": "结果", "insNone": "未找到。", "insNext": "仅 nuBuilder Next", "insKeys": "Enter：插入调用 · Shift+Enter：插入示例", "insErr": "无法加载函数列表。"}, "ar": {"ins": "إدراج دالة أو مقتطف (Ctrl+مسافة أثناء الكتابة)", "insLabel": "إدراج", "insFns": "الدوال", "insSnips": "المقتطفات", "insSearch": "البحث في الدوال…", "insAll": "كل المجموعات", "insCall": "إدراج الاستدعاء", "insExample": "إدراج المثال", "insHelp": "مساعدة", "insParams": "المعاملات", "insReturns": "يُرجع", "insResult": "النتيجة", "insNone": "لم يُعثر على شيء.", "insNext": "nuBuilder Next فقط", "insKeys": "Enter: إدراج الاستدعاء · Shift+Enter: إدراج المثال", "insErr": "تعذّر تحميل قائمة الدوال."}};
+		"en": {"ins": "Insert function or snippet (Ctrl+Space while typing)", "insLabel": "Insert", "insFns": "Functions", "insSnips": "Snippets",
+			"insSearch": "Search functions…", "insAll": "All groups", "insCall": "Insert call", "insExample": "Insert example", "insHelp": "Help",
+			"insParams": "Parameters", "insReturns": "Returns", "insResult": "Result", "insNone": "Nothing found.", "insNext": "nuBuilder Next only",
+			"insKeys": "Enter: insert call · Shift+Enter: insert example", "insErr": "The function list could not be loaded."},
+			"de": {"ins": "Funktion oder Snippet einfügen (beim Tippen Strg+Leertaste)", "insLabel": "Einfügen", "insFns": "Funktionen",
+				"insSnips": "Snippets", "insSearch": "Funktionen suchen…", "insAll": "Alle Gruppen", "insCall": "Aufruf einfügen", "insExample": "Beispiel einfügen",
+				"insHelp": "Hilfe", "insParams": "Parameter", "insReturns": "Rückgabe", "insResult": "Ergebnis", "insNone": "Nichts gefunden.",
+				"insNext": "nur nuBuilder Next", "insKeys": "Enter: Aufruf einfügen · Umschalt+Enter: Beispiel einfügen",
+				"insErr": "Die Funktionsliste konnte nicht geladen werden."},
+			"fr": {"ins": "Insérer une fonction ou un extrait (Ctrl+Espace en tapant)", "insLabel": "Insérer", "insFns": "Fonctions", "insSnips": "Extraits",
+				"insSearch": "Rechercher des fonctions…", "insAll": "Tous les groupes", "insCall": "Insérer l'appel", "insExample": "Insérer l'exemple",
+				"insHelp": "Aide", "insParams": "Paramètres", "insReturns": "Retour", "insResult": "Résultat", "insNone": "Rien trouvé.",
+				"insNext": "nuBuilder Next seulement", "insKeys": "Entrée : insérer l'appel · Maj+Entrée : insérer l'exemple",
+				"insErr": "La liste des fonctions n'a pas pu être chargée."},
+			"it": {"ins": "Inserisci funzione o snippet (Ctrl+Spazio mentre scrivi)", "insLabel": "Inserisci", "insFns": "Funzioni", "insSnips": "Snippet",
+				"insSearch": "Cerca funzioni…", "insAll": "Tutti i gruppi", "insCall": "Inserisci chiamata", "insExample": "Inserisci esempio", "insHelp": "Guida",
+				"insParams": "Parametri", "insReturns": "Restituisce", "insResult": "Risultato", "insNone": "Nessun risultato.", "insNext": "solo nuBuilder Next",
+				"insKeys": "Invio: inserisci chiamata · Maiusc+Invio: inserisci esempio", "insErr": "Impossibile caricare l'elenco delle funzioni."},
+			"es": {"ins": "Insertar función o fragmento (Ctrl+Espacio al escribir)", "insLabel": "Insertar", "insFns": "Funciones", "insSnips": "Fragmentos",
+				"insSearch": "Buscar funciones…", "insAll": "Todos los grupos", "insCall": "Insertar llamada", "insExample": "Insertar ejemplo", "insHelp": "Ayuda",
+				"insParams": "Parámetros", "insReturns": "Devuelve", "insResult": "Resultado", "insNone": "Nada encontrado.", "insNext": "solo nuBuilder Next",
+				"insKeys": "Intro: insertar llamada · Mayús+Intro: insertar ejemplo", "insErr": "No se pudo cargar la lista de funciones."},
+			"pt": {"ins": "Inserir função ou excerto (Ctrl+Espaço ao escrever)", "insLabel": "Inserir", "insFns": "Funções", "insSnips": "Excertos",
+				"insSearch": "Pesquisar funções…", "insAll": "Todos os grupos", "insCall": "Inserir chamada", "insExample": "Inserir exemplo", "insHelp": "Ajuda",
+				"insParams": "Parâmetros", "insReturns": "Devolve", "insResult": "Resultado", "insNone": "Nada encontrado.", "insNext": "só nuBuilder Next",
+				"insKeys": "Enter: inserir chamada · Shift+Enter: inserir exemplo", "insErr": "Não foi possível carregar a lista de funções."},
+			"nl": {"ins": "Functie of fragment invoegen (Ctrl+Spatie tijdens het typen)", "insLabel": "Invoegen", "insFns": "Functies",
+				"insSnips": "Fragmenten", "insSearch": "Functies zoeken…", "insAll": "Alle groepen", "insCall": "Aanroep invoegen",
+				"insExample": "Voorbeeld invoegen", "insHelp": "Help", "insParams": "Parameters", "insReturns": "Geeft terug", "insResult": "Resultaat",
+				"insNone": "Niets gevonden.", "insNext": "alleen nuBuilder Next", "insKeys": "Enter: aanroep invoegen · Shift+Enter: voorbeeld invoegen",
+				"insErr": "De functielijst kon niet worden geladen."},
+			"pl": {"ins": "Wstaw funkcję lub fragment (Ctrl+Spacja podczas pisania)", "insLabel": "Wstaw", "insFns": "Funkcje", "insSnips": "Fragmenty",
+				"insSearch": "Szukaj funkcji…", "insAll": "Wszystkie grupy", "insCall": "Wstaw wywołanie", "insExample": "Wstaw przykład", "insHelp": "Pomoc",
+				"insParams": "Parametry", "insReturns": "Zwraca", "insResult": "Wynik", "insNone": "Nic nie znaleziono.", "insNext": "tylko nuBuilder Next",
+				"insKeys": "Enter: wstaw wywołanie · Shift+Enter: wstaw przykład", "insErr": "Nie udało się załadować listy funkcji."},
+			"ru": {"ins": "Вставить функцию или фрагмент (Ctrl+Пробел при вводе)", "insLabel": "Вставить", "insFns": "Функции", "insSnips": "Фрагменты",
+				"insSearch": "Поиск функций…", "insAll": "Все группы", "insCall": "Вставить вызов", "insExample": "Вставить пример", "insHelp": "Справка",
+				"insParams": "Параметры", "insReturns": "Возвращает", "insResult": "Результат", "insNone": "Ничего не найдено.", "insNext": "только nuBuilder Next",
+				"insKeys": "Enter: вставить вызов · Shift+Enter: вставить пример", "insErr": "Не удалось загрузить список функций."},
+			"zh": {"ins": "插入函数或代码片段（输入时按 Ctrl+空格）", "insLabel": "插入", "insFns": "函数", "insSnips": "代码片段", "insSearch": "搜索函数…", "insAll": "所有分组",
+				"insCall": "插入调用", "insExample": "插入示例", "insHelp": "帮助", "insParams": "参数", "insReturns": "返回", "insResult": "结果", "insNone": "未找到。",
+				"insNext": "仅 nuBuilder Next", "insKeys": "Enter：插入调用 · Shift+Enter：插入示例", "insErr": "无法加载函数列表。"},
+			"ar": {"ins": "إدراج دالة أو مقتطف (Ctrl+مسافة أثناء الكتابة)", "insLabel": "إدراج", "insFns": "الدوال", "insSnips": "المقتطفات",
+				"insSearch": "البحث في الدوال…", "insAll": "كل المجموعات", "insCall": "إدراج الاستدعاء", "insExample": "إدراج المثال", "insHelp": "مساعدة",
+				"insParams": "المعاملات", "insReturns": "يُرجع", "insResult": "النتيجة", "insNone": "لم يُعثر على شيء.", "insNext": "nuBuilder Next فقط",
+				"insKeys": "Enter: إدراج الاستدعاء · Shift+Enter: إدراج المثال", "insErr": "تعذّر تحميل قائمة الدوال."}};
 	Object.keys(TEXTS_INS).forEach(function (l) { if (TEXTS[l]) Object.keys(TEXTS_INS[l]).forEach(function (k) { TEXTS[l][k] = TEXTS_INS[l][k]; }); });
 	var T = TEXTS[LANG] || TEXTS.en;
 	// phrases of CodeMirror's search dialogs (English: CodeMirror's own)
 	var PHRASE_SETS = {
 		de: ['Suchen:', 'Ersetzen:', 'Durch:', 'Ersetzen?', 'Ja', 'Nein', 'Alle', 'Stopp', 'Alle ersetzen:', 'Gehe zu Zeile:', '(/re/ für reguläre Ausdrücke)', '(Zeile:Spalte oder Prozent%)'],
-		fr: ['Rechercher :', 'Remplacer :', 'Par :', 'Remplacer ?', 'Oui', 'Non', 'Tous', 'Arrêter', 'Tout remplacer :', 'Aller à la ligne :', '(syntaxe /re/ pour les expressions régulières)', '(ligne:colonne ou pourcentage%)'],
-		it: ['Cerca:', 'Sostituisci:', 'Con:', 'Sostituire?', 'Sì', 'No', 'Tutti', 'Ferma', 'Sostituisci tutto:', 'Vai alla riga:', '(sintassi /re/ per le espressioni regolari)', '(riga:colonna o percentuale%)'],
-		es: ['Buscar:', 'Reemplazar:', 'Por:', '¿Reemplazar?', 'Sí', 'No', 'Todos', 'Parar', 'Reemplazar todo:', 'Ir a la línea:', '(sintaxis /re/ para expresiones regulares)', '(línea:columna o porcentaje%)'],
-		pt: ['Pesquisar:', 'Substituir:', 'Por:', 'Substituir?', 'Sim', 'Não', 'Todos', 'Parar', 'Substituir tudo:', 'Ir para a linha:', '(sintaxe /re/ para expressões regulares)', '(linha:coluna ou percentagem%)'],
+		fr: ['Rechercher :', 'Remplacer :', 'Par :', 'Remplacer ?', 'Oui', 'Non', 'Tous', 'Arrêter', 'Tout remplacer :', 'Aller à la ligne :',
+			'(syntaxe /re/ pour les expressions régulières)', '(ligne:colonne ou pourcentage%)'],
+		it: ['Cerca:', 'Sostituisci:', 'Con:', 'Sostituire?', 'Sì', 'No', 'Tutti', 'Ferma', 'Sostituisci tutto:', 'Vai alla riga:',
+			'(sintassi /re/ per le espressioni regolari)', '(riga:colonna o percentuale%)'],
+		es: ['Buscar:', 'Reemplazar:', 'Por:', '¿Reemplazar?', 'Sí', 'No', 'Todos', 'Parar', 'Reemplazar todo:', 'Ir a la línea:',
+			'(sintaxis /re/ para expresiones regulares)', '(línea:columna o porcentaje%)'],
+		pt: ['Pesquisar:', 'Substituir:', 'Por:', 'Substituir?', 'Sim', 'Não', 'Todos', 'Parar', 'Substituir tudo:', 'Ir para a linha:',
+			'(sintaxe /re/ para expressões regulares)', '(linha:coluna ou percentagem%)'],
 		ru: ['Найти:', 'Заменить:', 'На:', 'Заменить?', 'Да', 'Нет', 'Все', 'Стоп', 'Заменить все:', 'Перейти к строке:', '(синтаксис /re/ для регулярных выражений)', '(строка:столбец или процент%)'],
 		zh: ['查找：', '替换：', '替换为：', '替换？', '是', '否', '全部', '停止', '全部替换：', '跳到行：', '（使用 /re/ 语法进行正则搜索）', '（使用 行:列 或 百分比% 语法）'],
 		nl: ['Zoeken:', 'Vervangen:', 'Door:', 'Vervangen?', 'Ja', 'Nee', 'Alle', 'Stop', 'Alles vervangen:', 'Ga naar regel:', '(/re/-syntaxis voor reguliere expressies)', '(regel:kolom of percentage%)'],
-		pl: ['Szukaj:', 'Zamień:', 'Na:', 'Zamienić?', 'Tak', 'Nie', 'Wszystkie', 'Stop', 'Zamień wszystko:', 'Przejdź do wiersza:', '(składnia /re/ dla wyrażeń regularnych)', '(wiersz:kolumna lub procent%)'],
+		pl: ['Szukaj:', 'Zamień:', 'Na:', 'Zamienić?', 'Tak', 'Nie', 'Wszystkie', 'Stop', 'Zamień wszystko:', 'Przejdź do wiersza:',
+			'(składnia /re/ dla wyrażeń regularnych)', '(wiersz:kolumna lub procent%)'],
 		ar: ['بحث:', 'استبدال:', 'بـ:', 'استبدال؟', 'نعم', 'لا', 'الكل', 'إيقاف', 'استبدال الكل:', 'الانتقال إلى السطر:', '(استخدم صيغة /re/ للتعابير النمطية)', '(سطر:عمود أو نسبة%)']
 	};
-	var PHRASE_KEYS = ['Search:', 'Replace:', 'With:', 'Replace?', 'Yes', 'No', 'All', 'Stop', 'Replace all:', 'Jump to line:', '(Use /re/ syntax for regexp search)', '(Use line:column or scroll% syntax)'];
+	var PHRASE_KEYS = ['Search:', 'Replace:', 'With:', 'Replace?', 'Yes', 'No', 'All', 'Stop', 'Replace all:', 'Jump to line:',
+		'(Use /re/ syntax for regexp search)', '(Use line:column or scroll% syntax)'];
 	var PHRASES = null;
 	if (PHRASE_SETS[LANG]) { PHRASES = {}; PHRASE_KEYS.forEach(function (k, i) { PHRASES[k] = PHRASE_SETS[LANG][i]; }); }
 	// CodeMirror 6's search panel: its own keys (the adapter maps Search: / Replace: / All / Jump to line: itself)
@@ -194,7 +274,7 @@
 		return b;
 	}
 
-	// ------------------------------------------------------------------ Copy / Paste / Paste (replace existing) (0.8.476)
+	// ------------------------------------------------------------------ Copy / Paste / Paste (replace existing)
 	// The editor's label opens the menu (a code editor without a label gets a clipboard button in the toolbar). Copy = the whole code,
 	// Paste = at the cursor (replaces a selection), Paste (replace existing) = the whole code – Undo brings it back. The system
 	// clipboard needs HTTPS (and may ask once); otherwise Copy uses execCommand and Paste shows a box to paste into by hand.
@@ -308,7 +388,7 @@
 		var bFmt = button('bi-magic', T.format, 'nuCtFormat');
 		var bFull = button('bi-arrows-fullscreen', T.full, 'nuCtFull');
 		var items = (ro ? [bFind, bInv] : [bUndo, bRedo, bFind, bRepl, bComm, bInv].concat(LIBS[lang] ? [bFmt] : [])).concat(opt.noFull ? [] : [bFull]);
-		// Copy / Paste menu: on the editor's label, or – without one – a clipboard button in the toolbar (0.8.476)
+		// Copy / Paste menu: on the editor's label, or – without one – a clipboard button in the toolbar
 		var ta = cm.getTextArea ? cm.getTextArea() : null;
 		var label = opt.label || (ta && ta.id ? document.querySelector('label[for="' + (window.CSS && CSS.escape ? CSS.escape(ta.id) : ta.id) + '"]') : null);
 		var bClip = label ? null : button('bi-clipboard', T.clip, 'nuCtClip');
@@ -317,10 +397,10 @@
 		host.appendChild(g);
 		clipMenu(cm, label || bClip, ro);
 		var fnLang = lang === 'PHP' || lang === 'JS' || lang === 'HTML';
-		var names = ro || opt.noNames ? null : nameHints(cm, lang, {formId: opt.formId, _fnHints: fnLang && !opt.noInsert});   // tables, columns, # (0.8.1336)
+		var names = ro || opt.noNames ? null : nameHints(cm, lang, {formId: opt.formId, _fnHints: fnLang && !opt.noInsert});   // tables, columns, #
 		cm.nuNames = names;
-		var ins = ro || opt.noInsert ? null : insertTools(cm, host, lang, opt);   // Insert menu + suggestions while typing (0.8.593)
-		var chk = CHECKS[lang] && !opt.noCheck ? checkTools(cm, g, lang, opt) : null;   // syntax check (0.8.781)
+		var ins = ro || opt.noInsert ? null : insertTools(cm, host, lang, opt);   // Insert menu + suggestions while typing
+		var chk = CHECKS[lang] && !opt.noCheck ? checkTools(cm, g, lang, opt) : null;   // syntax check
 		if (!chk && cm.nuChk) cm.nuChk.off(lang);   // one CodeMirror, another language without a check (design mode: Browse SQL after JS)
 
 		var hist = function () { var h = cm.historySize(); bUndo.disabled = !h.undo; bRedo.disabled = !h.redo; };
@@ -404,12 +484,12 @@
 	}
 
 	/**
-	 * A link of the code search (0.8.1172, pages/nucodesearch.php): ?cl=<line>&ck=<key>[&cq=<text>] opens the editor whose textarea has that
+	 * A link of the code search (pages/nucodesearch.php): ?cl=<line>&ck=<key>[&cq=<text>] opens the editor whose textarea has that
 	 * name / id (or opt.codeKey – design mode's Code workspace) at the line, marks it for a while and selects the text on it. Once per page.
 	 */
 	var JUMP = (function () {
 		try {
-			var st = window.nuNext && window.nuNext.design && window.nuNext.design.start;   // 0.8.1194: design mode gets them from the server
+			var st = window.nuNext && window.nuNext.design && window.nuNext.design.start;   // design mode gets them from the server
 			var u = new URLSearchParams(st && st.cl ? st : window.location.search), l = parseInt(u.get('cl') || '', 10);
 			return l > 0 ? {line: l, key: u.get('ck') || '', q: u.get('cq') || '', done: false} : null;
 		} catch (e) { return null; }
@@ -440,7 +520,7 @@
 		}, 250);
 	}
 
-	// ------------------------------------------------------------------ Insert: functions of the help's reference + snippets (0.8.593)
+	// ------------------------------------------------------------------ Insert: functions of the help's reference + snippets
 	// The list comes from ?p=fnlist&lang=php|js (pages/nufnlist.php = docs/nunext-functions.json), loaded on first use. Insert menu
 	// (search, group, detail with parameters / returns / example / result, Insert call / Insert example / Help) and suggestions while
 	// typing (CodeMirror show-hint: nu… / db_… after two letters, Ctrl+Space for any word).
@@ -515,7 +595,7 @@
 		return box;
 	}
 
-	// code snippets of a scope (0.8.714, pages/nusnippetlist.php): loaded once per scope + language and page
+	// code snippets of a scope (pages/nusnippetlist.php): loaded once per scope + language and page
 	var SN = {}, SCOPE_OF = {SQL: 2, PHP: 3, JS: 0, CSS: 0, HTML: 0};
 	function snList(scope, lang) {
 		var k = scope + '|' + lang;
@@ -565,7 +645,9 @@
 			[['fn', T.insFns, !!fl], ['sn', T.insSnips, snippets.length > 0 || !!manage || !fl]].forEach(function (t) {
 				if (!t[2]) return;
 				var b = elt('button', 'nav-link py-1' + (tab === t[0] ? ' active' : ''), t[1]); b.type = 'button'; b.setAttribute('data-tab', t[0]);
-				b.addEventListener('click', function () { tab = t[0]; tabs.querySelectorAll('.nav-link').forEach(function (x) { x.classList.toggle('active', x === b); }); gsel.classList.toggle('d-none', tab !== 'fn'); if (mlink) mlink.classList.toggle('d-none', tab !== 'sn'); active = 0; render(); search.focus(); });
+				b.addEventListener('click',
+					function () { tab = t[0]; tabs.querySelectorAll('.nav-link').forEach(function (x) { x.classList.toggle('active', x === b); }); gsel.classList.toggle('d-none',
+						tab !== 'fn'); if (mlink) mlink.classList.toggle('d-none', tab !== 'sn'); active = 0; render(); search.focus(); });
 				tabs.appendChild(b);
 			});
 			if (tabs.children.length > 1) menu.appendChild(tabs);
@@ -576,7 +658,7 @@
 			row.appendChild(search); row.appendChild(gsel); menu.appendChild(row);
 			var list = elt('div', 'nuInsList list-group list-group-flush'); list.setAttribute('role', 'listbox');
 			var info = elt('div', 'nuInsInfo border-top mt-2 pt-2');
-			var body = elt('div', 'nuInsBody');                        // wide screens: list left, detail right (0.8.594, nuapp.css)
+			var body = elt('div', 'nuInsBody');                        // wide screens: list left, detail right (nuapp.css)
 			body.appendChild(list); body.appendChild(info); menu.appendChild(body);
 			menu.appendChild(elt('div', 'nuInsKeys small text-body-secondary mt-1', T.insKeys));
 			var mlink = null;                                          // "Manage snippets" → nuBuilder Forte's form nucodesnippet (with the right on it)
@@ -611,8 +693,12 @@
 				var bCall = elt('button', 'btn btn-sm btn-primary nuInsCall', tab === 'sn' ? T.insert : T.insCall); bCall.type = 'button';
 				bCall.addEventListener('click', function () { use(false); });
 				acts.appendChild(bCall);
-				if (tab === 'fn' && it.e) { var bEx = elt('button', 'btn btn-sm btn-outline-secondary nuInsExample', T.insExample); bEx.type = 'button'; bEx.addEventListener('click', function () { use(true); }); acts.appendChild(bEx); }
-				if (tab === 'fn' && it.h) { var a = elt('a', 'btn btn-sm btn-link ms-auto nuInsHelp'); a.href = it.h; a.target = '_blank'; a.rel = 'noopener'; a.appendChild(elt('i', 'bi bi-box-arrow-up-right me-1')); a.appendChild(document.createTextNode(T.insHelp)); acts.appendChild(a); }
+				if (tab === 'fn'
+					&& it.e) { var bEx = elt('button', 'btn btn-sm btn-outline-secondary nuInsExample',
+						T.insExample); bEx.type = 'button'; bEx.addEventListener('click', function () { use(true); }); acts.appendChild(bEx); }
+				if (tab === 'fn'
+					&& it.h) { var a = elt('a',
+						'btn btn-sm btn-link ms-auto nuInsHelp'); a.href = it.h; a.target = '_blank'; a.rel = 'noopener'; a.appendChild(elt('i', 'bi bi-box-arrow-up-right me-1')); a.appendChild(document.createTextNode(T.insHelp)); acts.appendChild(a); }
 				info.appendChild(acts);
 				place();
 			}
@@ -710,7 +796,7 @@
 		}};
 	}
 
-	// ------------------------------------------------------------------ suggestions of names (0.8.1336)
+	// ------------------------------------------------------------------ suggestions of names
 	// Tables, columns and "#" hash variables while typing, from ?p=codenames (pages/nucodenames.php; tables / columns only for users who
 	// may write SQL). Where: the whole editor in SQL, inside strings in PHP / JS / HTML (the SQL of nuRunQuery, db_query …), and "#" in
 	// every language. After FROM / JOIN / INTO / UPDATE / TABLE → tables; after "alias." → the columns of that table (aliases read from the
@@ -837,7 +923,7 @@
 		return {force: function () { return hint(true); }, detach: function () { cm.off('inputRead', onInput); if (keys) cm.removeKeyMap(keys); }};
 	}
 
-	// ================================================================ syntax check (0.8.781)
+	// ================================================================ syntax check
 	// JavaScript: Acorn (vendor/bundled/acorn-*, loaded on first use – the strict CSP rules out new Function()); CSS: braces, comments,
 	// strings + rules the browser drops; HTML: unclosed <script> / <style>, their contents as JavaScript / CSS; PHP: ?p=codecheck
 	// (token_get_all, nothing runs). Nothing is ever executed. Marks in the gutter while typing (after a pause), the ✓ button lists the
@@ -849,10 +935,12 @@
 			htmlScript: 'Unclosed <script>', htmlStyle: 'Unclosed <style>'},
 		de: {chk: 'Syntax prüfen (Umschalt+Alt+C)', chkOk: 'Keine Syntaxfehler gefunden.', chkN: '%d Problem(e)', chkLine: 'Zeile %d', chkTitle: 'Syntaxfehler',
 			chkSave: 'Der Code enthält Syntaxfehler. Trotzdem speichern?', chkSaveAnyway: 'Trotzdem speichern', chkPhpOff: 'Die Prüfung auf dem Server (PHP / SQL) war nicht erreichbar.',
-			cssOpen: 'Nicht geschlossene {', cssClose: 'Unerwartete }', cssComment: 'Nicht geschlossener Kommentar', cssString: 'Nicht geschlossene Zeichenkette', cssDropped: 'Der Browser ignoriert diese Regel',
+			cssOpen: 'Nicht geschlossene {', cssClose: 'Unerwartete }', cssComment: 'Nicht geschlossener Kommentar',
+				cssString: 'Nicht geschlossene Zeichenkette', cssDropped: 'Der Browser ignoriert diese Regel',
 			htmlScript: 'Nicht geschlossenes <script>', htmlStyle: 'Nicht geschlossenes <style>'},
 		fr: {chk: 'Vérifier la syntaxe (Maj+Alt+C)', chkOk: 'Aucune erreur de syntaxe.', chkN: '%d problème(s)', chkLine: 'Ligne %d', chkTitle: 'Erreurs de syntaxe',
-			chkSave: 'Le code contient des erreurs de syntaxe. Enregistrer quand même ?', chkSaveAnyway: 'Enregistrer quand même', chkPhpOff: 'La vérification sur le serveur (PHP / SQL) n\'a pas pu être jointe.',
+			chkSave: 'Le code contient des erreurs de syntaxe. Enregistrer quand même ?', chkSaveAnyway: 'Enregistrer quand même',
+				chkPhpOff: 'La vérification sur le serveur (PHP / SQL) n\'a pas pu être jointe.',
 			cssOpen: '{ non fermée', cssClose: '} inattendue', cssComment: 'Commentaire non fermé', cssString: 'Chaîne non fermée', cssDropped: 'Le navigateur ignore cette règle',
 			htmlScript: '<script> non fermé', htmlStyle: '<style> non fermé'},
 		it: {chk: 'Controlla la sintassi (Maiusc+Alt+C)', chkOk: 'Nessun errore di sintassi.', chkN: '%d problema/i', chkLine: 'Riga %d', chkTitle: 'Errori di sintassi',
@@ -890,7 +978,7 @@
 	};
 	var TC = TEXTS_CHK[LANG] || TEXTS_CHK.en;
 	var ACORN = BASE + 'vendor/bundled/acorn-8.19.0/acorn.min.js';
-	var CHECKS = {JS: 1, CSS: 1, HTML: 1, PHP: 1, SQL: 1};   // SQL: parsed by the database (0.8.999, pages/nucodecheck.php lang=sql)
+	var CHECKS = {JS: 1, CSS: 1, HTML: 1, PHP: 1, SQL: 1};   // SQL: parsed by the database (pages/nucodecheck.php lang=sql)
 
 	function loadAcorn() {
 		if (window.acorn) return Promise.resolve();
@@ -982,7 +1070,7 @@
 		return Promise.all(jobs).then(function (r) { r.forEach(function (x) { out = out.concat(x); }); return out; });
 	}
 	var phpBusy = null, sqlBusy = null;
-	/** SQL (0.8.999): the database parses it without running it; null = no check for this user / database (no marks, no message). */
+	/** SQL: the database parses it without running it; null = no check for this user / database (no marks, no message). */
 	function checkSql(code) {
 		var tok = (window.nuNext && window.nuNext.csrf) || '';
 		if (!tok) { var el = document.querySelector('[data-csrf]'), inp = document.querySelector('input[name="_csrf"]'); tok = el ? el.getAttribute('data-csrf') : (inp ? inp.value : ''); }

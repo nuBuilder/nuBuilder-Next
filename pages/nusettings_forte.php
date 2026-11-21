@@ -3,30 +3,20 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Settings centre → nuBuilder Forte (0.8.702: ?p=settings&s=forte, included by pages/nusettings.php)
+ * Settings centre → nuBuilder Forte (?p=settings&s=forte, included by pages/nusettings.php)
  * nuBuilder's settings (Setup → Settings, zzzzsys_config) – globeadmin. Logic in core/nusettings.php, JavaScript in assets/js/nusettings.js.
  * POST action save (values[<zzzzsys_config_id>]) | import (values of nuconfig.php into the table).
  */
 
-// admin rights (0.8.323): the globeadmin, or a user whose admin role has the right (core/nuadmin.php)
+// admin rights: the globeadmin, or a user whose admin role has the right (core/nuadmin.php)
 NuAdmin::require('settings');
-NuSecurity::requireRecentAuth(nu_url('settings', ['s' => 'forte']));   // password again when the last confirmation is older than 15 minutes (0.8.207)
+NuSecurity::requireRecentAuth(nu_url('settings', ['s' => 'forte']));   // password again when the last confirmation is older than 15 minutes
 
 $errors = [];
 $posted = [];
 
 // table missing (database installed without nuBuilder's SQL, older nuBuilder) → create it with nuBuilder's defaults
-if (nu_is_post() && nu_post('action') === 'create') {
-	try {
-		$n = NuSettings::create();
-		NuLog::write('settings_created', NuSettings::TABLE, '', ['rows' => $n]);
-		nu_flash('success', t('set_created', $n));
-	} catch (Throwable $e) {
-		error_log('nuBuilder Next settings: ' . $e->getMessage());
-		nu_flash('danger', t('set_create_failed') . ' ' . $e->getMessage());
-	}
-	nu_redirect(nu_url('settings', ['s' => 'forte']));
-}
+NuSettingsFortePage::post(get_defined_vars());   // the POST actions (code review R7, nusettingsfortepage.php)
 $available = NuSettings::available();
 
 if ($available && nu_is_post()) {
@@ -99,7 +89,8 @@ nu_layout_start(t('sh_forte'), 'home', ['container' => 'nuContainer', 'settings'
 <?php if (!$available): ?>
 	<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-1"></i><?= h(t('set_missing', NuSettings::database())) ?>
 		<?php if (NuSettings::$problem !== ''): ?><div class="small mt-2 font-monospace text-break"><?= h(NuSettings::$problem) ?></div><?php endif; ?>
-		<form method="post" action="<?= h(nu_url('settings', ['s' => 'forte'])) ?>" class="mt-3" data-confirm="<?= h(t('set_create_confirm', NuSettings::database())) ?>" data-confirm-ok="<?= h(t('set_create')) ?>">
+		<form method="post" action="<?= h(nu_url('settings', ['s' => 'forte'])) ?>" class="mt-3"
+			data-confirm="<?= h(t('set_create_confirm', NuSettings::database())) ?>" data-confirm-ok="<?= h(t('set_create')) ?>">
 			<?= nu_csrf_field() ?><input type="hidden" name="action" value="create">
 			<button class="btn btn-primary" type="submit"><i class="bi bi-plus-lg me-1"></i><?= h(t('set_create')) ?></button>
 			<span class="small ms-2"><?= h(t('set_create_hint')) ?></span>
@@ -138,10 +129,10 @@ nu_layout_start(t('sh_forte'), 'home', ['container' => 'nuContainer', 'settings'
 					<?php foreach ($categories as $c): ?><option value="<?= h($c) ?>"><?= h($c) ?></option><?php endforeach; ?>
 				</select>
 			</div>
-			<div class="col-12">   <?php /* filter by the nuBuilder Next tag, with counts (0.8.280) */ ?>
+			<div class="col-12">   <?php /* filter by the nuBuilder Next tag, with counts */ ?>
 				<div class="d-flex flex-wrap align-items-center gap-2" id="setStatus" role="radiogroup" aria-label="<?= h(t('set_st_filter')) ?>">
 					<span class="small text-body-secondary me-1"><?= h(t('set_st_filter')) ?>:</span>
-					<?php // opens on "Used" (0.8.575); after a save with errors on "All", so no row with an error is hidden
+					<?php // opens on "Used"; after a save with errors on "All", so no row with an error is hidden
 					$stDefault = $errors ? '' : 'next';
 					$stCount = array_count_values(array_map(static fn($r) => (NuSettings::STATUS[(string)$r['cfg_setting']] ?? [''])[0], $rows));
 					foreach (['' => 'all', 'next' => 'next', 'open' => 'open', 'na' => 'na'] as $v => $k): $rid = 'setSt_' . ($v ?: 'all'); ?>
@@ -166,9 +157,15 @@ nu_layout_start(t('sh_forte'), 'home', ['container' => 'nuContainer', 'settings'
 				<tr data-category="<?= h((string)$r['cfg_category']) ?>" data-status="<?= h($st) ?>">
 					<td class="small text-body-secondary text-nowrap setCatCell"><?= h((string)$r['cfg_category']) ?></td>
 					<td class="fw-semibold setNameCell"><?= h(NuSettings::title($r)) ?>
-						<?php if ($desc !== ''): // narrow screens (< 800 px): the description column is hidden – (i) shows it on tap / click (0.8.242) ?><span class="nuInfoTip setDescTip ms-1" tabindex="0" role="button" data-bs-toggle="tooltip" data-bs-trigger="hover focus click" data-bs-custom-class="nuTipWide" aria-label="<?= h($desc) ?>" title="<?= h($desc) ?>"><i class="bi bi-info-circle"></i></span><?php endif; ?>
-						<?php if ($st !== ''): // what the setting means for nuBuilder Next (0.8.279) ?><span class="badge border fw-normal ms-1 setSt setSt-<?= $st ?>" tabindex="0" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" title="<?= h(t('set_r_' . $why)) ?>"><?= h(t('set_st_' . $st)) ?></span><?php endif; ?>
-						<?php if ($eff === '2' || $eff === '3'): ?><i class="bi bi-arrow-repeat text-body-secondary ms-1" role="img" title="<?= h(t($eff === '2' ? 'set_effective_login' : 'set_effective_browser')) ?>" aria-label="<?= h(t($eff === '2' ? 'set_effective_login' : 'set_effective_browser')) ?>"></i><?php endif; ?></td>
+						<?php if ($desc !== ''): // narrow screens (< 800 px): the description column is hidden – (i) shows it on tap / click ?><span class="nuInfoTip setDescTip ms-1"
+							tabindex="0" role="button" data-bs-toggle="tooltip" data-bs-trigger="hover focus click" data-bs-custom-class="nuTipWide" aria-label="<?= h($desc) ?>"
+							title="<?= h($desc) ?>"><i class="bi bi-info-circle"></i></span><?php endif; ?>
+						<?php if ($st !== ''): // what the setting means for nuBuilder Next ?><span class="badge border fw-normal ms-1 setSt setSt-<?= $st ?>"
+							tabindex="0" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide"
+							title="<?= h(t('set_r_' . $why)) ?>"><?= h(t('set_st_' . $st)) ?></span><?php endif; ?>
+						<?php if ($eff === '2' || $eff === '3'): ?><i class="bi bi-arrow-repeat text-body-secondary ms-1" role="img"
+							title="<?= h(t($eff === '2' ? 'set_effective_login' : 'set_effective_browser')) ?>"
+							aria-label="<?= h(t($eff === '2' ? 'set_effective_login' : 'set_effective_browser')) ?>"></i><?php endif; ?></td>
 					<td class="setKeyCell"><code class="small text-break"><?= h((string)$r['cfg_setting']) ?></code></td>
 					<td class="setValueCol"><?= $control($r, $value, isset($errors[$id])) ?><?php if (isset($errors[$id])): ?><div class="invalid-feedback d-block"><?= h($errors[$id]) ?></div><?php endif; ?></td>
 					<td class="small text-body-secondary setDesc setDescCol" title="<?= h($desc) ?>"><?= h($desc) ?></td>

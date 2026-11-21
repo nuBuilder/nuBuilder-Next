@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Rules per subject (0.8.480, handover specs 04 field data access and 07 browse column visibility): who a rule applies to and which
+ * Rules per subject (handover specs 04 field data access and 07 browse column visibility): who a rule applies to and which
  * rule wins. A rule is ['type' => user|perm|team|dept|access|default, 'subject' => …]; the most specific matching rule wins –
  * user (5) > permission item (4) > team / department (3) > access level (2) > default (1). Rules of the same rank are decided by the
  * caller's order of modes (field access: the more open mode; column visibility: hide).
@@ -27,8 +27,7 @@ final class NuSubject
 				$me['team'] = mb_strtolower(trim((string)($row['sus_team'] ?? '')));
 				$me['dept'] = mb_strtolower(trim((string)($row['sus_department'] ?? '')));
 				$me['perms'] = array_map(static fn($p) => mb_strtolower(trim((string)$p)), NuPermission::idents($me['id']));
-			} catch (Throwable) {
-			}
+			} catch (Throwable $ig) { nu_ignored($ig); }
 		}
 		return self::$me = $me;
 	}
@@ -94,13 +93,13 @@ final class NuSubject
 		$out = ['access' => [], 'user' => [], 'perm' => [], 'team' => [], 'dept' => []];
 		try {
 			foreach (NuAcl::levels() as $r) $out['access'][] = [(string)$r['zzzzsys_access_id'], trim($r['sal_code'] . ' – ' . $r['sal_description'], ' –')];
-			foreach ($db->all('SELECT zzzzsys_user_id, sus_login_name, sus_name FROM zzzzsys_user ORDER BY sus_login_name') as $r) $out['user'][] = [(string)$r['zzzzsys_user_id'], trim($r['sus_login_name'] . ' – ' . $r['sus_name'], ' –')];
+			foreach ($db->all('SELECT zzzzsys_user_id, sus_login_name, sus_name FROM zzzzsys_user ORDER BY sus_login_name') as $r) $out['user'][] = [(string)$r['zzzzsys_user_id'],
+				trim($r['sus_login_name'] . ' – ' . $r['sus_name'], ' –')];
 			foreach (NuPermission::items() as $r) $out['perm'][] = [(string)$r['pme_ident'], trim($r['pme_ident'] . ' – ' . $r['pme_description'], ' –')];
 			foreach (['team' => 'sus_team', 'dept' => 'sus_department'] as $k => $c) {
 				foreach ($db->all("SELECT DISTINCT $c AS v FROM zzzzsys_user WHERE $c IS NOT NULL AND $c <> '' ORDER BY $c") as $r) $out[$k][] = [(string)$r['v'], (string)$r['v']];
 			}
-		} catch (Throwable) {
-		}
+		} catch (Throwable $ig) { nu_ignored($ig); }
 		return $out;
 	}
 }

@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * "My searches" of the advanced search (0.8.719, core/form/nuadvsearch.php): POST JSON {action: save | delete, f: form id, name, adv, id}
+ * "My searches" of the advanced search (core/form/nuadvsearch.php): POST JSON {action: save | delete, f: form id, name, adv, id}
  * from assets/js/nu/nuadvsearch.js (X-CSRF-Token) → {ok, saved: [{id, name, adv}], error}. Only for a form / system list (f = list:<key>) the user may open.
  */
 header('Content-Type: application/json; charset=utf-8');
@@ -12,7 +12,7 @@ $in = json_decode((string)file_get_contents('php://input'), true);
 $in = is_array($in) ? $in : $_POST;
 $form = is_string($in['f'] ?? null) ? $in['f'] : '';
 $out = static function (array $d): never { nu_json($d); };
-// f = a form id, or list:<key> for a system list (0.8.769) – the user must be allowed to open it
+// f = a form id, or list:<key> for a system list – the user must be allowed to open it
 $okTarget = false;
 if (str_starts_with($form, 'list:')) {
 	$lk = substr($form, 5);

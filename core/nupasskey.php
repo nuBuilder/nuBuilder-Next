@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Passkeys (WebAuthn, 0.8.877) – a second factor besides the authenticator app and the e-mail code, and (setting passkey_login)
+ * Passkeys (WebAuthn) – a second factor besides the authenticator app and the e-mail code, and (setting passkey_login)
  * signing in without a password. Our own checker, no library: the browser's navigator.credentials.create / get (assets/js/nupasskey.js)
  * send the authenticator's answer, we check the client data (type, challenge, origin), the authenticator data (RP id hash, flags,
  * counter) and the signature with the public key stored at registration – ES256 / RS256 with openssl, Ed25519 with sodium.
@@ -151,7 +151,7 @@ final class NuPasskey
 	{
 		$challenge = random_bytes(32);
 		$handle = self::userHandle((string)$u['id']);
-		$_SESSION['nu_passkey']['reg'] = ['c' => self::b64($challenge), 'user' => (string)$u['id'], 't' => time(), 'h' => $handle];
+		$_SESSION[NuSess::PASSKEY]['reg'] = ['c' => self::b64($challenge), 'user' => (string)$u['id'], 't' => time(), 'h' => $handle];
 		$exclude = [];
 		foreach (self::list((string)$u['id']) as $r) {
 			$exclude[] = ['type' => 'public-key', 'id' => (string)$r['cred_id']] + ((string)$r['transports'] !== '' ? ['transports' => explode(',', (string)$r['transports'])] : []);
@@ -229,7 +229,7 @@ final class NuPasskey
 	public static function assertionOptions(string $kind, ?string $userId): array
 	{
 		$challenge = random_bytes(32);
-		$_SESSION['nu_passkey'][$kind] = ['c' => self::b64($challenge), 'user' => $userId ?? '', 't' => time()];
+		$_SESSION[NuSess::PASSKEY][$kind] = ['c' => self::b64($challenge), 'user' => $userId ?? '', 't' => time()];
 		$allow = [];
 		if ($userId !== null) {
 			foreach (self::list($userId) as $r) {
@@ -283,8 +283,8 @@ final class NuPasskey
 	/** One use: the ceremony's challenge leaves the session with the first answer. */
 	private static function take(string $kind): ?array
 	{
-		$c = $_SESSION['nu_passkey'][$kind] ?? null;
-		unset($_SESSION['nu_passkey'][$kind]);
+		$c = $_SESSION[NuSess::PASSKEY][$kind] ?? null;
+		unset($_SESSION[NuSess::PASSKEY][$kind]);
 		if (!is_array($c) || time() - (int)($c['t'] ?? 0) > self::TTL) return null;
 		return $c;
 	}
@@ -292,7 +292,7 @@ final class NuPasskey
 	/** Test seam (run.php): puts a ceremony into the session as the options call would. */
 	public static function testCeremony(string $kind, string $challengeB64, string $user, string $handle = ''): void
 	{
-		$_SESSION['nu_passkey'][$kind] = ['c' => $challengeB64, 'user' => $user, 't' => time(), 'h' => $handle];
+		$_SESSION[NuSess::PASSKEY][$kind] = ['c' => $challengeB64, 'user' => $user, 't' => time(), 'h' => $handle];
 	}
 
 	// ================================================================= checks

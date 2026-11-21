@@ -1,4 +1,4 @@
-/* nuBuilder Next – Sample data page (0.8.742, pages/nusample.php): the list of samples selects the pane on the right without a reload
+/* nuBuilder Next – Sample data page (pages/nusample.php): the list of samples selects the pane on the right without a reload
    (?s=<key> in the address, #smpSet_<key> of older links), passwords stay masked until "Show passwords", copy buttons. */
 (function () {
 	'use strict';

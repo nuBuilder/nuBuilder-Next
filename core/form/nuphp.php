@@ -19,12 +19,12 @@ final class NuPhp
 	public static array $subforms     = [];     // posted subform data for nuSubformObject
 	public static array $debug        = [];
 	public static string $output      = '';
-	public static ?string $openRecord = null;   // nuReturnNewRecord(): the record the form opens after the save (0.8.443)
-	/** The procedure's own variable $result after it ran (nuBuilder's nuEvalSafe → nuRunPHPHiddenResult; the upload procedure's answer, 0.8.459). */
+	public static ?string $openRecord = null;   // nuReturnNewRecord(): the record the form opens after the save
+	/** The procedure's own variable $result after it ran (nuBuilder's nuEvalSafe → nuRunPHPHiddenResult; the upload procedure's answer). */
 	public static mixed $result       = null;
-	/** The code's variable $error after it ran – nuBuilder's login hooks (nu_startup / nu_invalid_login) stop with it (0.8.462). */
+	/** The code's variable $error after it ran – nuBuilder's login hooks (nu_startup / nu_invalid_login) stop with it. */
 	public static string $error       = '';
-	/** Variables a hook's code reads (0.8.462): nu_check_password_policy gets $newPassword …, its $check comes back here. */
+	/** Variables a hook's code reads: nu_check_password_policy gets $newPassword …, its $check comes back here. */
 	public static array $vars         = [];
 
 	public static function reset(): void
@@ -44,7 +44,7 @@ final class NuPhp
 		static $done = false;
 		if ($done) return;
 		$done = true;
-		foreach (NuIncludes::entries('php') as $entry) {   // nuBuilder Next's folder, then nuBuilder's (0.8.443, NuIncludes::phpFile)
+		foreach (NuIncludes::entries('php') as $entry) {   // nuBuilder Next's folder, then nuBuilder's (NuIncludes::phpFile)
 			$file = NuIncludes::phpFile($entry);
 			if ($file !== null) require_once $file;
 			else error_log("nuBuilder Next: \$nuConfigIncludePHP file not found: $entry");
@@ -70,8 +70,8 @@ final class NuPhp
 	}
 
 	/**
-	 * __FILE__ / __DIR__ in the code as in nuBuilder Forte, which runs it inside core/nucommon.php (0.8.1218): code that finds its own
-	 * files with dirname(__FILE__) . '/../libs/…' reaches the application's folder next to Forte's core/ – here that is nuBuilder Forte's
+	 * __FILE__ / __DIR__ in the code as in nuBuilder Forte, which runs it inside core/nucommon.php: code that finds its own
+	 * files with dirname(__FILE__). '/../libs/…' reaches the application's folder next to Forte's core/ – here that is nuBuilder Forte's
 	 * folder (NuBuilderLib::path()) when it has a core/ folder, else nuBuilder Next's. Lines stay as they are.
 	 */
 	public static function forteFileConsts(string $code): string
@@ -119,14 +119,14 @@ final class NuPhp
 		});
 		ob_start();
 		try {
-			nu_db()->native(static fn () => self::evaluate($code, $vars));   // code of the application: server-side prepares (0.8.1342)
+			nu_db()->native(static fn () => self::evaluate($code, $vars));   // code of the application: server-side prepares
 		} catch (NuDemoBlocked $e) {                         // demo mode: the code tried to change data – no line, it is not an error in the code
 			self::$errors[] = ['message' => "$label: " . $e->getMessage(), 'field' => ''];
 		} catch (Throwable $e) {
 			error_log("nuBuilder Next PHP $label: " . $e->getMessage() . ' line ' . $e->getLine());
 			$u = NuAuth::user();
 			self::$errors[] = [
-				'message' => ($u && $u['globeadmin']) || nu_debug() || PHP_SAPI === 'cli'   // cli: nucron.php run – the administrator's own terminal / error mail (0.8.1135)
+				'message' => ($u && $u['globeadmin']) || nu_debug() || PHP_SAPI === 'cli'   // cli: nucron.php run – the administrator's own terminal / error mail
 					? "$label: " . $e->getMessage() . ' (line ' . $e->getLine() . ')'
 					: t('form_err_php', $label),
 				'field' => '',
@@ -141,7 +141,7 @@ final class NuPhp
 	}
 
 	/**
-	 * Functions the code declares that nuBuilder Next itself already has (e.g. h() or t()) get another name in this code only (0.8.1159):
+	 * Functions the code declares that nuBuilder Next itself already has (e.g. h() or t()) get another name in this code only:
 	 * nuBuilder Forte has no such functions, so the same procedure ran there, while here PHP stopped with "Cannot redeclare" – a fatal
 	 * error that cannot be caught and broke the JSON answer. Methods, ->name, ::name and new name stay; line numbers do not change.
 	 */
@@ -268,7 +268,7 @@ final class NuPhp
 		// demo mode: only procedures with "Demo access" (nuBuilder's sph_demo, on when the column is missing) – and they cannot write
 		if (NuDemo::active() && (string)($php['sph_demo'] ?? '1') !== '1') return ['ok' => false, 'error' => t('demo_not_available')];
 		if (!$u['globeadmin'] && !NuAdmin::can('procedures', 'change') && (string)$php['sph_global'] !== '1') {   // admin role "Procedures: change": every one
-			[$in, $lv] = NuUserAccess::inSql('slp_zzzzsys_access_id', $u);   // main + additional access levels (0.8.585)
+			[$in, $lv] = NuUserAccess::inSql('slp_zzzzsys_access_id', $u);   // main + additional access levels
 			$granted = (int)$db->value("SELECT COUNT(*) FROM zzzzsys_access_php WHERE $in AND slp_zzzzsys_php_id = ?", [...$lv, $php['zzzzsys_php_id']]);
 			if (!$granted) return ['ok' => false, 'error' => t('form_err_proc_denied', $codeOrId)];
 		}
@@ -310,7 +310,7 @@ final class NuResult
 		return $a;
 	}
 
-	// PDOStatement methods that nuBuilder code calls on the result of nuRunQuery() (nuBuilder returns a PDOStatement) – 0.8.378
+	// PDOStatement methods that nuBuilder code calls on the result of nuRunQuery (nuBuilder returns a PDOStatement)
 
 	private function shaped(array $row, int $mode): array|object
 	{

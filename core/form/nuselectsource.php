@@ -5,7 +5,7 @@ defined('NU_ROOT') || exit;
 /**
  * Options of a select object (sob_select_sql), read as nuBuilder Forte 4.9 reads them (nuGetSelectType / nuSelectOptions) – the one
  * place for the form (NuRender::options, nuRefreshSelectObject), the PHP function nuSelectOptions(), translations and Form with AI
- * (0.8.879). Kinds:
+ *. Kinds:
  *   query      SELECT / WITH / (SELECT / EXEC / other SHOW … – also after leading "-- " comment lines or a slash-star block
  *   tables     SHOW TABLES / SHOW FULL TABLES [WHERE …]: the first column; names starting with "__" left out
  *              (SQL Server and SQLite: their catalog – BASE TABLE / VIEW in the text choose tables or views)

@@ -1,6 +1,6 @@
 /* global nuBs */
 /*
- * Pivot of a form list (0.8.1151): Export ▾ → Pivot… (#nuPivotOpen, data-nu-pivot = form id + the list's search state, data-nu-pivot-texts).
+ * Pivot of a form list: Export ▾ → Pivot… (#nuPivotOpen, data-nu-pivot = form id + the list's search state, data-nu-pivot-texts).
  * Fields are dragged (or added with +) into Filters / Columns / Rows / Values; the server works the numbers out (?p=pivot, core/form/nupivot.php).
  * Table with totals / subtotals, % of row / column / total, heat map, sort + top N, chart (ApexCharts, loaded on first use), CSV / Excel,
  * a click on a number lists its records. Saved pivots per user ("My pivots"). The last pivot of a form is remembered (localStorage).
@@ -204,7 +204,8 @@
 			var row = el('div', 'd-flex gap-2 mt-2');
 			var ok = el('button', 'btn btn-sm btn-primary', 'OK'); ok.type = 'button';
 			var clr = el('button', 'btn btn-sm btn-outline-secondary', t('pv_clear')); clr.type = 'button';
-			ok.addEventListener('click', function () { it.v = Array.prototype.filter.call(list.querySelectorAll('input:checked'), function () { return true; }).map(function (i) { return i.value; }); box.remove(); changed(); });
+			ok.addEventListener('click',
+				function () { it.v = Array.prototype.filter.call(list.querySelectorAll('input:checked'), function () { return true; }).map(function (i) { return i.value; }); box.remove(); changed(); });
 			clr.addEventListener('click', function () { it.v = []; box.remove(); changed(); });
 			row.appendChild(ok); row.appendChild(clr); box.appendChild(row);
 		});
@@ -227,15 +228,20 @@
 			mode.appendChild(b);
 		});
 		bar.appendChild(mode);
-		if (VIEW.mode === 'chart') bar.appendChild(sel('nuPvCtype', [['bar', t('pv_chart_bar')], ['stack', t('pv_chart_stack')], ['line', t('pv_chart_line')]], VIEW.ctype, function (v) { VIEW.ctype = v; render(); saveView(); }));
+		if (VIEW.mode === 'chart') bar.appendChild(sel('nuPvCtype',
+			[['bar', t('pv_chart_bar')], ['stack', t('pv_chart_stack')], ['line', t('pv_chart_line')]], VIEW.ctype,
+			function (v) { VIEW.ctype = v; render(); saveView(); }));
 		else {
-			bar.appendChild(lbl(t('pv_show'), sel('nuPvShow', [['val', t('pv_show_val')], ['row', t('pv_show_row')], ['col', t('pv_show_col')], ['all', t('pv_show_all')]], VIEW.show, function (v) { VIEW.show = v; render(); saveView(); })));
+			bar.appendChild(lbl(t('pv_show'),
+				sel('nuPvShow', [['val', t('pv_show_val')], ['row', t('pv_show_row')], ['col', t('pv_show_col')], ['all', t('pv_show_all')]], VIEW.show, function (v) { VIEW.show = v; render(); saveView(); })));
 			var hm = el('div', 'form-check form-switch mb-0'); var hc = el('input', 'form-check-input'); hc.type = 'checkbox'; hc.id = 'nuPvHeat'; hc.checked = VIEW.heat;
 			hc.addEventListener('change', function () { VIEW.heat = hc.checked; render(); saveView(); });
 			var hl = el('label', 'form-check-label small', t('pv_heat')); hl.htmlFor = 'nuPvHeat'; hm.appendChild(hc); hm.appendChild(hl); bar.appendChild(hm);
 		}
-		bar.appendChild(lbl(t('pv_sort'), sel('nuPvSort', [['key', t('pv_sort_key')], ['desc', t('pv_sort_desc')], ['asc', t('pv_sort_asc')]], VIEW.sort, function (v) { VIEW.sort = v; render(); saveView(); })));
-		bar.appendChild(lbl(t('pv_top'), sel('nuPvTop', [['0', t('pv_top_all')], ['5', '5'], ['10', '10'], ['20', '20'], ['50', '50']], String(VIEW.top), function (v) { VIEW.top = parseInt(v, 10) || 0; render(); saveView(); })));
+		bar.appendChild(lbl(t('pv_sort'),
+			sel('nuPvSort', [['key', t('pv_sort_key')], ['desc', t('pv_sort_desc')], ['asc', t('pv_sort_asc')]], VIEW.sort, function (v) { VIEW.sort = v; render(); saveView(); })));
+		bar.appendChild(lbl(t('pv_top'),
+			sel('nuPvTop', [['0', t('pv_top_all')], ['5', '5'], ['10', '10'], ['20', '20'], ['50', '50']], String(VIEW.top), function (v) { VIEW.top = parseInt(v, 10) || 0; render(); saveView(); })));
 		var sp = el('span', 'flex-grow-1'); bar.appendChild(sp);
 		// My pivots
 		var dd = el('div', 'dropdown');
@@ -348,7 +354,8 @@
 		cols.forEach(colHead);
 		if (sp.cols.length && nr) sp.vals.forEach(function (v) { tr.appendChild(el('th', 'text-end nuPvTot', t('pv_total') + (nv > 1 ? ' · ' + valTitle(v) : ''))); });
 		th.appendChild(tr); tb.appendChild(th);
-		var max = []; if (VIEW.heat) cols.forEach(function (ck) { rows.forEach(function (rk) { var c = cellOf(rk, ck) || []; c.forEach(function (x, j) { if (x !== null && (max[j] === undefined || Math.abs(x) > max[j])) max[j] = Math.abs(x); }); }); });
+		var max = []; if (VIEW.heat) cols.forEach(function (ck) { rows.forEach(function (rk) { var c = cellOf(rk, ck)
+			|| []; c.forEach(function (x, j) { if (x !== null && (max[j] === undefined || Math.abs(x) > max[j])) max[j] = Math.abs(x); }); }); });
 		var body = el('tbody'), prev = [];
 		var addSub = function (k, pre) {
 			var sub = R.sub[JSON.stringify(pre)]; if (!sub) return;
@@ -362,7 +369,8 @@
 			for (var k = nr - 1; k >= 1; k--) if (ri > 0 && prev.slice(0, k).join('\x1f') !== rk.slice(0, k).join('\x1f')) addSub(k, prev.slice(0, k));
 			var r = el('tr');
 			if (!nr) r.appendChild(el('td', 'nuPvRowHead', t('pv_total')));
-			rk.forEach(function (k, i) { r.appendChild(el('td', 'nuPvRowHead' + (ri > 0 && prev.slice(0, i + 1).join('\x1f') === rk.slice(0, i + 1).join('\x1f') ? ' nuPvRep' : ''), keyLabel(k, sp.rows[i].g))); });
+			rk.forEach(function (k,
+				i) { r.appendChild(el('td', 'nuPvRowHead' + (ri > 0 && prev.slice(0, i + 1).join('\x1f') === rk.slice(0, i + 1).join('\x1f') ? ' nuPvRep' : ''), keyLabel(k, sp.rows[i].g))); });
 			cols.forEach(function (ck) {
 				var c = cellOf(rk, ck);
 				sp.vals.forEach(function (v, j) {
@@ -465,7 +473,7 @@
 		var last = store('nunext-pivot-' + S.f);
 		S.spec = last && last.spec ? last.spec : {rows: [], cols: [], vals: [], flt: []};
 		if (last && last.view) VIEW = Object.assign(VIEW, last.view);
-		(pick && pick !== '-' ? post('saved').then(function (d) {   // a run button's saved pivot (0.8.1156)
+		(pick && pick !== '-' ? post('saved').then(function (d) {   // a run button's saved pivot
 			var s = (d.saved || []).filter(function (x) { return x.id === pick; })[0];
 			if (s && s.spec && s.spec.spec) { S.spec = s.spec.spec; if (s.spec.view) VIEW = Object.assign(VIEW, s.spec.view); }
 		}) : Promise.resolve()).then(function () { return post('fields'); }).then(function (d) {

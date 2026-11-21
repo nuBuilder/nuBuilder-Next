@@ -15,7 +15,7 @@
 	var formSel = document.getElementById('emt_form_id');
 	var fields = [];
 
-	// code, description and recipients fold away (0.8.432): the state is remembered in this browser; a field with an error or a required
+	// code, description and recipients fold away: the state is remembered in this browser; a field with an error or a required
 	// field the browser complains about opens it; the summary line follows the fields
 	var fold = document.getElementById('emtHead'), headInfo = document.getElementById('emtHeadInfo');
 	if (fold) {
@@ -58,7 +58,7 @@
 	function placeholder(id, label, isField) {
 		var ph = '#' + id + '#';
 		if (target !== body) return ph;
-		if (!isField) return ph + '<br>\n';                       // body: each placeholder on its own line (0.8.509)
+		if (!isField) return ph + '<br>\n';                       // body: each placeholder on its own line
 		label = String(label || '').replace(/\s+/g, ' ').trim().replace(/\s*:$/, '');
 		return (label ? '<b>' + htmlText(label) + ': </b>' + ph : ph) + '<br>\n';
 	}

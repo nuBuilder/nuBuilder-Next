@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * IP access (0.8.722): from which addresses users may sign in and work – Settings → Security → IP access (?p=ipaccess, the globeadmin).
+ * IP access: from which addresses users may sign in and work – Settings → Security → IP access (?p=ipaccess, the globeadmin).
  * Settings row 'ip_access' = {on, default: [rules], levels: {access id: {mode: any | ranges, ranges: [rules]}}, ga: {mode: default |
  * any | ranges, ranges: [rules]}}; a rule is an address (203.0.113.7, 2001:db8::1) or a network with a prefix (10.0.0.0/8). An empty
  * default list = every address. A user may work when ANY of his active access levels (main + additional, NuUserAccess) allows the
@@ -22,13 +22,7 @@ final class NuIpAccess
 	public static function settings(): array
 	{
 		if (NuMemo::find('set:ipaccess', $kept)) return $kept;   // NuMemo (code review R9): a write to the settings drops it
-		$s = null;
-		try {
-			$v = nu_setting_value(self::KEY);
-			$s = is_string($v) ? json_decode($v, true) : null;
-		} catch (Throwable) {
-		}
-		return NuMemo::keep('set:ipaccess', ['zzzzsys_nunext_setting'], self::clean(is_array($s) ? $s : []));
+		return NuMemo::keep('set:ipaccess', ['zzzzsys_nunext_setting'], self::clean(nu_setting_json(self::KEY)));
 	}
 
 	/** Settings in their stored shape: known keys only, valid rules only, levels without an entry dropped. */
@@ -55,10 +49,7 @@ final class NuIpAccess
 	public static function save(array $s, string $by): array
 	{
 		$s = self::clean($s);
-		NuSchema::ensure();
-		$db = nu_db();
-		$row = ['setting_value' => json_encode($s, JSON_UNESCAPED_SLASHES), 'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => $by];
-		nu_setting_save(self::KEY, $row, $db);
+		nu_setting_json_save(self::KEY, $s, $by);
 		NuMemo::drop('set:ipaccess');
 		return $s;
 	}
@@ -163,8 +154,7 @@ final class NuIpAccess
 	{
 		try {
 			NuLog::write('ip_refused', '', '', ['ip' => $ip, 'when' => $when], ['id' => (string)($who['id'] ?? ''), 'login' => (string)($who['login'] ?? '')]);
-		} catch (Throwable) {
-		}
+		} catch (Throwable $ig) { nu_ignored($ig); }
 	}
 
 	/**
@@ -178,19 +168,8 @@ final class NuIpAccess
 		$r = ['ip' => $ip, 'valid' => filter_var($ip, FILTER_VALIDATE_IP) !== false, 'ga' => false, 'allowed' => [], 'refused' => []];
 		if (!$r['valid']) return $r;
 		$r['ga'] = !$s['on'] || self::gaAllows($ip, $s);
-		foreach (self::accessLevels() as $l) $r[!$s['on'] || self::levelAllows($l['id'], $ip, $s) ? 'allowed' : 'refused'][] = $l;
+		foreach (NuAcl::levelList() as $l) $r[!$s['on'] || self::levelAllows($l['id'], $ip, $s) ? 'allowed' : 'refused'][] = $l;
 		return $r;
-	}
-
-	/** @return list<array{id: string, code: string, name: string, group: string}> */
-	public static function accessLevels(): array
-	{
-		try {
-			return array_map(static fn($r) => ['id' => (string)$r['zzzzsys_access_id'], 'code' => (string)$r['sal_code'], 'name' => (string)$r['sal_description'], 'group' => (string)($r['sal_group'] ?? '')],
-				array_values(NuAcl::levels()));
-		} catch (Throwable) {
-			return [];
-		}
 	}
 
 	/** Switched off (nucron.php iprules off): the rules stay stored. @return bool was on */

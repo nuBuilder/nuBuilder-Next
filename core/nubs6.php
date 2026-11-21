@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Bootstrap 6 readiness (0.8.740, developer mode): finds markup and code that Bootstrap 6 changes – responsive / state classes with the
+ * Bootstrap 6 readiness (developer mode): finds markup and code that Bootstrap 6 changes – responsive / state classes with the
  * breakpoint inside the name (d-md-none → md:d-none in v6), offcanvas (→ drawer), the accordion (native <details>) and the global
  * window.bootstrap (gone: plugins are ES modules only). Used by the Compatibility check (application code, only in developer mode) and by
  * dev/bs6_scan.php (nuBuilder Next's own files). Only finds – nothing is changed. See TODO.md "Bootstrap 6".
@@ -63,7 +63,8 @@ final class NuBs6
 		}
 		$fc = $db->tableExists('zzzzsys_form') ? $db->columns('zzzzsys_form') : [];
 		if (isset($fc['sfo_style'])) {
-			foreach ($db->all("SELECT zzzzsys_form_id, sfo_code, sfo_style FROM zzzzsys_form WHERE zzzzsys_form_id NOT LIKE 'nu%'") as $f) $parts[] = [$f['sfo_code'] . ' · CSS', (string)$f['zzzzsys_form_id'], (string)$f['sfo_style']];
+			foreach ($db->all("SELECT zzzzsys_form_id, sfo_code, sfo_style FROM zzzzsys_form WHERE zzzzsys_form_id NOT LIKE 'nu%'") as $f) $parts[] = [$f['sfo_code']
+				. ' · CSS', (string)$f['zzzzsys_form_id'], (string)$f['sfo_style']];
 		}
 		if ($db->tableExists('zzzzsys_setup')) {
 			$sc = $db->columns('zzzzsys_setup');
@@ -74,7 +75,7 @@ final class NuBs6
 				$v = nu_setting_value($k);
 				if (is_string($v)) $parts[] = ['Global code · ' . $l, '', $v];
 			}
-		} catch (Throwable) { /* no settings table */ }
+		} catch (Throwable $ig) { nu_ignored($ig, 'no settings table'); }
 		$out = [];
 		foreach ($parts as [$where, $form, $code]) {
 			if (trim($code) === '') continue;
@@ -96,7 +97,7 @@ final class NuBs6
 			$path = $root . '/' . $base;
 			$list = is_file($path) ? [$path] : (is_dir($path) ? self::walk($path) : []);
 			foreach ($list as $f) {
-				if (!preg_match('/\.(php|js|css|htm|html)$/', $f) || preg_match('/\.min\.(js|css)$/', $f) || str_ends_with($f, 'nubs6.php')) continue;   // not the minified copies (0.8.1342)
+				if (!preg_match('/\.(php|js|css|htm|html)$/', $f) || preg_match('/\.min\.(js|css)$/', $f) || str_ends_with($f, 'nubs6.php')) continue;   // not the minified copies
 				$code = (string)@file_get_contents($f);
 				foreach (self::RULES as $rule => $re) {
 					$n = preg_match_all($re, $code, $m) ? count($rule === 'responsive' ? array_filter($m[0], [self::class, 'isResponsive']) : $m[0]) : 0;

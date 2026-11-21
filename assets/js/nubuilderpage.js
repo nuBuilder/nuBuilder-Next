@@ -1,4 +1,4 @@
-// Form builder of a page form (form type "page", 0.8.387 – pages/nubuilder_page.php).
+// Form builder of a page form (form type "page" – pages/nubuilder_page.php).
 (function () {
 	'use strict';
 	var $ = function (s) { return document.querySelector(s); };
@@ -47,7 +47,7 @@
 	});
 	if (settings) settings.addEventListener('blur', checkJson);
 
-	// keys the page reads (0.8.391): set / not set (default) while typing, and keys set that the page never reads
+	// keys the page reads: set / not set (default) while typing, and keys set that the page never reads
 	var keysBox = $('#pgKeys');
 	function has(obj, path) {
 		var v = obj;
@@ -79,7 +79,7 @@
 	}
 	if (settings && keysBox) { settings.addEventListener('input', updateKeys); updateKeys(); }
 
-	// examples of the settings JSON (0.8.394): from the page's keys, its settings.example.json and built-in samples
+	// examples of the settings JSON: from the page's keys, its settings.example.json and built-in samples
 	var examples = $('#pgExamples');
 	if (examples && settings) examples.querySelectorAll('[data-example]').forEach(function (item) {
 		item.addEventListener('click', function () {
@@ -92,7 +92,7 @@
 		});
 	});
 
-	// unsaved changes (0.8.394): Open page, Copy AI prompt and Create from template use the saved settings – off until saved
+	// unsaved changes: Open page, Copy AI prompt and Create from template use the saved settings – off until saved
 	var dirty = false;
 	function setDirty() {
 		if (dirty) return;

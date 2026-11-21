@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Single sign-on (0.8.863, core/nusso.php NuSso). One public route with three jobs:
+ * Single sign-on (core/nusso.php NuSso). One public route with three jobs:
  *   ?p=sso&go=1[&next=…]   sign-in button: off to the provider (state, nonce, PKCE in the session)
  *   oauth.php?state=sso.…  back from the provider (oauth.php routes it here): verify, find / create the user, sign in
  *   ?p=sso                 Settings → Security → Single sign-on (the globeadmin; ?p=sso&go=1&test=1 = Test sign-in without signing in)
@@ -14,7 +14,7 @@ $isGa = $u && !empty($u['globeadmin']) && empty($u['demo']);
 
 // ------------------------------------------------------------------ back from the provider
 if (isset($_GET['state']) && str_starts_with((string)$_GET['state'], NuSso::STATE_PREFIX)) {
-	$test = !empty($_SESSION['nunext_sso']['test']);
+	$test = !empty($_SESSION[NuSess::SSO]['test']);
 	$email = '';
 	try {
 		$r = NuSso::finish($_GET);
@@ -23,7 +23,7 @@ if (isset($_GET['state']) && str_starts_with((string)$_GET['state'], NuSso::STAT
 		$email = $res['email'];
 		if ($test) {
 			if (!$isGa) throw new RuntimeException(t('err_forbidden'));
-			$_SESSION['nunext_sso_test'] = ['at' => time(), 'res' => array_diff_key($res, ['user' => 1]) + ['login' => (string)($res['user']['sus_login_name'] ?? '')],
+			$_SESSION[NuSess::SSO_TEST] = ['at' => time(), 'res' => array_diff_key($res, ['user' => 1]) + ['login' => (string)($res['user']['sus_login_name'] ?? '')],
 				'claims' => array_intersect_key($r['claims'], array_flip(['iss', 'sub', 'aud', 'email', 'email_verified', 'name', 'preferred_username', 'upn', 'tid', 'hd', NuSso::settings()['group_claim']]))];
 			NuLog::write('sso_test', '', '', ['email' => $email, 'result' => $res['ok'] ? 'ok' : $res['error']]);
 			nu_redirect(nu_url('sso') . '#ssoTestCard');
@@ -43,7 +43,7 @@ if (isset($_GET['state']) && str_starts_with((string)$_GET['state'], NuSso::STAT
 		if (!$e instanceof RuntimeException) error_log('nuBuilder Next SSO: ' . $e->getMessage());
 		NuLog::write('sso_refused', '', '', ['email' => $email, 'reason' => mb_substr($msg, 0, 300)] + ($test ? ['test' => 1] : []), ['id' => '', 'login' => $email]);
 		if ($test && $isGa) {
-			$_SESSION['nunext_sso_test'] = ['at' => time(), 'error' => $msg];
+			$_SESSION[NuSess::SSO_TEST] = ['at' => time(), 'error' => $msg];
 			nu_redirect(nu_url('sso') . '#ssoTestCard');
 		}
 		nu_flash('danger', $msg);
@@ -70,7 +70,7 @@ if (isset($_GET['go'])) {
 		$msg = $e instanceof RuntimeException ? $e->getMessage() : t('err_unexpected');
 		NuLog::write('sso_refused', '', '', ['reason' => mb_substr($msg, 0, 300)] + ($test ? ['test' => 1] : []));
 		if ($test) {
-			$_SESSION['nunext_sso_test'] = ['at' => time(), 'error' => $msg];
+			$_SESSION[NuSess::SSO_TEST] = ['at' => time(), 'error' => $msg];
 			nu_redirect(nu_url('sso') . '#ssoTestCard');
 		}
 		nu_flash('danger', $msg);
@@ -85,46 +85,17 @@ if (!$isGa) {
 	nu_fatal(t('err_forbidden'), t('err_forbidden_hint'), true);
 }
 
-$levels = NuIpAccess::accessLevels();
+$levels = NuAcl::levelList();
 $levelIds = array_column($levels, 'id');
 $s = NuSso::settings();
 $errors = [];
 $form = null;
 
-if (nu_is_post() && nu_post('action') === 'save') {
-	NuSecurity::requireRecentAuth(nu_url('sso'));
-	$map = [];
-	$gs = is_array($_POST['map_group'] ?? null) ? $_POST['map_group'] : [];
-	$as = is_array($_POST['map_access'] ?? null) ? $_POST['map_access'] : [];
-	foreach ($gs as $i => $g) {
-		$a = (string)($as[$i] ?? '');
-		if (trim((string)$g) !== '' && in_array($a, $levelIds, true)) $map[] = ['group' => (string)$g, 'access' => $a];
-	}
-	$in = ['on' => nu_check('on') === '1', 'kind' => (string)nu_post('kind'), 'label' => (string)nu_post('label'), 'issuer' => (string)nu_post('issuer'),
-		'client_id' => (string)nu_post('client_id'), 'client_secret' => (string)nu_post('client_secret'), 'scopes' => (string)nu_post('scopes'),
-		'domains' => (string)nu_post('domains'), 'create' => nu_check('create') === '1',
-		'default_access' => in_array((string)nu_post('default_access'), $levelIds, true) ? (string)nu_post('default_access') : '',
-		'group_claim' => (string)nu_post('group_claim'), 'group_map' => $map, 'sync' => nu_check('sync') === '1',
-		'sso_only' => array_values(array_intersect(array_map('strval', is_array($_POST['sso_only'] ?? null) ? $_POST['sso_only'] : []), $levelIds))];
-	$clean = NuSso::clean($in);
-	$errors = NuSso::errors($clean, $in['client_secret'] !== '' || $s['client_secret'] !== '');
-	if (trim($in['issuer']) !== '' && !NuSso::validIssuer($clean['issuer'])) $errors['issuer'] = t('sso_err_issuer');
-	if ($errors) {
-		$form = $_POST;
-		nu_flash('danger', t('err_check_form'));
-	} else {
-		$before = $s;
-		$saved = NuSso::save($in, (string)$u['login']);
-		$changed = $saved !== $before;
-		if ($changed) NuLog::write('sso_settings_changed', 'zzzzsys_nunext_setting', NuSso::KEY, ['on' => $saved['on'] ? 1 : 0, 'kind' => $saved['kind'], 'issuer' => $saved['issuer'],
-			'create' => $saved['create'] ? 1 : 0, 'map' => count($saved['group_map']), 'sso_only' => count($saved['sso_only']), 'secret' => $in['client_secret'] !== '' ? 'changed' : 'kept']);
-		nu_flash('success', $changed ? t('sso_saved') : t('set_saved_none'));
-		nu_redirect(nu_url('sso'));
-	}
-}
+['g' => $g, 'a' => $a, 'errors' => $errors, 's' => $s, 'form' => $form]
+	= NuSsoPage::post(get_defined_vars());   // the POST actions (code review R7, nussopage.php)
 
-$testRes = $_SESSION['nunext_sso_test'] ?? null;
-unset($_SESSION['nunext_sso_test']);
+$testRes = $_SESSION[NuSess::SSO_TEST] ?? null;
+unset($_SESSION[NuSess::SSO_TEST]);
 $tip = static fn(string $text): string => nu_info_tip($text);
 $err = static fn(string $k): string => isset($errors[$k]) ? '<div class="invalid-feedback d-block">' . h($errors[$k]) . '</div>' : '';
 $inv = static fn(string $k): string => isset($errors[$k]) ? ' is-invalid' : '';
@@ -175,12 +146,15 @@ nu_layout_start(t('sso_title'), 'home', ['container' => 'nuContainer', 'settings
 				<div class="col-md-4">
 					<label class="form-label" for="ssoKind"><?= h(t('sso_kind')) ?></label>
 					<select class="form-select" id="ssoKind" name="kind">
-						<?php foreach (NuSso::KINDS as $k): ?><option value="<?= $k ?>"<?= $kind === $k ? ' selected' : '' ?> data-issuer="<?= h(t('sso_issuer_ph_' . $k)) ?>" data-label="<?= h(t('sso_button_' . $k)) ?>"><?= h(t('sso_kind_' . $k)) ?></option><?php endforeach; ?>
+						<?php foreach (NuSso::KINDS as $k): ?><option value="<?= $k ?>"<?= $kind === $k ? ' selected' : '' ?>
+							data-issuer="<?= h(t('sso_issuer_ph_' . $k)) ?>"
+							data-label="<?= h(t('sso_button_' . $k)) ?>"><?= h(t('sso_kind_' . $k)) ?></option><?php endforeach; ?>
 					</select>
 				</div>
 				<div class="col-md-8">
 					<label class="form-label" for="ssoIssuer"><?= h(t('sso_issuer')) ?></label><?= $tip(t('sso_issuer_tip')) ?>
-					<input class="form-control font-monospace<?= $inv('issuer') ?>" id="ssoIssuer" name="issuer" value="<?= h((string)$v('issuer')) ?>" placeholder="<?= h(t('sso_issuer_ph_' . $kind)) ?>" spellcheck="false" autocomplete="off">
+					<input class="form-control font-monospace<?= $inv('issuer') ?>" id="ssoIssuer" name="issuer" value="<?= h((string)$v('issuer')) ?>"
+						placeholder="<?= h(t('sso_issuer_ph_' . $kind)) ?>" spellcheck="false" autocomplete="off">
 					<?= $err('issuer') ?>
 				</div>
 				<div class="col-md-6">
@@ -246,7 +220,8 @@ nu_layout_start(t('sso_title'), 'home', ['container' => 'nuContainer', 'settings
 					<tr class="ssoMapRow">
 						<td><input class="form-control form-control-sm font-monospace" name="map_group[]" value="<?= h($m['group']) ?>" aria-label="<?= h(t('sso_map_group')) ?>" spellcheck="false"></td>
 						<td><select class="form-select form-select-sm" name="map_access[]" aria-label="<?= h(t('sso_map_access')) ?>"><?= $levelOpts($m['access'], true) ?></select></td>
-						<td class="text-end"><button class="btn btn-sm btn-link text-danger ssoMapDel" type="button" title="<?= h(t('delete')) ?>" aria-label="<?= h(t('delete')) ?>"><i class="bi bi-x-lg"></i></button></td>
+						<td class="text-end"><button class="btn btn-sm btn-link text-danger ssoMapDel" type="button" title="<?= h(t('delete')) ?>"
+							aria-label="<?= h(t('delete')) ?>"><i class="bi bi-x-lg"></i></button></td>
 					</tr>
 				<?php endforeach; ?>
 				</tbody>
@@ -263,7 +238,8 @@ nu_layout_start(t('sso_title'), 'home', ['container' => 'nuContainer', 'settings
 			<?php foreach ($levels as $l): $fid = 'ssoOnly_' . preg_replace('/[^A-Za-z0-9_-]/', '_', $l['id']); ?>
 				<div class="col-sm-6 col-lg-4"><div class="form-check">
 					<input class="form-check-input" type="checkbox" id="<?= h($fid) ?>" name="sso_only[]" value="<?= h($l['id']) ?>"<?= in_array($l['id'], $only, true) ? ' checked' : '' ?>>
-					<label class="form-check-label" for="<?= h($fid) ?>"><?= h($l['code']) ?><?php if ($l['name'] !== ''): ?> <span class="small text-body-secondary"><?= h($l['name']) ?></span><?php endif; ?></label>
+					<label class="form-check-label"
+						for="<?= h($fid) ?>"><?= h($l['code']) ?><?php if ($l['name'] !== ''): ?> <span class="small text-body-secondary"><?= h($l['name']) ?></span><?php endif; ?></label>
 				</div></div>
 			<?php endforeach; ?>
 			</div>
@@ -276,7 +252,8 @@ nu_layout_start(t('sso_title'), 'home', ['container' => 'nuContainer', 'settings
 <div class="card shadow-sm mb-3" id="ssoTestCard">
 	<div class="card-header fw-semibold"><?= h(t('sso_test')) ?><?= $tip(t('sso_test_tip')) ?></div>
 	<div class="card-body">
-		<a class="btn nuBtnAct<?= NuSso::complete() ? '' : ' disabled' ?>" id="ssoTestBtn" href="<?= h(nu_url('sso', ['go' => '1', 'test' => '1'])) ?>"<?= NuSso::complete() ? '' : ' aria-disabled="true" tabindex="-1"' ?>><i class="bi bi-play me-1"></i><?= h(t('sso_test_run')) ?></a>
+		<a class="btn nuBtnAct<?= NuSso::complete() ? '' : ' disabled' ?>" id="ssoTestBtn"
+			href="<?= h(nu_url('sso', ['go' => '1', 'test' => '1'])) ?>"<?= NuSso::complete() ? '' : ' aria-disabled="true" tabindex="-1"' ?>><i class="bi bi-play me-1"></i><?= h(t('sso_test_run')) ?></a>
 		<?php if (!NuSso::complete()): ?><span class="small text-body-secondary ms-2"><?= h(t('sso_test_need')) ?></span><?php endif; ?>
 		<?php if (is_array($testRes)): ?>
 			<div id="ssoTestResult" class="mt-3">
@@ -291,7 +268,8 @@ nu_layout_start(t('sso_title'), 'home', ['container' => 'nuContainer', 'settings
 					<?php endif; ?>
 				</div>
 				<div class="small fw-semibold mb-1"><?= h(t('sso_test_claims')) ?></div>
-				<pre class="small bg-body-tertiary p-2 rounded mb-0 nuSsoClaims" id="ssoTestClaims"><?= h((string)json_encode($testRes['claims'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)) ?></pre>
+				<pre class="small bg-body-tertiary p-2 rounded mb-0 nuSsoClaims"
+					id="ssoTestClaims"><?= h((string)json_encode($testRes['claims'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)) ?></pre>
 			<?php endif; ?>
 			</div>
 		<?php endif; ?>

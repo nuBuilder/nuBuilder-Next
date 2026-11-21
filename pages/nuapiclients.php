@@ -7,9 +7,9 @@ defined('NU_ROOT') || exit;
  * Logic in core/nuapi.php (NuApiClient), JavaScript in assets/js/nuapiclients.js.
  */
 
-// admin rights (0.8.323): the globeadmin, or a user whose admin role has the right (core/nuadmin.php)
+// admin rights: the globeadmin, or a user whose admin role has the right (core/nuadmin.php)
 NuAdmin::require('apiclients');
-NuSecurity::requireRecentAuth(nu_url('apiclients'));   // password again when the last confirmation is older than 15 minutes (0.8.207)
+NuSecurity::requireRecentAuth(nu_url('apiclients'));   // password again when the last confirmation is older than 15 minutes
 NuApiClient::ensure();
 
 $db = nu_db();
@@ -19,55 +19,18 @@ if ($id !== '' && $id !== 'new' && !$client) { nu_flash('warning', t('record_not
 $errors = [];
 
 // ------------------------------------------------------------------ actions
-if (nu_is_post()) {
-	$action = nu_post('action');
-	if ($action === 'save') {
-		$in = [
-			'name' => nu_post('name'), 'scopes' => is_array($_POST['scopes'] ?? null) ? $_POST['scopes'] : [], 'user_id' => nu_post('user_id'),
-			'ip_allow' => nu_post('ip_allow'), 'rate_limit' => nu_post('rate_limit'), 'expires_on' => nu_post('expires_on'), 'active' => nu_check('active') === '1',
-		];
-		$suMode = nu_post('su_mode');                                       // 0.8.530: New service user / Existing user
-		if ($suMode === 'new') $in['user_id'] = '__new';
-		elseif ($suMode === 'existing' && $in['user_id'] === '__new') $in['user_id'] = '';
-		if ($in['user_id'] === '__new') {                                   // create the service user first
-			[$uid, $ue] = NuApiClient::createServiceUser(nu_post('su_login'), nu_post('su_name') ?: $in['name'], nu_post('su_access'));
-			$errors += $ue;
-			$in['user_id'] = (string)$uid;
-		}
-		if (!$errors) {
-			[$newId, $e, $cred] = NuApiClient::save($in, $client ? $id : '');
-			$errors += $e;
-			if (!$errors) {
-				if ($cred) $_SESSION['nu_api_secret'] = ['id' => $newId] + $cred;
-				nu_flash('success', t('saved'));
-				nu_redirect(nu_url('apiclients', ['id' => $newId]));
-			}
-		}
-	}
-	if ($client && $action === 'rotate') {
-		$secret = NuApiClient::rotate($id, nu_post('grace') === '0' ? 0 : 24);
-		$_SESSION['nu_api_secret'] = ['id' => $id, 'client_id' => $client['client_id'], 'client_secret' => $secret];
-		nu_redirect(nu_url('apiclients', ['id' => $id]));
-	}
-	if ($client && $action === 'revoke') {
-		nu_flash('success', t('api_revoked', NuApiClient::revokeTokens($id)));
-		nu_redirect(nu_url('apiclients', ['id' => $id]));
-	}
-	if ($client && $action === 'delete') {
-		NuApiClient::delete($id);
-		nu_flash('success', t('api_deleted', (string)$client['name']));
-		nu_redirect(nu_url('apiclients'));
-	}
-}
+['errors' => $errors, 'client' => $client, 'id' => $id]
+	= NuApiclientsPage::post(get_defined_vars());   // the POST actions (code review R7, nuapiclientspage.php)
 
-$secret = $_SESSION['nu_api_secret'] ?? null;
+$secret = $_SESSION[NuSess::API_SECRET] ?? null;
 if ($secret && (string)$secret['id'] !== $id) $secret = null;
-unset($_SESSION['nu_api_secret']);                                   // shown once
+unset($_SESSION[NuSess::API_SECRET]);                                   // shown once
 $base = nu_base_url() . '/api.php/v1';
 
-$lvState = $id === '' ? NuListView::prepare('apiclients') : null;   // the list (0.8.547): a system list – views, filters, print / export, cards on phones
+$lvState = $id === '' ? NuListView::prepare('apiclients') : null;   // the list: a system list – views, filters, print / export, cards on phones
 if ($id !== '') nu_body_class('nuRecPage');
-nu_layout_start(t('api_title'), 'home', ($lvState ? [] : ['container' => 'container']) + ['head' => '<link rel="stylesheet" href="' . nu_asset(NU_TOMSELECT . '/tom-select.bootstrap5.min.css') . '">']);
+nu_layout_start(t('api_title'), 'home',
+	($lvState ? [] : ['container' => 'container']) + ['head' => '<link rel="stylesheet" href="' . nu_asset(NU_TOMSELECT . '/tom-select.bootstrap5.min.css') . '">']);
 ?>
 <nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2">
 	<li class="breadcrumb-item"><a href="<?= h(nu_url('home')) ?>"><?= h(t('nav_home')) ?></a></li>
@@ -81,7 +44,8 @@ nu_layout_start(t('api_title'), 'home', ($lvState ? [] : ['container' => 'contai
 		<?= NuConfigFile::enableButton('nuConfigApi', t('api_on'), t('api_on_confirm'), 'apiclients') ?>
 	</div>
 <?php endif; ?>
-<?php if ((string)nu_cfg('nuConfigSecretKey') === ''): ?>
+<?php $keyNote = ''; if ((string)nu_cfg('nuConfigSecretKey') === ''): ?>
+	<?php ob_start(); // the note goes below the page title (usability review: it stood above it) ?>
 	<div class="small text-body-secondary nuKeyHint d-flex flex-wrap align-items-center gap-2 mb-2"><?php /* review M11: a quiet line; the Security check carries the warning */ ?>
 		<span><i class="bi bi-key me-1"></i><?= h(t('api_no_key')) ?></span>
 		<?php if (NuConfigFile::writable() && !NuDemo::active()): ?>
@@ -90,6 +54,7 @@ nu_layout_start(t('api_title'), 'home', ($lvState ? [] : ['container' => 'contai
 			<span class="text-body-secondary"><?= h(t('cfg_err_not_writable', NuConfigFile::path())) ?></span>
 		<?php endif; ?>
 	</div>
+	<?php $keyNote = (string)ob_get_clean(); ?>
 	<?php if (NuConfigFile::writable() && !NuDemo::active()):
 		$nClients = (int)$db->value('SELECT COUNT(*) FROM ' . NuApiClient::CLIENT); ?>
 	<div class="modal fade" id="nuKeyGen" tabindex="-1" aria-labelledby="nuKeyGenTitle" aria-hidden="true">
@@ -152,6 +117,7 @@ curl -s -H 'Authorization: Bearer &lt;access_token&gt;' '<?= h($base) ?>/users?l
 <?php if ($id === ''): ?>
 	<?= NuListView::card($lvState, [
 		'title_extra' => NuListView::infoTip(t('api_hint') . ' ' . $base . '/'),
+		'title_sub' => $keyNote,
 		'buttons' => '<a class="btn nuAddBtn" href="' . h(nu_url('apiclients', ['id' => 'new'])) . '"><i class="bi bi-plus-lg me-1"></i>' . h(t('add')) . '</a>',
 		'more' => [['icon' => 'bi-terminal', 'label' => t('apg_title'), 'href' => nu_url('apiplayground'), 'id' => 'apiPlayground']],   // phones: in the ⋮ menu
 	]) ?>
@@ -171,6 +137,7 @@ curl -s -H 'Authorization: Bearer &lt;access_token&gt;' '<?= h($base) ?>/users?l
 		<a class="btn nuBtnAct" href="<?= h(nu_url('apiclients')) ?>"><i class="bi bi-arrow-left me-1"></i><?= h(t('back')) ?></a>
 		<button class="btn nuBtnAct nuBtnSave" type="submit" form="apiForm" data-nu-save><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button>
 	</div>
+	<?= $keyNote ?>
 	<?php if ($errors): ?><div class="alert alert-danger small py-2 nuCheckForm" data-tip="<?= h(t('err_check_list')) ?>"><div><?= h(t('err_check_form')) ?></div></div><?php endif; ?>
 	<div class="row g-4">
 		<div class="col-lg-7">
@@ -180,27 +147,37 @@ curl -s -H 'Authorization: Bearer &lt;access_token&gt;' '<?= h($base) ?>/users?l
 					<div class="row g-3">
 						<div class="col-sm-8"><label class="form-label" for="name"><?= h(t('api_name')) ?> <span class="text-danger">*</span></label>
 							<input class="form-control<?= nu_invalid($errors, 'name') ?>" id="name" name="name" maxlength="100" required value="<?= h($v('name')) ?>"><?= nu_feedback($errors, 'name') ?></div>
-						<div class="col-sm-4 d-flex align-items-end"><div class="form-check form-switch mb-2"><input class="form-check-input" type="checkbox" role="switch" id="active" name="active" value="1"<?= $active ? ' checked' : '' ?>>
+						<div class="col-sm-4 d-flex align-items-end"><div class="form-check form-switch mb-2"><input class="form-check-input" type="checkbox"
+							role="switch" id="active" name="active" value="1"<?= $active ? ' checked' : '' ?>>
 							<label class="form-check-label" for="active"><?= h(t('api_active')) ?></label></div></div>
 						<?php if ($client): ?><div class="col-12"><label class="form-label small mb-0">client_id</label><div><code><?= h((string)$client['client_id']) ?></code></div></div><?php endif; ?>
 
 						<div class="col-12"><span class="form-label d-block" id="suModeLabel"><?= h(t('api_user')) ?> <span class="text-danger">*</span>
 							<?= nu_info_tip(t('api_user_hint')) ?></span>
-							<div class="btn-group nuApiSuMode" role="radiogroup" aria-labelledby="suModeLabel"><?php /* 0.8.530: either a new service user or an existing one */ ?>
-								<input type="radio" class="btn-check" name="su_mode" id="suModeNew" value="new"<?= $suMode === 'new' ? ' checked' : '' ?>><label class="btn btn-outline-primary" for="suModeNew"><i class="bi bi-person-plus me-1"></i><?= h(t('api_su_mode_new')) ?></label>
-								<input type="radio" class="btn-check" name="su_mode" id="suModeExisting" value="existing"<?= $suMode === 'existing' ? ' checked' : '' ?>><label class="btn btn-outline-primary" for="suModeExisting"><i class="bi bi-person-check me-1"></i><?= h(t('api_su_mode_existing')) ?></label>
+							<div class="btn-group nuApiSuMode" role="radiogroup" aria-labelledby="suModeLabel"><?php /* either a new service user or an existing one */ ?>
+								<input type="radio" class="btn-check" name="su_mode" id="suModeNew"
+									value="new"<?= $suMode === 'new' ? ' checked' : '' ?>><label class="btn btn-outline-primary"
+									for="suModeNew"><i class="bi bi-person-plus me-1"></i><?= h(t('api_su_mode_new')) ?></label>
+								<input type="radio" class="btn-check" name="su_mode" id="suModeExisting"
+									value="existing"<?= $suMode === 'existing' ? ' checked' : '' ?>><label class="btn btn-outline-primary"
+									for="suModeExisting"><i class="bi bi-person-check me-1"></i><?= h(t('api_su_mode_existing')) ?></label>
 							</div></div>
 						<div class="col-12 nuApiExistUser"<?= $suMode === 'existing' ? '' : ' hidden' ?>>
-							<select class="form-select nuListTomSelect<?= nu_invalid($errors, 'user_id') ?>" id="user_id" name="user_id" aria-labelledby="suModeLabel" data-access-text="<?= h(t('api_su_access')) ?>" data-noaccess-text="<?= h(t('api_err_user_access')) ?>"><?php /* searchable (Tom Select, 0.8.527 – assets/js/nulistselect.js): login name, full name · access level as second line */ ?>
+							<select class="form-select nuListTomSelect<?= nu_invalid($errors, 'user_id') ?>" id="user_id" name="user_id" aria-labelledby="suModeLabel"
+								data-access-text="<?= h(t('api_su_access')) ?>"
+								data-noaccess-text="<?= h(t('api_err_user_access')) ?>"><?php /* searchable (Tom Select – assets/js/nulistselect.js): login name, full name · access level as second line */ ?>
 								<option value=""></option>
 								<?php foreach ($users as $u): if (isset($taken[(string)$u['zzzzsys_user_id']])) continue; ?>
-									<option value="<?= h((string)$u['zzzzsys_user_id']) ?>"<?= $uSel === (string)$u['zzzzsys_user_id'] ? ' selected' : '' ?> data-sub="<?= h(implode(' · ', array_filter([(string)$u['sus_name'], (string)$u['sal_code']], 'strlen'))) ?>" data-access="<?= h(trim((string)$u['sal_code'] . ((string)$u['sal_description'] !== '' ? ' – ' . $u['sal_description'] : ''), ' –')) ?>"><?= h((string)$u['sus_login_name']) ?></option>
+									<option value="<?= h((string)$u['zzzzsys_user_id']) ?>"<?= $uSel === (string)$u['zzzzsys_user_id'] ? ' selected' : '' ?>
+										data-sub="<?= h(implode(' · ', array_filter([(string)$u['sus_name'], (string)$u['sal_code']], 'strlen'))) ?>"
+										data-access="<?= h(trim((string)$u['sal_code'] . ((string)$u['sal_description'] !== '' ? ' – ' . $u['sal_description'] : ''), ' –')) ?>"><?= h((string)$u['sus_login_name']) ?></option>
 								<?php endforeach; ?>
 							</select><?= nu_feedback($errors, 'user_id') ?>
 							<div class="form-text" id="apiUserAccess" aria-live="polite"></div></div>
 						<div class="col-12 nuApiNewUser"<?= $suMode === 'new' ? '' : ' hidden' ?>><div class="row g-2">
 							<div class="col-sm-4"><label class="form-label small" for="su_login"><?= h(t('user_login_name')) ?></label>
-								<input class="form-control form-control-sm<?= nu_invalid($errors, 'su_login') ?>" id="su_login" name="su_login" maxlength="50" value="<?= h((string)($_POST['su_login'] ?? 'api_')) ?>"><?= nu_feedback($errors, 'su_login') ?></div>
+								<input class="form-control form-control-sm<?= nu_invalid($errors, 'su_login') ?>" id="su_login" name="su_login" maxlength="50"
+									value="<?= h((string)($_POST['su_login'] ?? 'api_')) ?>"><?= nu_feedback($errors, 'su_login') ?></div>
 							<div class="col-sm-4"><label class="form-label small" for="su_name"><?= h(t('user_display_name')) ?></label>
 								<input class="form-control form-control-sm" id="su_name" name="su_name" maxlength="50" value="<?= h((string)($_POST['su_name'] ?? '')) ?>"></div>
 							<div class="col-sm-4"><label class="form-label small" for="su_access"><?= h(t('access_level')) ?></label>
@@ -211,19 +188,22 @@ curl -s -H 'Authorization: Bearer &lt;access_token&gt;' '<?= h($base) ?>/users?l
 
 						<div class="col-12"><span class="form-label d-block"><?= h(t('api_scopes')) ?></span>
 							<?php foreach (NuApiClient::SCOPES as $s => $desc): ?>
-								<div class="form-check"><input class="form-check-input" type="checkbox" name="scopes[]" value="<?= h($s) ?>" id="sc_<?= h(str_replace(':', '_', $s)) ?>"<?= in_array($s, $scopes, true) ? ' checked' : '' ?>>
+								<div class="form-check"><input class="form-check-input" type="checkbox" name="scopes[]" value="<?= h($s) ?>"
+									id="sc_<?= h(str_replace(':', '_', $s)) ?>"<?= in_array($s, $scopes, true) ? ' checked' : '' ?>>
 									<label class="form-check-label small" for="sc_<?= h(str_replace(':', '_', $s)) ?>"><code><?= h($s) ?></code> – <?= h(t('api_scope_' . str_replace(':', '_', $s))) ?></label></div>
 							<?php endforeach; ?>
 							<div class="form-text"><?= h(t('api_scopes_hint')) ?></div></div>
 
 						<div class="col-sm-6"><label class="form-label" for="ip_allow"><?= h(t('api_ip')) ?></label>
-							<textarea class="form-control form-control-sm font-monospace<?= nu_invalid($errors, 'ip_allow') ?>" id="ip_allow" name="ip_allow" rows="2" placeholder="203.0.113.10 198.51.100.0/24"><?= h($v('ip_allow')) ?></textarea><?= nu_feedback($errors, 'ip_allow') ?>
+							<textarea class="form-control form-control-sm font-monospace<?= nu_invalid($errors, 'ip_allow') ?>" id="ip_allow" name="ip_allow" rows="2"
+								placeholder="203.0.113.10 198.51.100.0/24"><?= h($v('ip_allow')) ?></textarea><?= nu_feedback($errors, 'ip_allow') ?>
 							<div class="form-text"><?= h(t('api_ip_hint')) ?></div></div>
 						<div class="col-sm-3"><label class="form-label" for="rate_limit"><?= h(t('api_rate')) ?></label>
 							<input class="form-control form-control-sm" type="number" min="0" max="100000" id="rate_limit" name="rate_limit" value="<?= h($v('rate_limit', '120')) ?>">
 							<div class="form-text"><?= h(t('api_rate_hint')) ?></div></div>
 						<div class="col-sm-3"><label class="form-label" for="expires_on"><?= h(t('user_expires')) ?></label>
-							<input class="form-control form-control-sm<?= nu_invalid($errors, 'expires_on') ?>" type="date" id="expires_on" name="expires_on" value="<?= h(nu_is_post() ? $v('expires_on') : nu_date_only($client['expires_on'] ?? '')) ?>"><?= nu_feedback($errors, 'expires_on') ?></div>
+							<input class="form-control form-control-sm<?= nu_invalid($errors, 'expires_on') ?>" type="date" id="expires_on" name="expires_on"
+								value="<?= h(nu_is_post() ? $v('expires_on') : nu_date_only($client['expires_on'] ?? '')) ?>"><?= nu_feedback($errors, 'expires_on') ?></div>
 					</div>
 				</div>
 			</form>
@@ -244,18 +224,23 @@ curl -s -H 'Authorization: Bearer &lt;access_token&gt;' '<?= h($base) ?>/users?l
 				</div>
 				<div class="card shadow-sm">
 					<div class="card-body d-grid gap-2">
-						<form method="post" action="<?= h(nu_url('apiclients', ['id' => $id])) ?>" class="d-flex gap-2 align-items-center" data-confirm="<?= h(t('api_rotate_confirm')) ?>" data-confirm-ok="<?= h(t('api_rotate')) ?>" data-confirm-class="btn btn-warning">
+						<form method="post" action="<?= h(nu_url('apiclients', ['id' => $id])) ?>" class="d-flex gap-2 align-items-center"
+							data-confirm="<?= h(t('api_rotate_confirm')) ?>" data-confirm-ok="<?= h(t('api_rotate')) ?>" data-confirm-class="btn btn-warning">
 							<?= nu_csrf_field() ?><input type="hidden" name="action" value="rotate">
-							<select class="form-select form-select-sm w-auto" name="grace" aria-label="<?= h(t('api_grace')) ?>"><option value="24"><?= h(t('api_grace_24')) ?></option><option value="0"><?= h(t('api_grace_0')) ?></option></select>
+							<select class="form-select form-select-sm w-auto" name="grace"
+								aria-label="<?= h(t('api_grace')) ?>"><option value="24"><?= h(t('api_grace_24')) ?></option><option value="0"><?= h(t('api_grace_0')) ?></option></select>
 							<button class="btn btn-sm btn-outline-warning flex-grow-1" type="submit"><i class="bi bi-arrow-repeat me-1"></i><?= h(t('api_rotate')) ?></button>
 						</form>
-						<form method="post" action="<?= h(nu_url('apiclients', ['id' => $id])) ?>" data-confirm="<?= h(t('api_revoke_confirm')) ?>" data-confirm-ok="<?= h(t('api_revoke')) ?>" data-confirm-class="btn btn-warning">
+						<form method="post" action="<?= h(nu_url('apiclients', ['id' => $id])) ?>" data-confirm="<?= h(t('api_revoke_confirm')) ?>"
+							data-confirm-ok="<?= h(t('api_revoke')) ?>" data-confirm-class="btn btn-warning">
 							<?= nu_csrf_field() ?><input type="hidden" name="action" value="revoke">
 							<button class="btn btn-sm btn-outline-secondary w-100" type="submit"><i class="bi bi-x-octagon me-1"></i><?= h(t('api_revoke')) ?></button>
 						</form>
 						<a class="btn btn-sm btn-outline-secondary" href="<?= h(nu_url('apiplayground')) ?>"><i class="bi bi-terminal me-1"></i><?= h(t('apg_title')) ?></a>
-						<a class="btn btn-sm btn-outline-secondary" href="<?= h(nu_url('log', ['q' => (NuAuth::userLogin((string)$client['user_id']) ?: (string)$client['name'])])) ?>"><i class="bi bi-journal-text me-1"></i><?= h(t('api_log')) ?></a>
-						<form method="post" action="<?= h(nu_url('apiclients', ['id' => $id])) ?>" data-confirm="<?= h(t('api_delete_confirm', (string)$client['name'])) ?>" data-confirm-ok="<?= h(t('delete')) ?>" data-confirm-class="btn btn-danger">
+						<a class="btn btn-sm btn-outline-secondary"
+							href="<?= h(nu_url('log', ['q' => (NuAuth::userLogin((string)$client['user_id']) ?: (string)$client['name'])])) ?>"><i class="bi bi-journal-text me-1"></i><?= h(t('api_log')) ?></a>
+						<form method="post" action="<?= h(nu_url('apiclients', ['id' => $id])) ?>"
+							data-confirm="<?= h(t('api_delete_confirm', (string)$client['name'])) ?>" data-confirm-ok="<?= h(t('delete')) ?>" data-confirm-class="btn btn-danger">
 							<?= nu_csrf_field() ?><input type="hidden" name="action" value="delete">
 							<button class="btn btn-sm btn-outline-danger w-100" type="submit"><i class="bi bi-trash me-1"></i><?= h(t('delete')) ?></button>
 						</form>
@@ -267,4 +252,5 @@ curl -s -H 'Authorization: Bearer &lt;access_token&gt;' '<?= h($base) ?>/users?l
 <?php endif; ?>
 <?php
 nu_layout_end($lvState ? NuListView::foot() . '<script src="' . nu_asset('assets/js/nuapiclients.js') . '"></script>'
-	: '<script src="' . nu_asset(NU_TOMSELECT . '/tom-select.complete.min.js') . '"></script><script src="' . nu_asset('assets/js/nulistselect.js') . '"></script><script src="' . nu_asset('assets/js/nuapiclients.js') . '"></script>');
+	: '<script src="' . nu_asset(NU_TOMSELECT . '/tom-select.complete.min.js') . '"></script><script src="' . nu_asset('assets/js/nulistselect.js')
+		. '"></script><script src="' . nu_asset('assets/js/nuapiclients.js') . '"></script>');

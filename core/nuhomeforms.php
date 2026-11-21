@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Home forms of the access levels (0.8.1264): the globeadmin's quick list next to the Home button (▾, or right-click / long press on
+ * Home forms of the access levels: the globeadmin's quick list next to the Home button (▾, or right-click / long press on
  * Home) – one row per Home form (sal_zzzzsys_form_id) with the access levels that have it and whether they start on it or on the tile
  * page (NuHome::startMode). Data for assets/js/nuhomeforms.js through the JSON route ?p=homeforms (pages/nuhomeforms.php).
  */
@@ -38,14 +38,14 @@ final class NuHomeForms
 			$n++;
 			$id = (string)$r['zzzzsys_access_id'];
 			$lv = ['id' => $id, 'code' => (string)$r['sal_code'], 'title' => (string)$r['sal_description'], 'users' => $users[$id] ?? 0,
-				'url' => nu_url('accesslevel', ['id' => $id, 'tab' => 'start']), 'tiles' => nu_url('home', ['for' => $id])];   // tiles: its tile page (editor, 0.8.1274)
+				'url' => nu_url('accesslevel', ['id' => $id, 'tab' => 'start']), 'tiles' => nu_url('home', ['for' => $id])];   // tiles: its tile page (editor)
 			$lv['mode'] = 'tiles';
 			$all[$id] = $lv;
 			$fid = trim((string)($r['sal_zzzzsys_form_id'] ?? ''));
 			if ($fid === '' || $fid === 'nuhome') { $tiles[] = $lv; continue; }
-			if ($fid === 'nublank') continue;   // nuBuilder Forte's empty "Blank" form: not an application's Home form (0.8.1268)
-			if (!isset($forms[$fid])) continue;   // a Home form that no longer exists is not listed (0.8.1270)
-			if ($fid === NuUserHome::FORM) continue;   // User Home: the button in the panel head (0.8.1282), not a row
+			if ($fid === 'nublank') continue;   // nuBuilder Forte's empty "Blank" form: not an application's Home form
+			if (!isset($forms[$fid])) continue;   // a Home form that no longer exists is not listed
+			if ($fid === NuUserHome::FORM) continue;   // User Home: the button in the panel head, not a row
 			if (!isset($out[$fid])) {
 				$f = $forms[$fid];
 				$design = $canDesign && $f['type'] !== 'page' && (!$f['system'] || $fid === 'nuuserhome');
@@ -60,7 +60,7 @@ final class NuHomeForms
 		}
 		$out = array_values($out);
 		usort($out, static fn($a, $b) => strcasecmp($a['title'], $b['title']));
-		// User Home (0.8.1282, the owner picked H): always one tap away in the panel head, whether a level uses it or not
+		// User Home (the owner picked H): always one tap away in the panel head, whether a level uses it or not
 		$uh = null;
 		if (NuUserHome::available() && isset($forms[NuUserHome::FORM])) {
 			$uh = ['open' => nu_url('form', ['f' => NuUserHome::FORM]), 'design' => $canDesign ? nu_url('form', ['f' => NuUserHome::FORM, 'design' => '1']) : ''];
@@ -69,7 +69,7 @@ final class NuHomeForms
 	}
 
 	/**
-	 * The tile pages of users (0.8.1276, tab Tile pages): the default one first (saved for '*', else the automatic one) with every access
+	 * The tile pages of users (tab Tile pages): the default one first (saved for '*', else the automatic one) with every access
 	 * level that has no tile page of its own, then each saved tile page with its levels –
 	 * [{id, title, kind default|auto|level, open, levels: [{id, code, title, users, url, mode}]}]; url = the level's tile page in the editor.
 	 */
@@ -115,11 +115,12 @@ final class NuHomeForms
 	}
 
 	/** The ▾ button + its empty panel (core/nulayout.php). */
-	/** The Start pages button with its panel – on the start page next to Customise (0.8.1289, the owner; was a split button next to Home). */
+	/** The Start pages button with its panel – on the start page next to Customise (the owner; was a split button next to Home). */
 	public static function button(): string
 	{
 		$lbl = h(t('hf_panel_btn'));
-		return '<div class="dropdown nuHfGroup"><button type="button" class="btn btn-outline-secondary dropdown-toggle nuHfToggle" id="nuHfToggle" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" title="' . $lbl . '" aria-label="' . $lbl . '" data-url="' . h(nu_url('homeforms')) . '">'
+		return '<div class="dropdown nuHfGroup"><button type="button" class="btn btn-outline-secondary dropdown-toggle nuHfToggle" id="nuHfToggle" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" title="'
+			. $lbl . '" aria-label="' . $lbl . '" data-url="' . h(nu_url('homeforms')) . '">'
 			. '<i class="bi bi-house-gear" aria-hidden="true"></i><span class="nuHomeBtnTx">' . $lbl . '</span></button>'
 			. '<div class="dropdown-menu dropdown-menu-end nuHfPanel" id="nuHfPanel" aria-labelledby="nuHfToggle"><div class="p-3 text-body-secondary small">…</div></div></div>';
 	}

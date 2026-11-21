@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Saved App cloner configurations (0.8.276) – nuBuilder's table zzzzsys_app_cloner, the same rows nuBuilder's App cloner form
+ * Saved App cloner configurations – nuBuilder's table zzzzsys_app_cloner, the same rows nuBuilder's App cloner form
  * ("nuappcloner") reads and writes, so a configuration saved in one is opened in the other.
  *
  * Mapping (nuBuilder column → App cloner page):
@@ -47,7 +47,7 @@ final class NuAppClonerConfig
 			'cla_insert_type' => 15, 'cla_target_db_mode' => 10, 'cla_dry_run' => 1, 'cla_opt_1' => 1, 'cla_opt_2' => 1] as $k => $n) $c[] = "$k " . $T('text', (string)$n) . ' NULL';
 		$c[] = 'cla_opt_2_include ' . $T('longtext') . ' NULL';
 		foreach (['cla_opt_3', 'cla_opt_4', 'cla_opt_5', 'cla_opt_6', 'cla_opt_7', 'cla_opt_8', 'cla_opt_9', 'cla_show_progress', 'cla_transaction_mode'] as $k) $c[] = "$k " . $T('text', '1') . ' NULL';
-		$db->run('CREATE TABLE ' . self::TABLE . ' (' . implode(', ', $c) . ')' . ($db->type === 'mysql' ? NuDDL::mysqlTableOptions() : ''));
+		$db->run('CREATE TABLE ' . self::TABLE . ' (' . implode(', ', $c) . ')' . $db->tableOptions());
 		NuDB::forgetColumns(self::TABLE);
 	}
 
@@ -55,7 +55,8 @@ final class NuAppClonerConfig
 	public static function all(string $q = ''): array
 	{
 		$where = ''; $p = [];
-		if ($q !== '') { $where = " WHERE (cla_code LIKE ? ESCAPE '!' OR cla_description LIKE ? ESCAPE '!' OR cla_target_db LIKE ? ESCAPE '!' OR cla_target_path LIKE ? ESCAPE '!')"; $p = array_fill(0, 4, NuDB::like($q)); }
+		if ($q !== '') { $where = " WHERE (cla_code LIKE ? ESCAPE '!' OR cla_description LIKE ? ESCAPE '!' OR cla_target_db LIKE ? ESCAPE '!' OR cla_target_path LIKE ? ESCAPE '!')"; $p = array_fill(0,
+			4, NuDB::like($q)); }
 		return nu_db()->all('SELECT * FROM ' . self::TABLE . $where . ' ORDER BY cla_code, cla_description', $p);
 	}
 
@@ -98,7 +99,7 @@ final class NuAppClonerConfig
 	}
 
 	/**
-	 * Saves the page's input; $id '' = new row – with $from (a clone, 0.8.680) its other columns (nuBuilder's password, log file …)
+	 * Saves the page's input; $id '' = new row – with $from (a clone) its other columns (nuBuilder's password, log file …)
 	 * come from that row. @return array{0: ?string, 1: array<string, string>} [id, errors]
 	 * @param array<string, mixed> $in
 	 */

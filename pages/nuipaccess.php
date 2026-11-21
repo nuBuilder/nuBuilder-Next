@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Settings → Security → IP access (0.8.722, the globeadmin): from which addresses users may sign in and work – a default list for all
+ * Settings → Security → IP access (the globeadmin): from which addresses users may sign in and work – a default list for all
  * access levels, exceptions per level (allow all / own ranges) and the globeadmin's own rule (core/nuipaccess.php NuIpAccess).
  * POST action=save (password confirmed recently; refused when the new rules would lock out the globeadmin's current address).
  * GET ?test=<address> shows who could work from that address.
@@ -15,50 +15,14 @@ if (!$u || empty($u['globeadmin']) || !empty($u['demo'])) {
 	nu_fatal(t('err_forbidden'), t('err_forbidden_hint'), true);
 }
 
-$levels = NuIpAccess::accessLevels();
+$levels = NuAcl::levelList();
 $levelIds = array_column($levels, 'id');
 $s = NuIpAccess::settings();
 $errors = [];
 $form = null;              // posted values shown again after an error
 
-if (nu_is_post() && nu_post('action') === 'save') {
-	NuSecurity::requireRecentAuth(nu_url('ipaccess'));
-	$bad = static function (string $field, array $wrong) use (&$errors): void {
-		if ($wrong) $errors[$field] = t('ipa_err_rule', implode(', ', array_slice($wrong, 0, 5)));
-	};
-	[$def, $wrong] = NuIpAccess::parse((string)nu_post('default'));
-	$bad('default', $wrong);
-	$gaMode = in_array(nu_post('ga_mode'), NuIpAccess::GA_MODES, true) ? (string)nu_post('ga_mode') : 'default';
-	[$gaRanges, $wrong] = NuIpAccess::parse((string)nu_post('ga_ranges'));
-	$bad('ga_ranges', $wrong);
-	if ($gaMode === 'ranges' && !$gaRanges && !isset($errors['ga_ranges'])) $errors['ga_ranges'] = t('ipa_err_empty');
-	$new = ['on' => nu_check('on') === '1', 'default' => $def, 'levels' => [], 'ga' => ['mode' => $gaMode, 'ranges' => $gaRanges]];
-	$modes = is_array($_POST['lv_mode'] ?? null) ? $_POST['lv_mode'] : [];
-	$texts = is_array($_POST['lv_ranges'] ?? null) ? $_POST['lv_ranges'] : [];
-	foreach ($levelIds as $id) {
-		$m = (string)($modes[$id] ?? 'default');
-		if ($m === 'any') $new['levels'][$id] = ['mode' => 'any', 'ranges' => []];
-		elseif ($m === 'ranges') {
-			[$r, $wrong] = NuIpAccess::parse((string)($texts[$id] ?? ''));
-			$bad('lv_' . $id, $wrong);
-			if (!$r && !isset($errors['lv_' . $id])) $errors['lv_' . $id] = t('ipa_err_empty');
-			$new['levels'][$id] = ['mode' => 'ranges', 'ranges' => $r];
-		}
-	}
-	// the globeadmin saving must not lock himself out
-	if (!$errors && $new['on'] && !NuIpAccess::gaAllows(NuIpAccess::ip(), NuIpAccess::clean($new))) $errors['_self'] = t('ipa_err_self', NuIpAccess::ip());
-	if ($errors) {
-		$form = $_POST;
-		nu_flash('danger', t('err_check_form'));
-	} else {
-		$before = $s;
-		$saved = NuIpAccess::save($new, (string)$u['login']);
-		if ($saved !== $before) NuLog::write('ip_access_changed', 'zzzzsys_nunext_setting', NuIpAccess::KEY, ['on' => $saved['on'] ? 1 : 0,
-			'default' => implode(' ', $saved['default']), 'exceptions' => count($saved['levels']), 'ga' => $saved['ga']['mode']]);
-		nu_flash('success', $saved !== $before ? t('ipa_saved') : t('set_saved_none'));
-		nu_redirect(nu_url('ipaccess'));
-	}
-}
+['errors' => $errors, 'levelIds' => $levelIds, 'id' => $id, 'form' => $form, 's' => $s]
+	= NuIpaccessPage::post(get_defined_vars());   // the POST actions (code review R7, nuipaccesspage.php)
 
 $mine = NuIpAccess::ip();
 $test = isset($_GET['test']) ? NuIpAccess::test(trim((string)$_GET['test'])) : null;
@@ -147,7 +111,8 @@ nu_layout_start(t('ipa_title'), 'home', ['container' => 'nuContainer', 'settings
 							</select></td>
 						<td><div id="<?= h($fid) ?>_rWrap"<?= $m === 'ranges' ? '' : ' hidden' ?>>
 							<label class="visually-hidden" for="<?= h($fid) ?>_r"><?= h(t('ipa_ranges') . ' ' . $l['code']) ?></label>
-							<textarea class="form-control form-control-sm font-monospace<?= $inv('lv_' . $id) ?>" id="<?= h($fid) ?>_r" name="lv_ranges[<?= h($id) ?>]" rows="2" spellcheck="false"><?= h($lvText($id)) ?></textarea>
+							<textarea class="form-control form-control-sm font-monospace<?= $inv('lv_' . $id) ?>" id="<?= h($fid) ?>_r" name="lv_ranges[<?= h($id) ?>]"
+								rows="2" spellcheck="false"><?= h($lvText($id)) ?></textarea>
 							<?= $err('lv_' . $id) ?></div></td>
 					</tr>
 				<?php endforeach; ?>

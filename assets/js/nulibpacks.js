@@ -1,4 +1,4 @@
-/* Library packs (0.8.405, update page tab Libraries): "select all" and the buttons for the ticked libraries. */
+/* Library packs (update page tab Libraries): "select all" and the buttons for the ticked libraries. */
 (function () {
 	'use strict';
 	var all = document.getElementById('lpAll');
@@ -19,7 +19,7 @@
 	sync();
 })();
 
-/* Remove older versions (0.8.1065): the button works only while a version is ticked. */
+/* Remove older versions: the button works only while a version is ticked. */
 (function () {
 	'use strict';
 	Array.prototype.forEach.call(document.querySelectorAll('.nuLpOldDlg'), function (dlg) {

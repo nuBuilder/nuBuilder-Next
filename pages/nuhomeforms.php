@@ -2,7 +2,7 @@
 declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
-/* Home forms of the access levels (0.8.1264, core/nuhomeforms.php): JSON for the panel next to the Home button – globeadmin only. */
+/* Home forms of the access levels (core/nuhomeforms.php): JSON for the panel next to the Home button – globeadmin only. */
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 if (!NuHomeForms::allowed()) { http_response_code(403); echo json_encode(['ok' => false]); exit; }

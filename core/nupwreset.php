@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Password reset started by an administrator (user form → "Reset password…", 0.8.901).
+ * Password reset started by an administrator (user form → "Reset password…").
  * Best practice (NIST SP 800-63B, OWASP): the administrator never sees or chooses the password – the user gets a single-use,
  * time-limited link (the reset page ?p=reset, token kind pw_reset with data 'admin') and sets the password there. A new link
  * replaces older ones (also a welcome link). Optionally the current password is blocked at once (an unknown random password:
@@ -79,7 +79,7 @@ final class NuPwReset
 		if ($err === null && $block) {
 			nu_db()->update('zzzzsys_user', ['sus_login_password' => NuAuth::hash(bin2hex(random_bytes(24)))], 'zzzzsys_user_id', $uid);
 			self::endSessions($uid);
-			try { NuLoginToken::clear($uid, 'password reset'); } catch (Throwable) { /* none */ }
+			try { NuLoginToken::clear($uid, 'password reset'); } catch (Throwable $ig) { nu_ignored($ig, 'none'); }
 			if ($passkeys) $removed = NuPasskey::removeAll($uid);
 			NuLog::write('password_reset_blocked', 'zzzzsys_user', $uid, ['passkeys' => $removed], ['id' => $uid, 'login' => (string)$user['sus_login_name']]);
 		}
@@ -95,9 +95,7 @@ final class NuPwReset
 	{
 		try {
 			foreach (nu_db()->all('SELECT zzzzsys_nunext_session_id FROM zzzzsys_nunext_session WHERE user_id = ?', [$uid]) as $r) NuSessions::end((string)$r['zzzzsys_nunext_session_id']);
-		} catch (Throwable) {
-			/* no session table yet */
-		}
+		} catch (Throwable $ig) { nu_ignored($ig, 'no session table yet'); }
 	}
 
 	/** The e-mail with the link, in the user's language. @return string|null error */

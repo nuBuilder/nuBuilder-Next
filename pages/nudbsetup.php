@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Database set-up (0.8.645, core/nudbstate.php): nuconfig.php exists, but the database is not ready – written by hand (or copied from
+ * Database set-up (core/nudbstate.php): nuconfig.php exists, but the database is not ready – written by hand (or copied from
  * nuBuilder Forte) for an empty database, tables missing, or a nuBuilder Forte database older than 4.9.
  * Who: the globeadmin (signed in with nuconfig.php's name and password – that works without tables) or whoever knows the setup token
  * (_install/setup-token.txt) / created install.allow, as in the installer. Public route; it only works while the database is not ready.
@@ -16,62 +16,22 @@ NuCustomCode::$context = 'none';
 
 $user = NuAuth::user();
 $isGa = $user && !empty($user['globeadmin']) && empty($user['demo']);
-$done = $_SESSION['nu_dbs_done'] ?? null;
+$done = $_SESSION[NuSess::DB_SETUP_DONE] ?? null;
 if (!is_array($done) && NuDbState::ready()) nu_redirect(nu_url($user ? 'home' : 'login'));
 $st = NuDbState::check();
 if (!is_array($done) && $st['error'] !== '') throw new RuntimeException($st['error']);
 
-$auth = $isGa || !empty($_SESSION['nu_dbs_auth']);
+$auth = $isGa || !empty($_SESSION[NuSess::DB_SETUP_AUTH]);
 $needsToken = !NuInstall::isLocal();
 if (!$auth && !$needsToken) $auth = true;
 $errors = [];
 
-if (nu_is_post()) {
-	$action = nu_post('action');
-	if ($action === 'token' && !$auth) {
-		if (NuInstall::locked()) $errors['token'] = t('ins_err_locked');
-		else {
-			$entered = trim(nu_post('token'));
-			$ok = NuInstall::allowFileExists() || ($entered !== '' && NuInstall::checkToken($entered));
-			if ($ok) { session_regenerate_id(true); $_SESSION['nu_dbs_auth'] = true; nu_redirect(nu_url('dbsetup')); }
-			$errors['token'] = t($entered === '' ? 'ins_err_token_empty' : 'ins_err_token');
-		}
-	} elseif ($auth && in_array($action, ['setup', 'repair'], true) && !is_array($done)) {
-		try {
-			// an existing database (tables missing): the integrity check first (0.8.698) – problems need the tick "go on anyway"
-			if ($action === 'repair' && NuIntegrity::blocking(NuIntegrity::run(), ['tables']) && nu_check('integrity_ack') !== '1') throw new RuntimeException(t('ic_ack_needed'));
-			$choice = $action === 'setup' && nu_post('choice') === 'upload' ? 'upload' : 'nunext';
-			$file = null;
-			if ($choice === 'upload') {
-				$path = null;
-				if (($_FILES['dump']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
-					[$path, $upErr] = NuInstall::storeUpload($_FILES['dump']);
-					if ($upErr !== '') throw new RuntimeException($upErr);
-				} elseif (($pick = nu_post('dump_pick')) !== '' && isset(NuInstall::dumpCandidates()[$pick])) {
-					$path = NuInstall::dumpCandidates()[$pick];
-				}
-				if ($path === null) throw new RuntimeException(t('ins_dump_err_none'));
-				$sql = NuInstall::dumpSql($path);
-				if ($sql === null) throw new RuntimeException(t('ins_dump_err_read'));
-				$file = (string)preg_replace('/\.(sql|sql\.gz|zip)$/i', '', $path) . '.checked.sql';
-				if (@file_put_contents($file, $sql) === false) throw new RuntimeException(t('ins_dump_err_read'));
-			}
-			$r = NuDbState::setUp($choice, $file);
-			foreach (glob(NU_ROOT . '/_install/nunext-lib-*.zip') ?: [] as $f) @rename($f, NuUpdate::folderDir() . '/' . basename($f));   // library packs stay offered
-			NuInstall::cleanup();                                 // token, uploads, install.allow
-			$_SESSION['nu_dbs_done'] = ['state' => $st['state'], 'imported' => $r['imported'], 'upgraded' => $r['upgraded'], 'steps' => count($r['steps'])];
-			unset($_SESSION['nu_dbs_auth']);
-		} catch (Throwable $e) {
-			error_log('nuBuilder Next database set-up: ' . $e->getMessage());
-			nu_flash('danger', t('dbs_err_failed') . ' ' . $e->getMessage());
-		}
-		nu_redirect(nu_url('dbsetup'));
-	}
-}
-if (is_array($done) && !nu_is_post()) unset($_SESSION['nu_dbs_done']);   // shown once
+['auth' => $auth, 'errors' => $errors, 'done' => $done, 'st' => $st]
+	= NuDbsetupPage::post(get_defined_vars());   // the POST actions (code review R7, nudbsetuppage.php)
+if (is_array($done) && !nu_is_post()) unset($_SESSION[NuSess::DB_SETUP_DONE]);   // shown once
 
 $dbName = (string)nu_cfg('nuConfigDBName');
-// integrity check of an existing database (0.8.698): tables missing (before "Create missing tables") or older than nuBuilder Forte 4.9
+// integrity check of an existing database: tables missing (before "Create missing tables") or older than nuBuilder Forte 4.9
 $icR = !is_array($done) && $auth && in_array($st['state'], ['partial', 'old'], true) ? NuIntegrity::run() : null;
 $icHtml = static fn(?string $form): string => $icR === null ? '' : '<div class="border rounded p-2 mb-3' . ($icR['errors'] ? ' border-danger' : '') . '" id="dbsIntegrity">'
 	. '<div class="fw-semibold small mb-2"><i class="bi bi-clipboard2-pulse me-1"></i>' . h(t('ic_title')) . NuListView::infoTip(t('ic_tip')) . '</div>'
@@ -99,7 +59,9 @@ nu_center_start(t('dbs_title'), $dbName !== '' ? t('dbs_subtitle', $dbName) : ''
 		<li><?= h(t('dbs_old_opt_new')) ?></li>
 		<li><?= h(t('dbs_old_opt_forte')) ?></li>
 	</ol>
-	<?php if ($user): ?><form method="post" action="<?= h(nu_url('logout')) ?>" class="mt-3"><?= nu_csrf_field() ?><button class="btn btn-outline-secondary btn-sm" type="submit"><i class="bi bi-box-arrow-right me-1"></i><?= h(t('nav_logout')) ?></button></form><?php endif; ?>
+	<?php if ($user): ?><form method="post" action="<?= h(nu_url('logout')) ?>"
+		class="mt-3"><?= nu_csrf_field() ?><button class="btn btn-outline-secondary btn-sm"
+		type="submit"><i class="bi bi-box-arrow-right me-1"></i><?= h(t('nav_logout')) ?></button></form><?php endif; ?>
 
 <?php elseif (!$auth): ?>
 	<p class="small"><?= h(t($st['state'] === 'partial' ? 'dbs_partial_text' : 'dbs_empty_text')) ?></p>
@@ -136,7 +98,8 @@ nu_center_start(t('dbs_title'), $dbName !== '' ? t('dbs_subtitle', $dbName) : ''
 		<div class="form-check mb-2"><input class="form-check-input" type="radio" name="choice" id="dbsChoiceNn" value="nunext" checked>
 			<label class="form-check-label" for="dbsChoiceNn"><b><?= h(t('ins_choice_nunext')) ?></b><br><span class="small text-body-secondary"><?= h(t('ins_choice_nunext_hint')) ?></span></label></div>
 		<div class="form-check mb-2"><input class="form-check-input" type="radio" name="choice" id="dbsChoiceUp" value="upload"<?= $isMy ? '' : ' disabled' ?>>
-			<label class="form-check-label" for="dbsChoiceUp"><b><?= h(t('ins_choice_upload')) ?></b><br><span class="small text-body-secondary"><?= h($isMy ? t('ins_choice_upload_hint', (string)nu_ini_get('upload_max_filesize')) : t('ins_choice_upload_mssql')) ?></span></label></div>
+			<label class="form-check-label"
+				for="dbsChoiceUp"><b><?= h(t('ins_choice_upload')) ?></b><br><span class="small text-body-secondary"><?= h($isMy ? t('ins_choice_upload_hint', (string)nu_ini_get('upload_max_filesize')) : t('ins_choice_upload_mssql')) ?></span></label></div>
 		<?php if ($isMy): ?>
 		<div class="ms-4 mb-3">
 			<input class="form-control form-control-sm" type="file" id="dbsDump" name="dump" accept=".sql,.gz,.zip" aria-label="<?= h(t('ins_choice_upload')) ?>">

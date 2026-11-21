@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Projects (0.8.1035): a project groups the parts of one piece of the application – forms, procedures, reports, SQL builder
+ * Projects: a project groups the parts of one piece of the application – forms, procedures, reports, SQL builder
  * queries, tables / views, e-mail templates, code snippets, help pages – and holds its own notes (Markdown) and to-dos.
  * A tool for developers / administrators: admin right "projects" (view / change), or the save right on the Forms form.
  * Own tables only (nuBuilder Forte is not touched); an item can be in several projects.
@@ -31,7 +31,7 @@ final class NuProject
 		'helppage'      => ['zzzzsys_nunext_help', 'zzzzsys_nunext_help_id', 'title', 'code', 'bi-journal-bookmark'],
 	];
 	public const CODE_RE = '/^[A-Za-z0-9_.-]{1,60}$/';
-	private const SESSION = 'nu_project';
+	private const SESSION = NuSess::PROJECT;
 	private static array $cache = [];
 
 	// ------------------------------------------------------------------ rights, tables
@@ -67,7 +67,8 @@ final class NuProject
 		$rows = $db->all('SELECT * FROM ' . self::T . ($archived ? '' : " WHERE COALESCE(status, 'active') <> 'archived'") . ' ORDER BY name');
 		$items = $tasks = [];
 		foreach ($db->all('SELECT project_id, COUNT(*) AS n FROM ' . self::I . ' GROUP BY project_id') as $r) $items[(string)$r['project_id']] = (int)$r['n'];
-		if ($db->tableExists(self::K)) foreach ($db->all('SELECT project_id, COUNT(*) AS n FROM ' . self::K . " WHERE status <> 'done' GROUP BY project_id") as $r) $tasks[(string)$r['project_id']] = (int)$r['n'];
+		if ($db->tableExists(self::K)) foreach ($db->all('SELECT project_id, COUNT(*) AS n FROM ' . self::K
+			. " WHERE status <> 'done' GROUP BY project_id") as $r) $tasks[(string)$r['project_id']] = (int)$r['n'];
 		foreach ($rows as &$r) { $id = (string)$r['zzzzsys_nunext_project_id']; $r['items'] = $items[$id] ?? 0; $r['open_tasks'] = $tasks[$id] ?? 0; }
 		return $rows;
 	}
@@ -162,7 +163,8 @@ final class NuProject
 	{
 		if (!self::ready()) return [];
 		$k = $projectId . '|' . $kind;
-		return NuMemo::get('prj:refs:' . $k, [self::I], static fn(): array => array_map('strval', array_column(nu_db()->all('SELECT ref FROM ' . self::I . ' WHERE project_id = ? AND kind = ?', [$projectId, $kind]), 'ref')));
+		return NuMemo::get('prj:refs:' . $k, [self::I],
+			static fn(): array => array_map('strval', array_column(nu_db()->all('SELECT ref FROM ' . self::I . ' WHERE project_id = ? AND kind = ?', [$projectId, $kind]), 'ref')));
 	}
 
 	/** Label, second line and link of an item; null when it does not exist (any more). */
@@ -274,8 +276,7 @@ final class NuProject
 				$l = trim(strip_tags((string)$r['l']));
 				$out[] = [(string)$r['id'], $l !== '' ? $l : (string)$r['c'], $l !== '' ? (string)$r['c'] : ''];
 			}
-		} catch (Throwable) {
-		}
+		} catch (Throwable $ig) { nu_ignored($ig); }
 		return $out;
 	}
 
@@ -340,7 +341,8 @@ final class NuProject
 				foreach (self::calledIn($code) as $kr) $add($kr[0], $kr[1]);
 				foreach ($db->all('SELECT zzzzsys_report_id FROM zzzzsys_report WHERE sre_zzzzsys_form_id = ?', [$ref]) as $r) $add('report', (string)$r['zzzzsys_report_id']);
 				foreach ($db->all('SELECT zzzzsys_php_id FROM zzzzsys_php WHERE sph_zzzzsys_form_id = ?', [$ref]) as $r) $add('procedure', (string)$r['zzzzsys_php_id']);
-				if ($db->tableExists('zzzzsys_email_template')) foreach ($db->all('SELECT zzzzsys_email_template_id FROM zzzzsys_email_template WHERE emt_form_id = ?', [$ref]) as $r) $add('emailtemplate', (string)$r['zzzzsys_email_template_id']);
+				if ($db->tableExists('zzzzsys_email_template')) foreach ($db->all('SELECT zzzzsys_email_template_id FROM zzzzsys_email_template WHERE emt_form_id = ?', [$ref]) as $r) $add('emailtemplate',
+					(string)$r['zzzzsys_email_template_id']);
 			} elseif ($kind === 'procedure') {
 				$p = $db->one('SELECT sph_php, sph_javascript, sph_zzzzsys_form_id FROM zzzzsys_php WHERE zzzzsys_php_id = ?', [$ref]);
 				if (!$p) return [];
@@ -361,8 +363,7 @@ final class NuProject
 				$e = $db->one('SELECT emt_form_id FROM zzzzsys_email_template WHERE zzzzsys_email_template_id = ?', [$ref]);
 				if ($e) $add('form', (string)$e['emt_form_id']);
 			}
-		} catch (Throwable) {
-		}
+		} catch (Throwable $ig) { nu_ignored($ig); }
 		return array_values($out);
 	}
 
@@ -419,7 +420,8 @@ final class NuProject
 		$title = mb_substr(trim((string)($in['title'] ?? '')), 0, 200);
 		$body = mb_substr((string)($in['body'] ?? ''), 0, 200000);
 		if ($title === '') return [$id, ['title' => t('err_required')]];
-		$row = ['title' => $title, 'body' => str_replace("\r\n", "\n", $body), 'pinned' => !empty($in['pinned']) && $in['pinned'] !== '0' ? '1' : '0', 'updated_at' => self::now(), 'updated_by' => self::by()];
+		$row = ['title' => $title, 'body' => str_replace("\r\n", "\n", $body), 'pinned' => !empty($in['pinned']) && $in['pinned'] !== '0' ? '1' : '0',
+			'updated_at' => self::now(), 'updated_by' => self::by()];
 		$db = nu_db();
 		$old = $id !== '' ? $db->one('SELECT zzzzsys_nunext_project_note_id FROM ' . self::N . ' WHERE zzzzsys_nunext_project_note_id = ? AND project_id = ?', [$id, $projectId]) : null;
 		if ($old) $db->update(self::N, $row, 'zzzzsys_nunext_project_note_id', $id);
@@ -441,7 +443,8 @@ final class NuProject
 	public static function tasks(string $projectId): array
 	{
 		if (!nu_db()->tableExists(self::K)) return [];
-		return nu_db()->all('SELECT * FROM ' . self::K . " WHERE project_id = ? ORDER BY CASE WHEN status = 'done' THEN 1 ELSE 0 END, CASE WHEN due IS NULL THEN 1 ELSE 0 END, due, created_at", [$projectId]);
+		return nu_db()->all('SELECT * FROM ' . self::K
+			. " WHERE project_id = ? ORDER BY CASE WHEN status = 'done' THEN 1 ELSE 0 END, CASE WHEN due IS NULL THEN 1 ELSE 0 END, due, created_at", [$projectId]);
 	}
 
 	/** Open to-dos of the signed-in user in all projects (start page / project list). */
@@ -449,7 +452,9 @@ final class NuProject
 	{
 		$u = NuAuth::user();
 		if (!$u || !self::ready() || !nu_db()->tableExists(self::K)) return [];
-		return nu_db()->all('SELECT k.*, p.name AS project_name FROM ' . self::K . ' k JOIN ' . self::T . " p ON p.zzzzsys_nunext_project_id = k.project_id WHERE k.assignee = ? AND k.status <> 'done' ORDER BY CASE WHEN k.due IS NULL THEN 1 ELSE 0 END, k.due", [(string)$u['id']]);
+		return nu_db()->all('SELECT k.*, p.name AS project_name FROM ' . self::K . ' k JOIN ' . self::T
+			. " p ON p.zzzzsys_nunext_project_id = k.project_id WHERE k.assignee = ? AND k.status <> 'done' ORDER BY CASE WHEN k.due IS NULL THEN 1 ELSE 0 END, k.due",
+			[(string)$u['id']]);
 	}
 
 	/** People a to-do can be assigned to: id => name ('globeadmin' = the globeadmin). */
@@ -530,7 +535,8 @@ final class NuProject
 	{
 		if (!self::ready() || !nu_db()->tableExists(self::K)) return 0;
 		$n = 0;
-		$rows = nu_db()->all('SELECT zzzzsys_nunext_project_task_id AS id, project_id FROM ' . self::K . " WHERE status <> 'done' AND assignee <> '' AND due IS NOT NULL AND due <= ? AND notified_at IS NULL", [date('Y-m-d 23:59:59')]);
+		$rows = nu_db()->all('SELECT zzzzsys_nunext_project_task_id AS id, project_id FROM ' . self::K
+			. " WHERE status <> 'done' AND assignee <> '' AND due IS NOT NULL AND due <= ? AND notified_at IS NULL", [date('Y-m-d 23:59:59')]);
 		foreach ($rows as $r) {
 			self::notify((string)$r['project_id'], (string)$r['id'], 'prj_ntf_due');
 			nu_db()->update(self::K, ['notified_at' => self::now()], 'zzzzsys_nunext_project_task_id', (string)$r['id']);

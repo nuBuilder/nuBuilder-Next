@@ -1,6 +1,6 @@
 /* global nuBs */
 /*
- * Calendars (0.8.1165, FullCalendar 6 standard, loaded on first use from data-fc / data-fc-css / data-fc-locales of this script).
+ * Calendars (FullCalendar 6 standard, loaded on first use from data-fc / data-fc-css / data-fc-locales of this script).
  *  - list view: button #nuCalendarOpen[data-nu-cal] on a form list → full-size dialogue with the list's calendar (search / filters apply)
  *  - calendar objects and dashboard widgets: div.nuCalHost[data-nu-cal] → mounted in place
  * data-nu-cal: {f, o?, r?, state?, rows?, view, edit, drag, add, open (form id of the records), sf / ef (start / end field of a new record),
@@ -137,7 +137,11 @@
 						ok(filter(cache.events));
 					}).catch(function (e) { bad(e); });
 				},
-				datesSet: function (info) { store(key, info.view.type); },
+				datesSet: function (info) {
+					store(key, info.view.type);
+					// the arrow buttons hold only an icon: their hint (title, in the calendar's language) as the name for screen readers
+					box.querySelectorAll('.fc-prev-button, .fc-next-button').forEach(function (b) { if (b.title) b.setAttribute('aria-label', b.title); });
+				},
 				eventClick: function (info) {
 					info.jsEvent.preventDefault();
 					if (!info.event.id) return;

@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Design mode on the form page (0.8.662, stage 1 of the new form designer): the globeadmin changes a form where it runs –
+ * Design mode on the form page (stage 1 of the new form designer): the globeadmin changes a form where it runs –
  * ?p=form&f=<id>&r=<record>&design=1. The page loads the builder preview's designer (assets/js/nu/nudesigner.js: select, move, resize,
  * Arrange) and assets/js/nu/nudesign.js (bar, properties panel), which saves through the builder API (pages/nubuilderapi.php).
  * A published form is changed in a draft: the first change starts one (draft.start with preview = this session shows the draft), an open
@@ -12,7 +12,7 @@ defined('NU_ROOT') || exit;
 final class NuDesign
 {
 	/**
-	 * Who may use it (0.8.667): everybody with the save right on the form builder (nuform – admin-equivalent, NuSecurity::restricted), on
+	 * Who may use it: everybody with the save right on the form builder (nuform – admin-equivalent, NuSecurity::restricted), on
 	 * edit screens of own forms (and nuBuilder Forte's User Home), not in demo mode. The builder API keeps its limits: only the globeadmin
 	 * renames or deletes tabs, publishing needs the admin right formpublish, others work in a draft when form_drafts_required is on.
 	 */
@@ -24,7 +24,7 @@ final class NuDesign
 	}
 
 	/**
-	 * Where an old builder link (?p=builder&f=…) leads (0.8.670): the list designer for list-only forms and ?open=browse, else the edit
+	 * Where an old builder link (?p=builder&f=…) leads: the list designer for list-only forms and ?open=browse, else the edit
 	 * screen with the first record (as the builder's preview) or a new one; forms that are not designed here open normally.
 	 * @param array<string, mixed> $q the builder link's query
 	 */
@@ -32,28 +32,28 @@ final class NuDesign
 	{
 		$open = (string)($q['open'] ?? '');
 		if (!self::allowed($meta)) return nu_url('form', ['f' => $meta->id, 'r' => $meta->hasBrowse() ? null : '-1']);
-		$extra = ['dsobj' => is_string($q['obj'] ?? null) ? $q['obj'] : null, 'dsfid' => is_string($q['fid'] ?? null) && $q['fid'] !== '' ? mb_substr($q['fid'], 0, 100) : null, 'dscolchg' => is_string($q['colchg'] ?? null) ? $q['colchg'] : null,
-			'dsdelete' => ($q['delete'] ?? '') === '1' ? '1' : null, 'dsev' => ($q['ev'] ?? '') === '1' ? '1' : null,   // 0.8.1331: the object's events dialog
+		$extra = ['dsobj' => is_string($q['obj'] ?? null) ? $q['obj'] : null, 'dsfid' => is_string($q['fid'] ?? null)
+			&& $q['fid'] !== '' ? mb_substr($q['fid'], 0, 100) : null, 'dscolchg' => is_string($q['colchg'] ?? null) ? $q['colchg'] : null,
+			'dsdelete' => ($q['delete'] ?? '') === '1' ? '1' : null, 'dsev' => ($q['ev'] ?? '') === '1' ? '1' : null,   // the object's events dialog
 			'dswork' => in_array($open, ['code', 'history'], true) ? $open : (($q['draft'] ?? '') === '1' && $open === 'compare' ? 'changes' : null),
 			'dsfly' => $open === 'add' ? 'add' : ($open === 'objects' ? 'structure' : ($open === 'rules' ? 'rules' : null))];
-		// code search links (0.8.1172): the code part, its line (cl / ck / cq – assets/js/nu/nucodetools.js) and the list workspace
+		// code search links: the code part, its line (cl / ck / cq – assets/js/nu/nucodetools.js) and the list workspace
 		$str = static fn(string $k, int $max): ?string => is_string($q[$k] ?? null) && $q[$k] !== '' ? mb_substr($q[$k], 0, $max) : null;
 		$extra += ['dsitem' => $str('dsitem', 40), 'ck' => $str('ck', 40), 'cl' => ctype_digit((string)($q['cl'] ?? '')) ? (string)$q['cl'] : null, 'cq' => $str('cq', 100)];
 		if ($open === 'list') { $extra['dswork'] = 'list'; $open = 'browse'; }
 		if ((!$meta->hasEdit() && $meta->type() !== 'subform') || ($open === 'browse' && $meta->hasBrowse())) return nu_url('form', ['f' => $meta->id, 'design' => '1'] + $extra);
-		// the record the link came from (0.8.1192: Properties… of the object menu keeps the record that was open)
+		// the record the link came from (Properties… of the object menu keeps the record that was open)
 		$r = is_string($q['r'] ?? null) && $q['r'] !== '' && $q['r'] !== '-1' && strlen($q['r']) <= 100 ? $q['r'] : '-1';
 		if ($r === '-1' && $meta->table() !== '' && $meta->primaryKey() !== '' && $meta->type() !== 'launch') {
 			try {
 				$pk = nu_db()->page('SELECT ' . NuDB::ident($meta->primaryKey()) . ' AS pk FROM ' . NuDB::ident($meta->table()), [], NuDB::ident($meta->primaryKey()), 1, 0);
 				if ($pk) $r = (string)$pk[0]['pk'];
-			} catch (Throwable) {
-			}
+			} catch (Throwable $ig) { nu_ignored($ig); }
 		}
 		return nu_url('form', ['f' => $meta->id, 'r' => $r, 'design' => '1'] + $extra);
 	}
 
-	/** Safe mode (0.8.667): ?safe=1 opens the form without its own code – JavaScript, CSS, Before Edit PHP, Setup → Header / Include, HTML scripts. */
+	/** Safe mode: ?safe=1 opens the form without its own code – JavaScript, CSS, Before Edit PHP, Setup → Header / Include, HTML scripts. */
 	public static function safe(): bool
 	{
 		return ($_GET['safe'] ?? '') === '1';
@@ -92,28 +92,30 @@ final class NuDesign
 	public static function client(NuFormMeta $meta, string $record): array
 	{
 		$open = NuFormDraft::ready() ? NuFormDraft::openFor($meta->id) : null;
-		// texts (0.8.669): every ds_* / dsg_* key and the builder's (builder_*, bf_*, form_type_*, form_layout*, fai_button_*, da_title) – the panel,
+		// texts: every ds_* / dsg_* key and the builder's (builder_*, bf_*, form_type_*, form_layout*, fai_button_*, da_title) – the panel,
 		// the format designer and the attribute editor use them
 		$texts = [];
 		foreach (array_keys(require NU_ROOT . '/lang/en.php') as $k) {
 			if (preg_match('/^(ds_|dsg_|builder_|bf_|form_type_|form_layout|fai_|om_|fmt_type_|fms_|vr_|sg_)/', $k)) $texts[$k] = t($k);
 		}
-		foreach (['cancel', 'close', 'delete', 'yes', 'no', 'save', 'please_select', 'ok', 'form_code_hint', 'form_code_discard', 'da_title', 'add', 'remove', 'search', 'uh_admin_title', 'cal_month', 'cal_week', 'cal_day', 'cal_list'] as $k) $texts[$k] = t($k);
+		foreach (['cancel', 'close', 'delete', 'yes', 'no', 'save', 'please_select', 'ok', 'form_code_hint', 'form_code_discard', 'da_title', 'add', 'remove',
+			'search', 'uh_admin_title', 'cal_month', 'cal_week', 'cal_day', 'cal_list'] as $k) $texts[$k] = t($k);
 		$db = nu_db();
 		[$forms, $procs, $reports] = self::lists();
 		$formats = static fn(string $l) => array_map(static fn($f) => [(string)$f['value'], (string)$f['value'] . ($f['description'] !== '' ? ' – ' . $f['description'] : '')], NuFormat::choices($l));
 		return [
-			'forms' => $forms, 'procedures' => $procs, 'reports' => $reports, 'pivots' => NuPivot::forRunButtons(), 'calendars' => NuCalendar::forms(), 'formats' => ['D' => $formats('D'), 'N' => $formats('N')],
-			// the code window of the panel (0.8.665): CodeMirror is loaded on first use
+			'forms' => $forms, 'procedures' => $procs, 'reports' => $reports, 'pivots' => NuPivot::forRunButtons(), 'calendars' => NuCalendar::forms(),
+				'formats' => ['D' => $formats('D'), 'N' => $formats('N')],
+			// the code window of the panel: CodeMirror is loaded on first use
 			'cm' => [nu_asset(NU_CODEMIRROR . '/codemirror.css'), nu_asset(NU_CODEMIRROR . '/codemirror-bundle.js')],
 			'draft' => NuFormDraft::info($open),
 			'unpublished' => (string)($meta->form['sfo_status'] ?? '') === '0',
 			'can_publish' => NuFormDraft::canPublish(),
 			'ga' => !empty(NuAuth::user()['globeadmin']),
-			'userhome' => $meta->isUserHome(),                      // User Home: only its Before Edit PHP is code of its own (0.8.605)           // tabs: only the globeadmin renames or deletes them (as the builder API)
+			'userhome' => $meta->isUserHome(),                      // User Home: only its Before Edit PHP is code of its own           // tabs: only the globeadmin renames or deletes them (as the builder API)
 			'safe' => self::safe(),
 			'self' => nu_url('form', ['f' => $meta->id, 'r' => $record, 'design' => '1', 'safe' => self::safe() ? '1' : null]),
-			// what to open / select first (0.8.1194): the parameters of the address as the server got them – form code that rewrites the
+			// what to open / select first: the parameters of the address as the server got them – form code that rewrites the
 			// address bar while the page loads (a permalink without them) must not lose them
 			'start' => (object)array_filter(array_intersect_key($_GET, array_flip(['dsobj', 'dsfid', 'dsev', 'dsitem', 'dswork', 'dsfly', 'dscolchg', 'dsdelete', 'cl', 'ck', 'cq'])),
 				static fn($v): bool => is_string($v) && $v !== '' && strlen($v) <= 200),
@@ -124,23 +126,24 @@ final class NuDesign
 			'files' => $db->tableExists('zzzzsys_file') ? array_map(static fn($f) => [$f['zzzzsys_file_id'], $f['sfi_code'] . ($f['sfi_description'] ? ' – ' . $f['sfi_description'] : '')],
 				$db->all('SELECT zzzzsys_file_id, sfi_code, sfi_description FROM zzzzsys_file ORDER BY sfi_code')) : [],
 			'formats_all' => NuFormat::choices(), 'format_designer' => nu_format_designer_data(),
-			'record_check' => (bool)NuSecurity::get('record_check'),     // the global switch, for the tip of "Any record can be opened" (0.8.1234)
-			'details_candidates' => NuRowDetails::candidates($meta),      // row details: sub-forms and child tables to show (0.8.1316)
-			'form_tags' => NuFormMeta::tagValues(),                     // suggestions of Department / Team (0.8.1020)
-			'help_codes' => NuUserHelp::codeList(), 'help_admin' => NuUserHelp::canManage() ? nu_url('helppages') : '', 'help_edit' => NuUserHelp::canEdit(),   // user help pages (0.8.1023)
+			'record_check' => (bool)NuSecurity::get('record_check'),     // the global switch, for the tip of "Any record can be opened"
+			'details_candidates' => NuRowDetails::candidates($meta),      // row details: sub-forms and child tables to show
+			'form_tags' => NuFormMeta::tagValues(),                     // suggestions of Department / Team
+			'help_codes' => NuUserHelp::codeList(), 'help_admin' => NuUserHelp::canManage() ? nu_url('helppages') : '', 'help_edit' => NuUserHelp::canEdit(),   // user help pages
 			'ai' => $meta->isSystem() ? '' : nu_url('formai', ['f' => $meta->id]),
-			'aiask' => $meta->isSystem() ? null : NuAiProvider::client('design'),     // "Ask AI" with a configured AI service (0.8.1099)
+			'aiask' => $meta->isSystem() ? null : NuAiProvider::client('design'),     // "Ask AI" with a configured AI service
 			'dataaccess' => $meta->isSystem() ? '' : nu_url('dataaccess', ['f' => $meta->id]),
 			'translations' => !$meta->isSystem() && NuAcl::can(NuAcl::FORM_TRANSLATE) ? ['url' => nu_url('translations', ['view' => 'missing', 'f' => $meta->id]),
-				'missing' => NuTranslate::summary($meta->id)] : null,               // Tools → Translations with the missing ones per language (0.8.754)
-			'formaccess' => NuAcl::can(NuAcl::FORM_ACCESS),            // Tools → Access levels (0.8.683, the dialog of the ⋮ menu)
-			// maintenance (0.8.808, core/nuformstatus.php): the bar's switch – the dialog of assets/js/nu/nuformmaint.js (loaded by pages/nuform.php)
+				'missing' => NuTranslate::summary($meta->id)] : null,               // Tools → Translations with the missing ones per language
+			'formaccess' => NuAcl::can(NuAcl::FORM_ACCESS),            // Tools → Access levels (the dialog of the ⋮ menu)
+			// maintenance (core/nuformstatus.php): the bar's switch – the dialog of assets/js/nu/nuformmaint.js (loaded by pages/nuform.php)
 			'form_id' => $meta->id, 'form_label' => $meta->description() !== '' ? $meta->description() : (string)($meta->form['sfo_code'] ?? ''),
-			'maint' => NuFormStatus::notice($meta->id), 'maint_ok' => NuFormStatus::canChange() && !$meta->isSystem() && in_array(NuFormStatus::of($meta->id), [NuFormStatus::ACTIVE, NuFormStatus::MAINT], true),
+			'maint' => NuFormStatus::notice($meta->id), 'maint_ok' => NuFormStatus::canChange() && !$meta->isSystem()
+				&& in_array(NuFormStatus::of($meta->id), [NuFormStatus::ACTIVE, NuFormStatus::MAINT], true),
 			'can_delete_form' => !empty(NuAuth::user()['globeadmin']) && !$meta->isSystem(),
-			'rules' => $meta->isSystem() || $meta->table() === '' ? null : NuFormRules::designData($meta),   // validation rules (0.8.812)
+			'rules' => $meta->isSystem() || $meta->table() === '' ? null : NuFormRules::designData($meta),   // validation rules
 			'live_url' => nu_url('form', ['f' => $meta->id, 'r' => $record]),
-			'list_url' => $meta->hasBrowse() ? nu_url('form', ['f' => $meta->id, 'design' => '1']) : '',          // the list's columns (0.8.669)
+			'list_url' => $meta->hasBrowse() ? nu_url('form', ['f' => $meta->id, 'design' => '1']) : '',          // the list's columns
 			'edit_url' => $meta->hasEdit() ? nu_url('form', ['f' => $meta->id, 'r' => '-1', 'design' => '1']) : '',
 		];
 	}

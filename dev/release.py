@@ -14,7 +14,7 @@ nuBuilder Next – make a release (run from the nunext folder):
   changes.txt  the changelog text: "- " bullet lines, continuation lines indented by two spaces, lines max. ~130 characters
 
 What it does (the same steps every release):
-  0. lang/en-US.php and lang/de-CH.php built by dev/lang_variants.php; checks (skip with --no-checks): php -l of every PHP file, dev/check_lang.php, dev/tests/run.php,
+  0. lang/en-US.php and lang/de-CH.php built by dev/lang_variants.php, assets/js/nu/nuruntime.js joined by dev/nuruntime_join.py; checks (skip with --no-checks): php -l of every PHP file, dev/check_lang.php, dev/tests/run.php,
      and with NUNEXT_TEST_BASE set the browser suites smoke.js, e2e.js and (NUNEXT_TEST_NUB) compat.js – see browser_tests()
   1. README.md: version in the first line; CHANGELOG.md: new section "## <version> – <title>" above the newest one
   2. core/nuapp.php: NU_VERSION
@@ -327,6 +327,11 @@ def main():
         sys.exit(f'{version} is not higher than the current {old}')
     code, out = run(['php', 'dev/lang_variants.php'])   # lang/en-US.php from lang/en.php, lang/de-CH.php from lang/de.php
     print(out.strip())
+    if code != 0:
+        sys.exit(out)
+    code, out = run(['python3', '-I', 'dev/nuruntime_join.py'])   # assets/js/nu/nuruntime.js from dev/src/nuruntime/ (code review L1)
+    if out.strip():
+        print(out.strip())
     if code != 0:
         sys.exit(out)
     if '--no-checks' not in sys.argv:

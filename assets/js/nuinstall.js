@@ -69,7 +69,7 @@
 		});
 	}
 
-	// administrator: with two-step login the e-mail is required – its star and the required attribute follow the switch (0.8.421)
+	// administrator: with two-step login the e-mail is required – its star and the required attribute follow the switch
 	(function () {
 		var tf = document.getElementById('twofa'), mail = document.getElementById('email'), star = document.getElementById('insEmailReq');
 		if (!tf || !mail || !star) return;

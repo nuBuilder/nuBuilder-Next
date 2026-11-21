@@ -346,7 +346,7 @@ if (!function_exists('db_fetch_value')) {
 		if (!is_object($phpObj)) return false;
 		$u = NuAuth::user();
 		if ($u['globeadmin'] || NuAdmin::can('procedures', 'change') || (string)($phpObj->sph_global ?? '') === '1') return true;
-		[$in, $lv] = NuUserAccess::inSql('slp_zzzzsys_access_id', $u);   // main + additional access levels (0.8.585)
+		[$in, $lv] = NuUserAccess::inSql('slp_zzzzsys_access_id', $u);   // main + additional access levels
 		return (bool)nu_db()->value("SELECT COUNT(*) FROM zzzzsys_access_php WHERE $in AND slp_zzzzsys_php_id = ?", [...$lv, (string)$phpObj->zzzzsys_php_id]);
 	}
 
@@ -364,7 +364,7 @@ if (!function_exists('db_fetch_value')) {
 	}
 
 	/**
-	 * nuBuilder Forte's nuGetTranslation (0.8.1034): every row of zzzzsys_translate for a language as [['english' => …, 'translation' => …], …],
+	 * nuBuilder Forte's nuGetTranslation: every row of zzzzsys_translate for a language as [['english' => …, 'translation' => …], …],
 	 * sorted by the English text with the installation's own rows before nuBuilder Forte's (ids nu…) – as Forte reads it at sign-in.
 	 */
 	function nuGetTranslation($l): array
@@ -376,7 +376,7 @@ if (!function_exists('db_fetch_value')) {
 	}
 
 	/**
-	 * nuBuilder Forte's nuEval (0.8.1033): runs a row of zzzzsys_php by its id – a procedure or an event of a form such as
+	 * nuBuilder Forte's nuEval: runs a row of zzzzsys_php by its id – a procedure or an event of a form such as
 	 * "<form id>_BS" – with the hash variables of this request and $nudata. Its $result goes to $_POST['nuRunPHPHiddenResult'], errors
 	 * join the request's errors. $returnOutput: what the code prints is returned instead of being printed. No access check (as in
 	 * nuBuilder Forte – it is called from code, not from the browser). @return string|null '' when the row is missing or empty
@@ -403,7 +403,7 @@ if (!function_exists('db_fetch_value')) {
 		$saved = NuPhp::$hash;
 		$res = NuPhp::procedure((string)$nuCode, NuPhp::$hash);
 		NuPhp::$hash = $saved;
-		if (NuPhp::$result !== null) $_POST['nuRunPHPHiddenResult'] = NuPhp::$result;   // nuBuilder: the procedure's $result (0.8.459)
+		if (NuPhp::$result !== null) $_POST['nuRunPHPHiddenResult'] = NuPhp::$result;   // nuBuilder: the procedure's $result
 		if (empty($res['ok']) && !str_starts_with((string)$nuCode, 'nu')) nuDisplayError((string)($res['error'] ?? ''));
 		$f = new stdClass();
 		$f->id = 1;
@@ -444,12 +444,12 @@ if (!function_exists('db_fetch_value')) {
 	/** Value kept for this login session (nuBuilder: in zzzzsys_session; here: in the PHP session). */
 	function nuSetJSONData($name, $newJson): void
 	{
-		$_SESSION['nu_json_data'][(string)$name] = $newJson;
+		$_SESSION[NuSess::JSON_DATA][(string)$name] = $newJson;
 	}
 
 	function nuGetJSONData($name): mixed
 	{
-		return $_SESSION['nu_json_data'][(string)$name] ?? '';
+		return $_SESSION[NuSess::JSON_DATA][(string)$name] ?? '';
 	}
 
 	/** nuBuilder: for every open session. nuBuilder Next can only set it for the current session. */
@@ -558,7 +558,7 @@ if (!function_exists('db_fetch_value')) {
 	}
 
 	/**
-	 * Answer of an upload procedure that failed (nuBuilder's core/nuupload.php, 0.8.459): HTTP status 401 and JSON {error, message} –
+	 * Answer of an upload procedure that failed (nuBuilder's core/nuupload.php): HTTP status 401 and JSON {error, message} –
 	 * Uppy's template shows message. $error defaults to nuBuilder's "Sorry, there was an error uploading your file."
 	 */
 	function nuSetUploadError($message, $error = null): string
@@ -639,7 +639,7 @@ if (!function_exists('db_fetch_value')) {
 	{
 		$sql = (string)$sql;
 		if ((string)$id !== '') $sql = str_replace('#OBJECT_ID#', (string)$id, $sql);
-		// the formats of the select object (NuSelectSource, 0.8.879), with nuBuilder Forte's own result; SQL through nuRunQuery
+		// the formats of the select object (NuSelectSource), with nuBuilder Forte's own result; SQL through nuRunQuery
 		$run = static function (string $q): array {
 			$out = [];
 			$r = nuRunQuery($q);
@@ -696,7 +696,7 @@ if (!function_exists('db_fetch_value')) {
 		return filter_var($ip, FILTER_VALIDATE_IP) ? $ip : null;
 	}
 
-	/** nuBuilder: true in demo mode (core/nudemo.php, 0.8.140); $showError adds "Not available in the demo." to the errors. */
+	/** nuBuilder: true in demo mode (core/nudemo.php); $showError adds "Not available in the demo." to the errors. */
 	function nuDemo($showError = true): bool
 	{
 		if (!NuDemo::active()) return false;
@@ -736,7 +736,7 @@ if (!function_exists('db_fetch_value')) {
 	/** The next number for a new record when $fieldId is an nuAutoNumber object, otherwise $value. */
 	function nuAutoNumber($formId, $recordId, $fieldId, $value): mixed
 	{
-		$o = NuFormMeta::load((string)$formId)?->byId[(string)$fieldId] ?? null;     // through NuFormMeta: also the draft in a preview (0.8.386)
+		$o = NuFormMeta::load((string)$formId)?->byId[(string)$fieldId] ?? null;     // through NuFormMeta: also the draft in a preview
 		$isNew = nuHasNewRecordID() || nuHasNoRecordID() || (string)$recordId === '-1';
 		if ($o && $o['sob_all_type'] === 'input' && $o['sob_input_type'] === 'nuAutoNumber' && $isNew) return nuUpdateCounter($o['zzzzsys_object_id']);
 		return $value;

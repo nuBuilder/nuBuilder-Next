@@ -14,7 +14,7 @@ if (!$p) {
 
 $userId  = (string)$p['auth']['id'];
 $hasTotp = NuTwoFA::hasTotp($userId);
-$hasPk   = NuPasskey::has($userId);                        // passkeys (0.8.877): offered first when the user has one
+$hasPk   = NuPasskey::has($userId);                        // passkeys: offered first when the user has one
 $canMail = trim((string)$p['email']) !== '' && NuMail::configured();
 $error   = null;
 
@@ -32,76 +32,8 @@ if ($p['method'] === 'enroll' && empty($p['secret'])) {
 	NuAuth::updatePending($p);
 }
 
-if (nu_is_post()) {
-	$action = nu_post('action');
-
-	if ($action === 'cancel') {
-		unset($_SESSION['nu_2fa']);
-		nu_redirect(nu_url('login'));
-	}
-
-	if ($action === 'use_mail' && $canMail) {
-		$p['method'] = 'mail';
-		$err = NuTwoFA::sendMailCode($p);
-		NuAuth::updatePending($p);
-		if ($err !== null && $err !== 'twofa_err_wait') nu_flash('danger', t($err));
-		elseif ($err === null) nu_flash('success', t('twofa_mail_sent', NuTwoFA::maskEmail((string)$p['email'])));
-		nu_redirect(nu_url('twofa'));
-	}
-
-	if ($action === 'use_passkey' && $hasPk) {
-		$p['method'] = 'passkey';
-		NuAuth::updatePending($p);
-		nu_redirect(nu_url('twofa'));
-	}
-
-	if ($action === 'use_totp' && $hasTotp) {
-		$p['method'] = 'totp';
-		NuAuth::updatePending($p);
-		nu_redirect(nu_url('twofa'));
-	}
-
-	if ($action === 'resend' && $p['method'] === 'mail') {
-		$err = NuTwoFA::sendMailCode($p);
-		NuAuth::updatePending($p);
-		nu_flash($err === null ? 'success' : 'warning', $err === null ? t('twofa_mail_sent', NuTwoFA::maskEmail((string)$p['email'])) : t($err, NuTwoFA::RESEND_AFTER));
-		nu_redirect(nu_url('twofa'));
-	}
-
-	if ($action === 'verify') {
-		$code  = nu_post('code');
-		$trust = nu_check('trust') === '1';
-		$ok    = false;
-		if ($p['method'] === 'totp') {
-			$ok = NuTwoFA::verifyTotp($userId, $code);
-		} elseif ($p['method'] === 'mail') {
-			$ok = NuTwoFA::verifyMailCode($userId, $code);
-		} elseif ($p['method'] === 'enroll') {
-			$step = NuTwoFA::matchCode((string)$p['secret'], $code);
-			if ($step !== null) {
-				NuTwoFA::saveTotp($userId, (string)$p['secret'], $step);
-				NuLog::write('2fa_app_enabled', '', '', [], $p['auth']);
-				$ok = true;
-			}
-		}
-
-		if ($ok) {
-			$refused = NuAuth::completePending($p['method'] === 'enroll' ? 'totp' : $p['method'], $trust);
-			if ($refused !== null) { nu_flash('danger', $refused); nu_redirect(nu_url('login')); }   // nu_startup said no (0.8.462)
-			nu_redirect(NuAuth::takeNext());
-		}
-
-		$p['fails'] = (int)$p['fails'] + 1;
-		NuLog::write('2fa_failed', '', '', ['method' => $p['method']], $p['auth']);
-		if ($p['fails'] >= NuTwoFA::MAX_FAILS) {
-			unset($_SESSION['nu_2fa']);
-			nu_flash('danger', t('twofa_too_many'));
-			nu_redirect(nu_url('login'));
-		}
-		NuAuth::updatePending($p);
-		$error = t('twofa_err_code');
-	}
-}
+['action' => $action, 'canMail' => $canMail, 'p' => $p, 'hasPk' => $hasPk, 'hasTotp' => $hasTotp, 'error' => $error]
+	= NuTwofaPage::post(get_defined_vars());   // the POST actions (code review R7, nutwofapage.php)
 
 $method = $p['method'];
 if ($method === 'passkey' && !$hasPk) $method = $hasTotp ? 'totp' : ($canMail ? 'mail' : 'enroll');   // passkeys switched off meanwhile
@@ -155,7 +87,7 @@ nu_center_start(t('twofa_title'), t('twofa_subtitle_' . $method), 'bi-shield-loc
 <?php endif; ?>
 
 <?php
-// links below the form, one separator between each (0.8.877: built as a list)
+// links below the form, one separator between each (built as a list)
 $link = static fn(string $action, string $label, string $extra = '', string $cls = 'btn btn-link btn-sm p-0'): string => '<form method="post" action="' . h(nu_url('twofa')) . '">' . nu_csrf_field()
 	. '<input type="hidden" name="action" value="' . $action . '"><button class="' . $cls . '" type="submit"' . $extra . '>' . $label . '</button></form>';
 $links = [];

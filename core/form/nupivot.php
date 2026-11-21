@@ -3,12 +3,12 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Pivot of a form list (0.8.1151): rows / columns / values / filters over the list's columns, worked out by the database – the list SQL
+ * Pivot of a form list: rows / columns / values / filters over the list's columns, worked out by the database – the list SQL
  * with its search, filters, advanced search and column access (NuBrowse::filtered) becomes a sub-query, GROUP BY the chosen fields.
  * Date fields group by year, quarter, month, month of the year, week, weekday or day. Masked / hidden columns are never offered.
  * Spec: {rows: [{c, g}], cols: [{c, g}], vals: [{c, fn}], flt: [{c, g, v: [keys]}]} – c = list column index, g = date part ('' = value).
  * Saved pivots: zzzzsys_nunext_list_view, list_key pivot:<form id>, scope user (as "My searches" of the advanced search);
- * scope shared (owner '') = pivots for everyone who opens the list, e.g. those of the samples (0.8.1155) – listed, never deleted here.
+ * scope shared (owner '') = pivots for everyone who opens the list, e.g. those of the samples – listed, never deleted here.
  */
 final class NuPivot
 {
@@ -28,8 +28,7 @@ final class NuPivot
 			if ($c['expr'] === 'NULL' || $c['mask'] !== null) continue;
 			$title = trim(NuHtmlClean::cellText((string)$c['title']));
 			if ($title === '') $title = '#' . ((int)$c['index'] + 1);
-			$f = strtoupper(substr((string)$c['format'], 0, 2));
-			$out[] = ['c' => (int)$c['index'], 'title' => $title, 'type' => $f === 'D|' ? 'date' : ($f === 'N|' ? 'number' : 'text')];
+			$out[] = ['c' => (int)$c['index'], 'title' => $title, 'type' => NuFormat::kind((string)$c['format'])];
 		}
 		return $out;
 	}
@@ -233,13 +232,14 @@ final class NuPivot
 		$db = nu_db();
 		if (!$db->tableExists(NuListView::TABLE)) return [];
 		$out = [];
-		foreach ($db->all('SELECT zzzzsys_nunext_list_view_id AS id, name, definition, scope FROM ' . NuListView::TABLE . " WHERE list_key = ? AND ((scope = 'user' AND owner = ?) OR scope = 'shared') ORDER BY name",
+		foreach ($db->all('SELECT zzzzsys_nunext_list_view_id AS id, name, definition, scope FROM ' . NuListView::TABLE
+			. " WHERE list_key = ? AND ((scope = 'user' AND owner = ?) OR scope = 'shared') ORDER BY name",
 			[self::KEY . $formId, self::me()]) as $r) $out[] = ['id' => (string)$r['id'], 'name' => (string)$r['name'], 'spec' => json_decode((string)$r['definition'], true),
 				'shared' => $r['scope'] === 'shared'];
 		return $out;
 	}
 
-	/** Every saved pivot the user sees, for run buttons in design mode (0.8.1156): [["<form id>|<id>", "<form code> – <name>"], …]; own ones marked. */
+	/** Every saved pivot the user sees, for run buttons in design mode: [["<form id>|<id>", "<form code> – <name>"], …]; own ones marked. */
 	public static function forRunButtons(): array
 	{
 		$db = nu_db();

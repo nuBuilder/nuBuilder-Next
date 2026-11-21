@@ -18,7 +18,7 @@ final class NuSessions
 
 	private static function now(): string
 	{
-		return nu_db()->type === 'sqlsrv' ? date('Y-m-d\TH:i:s') : date('Y-m-d H:i:s');
+		return nu_db()->stamp();
 	}
 
 	/**
@@ -27,7 +27,7 @@ final class NuSessions
 	public static function touch(array $user): bool
 	{
 		$key = self::key();
-		$known = $_SESSION['nu_sess'] ?? null;            // ['key' => …, 'seen' => time]
+		$known = $_SESSION[NuSess::SESS] ?? null;            // ['key' => …, 'seen' => time]
 		if (is_array($known) && $known['key'] === $key && time() - (int)$known['seen'] < self::TOUCH_EVERY) {
 			try {   // between two activity updates only check that the globeadmin has not ended the session (one indexed read)
 				return (bool)nu_db()->value('SELECT COUNT(*) FROM zzzzsys_nunext_session WHERE zzzzsys_nunext_session_id = ?', [$key]);
@@ -46,18 +46,18 @@ final class NuSessions
 				if (is_array($known) && $known['key'] !== '') {   // id regenerated
 					$db->delete('zzzzsys_nunext_session', 'zzzzsys_nunext_session_id', (string)$known['key']);
 					NuVendor::forget((string)$known['key']);
-					unset($_SESSION['nu_vendor']);
+					unset($_SESSION[NuSess::VENDOR]);
 				}
 				$db->delete('zzzzsys_nunext_session', 'zzzzsys_nunext_session_id', $key);
 				$db->insert('zzzzsys_nunext_session', [
 					'zzzzsys_nunext_session_id' => $key, 'user_id' => mb_substr((string)$user['id'], 0, 25), 'login' => mb_substr((string)$user['login'], 0, 50),
 					'display' => mb_substr((string)($user['display'] ?? ''), 0, 100), 'via' => mb_substr((string)($user['via'] ?? ''), 0, 20),
 					'ip' => mb_substr(nu_client_ip(), 0, 45), 'user_agent' => mb_substr((string)($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 255),
-					'login_at' => date(nu_db()->type === 'sqlsrv' ? 'Y-m-d\TH:i:s' : 'Y-m-d H:i:s', (int)($_SESSION['nu_auth']['since'] ?? time())),
+					'login_at' => nu_db()->stamp((int)($_SESSION[NuSess::AUTH]['since'] ?? time())),
 					'last_seen' => self::now(), 'seen_ts' => time(),
 				]);
 			}
-			$_SESSION['nu_sess'] = ['key' => $key, 'seen' => time()];
+			$_SESSION[NuSess::SESS] = ['key' => $key, 'seen' => time()];
 			if (random_int(1, 40) === 1) self::purge();
 		} catch (Throwable $e) {
 			error_log('nuBuilder Next sessions: ' . $e->getMessage());
@@ -68,22 +68,20 @@ final class NuSessions
 	/** Removes the row of the current session (logout). */
 	public static function forget(): void
 	{
-		$known = $_SESSION['nu_sess'] ?? null;
+		$known = $_SESSION[NuSess::SESS] ?? null;
 		if (!is_array($known) || ($known['key'] ?? '') === '') return;
 		try {
 			nu_db()->delete('zzzzsys_nunext_session', 'zzzzsys_nunext_session_id', (string)$known['key']);
 			NuVendor::forget((string)$known['key']);
-			unset($_SESSION['nu_vendor']);
-		} catch (Throwable) {
-		}
+			unset($_SESSION[NuSess::VENDOR]);
+		} catch (Throwable $ig) { nu_ignored($ig); }
 	}
 
 	/** Sessions without activity for longer than the session timeout are gone (the globeadmin's: globeadmin timeout). */
 	public static function purge(): void
 	{
-		$fmt = nu_db()->type === 'sqlsrv' ? 'Y-m-d\TH:i:s' : 'Y-m-d H:i:s';
-		nu_db()->run('DELETE FROM zzzzsys_nunext_session WHERE user_id <> ? AND last_seen < ?', ['globeadmin', date($fmt, time() - nu_session_timeout(false))]);
-		nu_db()->run('DELETE FROM zzzzsys_nunext_session WHERE user_id = ? AND last_seen < ?', ['globeadmin', date($fmt, time() - nu_session_timeout(true))]);
+		nu_db()->run('DELETE FROM zzzzsys_nunext_session WHERE user_id <> ? AND last_seen < ?', ['globeadmin', nu_db()->stamp(time() - nu_session_timeout(false))]);
+		nu_db()->run('DELETE FROM zzzzsys_nunext_session WHERE user_id = ? AND last_seen < ?', ['globeadmin', nu_db()->stamp(time() - nu_session_timeout(true))]);
 		NuVendor::purge();
 	}
 

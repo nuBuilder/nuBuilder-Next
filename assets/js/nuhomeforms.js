@@ -1,15 +1,15 @@
 /* global nuBs */
 /*
- * Home forms of the access levels (0.8.1264, core/nuhomeforms.php): the Start pages button on the start page, right of Customise (globeadmin, 0.8.1289), opens a panel with
+ * Home forms of the access levels (core/nuhomeforms.php): the Start pages button on the start page, right of Customise (globeadmin), opens a panel with
  * one row per Home form – its access levels as chips (dashed = the level starts on the tile page), Open / Design – and, in a second tab
- * (0.8.1276), the tile pages of users with their levels; loaded once from ?p=homeforms. Right-click or a long press on the Home button opens the same panel; a plain click still goes Home.
+ *, the tile pages of users with their levels; loaded once from ?p=homeforms. Right-click or a long press on the Home button opens the same panel; a plain click still goes Home.
  */
 (function () {
 	'use strict';
 	var tog = document.getElementById('nuHfToggle');
 	var panel = document.getElementById('nuHfPanel');
 	var home = document.getElementById('nuHomeBtn');
-	// the button is on the start page only (0.8.1289): elsewhere right-click / long press on Home goes there and opens the panel (?hf=1)
+	// the button is on the start page only: elsewhere right-click / long press on Home goes there and opens the panel (?hf=1)
 	function onHome(fn) {
 		if (!home || !home.hasAttribute('data-nu-hf-url')) return;
 		home.addEventListener('contextmenu', function (e) { e.preventDefault(); fn(); });
@@ -46,7 +46,7 @@
 		if (f.kind) row.setAttribute('data-nu-hf-kind', f.kind);
 		var hay = [f.title, f.code];
 		var main = el('div', 'nuHfMain');
-		// collapsed by default (0.8.1266): the title only; the button folds out the code and the access levels
+		// collapsed by default: the title only; the button folds out the code and the access levels
 		var t = el('button', 'nuHfName nuHfExp');
 		t.type = 'button';
 		t.setAttribute('aria-expanded', 'false');
@@ -55,7 +55,7 @@
 		var tt = el('span', 'nuHfFormTitle', f.title);
 		tt.title = f.title;
 		t.appendChild(tt);
-		if (f.empty) {   // 0.8.1279: an own tile page without tiles
+		if (f.empty) {   // an own tile page without tiles
 			var em = el('span', 'nuHfEmptyTag', T.hf_empty);
 			em.title = T.hf_empty_tip;
 			t.appendChild(em);
@@ -83,7 +83,7 @@
 		row.appendChild(main);
 		var acts = el('div', 'nuHfActs');
 		if (f.open) {
-			// icon buttons (0.8.1278): the row stays one line on phones too
+			// icon buttons: the row stays one line on phones too
 			var o = el('a', 'btn btn-sm btn-primary nuHfOpen nuHfIcon');
 			o.href = f.open;
 			o.title = T.hf_open; o.setAttribute('aria-label', T.hf_open + ': ' + f.title);
@@ -107,7 +107,7 @@
 		panel.textContent = '';
 		var head = el('div', 'nuHfHead');
 		head.appendChild(el('b', 'nuHfTitle', T.hf_panel_title));
-		if (data.userhome) {   // User Home in the head (0.8.1282): one tap on both tabs, never scrolled away
+		if (data.userhome) {   // User Home in the head: one tap on both tabs, never scrolled away
 			var uh = el('a', 'btn btn-sm btn-outline-primary nuHfUh');
 			uh.id = 'nuHfUserHome'; uh.href = data.userhome.open;
 			uh.appendChild(el('i', 'bi bi-window')).setAttribute('aria-hidden', 'true');
@@ -123,7 +123,7 @@
 		}
 		var q = el('input', 'form-control form-control-sm nuHfSearch');
 		q.type = 'search'; q.id = 'nuHfSearch';
-		// tabs Home forms / Tile pages (0.8.1276) – the last one is remembered on the device
+		// tabs Home forms / Tile pages – the last one is remembered on the device
 		var tabs = el('div', 'nuHfTabs');
 		tabs.setAttribute('role', 'tablist');
 		var pages = data.pages || [];

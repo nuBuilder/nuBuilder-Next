@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Third-party libraries (0.8.229): the ones in the package (vendor/bundled/libraries.json since 0.8.409 – also copied into nunext-manifest.json
+ * Third-party libraries: the ones in the package (vendor/bundled/libraries.json – also copied into nunext-manifest.json
  * by dev/release.py as "libraries") and the ones copied by hand or used from nuBuilder (NuSecurity::libraries(): TCPDF, PHPMailer,
  * TinyMCE, phpMyAdmin, Uppy). Update page: card "Libraries" and, for a checked package, which libraries change.
  */
@@ -28,7 +28,7 @@ final class NuLibraries
 		return preg_match('/' . str_replace('/', '\/', (string)$lib['detect']) . '/', $src, $m) ? $m[1] : '';
 	}
 
-	/** The project page of a library in the package (registry key "url", 0.8.891) – only an https address on github.com, else ''. */
+	/** The project page of a library in the package (registry key "url") – only an https address on github.com, else ''. */
 	public static function projectUrl(array $l): string
 	{
 		$u = (string)($l['url'] ?? '');

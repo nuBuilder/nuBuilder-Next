@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Admin roles (0.8.323) – who may do which part of the globeadmin's work (core/nuadmin.php). The globeadmin and users with the
+ * Admin roles – who may do which part of the globeadmin's work (core/nuadmin.php). The globeadmin and users with the
  * right "Admin roles" manage them; the role of a user is chosen on the user form.
  *   ?p=adminroles              list
  *   ?p=adminroles&id=<id>      edit · id=new (&copy=<id>: as a copy)
@@ -18,35 +18,17 @@ $copy = (string)($_GET['copy'] ?? '');
 $errors = [];
 $role = $id !== '' && $id !== 'new' ? NuAdmin::get($id) : null;
 if ($id !== '' && $id !== 'new' && !$role) { http_response_code(404); nu_fatal(t('record_not_found'), '', true); }
-$stored = $role ? ($role['rights'] ?? []) : null;          // saved rights: changed rows are marked until saved (0.8.1323)
+$stored = $role ? ($role['rights'] ?? []) : null;          // saved rights: changed rows are marked until saved
 $mine = NuAdmin::role();
 $own = $role && $mine && $mine['id'] === $role['id'];       // nobody edits his own role
 
-if (nu_is_post()) {
-	$action = nu_post('action');
-	if ($action === 'delete' && $role) {
-		$err = NuAdmin::delete($role['id']);
-		if ($err === '') { nu_flash('success', t('adm_deleted', $role['name'])); nu_redirect(nu_url('adminroles')); }
-		nu_flash('danger', $err);
-		nu_redirect(nu_url('adminroles', ['id' => $role['id']]));
-	}
-	if ($action === 'save') {
-		$rights = [];
-		foreach (NuAdmin::RIGHTS as $k => $_) {
-			$v = (string)($_POST['r'][$k] ?? '');
-			if ($v === 'view' || $v === 'change') $rights[$k] = $v;
-		}
-		[$newId, $errors] = NuAdmin::save($role['id'] ?? null, ['code' => nu_post('code'), 'name' => nu_post('name'), 'description' => nu_post('description'), 'rights' => $rights]);
-		if (!$errors) { nu_flash('success', t('saved')); nu_redirect(nu_url('adminroles', ['id' => $newId])); }
-		$role = ['id' => $role['id'] ?? '', 'code' => nu_post('code'), 'stored_name' => nu_post('name'), 'name' => nu_post('name'), 'description' => nu_post('description'), 'rights' => $rights];
-		nu_flash('danger', t('err_check_form'));
-	}
-}
+['role' => $role, 'errors' => $errors]
+	= NuAdminrolesPage::post(get_defined_vars());   // the POST actions (code review R7, nuadminrolespage.php)
 
 $tip = static fn(string $text) => nu_info_tip($text);
 
 // ------------------------------------------------------------------ list
-if ($id === '') {                                          // a system list (0.8.687): search, views, export, filters (core/nulistdefs.php)
+if ($id === '') {                                          // a system list: search, views, export, filters (core/nulistdefs.php)
 	NuListView::page('adminroles', [
 		'before' => NuListView::crumbs([[t('nav_users'), nu_url('users')], [t('adm_title')]]), 'active' => 'home',
 		'title_extra' => NuListView::infoTip(t('adm_title_tip')),
@@ -65,7 +47,7 @@ $isNew = $role['id'] === '';
 $users = $isNew ? [] : NuAdmin::usersOf($role['id']);
 $grant = NuAdmin::grantable();
 $title = $isNew ? t('adm_new') : $role['name'];
-$canTest = !$isNew && NuImpersonate::canTest($role);       // test the role as a chosen user (0.8.1318)
+$canTest = !$isNew && NuImpersonate::canTest($role);       // test the role as a chosen user
 nu_body_class('nuRecPage');
 nu_layout_start(t('adm_title'), 'home', $canTest ? ['head' => nu_ts_head()] : []);
 ?>
@@ -83,9 +65,10 @@ nu_layout_start(t('adm_title'), 'home', $canTest ? ['head' => nu_ts_head()] : []
 			<?php if (!$own): ?><button data-nu-save class="btn nuBtnAct nuBtnSave" type="submit" id="admSave"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button><?php endif; ?>
 			<?php if (!$isNew): ?>
 				<a class="btn nuBtnAct" href="<?= h(nu_url('adminroles', ['id' => 'new', 'copy' => $role['id']])) ?>"><i class="bi bi-copy me-1"></i><?= h(t('clone')) ?></a>
-				<?php if ($canTest): ?><button class="btn nuBtnAct" type="button" id="admTestOpen" data-bs-toggle="modal" data-bs-target="#admTestDlg"<?= ($_GET['test'] ?? '') === '1' ? ' data-nu-autoopen="1"' : '' ?>><i class="bi bi-person-fill-gear me-1"></i><?= h(t('adm_test')) ?></button><?php endif; ?>
+				<?php if ($canTest): ?><button class="btn nuBtnAct" type="button" id="admTestOpen" data-bs-toggle="modal"
+					data-bs-target="#admTestDlg"<?= ($_GET['test'] ?? '') === '1' ? ' data-nu-autoopen="1"' : '' ?>><i class="bi bi-person-fill-gear me-1"></i><?= h(t('adm_test')) ?></button><?php endif; ?>
 				<?php if (!$users && !$own): ?><button class="btn nuBtnAct nuBtnDel" type="submit" form="admDelete"><i class="bi bi-trash me-1"></i><?= h(t('delete')) ?></button><?php endif; ?>
-				<?= NuFormInfo::record(NuAdmin::ROLE_TABLE, (string)$role['id'], ['code' => (string)($role['code'] ?? '')]) /* (i) record info (0.8.501) */ ?>
+				<?= NuFormInfo::record(NuAdmin::ROLE_TABLE, (string)$role['id'], ['code' => (string)($role['code'] ?? '')]) /* (i) record info */ ?>
 			<?php endif; ?>
 		</div>
 	</div>
@@ -106,13 +89,15 @@ nu_layout_start(t('adm_title'), 'home', $canTest ? ['head' => nu_ts_head()] : []
 		<div class="card-header d-flex flex-wrap align-items-center gap-2"><span class="fw-semibold"><?= h(t('adm_rights')) ?></span><?= $tip(t('adm_rights_tip')) ?>
 			<?php if ($stored !== null): ?><span class="admChg ms-auto d-flex flex-wrap align-items-center gap-2" id="admChanges" hidden>
 				<span class="badge admChgCount" id="admChgCount" data-text="<?= h(t('adm_changed_n')) ?>"></span>
-				<button type="button" class="btn btn-sm btn-outline-secondary" id="admChgOnly" aria-pressed="false" data-on="<?= h(t('adm_changes_all')) ?>" data-off="<?= h(t('adm_changes_only')) ?>"><?= h(t('adm_changes_only')) ?></button>
+				<button type="button" class="btn btn-sm btn-outline-secondary" id="admChgOnly" aria-pressed="false" data-on="<?= h(t('adm_changes_all')) ?>"
+					data-off="<?= h(t('adm_changes_only')) ?>"><?= h(t('adm_changes_only')) ?></button>
 				<button type="button" class="btn btn-sm btn-outline-secondary" id="admChgUndo"><i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i><?= h(t('adm_changes_undo')) ?></button>
 			</span><?php endif; ?></div>
 		<?php if (isset($errors['rights'])): ?><div class="alert alert-danger m-3 mb-0"><?= h($errors['rights']) ?></div><?php endif; ?>
 		<div id="admRightsWrap">
-			<table class="table nu-table mb-0 align-middle" id="admRights"<?= $stored !== null ? ' data-track="1" data-was="' . h(t('adm_was')) . '" data-lv-none="' . h(t('adm_none')) . '" data-lv-view="' . h(t('adm_view')) . '" data-lv-change="' . h(t('adm_change')) . '"' : '' ?>>
-				<?php // own columns (0.8.1022): Right · Area · Full access · None · View · Change – one flat list in the order of the groups;
+			<table class="table nu-table mb-0 align-middle"
+				id="admRights"<?= $stored !== null ? ' data-track="1" data-was="' . h(t('adm_was')) . '" data-lv-none="' . h(t('adm_none')) . '" data-lv-view="' . h(t('adm_view')) . '" data-lv-change="' . h(t('adm_change')) . '"' : '' ?>>
+				<?php // own columns: Right · Area · Full access · None · View · Change – one flat list in the order of the groups;
 				      // sortable titles (assets/js/nuadminroles.js), the third click goes back to that order ?>
 				<?php $sortTh = static fn(string $key, string $label, string $cls = '') => '<th class="admSort' . $cls . '" data-sort="' . h($key) . '"><button type="button" class="btn btn-link p-0 userPermSortBtn" title="' . h(t('adm_sort_tip')) . '">' . h($label) . '</button></th>'; ?>
 				<thead><tr><?= $sortTh('name', t('adm_right')) ?><?= $sortTh('area', t('adm_area'), ' admAreaTh') ?><?= $sortTh('full', t('adm_full'), ' admFullTh') ?>
@@ -123,14 +108,28 @@ nu_layout_start(t('adm_title'), 'home', $canTest ? ['head' => nu_ts_head()] : []
 						$cur = $role['rights'][$k] ?? '';
 						$may = $grant[$k] ?? '';                       // what the editing user may give
 						$dis = static fn(string $lvl) => $own || ($lvl !== '' && $may !== 'change' && !($may === 'view' && $lvl === 'view') && $cur !== $lvl) ? ' disabled' : ''; ?>
-						<tr class="nuAdmRight" data-group="<?= h($g) ?>" data-area="<?= sprintf('%02d', $gi) ?>" data-full="<?= $full ? '1' : '0' ?>" data-name="<?= h(t($label)) ?>"<?= $stored !== null ? ' data-orig="' . h($stored[$k] ?? '') . '"' : '' ?>>
-							<td class="admName"><?php if (isset(NuAdmin::PAGES[$k])): [$pr, $pp] = NuAdmin::PAGES[$k]; ?><a href="<?= h(nu_url($pr, $pp)) ?>" target="_blank" rel="noopener" class="admRightLink" title="<?= h(t('adm_open_page')) ?>"><?= h(t($label)) ?><i class="bi bi-box-arrow-up-right ms-1 small" aria-hidden="true"></i></a><?php else: ?><?= h(t($label)) ?><?php endif; ?></td>
+						<tr class="nuAdmRight" data-group="<?= h($g) ?>" data-area="<?= sprintf('%02d', $gi) ?>" data-full="<?= $full ? '1' : '0' ?>"
+							data-name="<?= h(t($label)) ?>"<?= $stored !== null ? ' data-orig="' . h($stored[$k] ?? '') . '"' : '' ?>>
+							<td class="admName"><?php if (isset(NuAdmin::PAGES[$k])): [$pr, $pp] = NuAdmin::PAGES[$k]; ?><a href="<?= h(nu_url($pr, $pp)) ?>"
+								target="_blank" rel="noopener" class="admRightLink"
+								title="<?= h(t('adm_open_page')) ?>"><?= h(t($label)) ?><i class="bi bi-box-arrow-up-right ms-1 small"
+								aria-hidden="true"></i></a><?php else: ?><?= h(t($label)) ?><?php endif; ?></td>
 							<td class="admArea text-body-secondary small"><?= h(t($gLabel)) ?></td>
-							<td class="admFull"><?php if ($full): ?><span class="nuAdmFull" title="<?= h(t('adm_full_tip')) ?>"><i class="bi bi-shield-fill-exclamation" aria-hidden="true"></i><span class="admFullTxt"><?= h(t('adm_full')) ?></span></span><?php else: ?><span class="text-body-tertiary" aria-hidden="true">–</span><?php endif; ?></td>
-							<td class="text-center admLvlCell"><label class="admLvl"><input class="form-check-input" type="radio" name="r[<?= h($k) ?>]" value="" aria-label="<?= h(t($label) . ': ' . t('adm_none')) ?>"<?= $cur === '' ? ' checked' : '' ?><?= $own ? ' disabled' : '' ?>><span class="admLvlTxt" aria-hidden="true"><?= h(t('adm_none')) ?></span></label></td>
-							<?php if ($levels === 'vc'): ?><td class="text-center admLvlCell"><label class="admLvl"><input class="form-check-input" type="radio" name="r[<?= h($k) ?>]" value="view" aria-label="<?= h(t($label) . ': ' . t('adm_view')) ?>"<?= $cur === 'view' ? ' checked' : '' ?><?= $dis('view') ?>><span class="admLvlTxt" aria-hidden="true"><?= h(t('adm_view')) ?></span></label></td>
-							<?php else: ?><td class="text-center admLvlCell admNoLvl"><span class="text-body-tertiary" title="<?= h(t('adm_no_view')) ?>">—</span><span class="visually-hidden"><?= h(t('adm_no_view')) ?></span></td><?php endif; ?>
-							<td class="text-center admLvlCell"><label class="admLvl"><input class="form-check-input" type="radio" name="r[<?= h($k) ?>]" value="change" aria-label="<?= h(t($label) . ': ' . t('adm_change')) ?>"<?= $cur === 'change' ? ' checked' : '' ?><?= $dis('change') ?>><span class="admLvlTxt" aria-hidden="true"><?= h(t('adm_change')) ?></span></label></td>
+							<td class="admFull"><?php if ($full): ?><span class="nuAdmFull" title="<?= h(t('adm_full_tip')) ?>"><i class="bi bi-shield-fill-exclamation"
+								aria-hidden="true"></i><span class="admFullTxt"><?= h(t('adm_full')) ?></span></span><?php else: ?><span class="text-body-tertiary"
+								aria-hidden="true">–</span><?php endif; ?></td>
+							<td class="text-center admLvlCell"><label class="admLvl"><input class="form-check-input" type="radio" name="r[<?= h($k) ?>]" value=""
+								aria-label="<?= h(t($label) . ': ' . t('adm_none')) ?>"<?= $cur === '' ? ' checked' : '' ?><?= $own ? ' disabled' : '' ?>><span class="admLvlTxt"
+								aria-hidden="true"><?= h(t('adm_none')) ?></span></label></td>
+							<?php if ($levels === 'vc'): ?><td class="text-center admLvlCell"><label class="admLvl"><input class="form-check-input" type="radio"
+								name="r[<?= h($k) ?>]" value="view"
+								aria-label="<?= h(t($label) . ': ' . t('adm_view')) ?>"<?= $cur === 'view' ? ' checked' : '' ?><?= $dis('view') ?>><span class="admLvlTxt"
+								aria-hidden="true"><?= h(t('adm_view')) ?></span></label></td>
+							<?php else: ?><td class="text-center admLvlCell admNoLvl"><span class="text-body-tertiary"
+								title="<?= h(t('adm_no_view')) ?>">—</span><span class="visually-hidden"><?= h(t('adm_no_view')) ?></span></td><?php endif; ?>
+							<td class="text-center admLvlCell"><label class="admLvl"><input class="form-check-input" type="radio" name="r[<?= h($k) ?>]" value="change"
+								aria-label="<?= h(t($label) . ': ' . t('adm_change')) ?>"<?= $cur === 'change' ? ' checked' : '' ?><?= $dis('change') ?>><span class="admLvlTxt"
+								aria-hidden="true"><?= h(t('adm_change')) ?></span></label></td>
 						</tr>
 					<?php endforeach; ?>
 				<?php endforeach; ?>
@@ -140,7 +139,8 @@ nu_layout_start(t('adm_title'), 'home', $canTest ? ['head' => nu_ts_head()] : []
 	</div>
 </form>
 <?php if (!$isNew): ?>
-<form method="post" action="<?= h(nu_url('adminroles', ['id' => $role['id']])) ?>" id="admDelete" data-confirm="<?= h(t('adm_delete_confirm', $role['name'])) ?>" data-confirm-ok="<?= h(t('delete')) ?>" data-confirm-class="btn btn-danger">
+<form method="post" action="<?= h(nu_url('adminroles', ['id' => $role['id']])) ?>" id="admDelete"
+	data-confirm="<?= h(t('adm_delete_confirm', $role['name'])) ?>" data-confirm-ok="<?= h(t('delete')) ?>" data-confirm-class="btn btn-danger">
 	<?= nu_csrf_field() ?><input type="hidden" name="action" value="delete">
 </form>
 <?php if ($canTest):

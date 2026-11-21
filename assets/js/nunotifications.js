@@ -1,5 +1,5 @@
 /* global nuBs */
-/* Notification centre – the edit form (0.8.357, pages/nunotifications.php): Tom Select for the recipient fields, "Everybody" locks
+/* Notification centre – the edit form (pages/nunotifications.php): Tom Select for the recipient fields, "Everybody" locks
    them, "Must confirm" forces the fixed list, and the live number of recipients (action count). */
 (function () {
 	'use strict';
@@ -25,7 +25,7 @@
 		ts.push(t);
 	});
 
-	// recipient builder (0.8.1271): one row per field (.ntfRule[data-rule]), hidden while empty; "+ …" shows it, × empties and hides it
+	// recipient builder: one row per field (.ntfRule[data-rule]), hidden while empty; "+ …" shows it, × empties and hides it
 	var rulesBox = document.getElementById('ntfAudience'), addBox = document.getElementById('ntfAdd'), noneHint = document.getElementById('ntfRuleNone');
 	function tsOf(key) { var s = document.getElementById('aud_' + key); return s && s.tomselect ? s.tomselect : null; }
 	function syncRules() {
@@ -69,7 +69,7 @@
 		return isNaN(d) ? v : d.toLocaleString(document.documentElement.lang || undefined, {dateStyle: 'medium', timeStyle: 'short'});
 	}
 	function fill1(t, x) { return String(t).replace(/%[sd]/, x); }
-	var sideHook = null;                                   // the side column of wide screens (0.8.1298)
+	var sideHook = null;                                   // the side column of wide screens
 	function summary() {
 		if (sideHook) sideHook();
 		if (!sumBox) return;
@@ -85,7 +85,7 @@
 	function lockAudience() {
 		syncRules();
 		var on = !!(all && all.checked);
-		// "Exclude users" stays open with "Everybody" (0.8.510)
+		// "Exclude users" stays open with "Everybody"
 		ts.forEach(function (t) { if (on && !t.input.hasAttribute('data-ntf-exclude')) t.disable(); else t.enable(); });
 		if (!ts.length) selects.forEach(function (s) { s.disabled = on && !s.hasAttribute('data-ntf-exclude'); });
 	}
@@ -117,7 +117,7 @@
 
 	if (all) all.addEventListener('change', function () { lockAudience(); schedule(); });
 	if (confirmSw) confirmSw.addEventListener('change', function () { lockMode(); summary(); });
-	// recipients in a dialogue (0.8.510): full name, login name, department, team, position; a click on a column title sorts by it
+	// recipients in a dialogue: full name, login name, department, team, position; a click on a column title sorts by it
 	var coll = window.Intl && Intl.Collator ? new Intl.Collator(undefined, {numeric: true, sensitivity: 'base'}) : null;
 	function fill() {
 		if (!tbody) return;
@@ -149,7 +149,7 @@
 		});
 	});
 	showBtn.addEventListener('click', function () { if (!dlg) return; fill(); nuBs.modal(dlg).show(); });
-	// side column of wide screens (0.8.1298): preview of the notification as the bell shows it, the summary, a few names
+	// side column of wide screens: preview of the notification as the bell shows it, the summary, a few names
 	var side = document.getElementById('ntfSide');
 	function side_() {
 		if (!side) return;
@@ -194,7 +194,7 @@
 	summary();
 	count();
 
-	// ---- formatted text (0.8.400): the switch turns the text field into a TinyMCE editor (when installed); the server cleans the HTML
+	// ---- formatted text: the switch turns the text field into a TinyMCE editor (when installed); the server cleans the HTML
 	var fmt = document.getElementById('ntf_format'), body = document.getElementById('ntf_body'), noTiny = document.getElementById('ntfNoTiny');
 	var editor = null, loading = null;
 	function esc(s) { return NuUtil.esc(s); }
@@ -231,7 +231,7 @@
 		});
 		return loading;
 	}
-	// the HTML source stays hidden (class nuTmceWait, set by the page) until TinyMCE is there or cannot come (0.8.1040)
+	// the HTML source stays hidden (class nuTmceWait, set by the page) until TinyMCE is there or cannot come
 	function shown() { if (body) body.classList.remove('nuTmceWait'); }
 	setTimeout(shown, 10000);
 	function startEditor() {
@@ -258,7 +258,7 @@
 		if (editor) { editor.save(); editor.remove(); editor = null; }
 		shown();                                                  // after remove(): TinyMCE puts the class back
 	}
-	// light / dark switch (0.8.1041): TinyMCE cannot change its skin while it runs – started again with the other skin, the text kept
+	// light / dark switch: TinyMCE cannot change its skin while it runs – started again with the other skin, the text kept
 	new MutationObserver(function () {
 		if (!editor) return;
 		editor.save(); editor.remove(); editor = null;

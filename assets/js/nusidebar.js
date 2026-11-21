@@ -1,6 +1,6 @@
 /*
- * Side bar (0.8.460, core/nusidebar.php / nu_sidebar() in core/nulayout.php): favourites and recently used on the left.
- * A drawer on every screen width (0.8.513 – before: a column with an icon rail from 992 px), opened by the button left of the logo
+ * Side bar (core/nusidebar.php / nu_sidebar() in core/nulayout.php): favourites and recently used on the left.
+ * A drawer on every screen width (before: a column with an icon rail from 992 px), opened by the button left of the logo
  * (Esc / backdrop / × close).
  * Icon colours come as data-nu-color (strict CSP: no style attributes in the markup).
  */
@@ -15,7 +15,7 @@
 	// the top bar's height: the side bar sticks below it
 	var bar = document.querySelector('.nu-navbar');
 	// nuapp.js keeps --nu-nav-h (and follows the bar's size) – here only where it is not loaded; never the same value again (a custom
-	// property on <html> restyles the whole page, 0.8.1341)
+	// property on <html> restyles the whole page)
 	function barHeight() {
 		if (!bar) return;
 		var h = bar.offsetHeight + 'px', inline = root.style.getPropertyValue('--nu-nav-h').trim();
@@ -45,7 +45,7 @@
 		var first = sb.querySelector('.nuSbLink, .nuSbClose');
 		if (first) first.focus();
 	}
-	// ---------------------------------------------------------------- pinned (0.8.556): a column next to the page from 992 px
+	// ---------------------------------------------------------------- pinned: a column next to the page from 992 px
 	var shell = sb.closest('.nuShell'), pinBtn = document.getElementById('nuSbPin'), wide = window.matchMedia('(min-width: 992px)');
 	function isPinned() { return !!shell && shell.classList.contains('nuSbPinned') && wide.matches; }
 	function showPin(on) {
@@ -78,7 +78,7 @@
 	document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
 	wide.addEventListener('change', function () { if (wide.matches && shell && shell.classList.contains('nuSbPinned')) close(); });   // drawer → column
 
-	// ---------------------------------------------------------------- right-click / long press menu of "Recently used" (0.8.489, 0.8.498)
+	// ---------------------------------------------------------------- right-click / long press menu of "Recently used"
 	// On an entry: Remove from recently used (POST ?p=sidebar action forget, then reload); everywhere in the list: Clear recently used
 	// (the section's own clear form). Only while the list has entries.
 	var recent = sb.querySelector('.nuSbSec-recent'), menu = null, at = 0, pressT = null, pressed = false;

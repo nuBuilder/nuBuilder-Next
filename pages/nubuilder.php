@@ -4,7 +4,7 @@ defined('NU_ROOT') || exit;
 
 /*
  * "New form" wizard (?new=1, assets/js/nubuilder.js). ?f=<form id>: page forms open their own editor (pages/nubuilder_page.php), every
- * other form is designed in design mode on the form page (0.8.670 – the builder's editor was replaced by it, core/form/nudesign.php).
+ * other form is designed in design mode on the form page (the builder's editor was replaced by it, core/form/nudesign.php).
  */
 
 NuAcl::require(NuAcl::FORM_FORM);
@@ -14,27 +14,27 @@ $isNew   = ($_GET['new'] ?? '') === '1' || (string)($_GET['f'] ?? '') === '';
 $meta    = null;
 
 if (!$isNew) {
-	$meta = NuFormMeta::load((string)($_GET['f'] ?? ''), true);     // the live form – a draft is loaded by the builder API (0.8.386)
+	$meta = NuFormMeta::load((string)($_GET['f'] ?? ''), true);     // the live form – a draft is loaded by the builder API
 	if (!$meta) {
 		http_response_code(404);
 		nu_fatal(t('form_err_not_found'), '', true);
 	}
 }
 
-// form type "page" (0.8.387): its own builder – form fields and the page settings, no objects (pages/nubuilder_page.php)
+// form type "page": its own builder – form fields and the page settings, no objects (pages/nubuilder_page.php)
 if ($meta && $meta->isPage()) {
-	$canDeleteForm = !empty(NuAuth::user()['globeadmin']) && !$meta->isSystem();   // as design mode (NuDesign::client can_delete_form); lost in 0.8.670
+	$canDeleteForm = !empty(NuAuth::user()['globeadmin']) && !$meta->isSystem();   // as design mode (NuDesign::client can_delete_form)
 	require __DIR__ . '/nubuilder_page.php';
 	exit;
 }
 
-// every other form is designed where it runs (0.8.670: the builder was replaced by design mode, core/form/nudesign.php) – old links and
+// every other form is designed where it runs (the builder was replaced by design mode, core/form/nudesign.php) – old links and
 // bookmarks (?obj=, ?open=, ?colchg=, ?delete=1) lead to the matching place in design mode
 if ($meta) nu_redirect(NuDesign::fromBuilder($meta, $_GET));
 
-// 0.8.848: ?new=1 first asks how to start (the owner picked mockup A) – step by step (&start=wizard), described for an AI (Form with AI),
+// ?new=1 first asks how to start (the owner picked mockup A) – step by step (&start=wizard), described for an AI (Form with AI),
 // or a copy of an existing form (Form cloner); the last choice is marked (assets/js/nunewform.js, localStorage nunext-newform-last)
-// 0.8.861: a fourth card "Custom page" – a short dialogue (code = folder, description, open mode) instead of the wizard's form type; the
+// a fourth card "Custom page" – a short dialogue (code = folder, description, open mode) instead of the wizard's form type; the
 // heading says "New form or page". ?start=page opens the dialogue at once (Add of the list Custom pages: forms list with type=page)
 if ($isNew && ($_GET['start'] ?? '') !== 'wizard') {
 	$ga = !empty(NuAuth::user()['globeadmin']);
@@ -67,7 +67,8 @@ if ($isNew && ($_GET['start'] ?? '') !== 'wizard') {
 				<input class="form-control" id="nuNfPageDesc" maxlength="300" required></div>
 			<div class="mb-3"><label class="form-label" for="nuNfPageCode"><?= h(t('builder_code')) ?></label>
 				<?= nu_info_tip(t('page_code_tip')) ?>
-				<div class="input-group"><span class="input-group-text small">custom/pages/</span><input class="form-control font-monospace" id="nuNfPageCode" maxlength="64" pattern="[A-Za-z0-9][A-Za-z0-9_-]{0,63}" required autocomplete="off" spellcheck="false"></div></div>
+				<div class="input-group"><span class="input-group-text small">custom/pages/</span><input class="form-control font-monospace" id="nuNfPageCode"
+					maxlength="64" pattern="[A-Za-z0-9][A-Za-z0-9_-]{0,63}" required autocomplete="off" spellcheck="false"></div></div>
 			<div class="mb-1"><label class="form-label" for="nuNfPageMode"><?= h(t('page_open_mode')) ?></label>
 				<select class="form-select" id="nuNfPageMode"><?php foreach (NuPage::MODES as $m): ?><option value="<?= $m ?>"><?= h(t('page_mode_' . $m)) ?></option><?php endforeach; ?></select></div>
 			<div class="alert alert-danger small mt-3 mb-0 d-none" id="nuNfPageErr" role="alert"></div>
@@ -83,14 +84,15 @@ if ($isNew && ($_GET['start'] ?? '') !== 'wizard') {
 
 // labels for builder.js
 $keys = ['save', 'delete', 'cancel', 'add', 'remove', 'remove_undo', 'remove_pending', 'saved', 'clone', 'back', 'please_select', 'search', 'yes', 'no', 'no_records'];
-foreach ([__DIR__ . '/../lang/en.php'] as $f) foreach (array_keys(require $f) as $k) if (str_starts_with($k, 'builder_') || str_starts_with($k, 'bf_') || str_starts_with($k, 'form_type_') || str_starts_with($k, 'form_layout')) $keys[] = $k;
+foreach ([__DIR__ . '/../lang/en.php'] as $f) foreach (array_keys(require $f) as $k) if (str_starts_with($k, 'builder_') || str_starts_with($k, 'bf_')
+	|| str_starts_with($k, 'form_type_') || str_starts_with($k, 'form_layout')) $keys[] = $k;
 $labels = [];
 foreach ($keys as $k) $labels[$k] = t($k);
 
 $data = ['csrf' => nu_csrf_token(), 'labels' => $labels, 'can_save' => $canSave, 'new' => true];
 
 $head = '<link rel="stylesheet" href="' . nu_asset('assets/css/nubuilder.css') . '">'
-	. '<link rel="stylesheet" href="' . nu_asset(NU_TOMSELECT . '/tom-select.bootstrap5.min.css') . '">';   // searchable selects: Table (new form), form lists (0.8.535)
+	. '<link rel="stylesheet" href="' . nu_asset(NU_TOMSELECT . '/tom-select.bootstrap5.min.css') . '">';   // searchable selects: Table (new form), form lists
 $foot = '<script type="application/json" id="nuBuilderData">' . json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) . '</script>'
 	. '<script src="' . nu_asset(NU_TOMSELECT . '/tom-select.complete.min.js') . '"></script>'
 	. '<script src="' . nu_asset('assets/js/nubuilder.js') . '"></script>';
@@ -102,15 +104,16 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 <?php if ($isNew): ?>
 	<div class="row"><?php /* review M7: narrow pages start at the left like every other page */ ?>
 		<div class="col-lg-10 col-xl-8">
-			<?= $crumb   // inside the centred column, so it lines up with the card (0.8.249) ?>
+			<?= $crumb   // inside the centred column, so it lines up with the card ?>
 			<div class="d-flex flex-wrap align-items-center gap-2 mb-3"><h1 class="h3 mb-0 me-auto"><i class="bi bi-magic me-2"></i><?= h(t('builder_new_form')) ?></h1></div>
 			<form class="card shadow-sm nbIsExisting" id="nbNewForm" novalidate>
 				<div class="card-body p-4">
 					<div class="alert alert-warning nbStale" id="nbStale" role="alert"><i class="bi bi-arrow-clockwise me-1"></i><?= h(t('builder_stale_assets')) ?></div>
-					<?php // three steps (0.8.663): Form · Table and fields · Layout and access – nubuilder.js shows one at a time ?>
+					<?php // three steps: Form · Table and fields · Layout and access – nubuilder.js shows one at a time ?>
 					<ol class="nbSteps" id="nbSteps" aria-label="<?= h(t('nf_steps')) ?>">
 						<?php foreach (['nf_step_form', 'nf_step_table', 'nf_step_layout'] as $si => $sk): ?>
-							<li class="nbStepMark<?= $si === 0 ? ' active' : '' ?>" data-step="<?= $si + 1 ?>"<?= $si === 0 ? ' aria-current="step"' : '' ?>><span class="nbStepNo"><?= h(t('nf_step_n', $si + 1)) ?></span><?= h(t($sk)) ?></li>
+							<li class="nbStepMark<?= $si === 0 ? ' active' : '' ?>"
+								data-step="<?= $si + 1 ?>"<?= $si === 0 ? ' aria-current="step"' : '' ?>><span class="nbStepNo"><?= h(t('nf_step_n', $si + 1)) ?></span><?= h(t($sk)) ?></li>
 						<?php endforeach; ?>
 					</ol>
 					<div class="row g-3 nbStep" data-step="1">
@@ -125,7 +128,7 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 						<div class="col-sm-6 col-lg-4">
 							<label class="form-label" for="nb_type"><?= h(t('builder_type')) ?></label>
 							<select class="form-select" id="nb_type" name="type">
-								<?php foreach (['browseedit', 'edit', 'browse', 'subform', 'launch'] as $tp): // custom pages: their own card on the start page (0.8.861) ?><option value="<?= $tp ?>"><?= h(t('form_type_' . $tp)) ?></option><?php endforeach; ?>
+								<?php foreach (['browseedit', 'edit', 'browse', 'subform', 'launch'] as $tp): // custom pages: their own card on the start page ?><option value="<?= $tp ?>"><?= h(t('form_type_' . $tp)) ?></option><?php endforeach; ?>
 							</select>
 						</div>
 					</div>
@@ -159,9 +162,12 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 							</div>
 							<div class="form-text" id="nbColumnInfo"></div>
 							<div class="alert py-2 px-3 mt-2 mb-0 small" id="nbViewInfo" role="status" hidden></div>
-							<?php // chosen columns (0.8.675): which columns get an object / a list column, label, order – filled by nubuilder.js pickBuild() ?>
+							<?php // chosen columns: which columns get an object / a list column, label, order – filled by nubuilder.js pickBuild() ?>
 							<div class="nbPickWrap mt-2" id="nbPickWrap" hidden>
-								<button class="btn btn-link px-0 text-decoration-none nuChevToggle collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#nbPick" aria-expanded="false" aria-controls="nbPick" id="nbPickBtn"><i class="bi bi-chevron-right me-1"></i><?= h(t('builder_pick_toggle')) ?> <span class="badge rounded-pill text-bg-secondary ms-1" id="nbPickCount"></span></button>
+								<button class="btn btn-link px-0 text-decoration-none nuChevToggle collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#nbPick"
+									aria-expanded="false" aria-controls="nbPick"
+									id="nbPickBtn"><i class="bi bi-chevron-right me-1"></i><?= h(t('builder_pick_toggle')) ?> <span class="badge rounded-pill text-bg-secondary ms-1"
+									id="nbPickCount"></span></button>
 								<div class="collapse" id="nbPick">
 									<p class="small text-body-secondary mb-2"><?= h(t('builder_pick_hint')) ?></p>
 									<div class="table-responsive border rounded nbPickBox">
@@ -170,7 +176,8 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 												<th scope="col" class="nbPickC"><input class="form-check-input" type="checkbox" id="nbPickAll" aria-label="<?= h(t('builder_pick_all')) ?>" title="<?= h(t('builder_pick_all')) ?>"></th>
 												<th scope="col" class="small"><?= h(t('builder_pick_col')) ?></th>
 												<th scope="col" class="small"><?= h(t('builder_obj_label')) ?></th>
-												<th scope="col" class="small text-center text-nowrap"><input class="form-check-input me-1" type="checkbox" id="nbPickAllList" aria-label="<?= h(t('builder_pick_all_list')) ?>" title="<?= h(t('builder_pick_all_list')) ?>"><?= h(t('builder_pick_list')) ?></th>
+												<th scope="col" class="small text-center text-nowrap"><input class="form-check-input me-1" type="checkbox" id="nbPickAllList"
+													aria-label="<?= h(t('builder_pick_all_list')) ?>" title="<?= h(t('builder_pick_all_list')) ?>"><?= h(t('builder_pick_list')) ?></th>
 												<th scope="col" class="small text-center text-nowrap"><?= h(t('builder_col_filter')) ?></th>
 												<th scope="col"><span class="visually-hidden"><?= h(t('actions')) ?></span></th>
 											</tr></thead>
@@ -188,7 +195,7 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 							<input class="form-control" id="nb_new_table" maxlength="64" pattern="[A-Za-z_][A-Za-z0-9_]*" autocomplete="off" spellcheck="false">
 						</div>
 						<div class="col-sm-5 nbNew d-none">
-							<label class="form-label" for="nb_new_pk"><?= h(t('builder_primary_key')) ?></label><?php // the help as (i) next to the label (0.8.656, was a line below the field) ?>
+							<label class="form-label" for="nb_new_pk"><?= h(t('builder_primary_key')) ?></label><?php // the help as (i) next to the label (was a line below the field) ?>
 							<?= nu_info_tip(t('builder_new_pk_help')) ?>
 							<div class="input-group">
 								<input class="form-control" id="nb_new_pk" maxlength="64" autocomplete="off" spellcheck="false">
@@ -237,7 +244,7 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 							</select>
 						</div>
 					</div>
-					<?php // after creating (0.8.602): run button on nuBuilder Forte's User Home, rights + start page tile for access levels
+					<?php // after creating: run button on nuBuilder Forte's User Home, rights + start page tile for access levels
 					$uhOk = NuUserHome::available();
 					$nbLevels = NuAcl::can(NuAcl::FORM_ACCESS, 'save') ? array_values(NuAcl::levels()) : null;
 					if ($uhOk || $nbLevels !== null): ?>
@@ -255,7 +262,7 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 						<?php if (!$nbLevels): ?>
 							<div class="small text-body-secondary"><?= h(t('builder_levels_none')) ?></div>
 						<?php else: ?>
-						<?php // select all + filter by sal_group (0.8.674); "select all" works on the levels shown, hidden ones keep their tick
+						<?php // select all + filter by sal_group; "select all" works on the levels shown, hidden ones keep their tick
 						$nbGroups = array_values(array_unique(array_map(static fn($x) => trim((string)($x['sal_group'] ?? '')), $nbLevels)));
 						usort($nbGroups, static fn($a, $b) => $a === '' ? 1 : ($b === '' ? -1 : strcasecmp($a, $b))); ?>
 						<div class="d-flex flex-wrap align-items-center gap-3 mb-2 nbLevelsBar">
@@ -276,7 +283,8 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 							<?php foreach ($nbLevels as $lv): $lid = 'nb_lv_' . substr(md5((string)$lv['zzzzsys_access_id']), 0, 10); ?>
 							<div class="form-check nbLevelRow" data-group="<?= h(trim((string)($lv['sal_group'] ?? ''))) ?>">
 								<input class="form-check-input nbLevel" type="checkbox" id="<?= h($lid) ?>" value="<?= h((string)$lv['zzzzsys_access_id']) ?>">
-								<label class="form-check-label" for="<?= h($lid) ?>"><?= h((string)$lv['sal_code']) ?><?php if ((string)$lv['sal_description'] !== ''): ?> <span class="text-body-secondary">– <?= h((string)$lv['sal_description']) ?></span><?php endif; ?></label>
+								<label class="form-check-label"
+									for="<?= h($lid) ?>"><?= h((string)$lv['sal_code']) ?><?php if ((string)$lv['sal_description'] !== ''): ?> <span class="text-body-secondary">– <?= h((string)$lv['sal_description']) ?></span><?php endif; ?></label>
 							</div>
 							<?php endforeach; ?>
 						</div>

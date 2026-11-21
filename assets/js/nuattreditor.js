@@ -136,7 +136,8 @@
 			var nameIn = el('input', {type: 'text', 'class': 'form-control form-control-sm font-monospace nuAttrName', list: dlId, spellcheck: 'false', autocomplete: 'off',
 				'aria-label': tr('builder_attr_name', 'Name'), placeholder: 'placeholder, data-…'});
 			nameIn.value = name || '';
-			var del = el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-danger', title: tr('builder_attr_remove', 'Remove'), 'aria-label': tr('builder_attr_remove', 'Remove'), 'aria-pressed': 'false'},
+			var del = el('button',
+				{type: 'button', 'class': 'btn btn-sm btn-outline-danger', title: tr('builder_attr_remove', 'Remove'), 'aria-label': tr('builder_attr_remove', 'Remove'), 'aria-pressed': 'false'},
 				[el('i', {'class': 'bi bi-trash'})]);
 			var row = el('div', {'class': 'row g-2 align-items-start mb-2 nuAttrRow'}, [
 				el('div', {'class': 'col-5'}, [nameIn]),
@@ -154,7 +155,7 @@
 				}
 				update();
 			});
-			// remove (0.8.139): the row is crossed out and left out of the result; the same button brings it back until Apply
+			// remove: the row is crossed out and left out of the result; the same button brings it back until Apply
 			del.addEventListener('click', function () {
 				window.nuToggleRemoved(row, del, {remove: tr('builder_attr_remove', 'Remove'), undo: tr('remove_undo', 'Undo removal'), pending: tr('builder_attr_removed', 'Left out when you click Apply')});
 				update();

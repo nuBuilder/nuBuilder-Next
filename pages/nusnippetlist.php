@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Code snippets for one code editor (0.8.714, assets/js/nu/nucodetools.js – tab "Snippets" of the Insert menu):
+ * Code snippets for one code editor (assets/js/nu/nucodetools.js – tab "Snippets" of the Insert menu):
  * GET ?p=snippetlist&scope=0..3&lang=JS|PHP|SQL|CSS|HTML → {scope, items: [[name, description, code], …], manage, manage_label}.
  * Only for people who work in a code editor (NuSnippets::allowed); read only.
  */

@@ -132,7 +132,7 @@ final class NuPrompt
 		$T = static fn(string $t, string $l = '') => NuDDL::sqlType($t, $l);
 		$cols = ['zzzzsys_prompt_generator_id ' . $T('id') . ' NOT NULL PRIMARY KEY'];
 		foreach (self::LEN as $k => $len) $cols[] = $k . ' ' . ($len === 0 ? $T('longtext') : $T('text', (string)$len)) . ' NULL';
-		$db->run('CREATE TABLE ' . self::TABLE . ' (' . implode(', ', $cols) . ')' . ($db->type === 'mysql' ? NuDDL::mysqlTableOptions() : ''));
+		$db->run('CREATE TABLE ' . self::TABLE . ' (' . implode(', ', $cols) . ')' . $db->tableOptions());
 	}
 
 	/** JSON array (nuBuilder) or comma list → unique non-empty strings. */
@@ -230,7 +230,7 @@ final class NuPrompt
 	}
 
 	/**
-	 * What the column line does not say (0.8.1102): keys over several columns, unique keys, indexes, foreign keys (both directions),
+	 * What the column line does not say: keys over several columns, unique keys, indexes, foreign keys (both directions),
 	 * CHECK constraints, generated columns, triggers, the view's SELECT, table comment, approximate rows – and the relations
 	 * nuBuilder itself knows (forms on the table, lookups, sub-forms), since nuBuilder applications rarely declare foreign keys.
 	 * @return string[] Markdown lines "label: text" – only what exists.
@@ -245,7 +245,8 @@ final class NuPrompt
 		$idx = [];             // name => [unique, primary, [cols]]
 		$fk = []; $in = []; $checks = []; $trig = []; $gen = []; $view = ''; $comment = ''; $rows = null;
 		if ($db->type === 'mysql') {
-			foreach ($try(fn() => $db->all('SELECT INDEX_NAME AS i, NON_UNIQUE AS nu, COLUMN_NAME AS c FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? ORDER BY INDEX_NAME, SEQ_IN_INDEX', [$table])) as $r) {
+			foreach ($try(fn() => $db->all('SELECT INDEX_NAME AS i, NON_UNIQUE AS nu, COLUMN_NAME AS c FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? ORDER BY INDEX_NAME, SEQ_IN_INDEX',
+				[$table])) as $r) {
 				$idx[(string)$r['i']] ??= [(int)$r['nu'] === 0, (string)$r['i'] === 'PRIMARY', []];
 				$idx[(string)$r['i']][2][] = (string)$r['c'];
 			}
@@ -309,7 +310,9 @@ final class NuPrompt
 			}
 			$lines = [];
 			foreach ($g as $x) {
-				$rule = implode(', ', array_filter([in_array($x['d'], ['', 'RESTRICT', 'NO ACTION'], true) ? '' : 'on delete ' . strtolower($x['d']), in_array($x['u'], ['', 'RESTRICT', 'NO ACTION'], true) ? '' : 'on update ' . strtolower($x['u'])]));
+				$rule = implode(', ',
+					array_filter([in_array($x['d'], ['', 'RESTRICT', 'NO ACTION'], true) ? '' : 'on delete ' . strtolower($x['d']),
+						in_array($x['u'], ['', 'RESTRICT', 'NO ACTION'], true) ? '' : 'on update ' . strtolower($x['u'])]));
 				$from = ($incoming ? $name($x['t']) . '.' : '') . implode(' + ', array_map($name, $x['c']));
 				$to = ($incoming ? '' : $name($x['rt']) . '.') . implode(' + ', array_map($name, $x['rc']));
 				$lines[] = $from . ' → ' . $to . ($rule !== '' ? ' (' . $rule . ')' : '');
@@ -331,7 +334,8 @@ final class NuPrompt
 			$o = [];
 			$forms = $db->all("SELECT zzzzsys_form_id AS id, sfo_code AS c, sfo_type AS t, sfo_primary_key AS pk FROM zzzzsys_form WHERE sfo_table = ? AND zzzzsys_form_id NOT LIKE 'nu%' ORDER BY sfo_code", [$table]);
 			if (!$forms) return [];
-			$o[] = 'nuBuilder forms: ' . implode('; ', array_map(static fn($f) => $f['c'] . ' (' . $f['t'] . ((string)$f['pk'] !== '' ? ', primary key ' . $name((string)$f['pk']) : '') . ')', array_slice($forms, 0, 10)));
+			$o[] = 'nuBuilder forms: '
+				. implode('; ', array_map(static fn($f) => $f['c'] . ' (' . $f['t'] . ((string)$f['pk'] !== '' ? ', primary key ' . $name((string)$f['pk']) : '') . ')', array_slice($forms, 0, 10)));
 			$ids = array_column($forms, 'id');
 			$ph = implode(',', array_fill(0, count($ids), '?'));
 			$look = []; $subs = [];
@@ -370,7 +374,7 @@ final class NuPrompt
 		$schemas = [];
 		foreach ($tables as $tb) if (($s = self::schema($tb)) !== null) {
 			$schemas[] = "- **{$tb}**: {$s}";
-			foreach (self::details($tb) as $d) $schemas[] = '  - ' . $d;      // keys, constraints, relations (0.8.1102)
+			foreach (self::details($tb) as $d) $schemas[] = '  - ' . $d;      // keys, constraints, relations
 		}
 		if ($schemas) array_push($lines, '## Table Schemas', ...$schemas);
 
@@ -381,7 +385,8 @@ final class NuPrompt
 		};
 		$section('## Languages & Technologies', self::list($row['pge_language'] ?? ''), self::languages(), static fn($e) => $e['text']);
 		$section('## Context & Scopes', self::list($row['pge_scope'] ?? ''), self::scopes(), static fn($e) => $e['text']);
-		$section('## Topics & References', self::list($row['pge_tag'] ?? ''), self::topics(), static fn($e) => $e['label'] . ': ' . $e['url'] . ($e['wiki'] !== '' ? ' | nuBuilder Forte wiki: ' . $e['wiki'] : ''));
+		$section('## Topics & References', self::list($row['pge_tag'] ?? ''), self::topics(), static fn($e) => $e['label'] . ': ' . $e['url']
+			. ($e['wiki'] !== '' ? ' | nuBuilder Forte wiki: ' . $e['wiki'] : ''));
 		return implode("\n", $lines);
 	}
 

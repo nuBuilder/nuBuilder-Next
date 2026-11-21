@@ -1,5 +1,5 @@
 /*
- * Code search (0.8.1172, pages/nucodesearch.php): quick searches (function / table / hash variable → whole word, exact text; functions
+ * Code search (pages/nucodesearch.php): quick searches (function / table / hash variable → whole word, exact text; functions
  * nuBuilder Next lacks → one regular expression over their names), expand / collapse the groups, Save search…, Esc clears the field.
  */
 (function () {
@@ -40,7 +40,7 @@
 		q.value = v; setMode('phrase'); setChk('csW', false); setChk('csR', false); setChk('csC', false); setLang([]);
 		form.requestSubmit ? form.requestSubmit() : form.submit();
 	});
-	// "Functions nuBuilder Next lacks" is a search the server builds (preset=missing, 0.8.1173): typing a text of your own ends it
+	// "Functions nuBuilder Next lacks" is a search the server builds (preset=missing): typing a text of your own ends it
 	var preset = document.getElementById('csPreset');
 	if (preset) q.addEventListener('input', function () {
 		if (preset.parentNode) preset.parentNode.removeChild(preset);
@@ -62,7 +62,7 @@
 		var n = document.getElementById('csSaveName');
 		if (n) { n.focus(); n.select(); }
 	});
-	// search and replace (0.8.1174): the field is sent only while its row is open; the button counts the ticked lines
+	// search and replace: the field is sent only while its row is open; the button counts the ticked lines
 	var rpRow = document.getElementById('csRpRow'), rp = document.getElementById('csRp'), rm = document.getElementById('csRmode');
 	if (rpRow && rp && rm) {
 		rpRow.addEventListener('shown.bs.collapse', function () { rp.disabled = false; rm.disabled = false; rp.focus(); });
@@ -72,7 +72,7 @@
 	var go2 = document.getElementById('csRpGo');
 	function count() {
 		if (!go2) return;
-		// an unticked line: its marks struck through and its new line hidden (class csRpOff – nuapp.css, 0.8.1342; was :has() in the style sheet)
+		// an unticked line: its marks struck through and its new line hidden (class csRpOff – nuapp.css)
 		Array.prototype.forEach.call(document.querySelectorAll('.csRpTick'), function (c) {
 			var hit = c.closest('.csHit');
 			if (hit) hit.classList.toggle('csRpOff', !c.checked);
@@ -90,7 +90,7 @@
 	q.addEventListener('keydown', function (e) { if (e.key === 'Escape' && q.value) { q.value = ''; e.preventDefault(); } });
 })();
 
-// phones (0.8.1241, the owner picked mockup A of the canvas "Code search on phones"): one search row – field · Options · Filters (count).
+// phones (the owner picked mockup A of the canvas "Code search on phones"): one search row – field · Options · Filters (count).
 // Below 576 px the options (match mode, whole word, case, regular expression, Without, quick searches) and the filters are moved into
 // two bottom sheets (#csOptSheet / #csFiltSheet – inside the form, so they are still sent); back to their places from 576 px on.
 // Closing a sheet after a change searches again when there is something to search for.

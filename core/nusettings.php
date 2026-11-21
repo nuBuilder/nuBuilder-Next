@@ -19,7 +19,7 @@ final class NuSettings
 	public const TABLE = 'zzzzsys_config';
 
 	/**
-	 * What each of nuBuilder's settings means for nuBuilder Next (0.8.279) – shown as a tag on the page, mainly for the developer:
+	 * What each of nuBuilder's settings means for nuBuilder Next – shown as a tag on the page, mainly for the developer:
 	 *   'next' = nuBuilder Next reads it · 'open' = not built yet (only nuBuilder uses it for now) · 'na' = not needed (reason key
 	 *   set_r_*: nuBuilder Next has its own solution or it is always on). Settings not listed (own rows) get no tag.
 	 * Keep it up to date when a setting is implemented: move it to 'next'.
@@ -28,10 +28,12 @@ final class NuSettings
 		// read by nuBuilder Next
 		'nuDebugMode' => ['next', 'next'], '$nuConfigGlobeadminHome' => ['next', 'next'], 'nuHideTabTitleIfOnlyOne' => ['next', 'next'],
 		'$nuConfigTitle' => ['next', 'next'], '$nuConfigIncludeApexCharts' => ['next', 'next'], '$nuConfig2FAAdmin' => ['next', 'next'],
-		'$nuConfig2FAUser' => ['next', 'next'], '$nuConfigDemoSavingAllowedIds' => ['next', 'next'], '$nuConfigEnableDatabaseUpdate' => ['next', 'next'], '$nuConfigPrimaryDatabaseManagement' => ['next', 'next'],
+		'$nuConfig2FAUser' => ['next', 'next'], '$nuConfigDemoSavingAllowedIds' => ['next', 'next'], '$nuConfigEnableDatabaseUpdate' => ['next', 'next'],
+			'$nuConfigPrimaryDatabaseManagement' => ['next', 'next'],
 		'$nuUseMd5PasswordHash' => ['next', 'next'], '$nuConfig2FASafeIPAddresses' => ['next', 'next'], '$nuConfigHomeHooks' => ['next', 'next'],
-		'nuAutosizeBrowseColumns' => ['next', 'next'], 'nuBrowserTabTitlePrefix' => ['next', 'next'], 'nuShowBrowserTabTitle' => ['next', 'next'],   // 0.8.965                // 0.8.965: lists keep the stored column widths when off
-		'$nuConfigUserAdditional1Label' => ['next', 'next'], '$nuConfigUserAdditional2Label' => ['next', 'next'], '$nuConfigUserCodeLabel' => ['next', 'next'],   // 0.8.798: t() / nu_user_label()
+		'nuAutosizeBrowseColumns' => ['next', 'next'], 'nuBrowserTabTitlePrefix' => ['next', 'next'], 'nuShowBrowserTabTitle' => ['next', 'next'],
+			// lists keep the stored column widths when off
+		'$nuConfigUserAdditional1Label' => ['next', 'next'], '$nuConfigUserAdditional2Label' => ['next', 'next'], '$nuConfigUserCodeLabel' => ['next', 'next'],   // t() / nu_user_label()
 		// not built yet
 		'$nuConfigDBGlobeadminUsers' => ['open', 'open'],
 		'nuStickyHeaders' => ['open', 'open'],
@@ -56,7 +58,7 @@ final class NuSettings
 	private const PROTECTED = '/^nuConfig(DB(?!GlobeadminUsers$)|SecretKey$|SettingsFromDB$)/';
 
 	/**
-	 * nuBuilder Next's own rows in the settings table (0.8.282) – added when missing (update step 0005, "Create" on the page);
+	 * nuBuilder Next's own rows in the settings table – added when missing (update step 0005, "Create" on the page);
 	 * nuBuilder shows them in its Settings too and ignores them.
 	 */
 	/**
@@ -248,7 +250,7 @@ final class NuSettings
 		return self::$cache = $out;
 	}
 
-	/** Back button on phones (0.8.1002, own row nuPhoneBackButton): 'icon', 'hidden' or '' (icon and text). */
+	/** Back button on phones (own row nuPhoneBackButton): 'icon', 'hidden' or '' (icon and text). */
 	public static function phoneBack(): string
 	{
 		static $busy = false;                                   // no nuconfig.php yet (installer) or an error page while reading it: default

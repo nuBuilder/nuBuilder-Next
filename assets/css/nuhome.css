@@ -1,4 +1,4 @@
-/* nuBuilder Next – start page of the globeadmin / admin roles (0.8.420): tile styles, navigation, descriptions and the View panel.
+/* nuBuilder Next – start page of the globeadmin / admin roles: tile styles, navigation, descriptions and the View panel.
    pages/nuhome.php draws every tile once with the same markup; assets/js/nuhome.js switches the view with classes:
    on #nuHomeView  nuHomeNav-<groups|tabs|sidebar|none> nuHomeDesc-<auto|inline|tooltip|hovercard|info|off> nuHomeDens-<…> nuHomeIcn-<…>
                    nuHomeGcol nuHomeNoBadges nuHomeNoActions nuHomeListCols-<1|2|3|4|auto> nuHomeListFull, --nu-lines
@@ -15,16 +15,16 @@
 
 /* ------------------------------------------------------------------ search row: search, favourites only, View, Customise */
 .nuHomeSearchRow { display: flex; align-items: center; gap: .5rem; margin-bottom: 1.25rem; }
-.nuHomeSearchRow .nuHomeSearchBox { flex: 1 1 auto; min-width: 0; max-width: 300px; }   /* 0.8.455: Customise right next to it */
-@media (min-width: 768px) { .nuHomeSearchRow .nuHomeSearchBox { max-width: 480px; } }   /* desktop: the field 180 px wider (0.8.727) */
-/* desktop (0.8.746): the search row stays below the top bar while scrolling – the results list (#nuHomeSearchMore) sits below it */
+.nuHomeSearchRow .nuHomeSearchBox { flex: 1 1 auto; min-width: 0; max-width: 300px; }   /* Customise right next to it */
+@media (min-width: 768px) { .nuHomeSearchRow .nuHomeSearchBox { max-width: 480px; } }   /* desktop: the field 180 px wider */
+/* desktop: the search row stays below the top bar while scrolling – the results list (#nuHomeSearchMore) sits below it */
 @media (min-width: 768px) {
 	.nuHomeSearchRow { position: sticky; top: var(--nu-nav-h, 57px); z-index: 1005; background: var(--nu-page, var(--bs-body-bg)); padding-block: .5rem; margin-top: -.5rem; margin-bottom: .75rem; }
 	html.nuNoNavbar .nuHomeSearchRow { top: 0; }
 }
 .nuHomeTools { display: flex; gap: .5rem; flex: none; }
 .nuHomeTools .btn { display: inline-flex; align-items: center; gap: .4rem; white-space: nowrap; }
-#nuHomeViewBtn .nuHomeBtnTx, #nuHfToggle .nuHomeBtnTx { display: none; }   /* icon only (0.8.455) – name in title / aria-label */
+#nuHomeViewBtn .nuHomeBtnTx, #nuHfToggle .nuHomeBtnTx { display: none; }   /* icon only – name in title / aria-label */
 #nuHomeViewBtn[aria-expanded="true"] { background: var(--bs-primary-bg-subtle); color: var(--bs-primary-text-emphasis); border-color: var(--bs-primary-border-subtle); }
 @container (max-width: 640px) {
 	.nuHomeBtnTx { display: none; }
@@ -35,9 +35,9 @@
 .nuHomeStrip { margin-bottom: var(--nu-sec); }
 .nuHomeStrip .nuHomeGroupTitle { display: flex; align-items: center; gap: .45rem; }
 .nuHomeStripStar { color: var(--nu-star); }
-/* fold the rows (0.8.465): the heading is the button; folded = chevron right + number of entries */
+/* fold the rows: the heading is the button; folded = chevron right + number of entries */
 .nuHomeStripToggle { display: inline-flex; align-items: center; gap: .45rem; padding: 0; border: 0; background: none; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer; }
-.nuHomeStripClear { padding: .1rem .3rem; border: 0; background: none; color: var(--bs-secondary-color); font-size: .85rem; line-height: 1; border-radius: .25rem; cursor: pointer; }   /* 0.8.491 */
+.nuHomeStripClear { padding: .1rem .3rem; border: 0; background: none; color: var(--bs-secondary-color); font-size: .85rem; line-height: 1; border-radius: .25rem; cursor: pointer; }
 .nuHomeStripClear:hover { color: var(--bs-danger); }
 .nuHomeStripClear:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 1px; }
 .nuHomeStripClearForm { display: inline; margin: 0; }
@@ -52,7 +52,7 @@
 @media (prefers-reduced-motion: reduce) { .nuHomeStripChev { transition: none; } }
 .nuHomeChips { display: flex; flex-wrap: wrap; gap: .5rem; }
 .nuHomeChips > .nuHomeTileForm { display: contents; }
-/* chips and panel groups in light mode (0.8.487): lighter border, no shadow */
+/* chips and panel groups in light mode: lighter border, no shadow */
 :root:not([data-bs-theme="dark"]) { --nu-home-line: #6060602d; --nu-home-shadow: none; }
 .nuHomeChip { display: inline-flex; align-items: center; gap: .5rem; max-width: 100%; padding: .3rem .85rem .3rem .3rem; font: inherit; font-size: .9rem; color: var(--bs-body-color);
 	text-decoration: none; background: var(--nu-surface, var(--bs-body-bg)); border: 1px solid var(--nu-home-line, var(--bs-border-color-translucent)); border-radius: 999px; box-shadow: var(--nu-home-shadow, var(--bs-box-shadow-sm)); cursor: pointer; }
@@ -210,7 +210,7 @@
 #nuHomeView:is(.nuHomeListCols-2, .nuHomeListCols-3, .nuHomeListCols-4, .nuHomeListCols-auto).nuHomeNav-none .nuHomeMain.nuHomeStyle-list {
 	display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; max-width: none; overflow: visible; background: none; border: 0; box-shadow: none; }
 #nuHomeView.nuHomeListCols-auto .nuHomeStyle-list .nuHomeTiles, #nuHomeView.nuHomeListCols-auto.nuHomeNav-none .nuHomeMain.nuHomeStyle-list { grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); }
-/* 3 / 4 columns (0.8.659) – fewer where the page is narrow (the 560 px rule below makes it one) */
+/* 3 / 4 columns – fewer where the page is narrow (the 560 px rule below makes it one) */
 #nuHomeView.nuHomeListCols-3 .nuHomeStyle-list .nuHomeTiles, #nuHomeView.nuHomeListCols-3.nuHomeNav-none .nuHomeMain.nuHomeStyle-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 #nuHomeView.nuHomeListCols-4 .nuHomeStyle-list .nuHomeTiles, #nuHomeView.nuHomeListCols-4.nuHomeNav-none .nuHomeMain.nuHomeStyle-list { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 @container (max-width: 900px) {   /* the start page is at most 1100 px wide: 4 columns from 900 px (≈ 225 px a tile) */
@@ -264,7 +264,7 @@
 .nuHomeStyle-panels .nuHomeLabelRow { flex-wrap: nowrap; }
 .nuHomeStyle-panels .nuHomeLabel { font-size: .92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .nuHomeStyle-panels .nuHomeHint { font-size: .76rem; }
-.nuHomeStyle-panels .nuHomeAction { position: static; transform: none; flex: none; margin-inline-end: .15rem; }   /* + / ▾ at the end of the row (0.8.421) */
+.nuHomeStyle-panels .nuHomeAction { position: static; transform: none; flex: none; margin-inline-end: .15rem; }   /* + / ▾ at the end of the row */
 .nuHomeStyle-panels .nuHomeAction .btn { --bs-btn-padding-y: .1rem; --bs-btn-padding-x: .35rem; --bs-btn-font-size: .75rem; border-color: transparent; }
 .nuHomeStyle-panels .nuHomeTileWrap:hover .nuHomeAction .btn, .nuHomeStyle-panels .nuHomeAction .btn:focus-visible, .nuHomeStyle-panels .nuHomeAction .btn[aria-expanded="true"] { border-color: var(--bs-border-color); }
 .nuHomeStyle-panels .nuHomeInfo { position: static; transform: none; flex: none; margin-inline-end: .2rem; }
@@ -353,6 +353,13 @@
 .nuHomeHcFoot .nuHomeHcLink { width: auto; padding: .2rem .45rem; font-size: .8rem; color: var(--bs-primary-text-emphasis); }
 .nuHomeHcFoot kbd { font-size: .75rem; padding: .1rem .3rem; color: var(--bs-body-color); background: var(--bs-tertiary-bg); border: 1px solid var(--bs-border-color); }
 
+/* the icon samples of the panel (--nu-ic set by the script) */
+.nuHomeVpPickIcon .nuHomeIcn-solid .nuHomeIcon { background: var(--nu-ic); color: #fff; }
+.nuHomeVpPickIcon .nuHomeIcn-outline .nuHomeIcon { background: transparent; color: var(--nu-ic); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--nu-ic) 50%, transparent); }
+.nuHomeVpPickIcon .nuHomeIcn-mono .nuHomeIcon { background: var(--bs-secondary-bg); color: var(--bs-secondary-color); }
+.nuHomeVpPickIcon .nuHomeIcn-none .nuHomeIcon { background: transparent; color: var(--nu-ic); }
+
+/* ------------------------------------------------------------------ user start pages */
 /* ------------------------------------------------------------------ the View panel: drawer (≥ 992 px, pushes the page), overlay (576–991 px), sheet (phones) */
 .nuHomeVp { position: fixed; z-index: 1035; display: flex; flex-direction: column; font-size: .88rem; color: var(--bs-body-color); background: var(--nu-surface, var(--bs-body-bg)); }
 .nuHomeVp[hidden] { display: none; }
@@ -419,7 +426,7 @@
 .nuHomeTh { width: 100%; height: auto; aspect-ratio: 3 / 2; fill: currentColor; color: var(--bs-secondary-color); }
 .nuHomeVpPick button[aria-pressed="true"] .nuHomeTh { color: var(--bs-primary); }
 .nuHomeTh .nuHomeThCard { fill: var(--nu-surface, var(--bs-body-bg)); stroke: currentColor; stroke-opacity: .45; stroke-width: .8; }
-.nuHomeVpPickIcon .nuHomeIcon { width: 1.9rem; height: 1.9rem; font-size: .9rem; }
+.nuHomeVpPickIcon .nuHomeIcon { width: 1.9rem; height: 1.9rem; font-size: .9rem; background: color-mix(in srgb, var(--nu-ic) 13%, var(--nu-surface, var(--bs-body-bg))); color: color-mix(in srgb, var(--nu-ic) 85%, var(--bs-body-color)); }
 .nuHomeVpSw { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .35rem 0; margin: 0; cursor: pointer; }
 .nuHomeVpSw b { display: block; font-weight: 500; font-size: .86rem; }
 .nuHomeVpSw small { display: block; font-size: .76rem; color: var(--bs-secondary-color); }
@@ -430,14 +437,6 @@
 .nuHomeVpTarget { margin-top: .6rem; }
 .nuHomeVpTarget > span { display: block; margin-bottom: .3rem; font-size: .8rem; color: var(--bs-secondary-color); }
 .nuHomeVpSw.form-switch { padding-inline-start: 0; }
-/* the icon samples of the panel (--nu-ic set by the script) */
-.nuHomeVpPickIcon .nuHomeIcon { background: color-mix(in srgb, var(--nu-ic) 13%, var(--nu-surface, var(--bs-body-bg))); color: color-mix(in srgb, var(--nu-ic) 85%, var(--bs-body-color)); }
-.nuHomeVpPickIcon .nuHomeIcn-solid .nuHomeIcon { background: var(--nu-ic); color: #fff; }
-.nuHomeVpPickIcon .nuHomeIcn-outline .nuHomeIcon { background: transparent; color: var(--nu-ic); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--nu-ic) 50%, transparent); }
-.nuHomeVpPickIcon .nuHomeIcn-mono .nuHomeIcon { background: var(--bs-secondary-bg); color: var(--bs-secondary-color); }
-.nuHomeVpPickIcon .nuHomeIcn-none .nuHomeIcon { background: transparent; color: var(--nu-ic); }
-
-/* ------------------------------------------------------------------ user start pages (0.8.425) */
 /* editor: tiles and groups shown only to some users (conditions) */
 .nuHomeCondMark { flex: none; font-size: .75rem; color: var(--bs-info-text-emphasis); margin-inline-start: .35rem; }
 .nuHomeGroupHead .nuHomeCondMark { font-size: .8rem; }
@@ -445,7 +444,7 @@
 .list-group-item .nuHeCondMark { position: static; margin-inline-start: .5rem; }
 .nuHeCondOn { color: var(--bs-info-text-emphasis); }
 .nuHomeForBar label { white-space: nowrap; }
-/* 0.8.1202: the access level choice – as wide as the room, never wider than the screen (long level names) */
+/* the access level choice – as wide as the room, never wider than the screen (long level names) */
 .nuHomeForBar .nuHomeForSel { flex: 1 1 18rem; min-width: 0; max-width: min(100%, 34rem); }
 .nuHomeForBar .ts-control { min-width: 0; }
 .nuHomeForBar .ts-control .item { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -466,25 +465,25 @@
 .nuHomeRights > summary::after { content: "\F282"; font-family: bootstrap-icons; margin-inline-start: .5rem; transition: transform .15s; }
 .nuHomeRights[open] > summary::after { transform: rotate(180deg); }
 
-/* one Customise panel (0.8.452): tabs Content · Appearance · Layouts under the head */
+/* one Customise panel: tabs Content · Appearance · Layouts under the head */
 .nuHomeVpTabs { padding: 0 1rem; flex-wrap: nowrap; --nu-tab-surface: var(--bs-body-bg); }
 .nuHomeVpTabs .nav-link { padding: .45rem .6rem; font-size: .875rem; white-space: nowrap; }
 
-/* right-click / long press menu of a tile (0.8.497): name, description, add to / remove from favourites */
+/* right-click / long press menu of a tile: name, description, add to / remove from favourites */
 .nuHomeCtx { position: fixed; z-index: 1080; margin: 0; min-width: 14rem; max-width: 20rem; }
 .nuHomeCtxHead { padding: .25rem 1rem .35rem; white-space: normal; }
-/* User Home button (0.8.642): the house glyph sits a little higher in its box than the star next to it – nudge it down */
+/* User Home button: the house glyph sits a little higher in its box than the star next to it – nudge it down */
 
-/* search (0.8.723): one result list instead of the filtered tiles; the kinds filter in the search field */
+/* search: one result list instead of the filtered tiles; the kinds filter in the search field */
 #nuHomeView.nuHomeSearching { display: none !important; }
 .nuHomeSearchList { max-width: 760px; }
 .nuHomeSkBtn.nuHomeSkOn { color: var(--bs-primary); border-color: var(--bs-primary); position: relative; }
 .nuHomeSkBtn.nuHomeSkOn::after { content: ""; position: absolute; top: 6px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--bs-primary); }
 .nuHomeSkMenu { min-width: 240px; }
 
-/* a form tile in maintenance (0.8.808) for someone who cannot open it: greyed, the badge says why */
+/* a form tile in maintenance for someone who cannot open it: greyed, the badge says why */
 [data-nu-maint="1"] .nuHomeIcon, [data-nu-maint="1"] .nuHomeLabel, [data-nu-maint="1"] .nuHomeHint { opacity: .55; filter: grayscale(1); }
-/* selected search result (0.8.864, the owner's choice C of the mockup): darker solid blue, white bold title, near-white description,
+/* selected search result (the owner's choice C of the mockup): darker solid blue, white bold title, near-white description,
    icon on a white square – the default blue with dark Bootstrap text classes had too little contrast */
 .nuHomeSearchList > .list-group-item.active { background: #0a58ca; border-color: #0a58ca; color: #fff; }
 .nuHomeSearchList > .list-group-item.active .text-body { color: #fff !important; font-weight: 600; }
@@ -492,7 +491,7 @@
 .nuHomeSearchList > .list-group-item.active .nu-tile-icon { background: #fff !important; color: #0a58ca !important; }
 .nuHomeSearchList > .list-group-item.active .nu-tile-icon .bi { color: inherit !important; }
 
-/* rows folded from the first paint (0.8.995, html.nuHomeFold-<fav|recent> from nutheme.js until nuhome.js applies the fold) */
+/* rows folded from the first paint (html.nuHomeFold-<fav|recent> from nutheme.js until nuhome.js applies the fold) */
 html.nuHomeFold-fav .nuHomeStrip[data-nu-strip="fav"] .nuHomeChips,
 html.nuHomeFold-recent .nuHomeStrip[data-nu-strip="recent"] .nuHomeChips,
 html.nuHomeFold-fav .nuHomeStrip[data-nu-strip="fav"] .nuHomeStripClearForm,
@@ -500,22 +499,20 @@ html.nuHomeFold-recent .nuHomeStrip[data-nu-strip="recent"] .nuHomeStripClearFor
 html.nuHomeFold-fav .nuHomeStrip[data-nu-strip="fav"] .nuHomeStripChev,
 html.nuHomeFold-recent .nuHomeStrip[data-nu-strip="recent"] .nuHomeStripChev { transform: rotate(-90deg); }
 
-/* Customise → Appearance: "Without favourites" belongs to Recently used (0.8.1115) */
-.nuHomeVpSw.nuHomeVpSub { margin-inline-start: .75rem; padding-inline-start: .75rem; border-inline-start: 2px solid var(--bs-border-color); }
-.nuHomeVpSw.nuHomeVpSub b { font-weight: 400; }
+/* Customise → Appearance: "Without favourites" belongs to Recently used */
+.nuHomeVpSw.nuHomeVpSub { margin-inline-start: .75rem; padding-inline-start: .75rem; border-inline-start: 2px solid var(--bs-border-color); box-sizing: border-box; max-width: calc(100% - .75rem); min-width: 0; }
+.nuHomeVpSw.nuHomeVpSub b { font-weight: 400; align-items: center; display: inline-flex; }
 .nuHomeVpSw.nuHomeVpOff { opacity: .5; cursor: default; }
 .nuHomeVpSw.nuHomeVpOff .form-check-input { cursor: default; }
 .nuHomeChip[hidden] { display: none !important; }
-/* 0.8.1116: the indented switch never makes the panel wider than it is */
-.nuHomeVpSw.nuHomeVpSub { box-sizing: border-box; max-width: calc(100% - .75rem); min-width: 0; }
+/* the indented switch never makes the panel wider than it is */
 .nuHomeVpSw > span { min-width: 0; }
-.nuHomeVpSw.nuHomeVpSub b { display: inline-flex; align-items: center; }
 
-/* User Home button next to Customise (0.8.998, back 0.8.1220) */
-/* 0.8.1222: the tile pages editor's level select opens above the sticky search row (z 1005) below it */
+/* User Home button next to Customise */
+/* the tile pages editor's level select opens above the sticky search row (z 1005) below it */
 .nuHomeForBar { position: relative; z-index: 1006; }
 
-/* Customise → Appearance → This device → Page width (0.8.1227) */
+/* Customise → Appearance → This device → Page width */
 .nuHomeVpPwRow { flex-wrap: wrap; }
 .nuHomeVpPwCtl { display: flex; gap: .5rem; align-items: center; flex: 1 1 12rem; min-width: 0; }
 .nuHomeVpPwCtl .form-select { flex: 1 1 auto; min-width: 0; }

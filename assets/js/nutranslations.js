@@ -1,4 +1,4 @@
-/* Translations → Missing with a form (0.8.754): copy the AI prompt (POST action=ai_prompt → JSON), select all rows of the answer's preview. */
+/* Translations → Missing with a form: copy the AI prompt (POST action=ai_prompt → JSON), select all rows of the answer's preview. */
 (function () {
 	'use strict';
 	var form = document.getElementById('trlAiPromptForm');
@@ -20,7 +20,7 @@
 				if (ok) resolve(); else reject(new Error('copy'));
 			});
 		};
-		// "Ask AI" with a configured AI service (0.8.1099, assets/js/nuaiask.js): the answer goes into the answer box – then "Check"
+		// "Ask AI" with a configured AI service (assets/js/nuaiask.js): the answer goes into the answer box – then "Check"
 		var askHost = document.getElementById('trlAiAsk'), ansBox = document.getElementById('trlAiAnswer');
 		if (window.NuAiAsk && askHost && ansBox) window.NuAiAsk.mount(askHost, {
 			prompt: function () {

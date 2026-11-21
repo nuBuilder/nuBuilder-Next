@@ -6,15 +6,15 @@
 	document.documentElement.setAttribute('data-bs-theme', dark ? 'dark' : 'light');
 	document.documentElement.setAttribute('data-nu-theme', stored);
 	// tabs that the page's script opens after loading (#backups, the last tab of a procedure …): hidden until then, so the first tab does
-	// not flash up (0.8.444, [data-nu-tab-restore] in nuapp.css; nuapp.js shows them on DOMContentLoaded, at the latest after 3 s)
-	// 0.8.451: not when the server already opened the tab – ?tab=<name> with no or the same #<name> (pager links, redirects), so paging a
+	// not flash up ([data-nu-tab-restore] in nuapp.css; nuapp.js shows them on DOMContentLoaded, at the latest after 3 s)
+	// not when the server already opened the tab – ?tab=<name> with no or the same #<name> (pager links, redirects), so paging a
 	// table in a tab does not blank it for a moment
 	var tabQ = (window.location.search.match(/[?&]tab=([^&#]*)/) || [])[1] || '', tabH = window.location.hash.replace(/^#/, '');
 	if (!tabQ || (tabH !== '' && tabH !== tabQ)) {
 		document.documentElement.classList.add('nuTabsPending');
 		setTimeout(function () { document.documentElement.classList.remove('nuTabsPending'); }, 3000);
 	}
-	// form record pages and launch forms (0.8.1224): the tab nuruntime.js restores for the same record shown again (reload, back / forward, after Save,
+	// form record pages and launch forms: the tab nuruntime.js restores for the same record shown again (reload, back / forward, after Save,
 	// opened from itself) – tabs and panes hidden until it is selected, so the first tab does not flash up (html.nuFormTabPending,
 	// removed by nuruntime.js after the restore, at the latest after 3 s)
 	try {
@@ -34,7 +34,7 @@
 			}
 		}
 	} catch (e) {}
-	// page width (0.8.1226, core/nupagewidth.php): this device's choice (localStorage nunext-page-width) or the installation's default
+	// page width (core/nupagewidth.php): this device's choice (localStorage nunext-page-width) or the installation's default
 	// (<html data-nu-pw>, Settings → Look) – html.nuPwSet + --nu-pw (px) / html.nuPwFull before the first paint; nuapp.js calls it again
 	window.nuPageWidthApply = function () {
 		var de = document.documentElement, v = '';
@@ -47,15 +47,15 @@
 		return v;
 	};
 	try { window.nuPageWidthApply(); } catch (e) {}
-	// side bar: the icon rail of 0.8.460–0.8.512 is gone (0.8.513) – forget its remembered state
+	// side bar: the icon rail of is gone – forget its remembered state
 	try { localStorage.removeItem('nunext-sidebar-collapsed'); } catch (e) {}
-	// system lists on phones (0.8.471): cards or table chosen with the ▦ / ☰ button of this list (?p=<route>) – before drawing
+	// system lists on phones: cards or table chosen with the ▦ / ☰ button of this list (?p=<route>) – before drawing
 	try {
 		var lvRoute = (window.location.search.match(/[?&]p=([\w-]+)/) || [])[1] || '';
 		var lvPhone = lvRoute ? localStorage.getItem('nunext-lv-phone-' + lvRoute) : null;
 		if (lvPhone === 'table' || lvPhone === 'cards') document.documentElement.setAttribute('data-lv-phone', lvPhone);
 	} catch (e) {}
-	// form lists on phones (0.8.993): rows as cards from the first paint – nuruntime.js phoneStack() sets the same class only after
+	// form lists on phones: rows as cards from the first paint – nuruntime.js phoneStack() sets the same class only after
 	// loading, so the table showed for a moment. Not when the user chose the table for this form (nunext-browse-phone-<form>), in the
 	// print view, in design mode or in a dialog of a wide window; phoneStack() corrects it later in any other case
 	try {
@@ -72,9 +72,11 @@
 		var nst = localStorage.getItem('nunext-home-notices');
 		if (nst === 'shut' || (nst !== 'open' && window.matchMedia && matchMedia('(max-width: 767.98px)').matches)) document.documentElement.classList.add('nuNoticesShut');
 	} catch (e) {}
-	// a run button's pivot (0.8.1156): the list page behind the pivot stays hidden from the first paint (nupivot.js)
-	try { if (/[?&]p=form(&|$)/.test(window.location.search) && /[?&]pvonly=1(&|$)/.test(window.location.search)) { document.documentElement.classList.add('nuPvOnly'); setTimeout(function () { if (!document.querySelector('.nuPvDlg')) document.documentElement.classList.remove('nuPvOnly'); }, 5000); } } catch (e) {}
-	// start page (0.8.995): rows Favourites / Recently used folded from the first paint as nuhome.js stripFold() will fold them
+	// a run button's pivot: the list page behind the pivot stays hidden from the first paint (nupivot.js)
+	try { if (/[?&]p=form(&|$)/.test(window.location.search)
+		&& /[?&]pvonly=1(&|$)/.test(window.location.search)) { document.documentElement.classList.add('nuPvOnly'); setTimeout(function () { if (!document.querySelector('.nuPvDlg')) document.documentElement.classList.remove('nuPvOnly'); },
+			5000); } } catch (e) {}
+	// start page: rows Favourites / Recently used folded from the first paint as nuhome.js stripFold() will fold them
 	// (saved 'folded', Auto collapse, or Recently used on a phone without a choice) – html.nuHomeFold-<fav|recent>, removed by nuhome.js
 	try {
 		var qp = (window.location.search.match(/[?&]p=([\w-]+)/) || [])[1] || '';
@@ -86,14 +88,14 @@
 		});
 	} catch (e) {}
 	// warnings a person closed for good (Global code, config file): hidden from the first paint – they flashed until the page's script
-	// hid them (0.8.1120). html.nuWarnOff-<scode|cfg>, removed by that script once it has set the hidden attributes
+	// hid them. html.nuWarnOff-<scode|cfg>, removed by that script once it has set the hidden attributes
 	try {
 		[['scode', 'nunext-scode-warn-hidden'], ['cfg', 'nunext-cfg-warn-hidden'], ['insp', 'nunext-insp-hint-hidden']].forEach(function (w) {
 			if (localStorage.getItem(w[1]) === '1') document.documentElement.classList.add('nuWarnOff-' + w[0]);
 		});
 	} catch (e) {}
-	// settings centre "Compact" (0.8.1240): descriptions hidden from the first paint
+	// settings centre "Compact": descriptions hidden from the first paint
 	try { if (localStorage.getItem('nunext-settings-compact') === '1') document.documentElement.classList.add('nuSetCompact'); } catch (e) {}
-	// page forms (0.8.387, $nu->theme()): the choice for the server too
+	// page forms ($nu->theme()): the choice for the server too
 	try { document.cookie = 'nunext_theme=' + encodeURIComponent(stored) + '; path=' + window.location.pathname.replace(/[^/]*$/, '') + '; SameSite=Lax'; } catch (e) {}
 })();

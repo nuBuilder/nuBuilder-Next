@@ -3,16 +3,16 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * AI providers (0.8.1099): configurations that let the AI dialogues (Form with AI, Ask AI in design mode, Reports with AI, help
+ * AI providers: configurations that let the AI dialogues (Form with AI, Ask AI in design mode, Reports with AI, help
  * pages, translations, the prompt generator) send their prompt to an AI service and fetch the answer – in addition to copy and paste.
  *
  * - Table zzzzsys_nunext_ai_provider: name, kind (anthropic | openai = OpenAI-compatible | gemini), base_url, api_key (sealed with
  *   $nuConfigSecretKey), model, temperature, max_tokens, timeout, system (extra instruction), params (JSON merged into the request),
  *   active, access (all | levels | password), levels (JSON of access level ids), month_limit (tokens, 0 = none).
- * - Password-protected configurations (0.8.1101): the API key is ALSO encrypted with a key derived from the password (Argon2id,
+ * - Password-protected configurations: the API key is ALSO encrypted with a key derived from the password (Argon2id,
  *   pw_salt) – api_key = "pw:" + secretbox(server-sealed key). No password hash is stored: a wrong password fails to decrypt.
  *   After unlock() the derived key lives in the session, encrypted with a random value kept only in the cookie nunext_aik – the
- *   session file alone opens nothing. Forgotten password = enter the API key again. Rows of 0.8.1099 / 0.8.1100 (bcrypt hash in
+ *   session file alone opens nothing. Forgotten password = enter the API key again. Rows of (bcrypt hash in
  *   password, key sealed by the server only) convert on their first unlock.
  * - Table zzzzsys_nunext_ai_call: one row per request – who, configuration, feature, model, tokens in / out, ms, status. Never the content.
  * - The request runs on the server (the key never reaches the browser): ask() → request() → transport (curl; self::$transport in tests).
@@ -117,7 +117,7 @@ final class NuAiProvider
 		if ($access === 'levels' && !$levels) $errors['levels'] = t('aip_err_levels');
 		$pw = (string)($in['password'] ?? '');
 		$wasPw = $old && self::pwMode($old);
-		$legacy = $old && $old['access'] === 'password' && !$wasPw && $old['password'] !== '';      // 0.8.1099 / 0.8.1100: converts on its first unlock
+		$legacy = $old && $old['access'] === 'password' && !$wasPw && $old['password'] !== '';      // converts on its first unlock
 		$plainKey = null;                                                    // the API key in clear, when this save has to encrypt it again
 		if ($access === 'password') {
 			if (!self::canDerive()) $errors['password'] = t('aip_err_sodium');
@@ -245,7 +245,7 @@ final class NuAiProvider
 		$d = self::get($id);
 		if (!$d || $d['access'] !== 'password' || !($admin || self::mayUse($d))) return t('record_not_found');
 		if (!self::canDerive()) return t('aip_err_sodium');
-		$tries = array_values(array_filter((array)($_SESSION['nu_ai_tries'] ?? []), static fn($t) => (int)$t > time() - self::UNLOCK_WINDOW));
+		$tries = array_values(array_filter((array)($_SESSION[NuSess::AI_TRIES] ?? []), static fn($t) => (int)$t > time() - self::UNLOCK_WINDOW));
 		if (count($tries) >= self::UNLOCK_TRIES) return t('aip_err_tries');
 		$k = null;
 		if (self::pwMode($d)) {
@@ -260,7 +260,7 @@ final class NuAiProvider
 		}
 		if ($k === null) {
 			$tries[] = time();
-			$_SESSION['nu_ai_tries'] = $tries;
+			$_SESSION[NuSess::AI_TRIES] = $tries;
 			NuLog::write('ai_unlock_failed', self::T, $id, ['name' => $d['name']]);
 			return t('aip_err_wrong_password');
 		}
@@ -279,7 +279,8 @@ final class NuAiProvider
 	public static function derive(string $password, string $salt): string
 	{
 		if (strlen($salt) !== SODIUM_CRYPTO_PWHASH_SALTBYTES) return str_repeat("\0", SODIUM_CRYPTO_SECRETBOX_KEYBYTES);
-		return sodium_crypto_pwhash(SODIUM_CRYPTO_SECRETBOX_KEYBYTES, $password, $salt, SODIUM_CRYPTO_PWHASH_OPSLIMIT_INTERACTIVE, SODIUM_CRYPTO_PWHASH_MEMLIMIT_INTERACTIVE, SODIUM_CRYPTO_PWHASH_ALG_ARGON2ID13);
+		return sodium_crypto_pwhash(SODIUM_CRYPTO_SECRETBOX_KEYBYTES, $password, $salt, SODIUM_CRYPTO_PWHASH_OPSLIMIT_INTERACTIVE,
+			SODIUM_CRYPTO_PWHASH_MEMLIMIT_INTERACTIVE, SODIUM_CRYPTO_PWHASH_ALG_ARGON2ID13);
 	}
 
 	/** "pw:" + the server-sealed API key, encrypted with the password's key. */
@@ -323,13 +324,13 @@ final class NuAiProvider
 		$c = self::cookieKey(true);
 		if ($c === null) return;
 		$nonce = random_bytes(SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
-		$_SESSION['nu_ai_unlocked'][$id] = base64_encode($nonce . sodium_crypto_secretbox($k, $nonce, $c));
+		$_SESSION[NuSess::AI_UNLOCKED][$id] = base64_encode($nonce . sodium_crypto_secretbox($k, $nonce, $c));
 	}
 
 	/** The password's key of an unlocked configuration (checked against the stored key), or null. */
 	private static function sessionKey(array $d): ?string
 	{
-		$v = (string)($_SESSION['nu_ai_unlocked'][$d['id']] ?? '');
+		$v = (string)($_SESSION[NuSess::AI_UNLOCKED][$d['id']] ?? '');
 		$c = $v !== '' && self::canDerive() ? self::cookieKey(false) : null;
 		$raw = $c !== null ? base64_decode($v, true) : false;
 		if (!is_string($raw) || strlen($raw) <= SODIUM_CRYPTO_SECRETBOX_NONCEBYTES) return null;
@@ -594,7 +595,7 @@ final class NuAiProvider
 
 	private static function seal(string $s): string
 	{
-		return NuSecret::seal($s, 'ai|');   // 0.8.1326: one implementation (core/nusecret.php)
+		return NuSecret::seal($s, 'ai|');   // one implementation (core/nusecret.php)
 	}
 
 	private static function open(string $s): string

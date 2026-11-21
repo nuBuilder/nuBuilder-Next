@@ -1,4 +1,4 @@
-/* Recycle bin list (0.8.1325): the Restore button of a row posts #rbRowRestore (the row's own click opens the entry). */
+/* Recycle bin list: the Restore button of a row posts #rbRowRestore (the row's own click opens the entry). */
 (function () {
 	'use strict';
 	document.addEventListener('click', function (e) {

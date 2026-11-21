@@ -7,17 +7,17 @@ defined('NU_ROOT') || exit;
  *   <nuBuilder>/third_party/nudb/              → <nuBuilder Next>/third_party/nudb/
  * Its nuBuilder config file (nudb/config.inc.php) includes "../../nuconfig.php", which is nuBuilder Next's nuconfig.php at that
  * location (same variables as nuBuilder), and accepts a request when the cookie nu_PMA holds the id of a zzzzsys_session row whose
- * sss_access has session.global_access = 1. Tiny File Manager was removed in 0.8.479: the File Manager is the page nuFiles
+ * sss_access has session.global_access = 1. Tiny File Manager was removed in: the File Manager is the page nuFiles
  * (core/nufilemanager.php); nuVendorLogin('TFM') opens it.
  *
  * Launch (same as nuBuilder's core/nuvendorlogin.php): nuBuilder Next writes such a row for the current nuBuilder Next session,
- * sets the cookie (HttpOnly, SameSite=Strict, only for the tool's folder – 0.8.264) and redirects. The row lives as long as the nuBuilder Next session: sss_time is
+ * sets the cookie (HttpOnly, SameSite=Strict, only for the tool's folder) and redirects. The row lives as long as the nuBuilder Next session: sss_time is
  * refreshed with the session activity, the row is removed at logout, when the globeadmin ends the session, or
  * after the session timeout.
  *
- * Other location (e.g. phpMyAdmin inside nuBuilder): $nuConfigPMAURL in nuconfig.php ($nuConfigTFMURL is ignored since 0.8.479).
+ * Other location (e.g. phpMyAdmin inside nuBuilder): $nuConfigPMAURL in nuconfig.php ($nuConfigTFMURL is ignored).
  *
- * Adminer (0.8.282, app 'ADM', NOT shipped): copy adminer.php (or adminer-<version>.php, 4.8.1 or newer) to
+ * Adminer (app 'ADM', NOT shipped): copy adminer.php (or adminer-<version>.php, 4.8.1 or newer) to
  * <nuBuilder Next>/third_party/adminer/. It is never opened directly (that folder gets a deny-all .htaccess) but through
  * nuBuilder Next's nudbadmin.php, which checks the globeadmin session and logs Adminer in with the database account of
  * nuconfig.php (MySQL / MariaDB and SQL Server). $nuConfigPrimaryDatabaseManagement = 'phpMyAdmin' | 'Adminer' chooses the tool
@@ -38,7 +38,7 @@ final class NuVendor
 	/** Folder of the tool inside nuBuilder Next (default location). */
 	public static function dir(string $app): string
 	{
-		$pack = NuLibs::activeDir(self::SLOT[$app]);             // library pack vendor/packs/<dir>-<version>/ (0.8.405 / 0.8.409), else the old hand copy
+		$pack = NuLibs::activeDir(self::SLOT[$app]);             // library pack vendor/packs/<dir>-<version>/, else the old hand copy
 		return $pack ?? NU_ROOT . '/third_party/' . self::APPS[$app]['dir'];
 	}
 
@@ -83,7 +83,7 @@ final class NuVendor
 		return $f = $best;
 	}
 
-	/** Adminer's file has Windows line endings (copied in text mode) – nudbadmin.php then uses a repaired copy (0.8.287). */
+	/** Adminer's file has Windows line endings (copied in text mode) – nudbadmin.php then uses a repaired copy. */
 	public static function adminerConverted(): bool
 	{
 		$f = self::adminerFile();
@@ -115,7 +115,7 @@ final class NuVendor
 	}
 
 	/**
-	 * Makes $app ('PMA' | 'ADM') the primary database tool (0.8.284, star in the ▾ menus): $nuConfigPrimaryDatabaseManagement in the
+	 * Makes $app ('PMA' | 'ADM') the primary database tool (star in the ▾ menus): $nuConfigPrimaryDatabaseManagement in the
 	 * settings table (row added when missing) and – unless the settings come from the table – in nuconfig.php. @return string error ('' = ok)
 	 */
 	public static function setPrimaryDb(string $app): string
@@ -135,7 +135,7 @@ final class NuVendor
 	}
 
 	/**
-	 * Entries of the ▾ menus of the Database tile / card (0.8.284): each tool opens in a new tab; the star makes it the default
+	 * Entries of the ▾ menus of the Database tile / card: each tool opens in a new tab; the star makes it the default
 	 * (filled = the current one). $back: page to return to after the star ('home' | 'vendor').
 	 */
 	public static function dbMenuItems(string $back): string
@@ -199,7 +199,7 @@ final class NuVendor
 		}
 		$sid = self::ensureRow();
 		$https = nu_https() ? ['secure' => true] : [];
-		// 0.8.264: only for the tool's folder (other apps on the domain never get it) and SameSite=Strict (always opened from here)
+		// only for the tool's folder (other apps on the domain never get it) and SameSite=Strict (always opened from here)
 		$opt = ['path' => self::cookiePath($app), 'httponly' => true, 'samesite' => 'Strict'] + $https;
 		setcookie('nu_' . $app, $sid, $opt);
 		setcookie('nu_timezone', date_default_timezone_get(), $opt);
@@ -214,7 +214,7 @@ final class NuVendor
 		self::ensureTable();
 		self::purge();
 		$key = NuSessions::key();
-		$sid = (string)($_SESSION['nu_vendor'] ?? '');
+		$sid = (string)($_SESSION[NuSess::VENDOR] ?? '');
 		if (!preg_match('/^nx[0-9a-f]{23}$/', $sid)) $sid = 'nx' . substr(bin2hex(random_bytes(12)), 0, 23);   // varchar(25)
 		$u = NuAuth::user();
 		$access = json_encode(['session' => [
@@ -223,7 +223,7 @@ final class NuVendor
 		]], JSON_UNESCAPED_UNICODE);
 		$db->delete('zzzzsys_session', 'zzzzsys_session_id', $sid);
 		$db->insert('zzzzsys_session', ['zzzzsys_session_id' => $sid, 'sss_access' => $access, 'sss_time' => time()]);
-		$_SESSION['nu_vendor'] = $sid;
+		$_SESSION[NuSess::VENDOR] = $sid;
 		return $sid;
 	}
 
@@ -232,7 +232,7 @@ final class NuVendor
 	{
 		$db = nu_db();
 		if ($db->tableExists('zzzzsys_session')) return;
-		if ($db->type === 'sqlsrv') {                          // Adminer on SQL Server (0.8.282)
+		if ($db->type === 'sqlsrv') {                          // Adminer on SQL Server
 			$db->run('CREATE TABLE zzzzsys_session (zzzzsys_session_id NVARCHAR(25) NOT NULL PRIMARY KEY, sss_access NVARCHAR(MAX) NULL, sss_hashcookies NVARCHAR(MAX) NULL,'
 				. ' sss_time INT NULL, sss_login_time DATETIME2 NULL DEFAULT SYSDATETIME(), sss_json NVARCHAR(MAX) NULL)');
 			return;
@@ -250,12 +250,11 @@ final class NuVendor
 	/** Called with the session activity (NuSessions::touch): keeps the row alive. */
 	public static function touch(): void
 	{
-		$sid = (string)($_SESSION['nu_vendor'] ?? '');
+		$sid = (string)($_SESSION[NuSess::VENDOR] ?? '');
 		if ($sid === '') return;
 		try {
 			nu_db()->run('UPDATE zzzzsys_session SET sss_time = ? WHERE zzzzsys_session_id = ?', [time(), $sid]);
-		} catch (Throwable) {
-		}
+		} catch (Throwable $ig) { nu_ignored($ig); }
 	}
 
 	/** Removes the row(s) of a nuBuilder Next session (logout / ended by the globeadmin). */
@@ -264,8 +263,7 @@ final class NuVendor
 		if ($key === '') return;
 		try {
 			if (nu_db()->tableExists('zzzzsys_session')) nu_db()->run('DELETE FROM zzzzsys_session WHERE sss_access LIKE ?', [self::like($key)]);
-		} catch (Throwable) {
-		}
+		} catch (Throwable $ig) { nu_ignored($ig); }
 	}
 
 	/** Rows of nuBuilder Next sessions without activity for longer than the session timeout. */
@@ -275,8 +273,7 @@ final class NuVendor
 			if (!nu_db()->tableExists('zzzzsys_session')) return;
 			$limit = nu_session_timeout(true);   // tool logins belong to the globeadmin
 			nu_db()->run('DELETE FROM zzzzsys_session WHERE sss_access LIKE ? AND (sss_time IS NULL OR sss_time < ?)', [self::like(), time() - $limit]);
-		} catch (Throwable) {
-		}
+		} catch (Throwable $ig) { nu_ignored($ig); }
 	}
 
 	public static function isVendorRow(string $access): bool

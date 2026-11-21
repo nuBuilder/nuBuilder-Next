@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * File Manager (0.8.479, core/nufilemanager.php): every entry point opens this route. With the page form nufiles it redirects there
+ * File Manager (core/nufilemanager.php): every entry point opens this route. With the page form nufiles it redirects there
  * (the page checks the form's access levels and asks for the password before code folders). Without it the globeadmin can create it
  * (POST action setup, password confirmed recently); others read that it is not set up yet.
  */
@@ -12,17 +12,8 @@ NuAdmin::require('filemanager', 'change');
 $u = NuAuth::user();
 $ga = !empty($u['globeadmin']);
 
-if (nu_is_post() && nu_post('action') === 'setup') {
-	if (!$ga) { http_response_code(403); nu_fatal(t('err_forbidden'), t('err_forbidden_hint'), true); }
-	NuSecurity::requireRecentAuth(nu_url('filemanager'));
-	try {
-		NuFileManager::setup();
-		nu_flash('success', t('fm_setup_done'));
-	} catch (Throwable $e) {
-		nu_flash('danger', t('fm_setup_failed') . ' ' . $e->getMessage());
-	}
-	nu_redirect(nu_url('filemanager'));
-}
+['ga' => $ga]
+	= NuFilemanagerPage::post(get_defined_vars());   // the POST actions (code review R7, nufilemanagerpage.php)
 
 if (NuFileManager::formId() !== null && NuFileManager::shipped()) nu_redirect(nu_url('page', ['f' => NuFileManager::CODE]));
 

@@ -3,11 +3,11 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Branding of this installation (0.8.297) – globeadmin, Admin tools → Branding. Logic in core/nubranding.php, live preview in
+ * Branding of this installation – globeadmin, Admin tools → Branding. Logic in core/nubranding.php, live preview in
  * assets/js/nubranding.js. POST action save (multipart: logo_light, logo_dark …) | reset.
  */
 
-// admin rights (0.8.323): the globeadmin, or a user whose admin role has the right (core/nuadmin.php)
+// admin rights: the globeadmin, or a user whose admin role has the right (core/nuadmin.php)
 NuAdmin::require('branding');
 
 $errors = [];
@@ -20,34 +20,8 @@ $upload = static function (string $field, array &$errors): ?array {
 };
 
 $b0 = NuBranding::get();
-if (nu_is_post()) {
-	$action = nu_post('action');
-	if ($action === 'hide_logo') {                          // right-click on the logo in the top bar (0.8.734): sign-in pages keep it
-		$changed = NuBranding::hideTopLogo();
-		nu_flash('success', $changed ? t('brand_hidden_msg', t('sh_title') . ' → ' . t('sh_look') . ' → ' . t('brand_title') . ' (' . t('brand_logo_show') . ')') : t('set_saved_none'));
-		nu_redirect(NuAuth::validNext(nu_post('back')) ?? nu_url('home'));
-	}
-	if ($action === 'reset') {
-		NuBranding::reset();
-		nu_flash('success', t('brand_reset_done'));
-		nu_redirect(nu_url('branding'));
-	}
-	if ($action === 'save') {
-		$files = ['light' => $upload('logo_light', $errors), 'dark' => $upload('logo_dark', $errors)];
-		if (!$errors) {
-			[$errors, $warn] = NuBranding::save([
-				'accent_on' => $b0['accent'] !== '', 'accent' => $b0['accent'],   // the accent colour is part of the themes (0.8.632) – an older one is kept
-				 'show_title' => nu_check('show_title') === '1', 'title' => nu_post('title'), 'title_phone' => nu_post('title_phone'), 'show_title_phone' => nu_check('show_title_phone') === '1', 'pwa' => nu_check('pwa') === '1',
-				'favicon' => nu_check('favicon') === '1', 'logo_show' => nu_post('logo_show'), 'env_label' => nu_post('env_label'), 'env_color' => nu_post('env_color'),
-			], $files, ['light' => nu_check('remove_light') === '1', 'dark' => nu_check('remove_dark') === '1']);
-			if (!$errors) {
-				nu_flash('success', t('brand_saved'));
-				foreach ($warn as $w) nu_flash('warning', $w);
-				nu_redirect(nu_url('branding'));
-			}
-		}
-	}
-}
+['errors' => $errors]
+	= NuBrandingPage::post(get_defined_vars());   // the POST actions (code review R7, nubrandingpage.php)
 
 $b = NuBranding::get();
 $envCfg = NuBranding::envFromConfig();
@@ -61,7 +35,8 @@ $accent = $b['accent'] !== '' ? $b['accent'] : '#2f6fd6';
 
 nu_layout_start(t('brand_title'), 'home', ['settings' => 'look', 'settings_page' => 'branding']);
 ?>
-<form method="post" action="<?= h(nu_url('branding')) ?>" id="brandReset" data-confirm="<?= h(t('brand_reset_confirm')) ?>" data-confirm-ok="<?= h(t('brand_reset')) ?>" data-confirm-class="btn btn-danger">
+<form method="post" action="<?= h(nu_url('branding')) ?>" id="brandReset" data-confirm="<?= h(t('brand_reset_confirm')) ?>"
+	data-confirm-ok="<?= h(t('brand_reset')) ?>" data-confirm-class="btn btn-danger">
 	<?= nu_csrf_field() ?><input type="hidden" name="action" value="reset">
 </form>
 <?= nu_page_header(t('brand_title'), ['icon' => 'bi-brush', 'sub' => t('brand_hint'),
@@ -96,16 +71,19 @@ nu_layout_start(t('brand_title'), 'home', ['settings' => 'look', 'settings_page'
 					</div>
 					<div class="mb-2">
 						<label class="form-label fw-semibold" for="title"><?= h(t('brand_app_title')) ?></label><?= $tip(t('brand_app_title_tip', $cfgTitle !== '' ? $cfgTitle : t('brand_title_unset'))) ?>
-						<input class="form-control" type="text" id="title" name="title" maxlength="<?= NuBranding::TITLE_LEN ?>" value="<?= h($b['title']) ?>" placeholder="<?= h($cfgTitle !== '' ? $cfgTitle : 'nuBuilder Next') ?>" data-cfg="<?= h($cfgTitle) ?>">
+						<input class="form-control" type="text" id="title" name="title" maxlength="<?= NuBranding::TITLE_LEN ?>" value="<?= h($b['title']) ?>"
+							placeholder="<?= h($cfgTitle !== '' ? $cfgTitle : 'nuBuilder Next') ?>" data-cfg="<?= h($cfgTitle) ?>">
 					</div>
 					<div class="form-check form-switch mb-2 d-flex align-items-center gap-1">
 						<input class="form-check-input me-1" type="checkbox" role="switch" id="show_title" name="show_title" value="1"<?= $b['show_title'] ? ' checked' : '' ?>>
-						<?php // the label follows "Show logo" (0.8.736): next to the logo, or alone in the top bar ?>
-						<label class="form-check-label" for="show_title" id="show_title_lbl" data-logo="<?= h(t('brand_show_title')) ?>" data-bar="<?= h(t('brand_show_title_bar')) ?>"><?= h(t($b['logo_show'] === 'all' ? 'brand_show_title' : 'brand_show_title_bar')) ?></label><?= $tip(t('brand_show_title_tip2')) ?>
+						<?php // the label follows "Show logo": next to the logo, or alone in the top bar ?>
+						<label class="form-check-label" for="show_title" id="show_title_lbl" data-logo="<?= h(t('brand_show_title')) ?>"
+							data-bar="<?= h(t('brand_show_title_bar')) ?>"><?= h(t($b['logo_show'] === 'all' ? 'brand_show_title' : 'brand_show_title_bar')) ?></label><?= $tip(t('brand_show_title_tip2')) ?>
 					</div>
 					<div class="mb-2 mt-3">
 						<label class="form-label fw-semibold" for="title_phone"><?= h(t('brand_title_phone')) ?></label><?= $tip(t('brand_title_phone_tip')) ?>
-						<input class="form-control" type="text" id="title_phone" name="title_phone" maxlength="<?= NuBranding::TITLE_LEN ?>" value="<?= h($b['title_phone']) ?>" placeholder="<?= h(t('brand_title_phone_ph')) ?>">
+						<input class="form-control" type="text" id="title_phone" name="title_phone" maxlength="<?= NuBranding::TITLE_LEN ?>"
+							value="<?= h($b['title_phone']) ?>" placeholder="<?= h(t('brand_title_phone_ph')) ?>">
 					</div>
 					<div class="form-check form-switch mb-3 d-flex align-items-center gap-1">
 						<input class="form-check-input me-1" type="checkbox" role="switch" id="show_title_phone" name="show_title_phone" value="1"<?= $b['show_title_phone'] ? ' checked' : '' ?>>
@@ -126,8 +104,10 @@ nu_layout_start(t('brand_title'), 'home', ['settings' => 'look', 'settings_page'
 					<div class="mb-2">
 						<label class="form-label fw-semibold" for="env_label"><?= h(t('brand_env')) ?></label><?= $tip(t('brand_env_field_tip')) ?>
 						<div class="d-flex align-items-center gap-2">
-							<input class="form-control" type="text" id="env_label" name="env_label" maxlength="<?= NuBranding::ENV_LEN ?>" placeholder="TEST" value="<?= h($b['env_label']) ?>"<?= $envCfg ? ' readonly' : '' ?>>
-							<input class="form-control form-control-color flex-shrink-0" type="color" id="env_color" name="env_color" value="<?= h($b['env_color']) ?>" aria-label="<?= h(t('brand_env_color')) ?>" title="<?= h(t('brand_env_color')) ?>">
+							<input class="form-control" type="text" id="env_label" name="env_label" maxlength="<?= NuBranding::ENV_LEN ?>" placeholder="TEST"
+								value="<?= h($b['env_label']) ?>"<?= $envCfg ? ' readonly' : '' ?>>
+							<input class="form-control form-control-color flex-shrink-0" type="color" id="env_color" name="env_color" value="<?= h($b['env_color']) ?>"
+								aria-label="<?= h(t('brand_env_color')) ?>" title="<?= h(t('brand_env_color')) ?>">
 						</div>
 						<?php if ($envCfg): ?><div class="form-text"><i class="bi bi-filetype-php me-1"></i><?= h(t('brand_env_config')) ?></div><?php endif; ?>
 					</div>
@@ -146,7 +126,8 @@ nu_layout_start(t('brand_title'), 'home', ['settings' => 'look', 'settings_page'
 							<button type="button" class="btn btn-outline-primary" id="prevBtnOutline" tabindex="-1"><?= h(t('brand_preview_button')) ?></button>
 							<a href="#" class="ms-2" id="prevLink" tabindex="-1"><?= h(t('brand_preview_link')) ?></a>
 						</div>
-						<div class="form-check form-switch mb-0"><input class="form-check-input" type="checkbox" id="prevCheck" checked tabindex="-1"><label class="form-check-label" for="prevCheck"><?= h(t('brand_preview_check')) ?></label></div>
+						<div class="form-check form-switch mb-0"><input class="form-check-input" type="checkbox" id="prevCheck" checked
+							tabindex="-1"><label class="form-check-label" for="prevCheck"><?= h(t('brand_preview_check')) ?></label></div>
 					</div>
 				</div>
 			</div>

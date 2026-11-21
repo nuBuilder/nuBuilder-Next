@@ -3,15 +3,15 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Side bar (0.8.460, core/nusidebar.php) – form posts from the user menu and the side bar, back to the page they came from:
+ * Side bar (core/nusidebar.php) – form posts from the user menu and the side bar, back to the page they came from:
  *   toggle   the side bar on / off for me
  *   default  on / off for everyone without an own choice (the globeadmin)
  *   clear    empty my "Recently used"
  *   forget   one entry (key) out of my "Recently used"
  *   fav      ☆ of a start page tile (key) – the start page's favourites
- *   used     a start page tile was opened (key; sent with navigator.sendBeacon, answers 204 – 0.8.492)
- *   pin      keep the side bar open next to the page, or not (on = 1 / 0; sent with fetch from nusidebar.js, answers 204 – 0.8.556)
- *   hide     hide a start page tile (key, label for the message) from its right-click menu – in the layout or for me (0.8.652)
+ *   used     a start page tile was opened (key; sent with navigator.sendBeacon, answers 204)
+ *   pin      keep the side bar open next to the page, or not (on = 1 / 0; sent with fetch from nusidebar.js, answers 204)
+ *   hide     hide a start page tile (key, label for the message) from its right-click menu – in the layout or for me
  *   unhide   Undo of the last hide (key)
  */
 
@@ -50,7 +50,7 @@ switch (nu_post('action')) {
 		$r = $demoUser ? NuDemo::permitted(static fn() => NuSidebar::favToggle(nu_post('key'))) : NuSidebar::favToggle(nu_post('key'));
 		if ($r === null) nu_flash('warning', t('sb_fav_not_possible'));
 		break;
-	case 'hide':     // tile menu of the start page (0.8.652): hide a tile – in the layout (admins) or for me (user start pages); message with Undo
+	case 'hide':     // tile menu of the start page: hide a tile – in the layout (admins) or for me (user start pages); message with Undo
 	case 'unhide':   // its Undo
 		$fn = nu_post('action') === 'hide' ? static fn() => NuSidebar::hideTile(nu_post('key')) : static fn() => NuSidebar::unhideTile(nu_post('key'));
 		$ok = !empty($u['demo']) ? (bool)NuDemo::permitted($fn) : $fn();

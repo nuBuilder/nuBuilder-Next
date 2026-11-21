@@ -1,4 +1,4 @@
-/* Suggestions while typing (0.8.1212) – a list below a text input, no library.
+/* Suggestions while typing – a list below a text input, no library.
  *
  *   nuNextAutocomplete(idOrElement, options) → {search(text), close(), destroy()}
  *   options: source   array of texts or {label, value, …} | function (term, done) | URL (GET ?term=…, JSON array) |

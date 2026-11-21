@@ -14,7 +14,7 @@ final class NuLookup
 	}
 
 	/**
-	 * [inner sql, pk column]. $byId (0.8.957): nuBuilder Forte reads the chosen record's code and description from the FROM part of the
+	 * [inner sql, pk column]. $byId: nuBuilder Forte reads the chosen record's code and description from the FROM part of the
 	 * browse SQL only (nuGetLookupValues: "SELECT pk, code, description <from> WHERE pk = ?") – a WHERE that filters the list (e.g. with
 	 * hash variables of a search field) must not hide the stored record.
 	 */
@@ -40,7 +40,7 @@ final class NuLookup
 
 	/**
 	 * nuBuilder Forte runs the lookup form's Before Browse before it reads code and description (nuGetLookupValues → nuBeforeBrowse) –
-	 * forms whose browse SQL reads a table the BB code builds (#TABLE_ID#, e.g. Forte's own File form) need it (0.8.956). Here: once per
+	 * forms whose browse SQL reads a table the BB code builds (#TABLE_ID#, e.g. Forte's own File form) need it. Here: once per
 	 * lookup form and request, with a #TABLE_ID# of its own, in its own NuPhp state; the table is dropped at the end of the request.
 	 */
 	private static function beforeBrowse(NuFormMeta $lf, array $h): string
@@ -54,7 +54,7 @@ final class NuLookup
 		$r = NuPhp::isolated(static fn() => NuPhp::run($code, $h, 'Before Browse (lookup)'));
 		if (!$r['result']) error_log('nuBuilder Next lookup Before Browse ' . $lf->id . ': ' . json_encode($r['errors']));
 		register_shutdown_function(static function () use ($tid): void {
-			try { nu_db()->run('DROP TABLE IF EXISTS ' . $tid); } catch (Throwable) { /* gone already */ }
+			try { nu_db()->run('DROP TABLE IF EXISTS ' . $tid); } catch (Throwable $ig) { nu_ignored($ig, 'gone already'); }
 		});
 		return $tid;
 	}
@@ -74,11 +74,12 @@ final class NuLookup
 	/** Key of a record read by its id: the object, the list SQL as it runs (hash variables filled in) and the id. */
 	private static function memoKey(array $o, string $inner, string $pk): string
 	{
-		return 'lookup:' . (string)($o['zzzzsys_object_id'] ?? $o['sob_all_id'] ?? '') . '|' . hash('sha256', $inner . '|' . (string)$o['sob_lookup_code'] . '|' . (string)$o['sob_lookup_description']) . '|' . $pk;
+		return 'lookup:' . (string)($o['zzzzsys_object_id'] ?? $o['sob_all_id'] ?? '') . '|'
+			. hash('sha256', $inner . '|' . (string)$o['sob_lookup_code'] . '|' . (string)$o['sob_lookup_description']) . '|' . $pk;
 	}
 
 	/**
-	 * Reads the records of several ids in ONE statement and keeps them for byId() (performance review, 0.8.1341): the rows of a
+	 * Reads the records of several ids in ONE statement and keeps them for byId (performance review): the rows of a
 	 * sub-form asked for their lookup one by one – an order with 50 lines ran 50 statements per lookup column. Only what the single
 	 * read would find the same way is kept (same list SQL, the id exactly as stored); everything else is read by byId() as before.
 	 * Dropped by any write of the request (NuMemo '*').
@@ -105,9 +106,7 @@ final class NuLookup
 					NuMemo::put(self::memoKey($o, $inner, $pk), ['*'], self::shape($row, $pkCol));
 				}
 			}
-		} catch (Throwable) {
-			/* the list cannot be read this way: byId() reads row by row and reports */
-		}
+		} catch (Throwable $ig) { nu_ignored($ig, 'the list cannot be read this way: byId() reads row by row and reports'); }
 	}
 
 	/** @return array{pk:string,code:string,description:string,row:array}|null */
@@ -186,8 +185,8 @@ final class NuLookup
 	public static function afterBrowse(array $o, array $record, array $hash): array
 	{
 		NuPhp::reset();
-		NuPhp::$lookupRow = (object)(['ID' => (string)$record['pk']] + (array)$record['row']);   // nuBuilder: the row with its key as ID (0.8.462)
-		// through NuFormMeta: in a draft preview the draft's code (0.8.386)
+		NuPhp::$lookupRow = (object)(['ID' => (string)$record['pk']] + (array)$record['row']);   // nuBuilder: the row with its key as ID
+		// through NuFormMeta: in a draft preview the draft's code
 		$code = NuFormMeta::load((string)$o['sob_all_zzzzsys_form_id'])?->objectPhp((string)$o['zzzzsys_object_id'], 'AB');
 		NuPhp::run($code, $hash, 'Lookup ' . $o['sob_all_id']);
 		return NuPhp::result();

@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * nuBuilder Forte's print settings of a browse list (0.8.958) – set by form code with nuPrintIncludeColumns(), nuPrintExcludeColumns(),
+ * nuBuilder Forte's print settings of a browse list – set by form code with nuPrintIncludeColumns(), nuPrintExcludeColumns(),
  * nuPrintIncludeHiddenColumns(), nuPrintUseBrowseFormats() and nuPrintCSVExportOptions() (JavaScript, they set properties of the same
  * names, as Forte's nuform.js) and read here for the print view and its CSV / Excel export.
  */

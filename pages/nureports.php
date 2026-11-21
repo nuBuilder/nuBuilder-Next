@@ -18,7 +18,7 @@ $T      = NuReport::TABLE;
 $id     = (string)($_GET['id'] ?? '');
 $isNew  = $id === 'new';
 $report = null;
-// clone (0.8.680, as nuBuilder Forte): ?id=new&clone=<id> opens a copy (with its layout and access levels) that is saved only with Save
+// clone (as nuBuilder Forte): ?id=new&clone=<id> opens a copy (with its layout and access levels) that is saved only with Save
 $cloneId = $isNew ? (string)($_GET['clone'] ?? '') : '';
 $src = null;
 if ($cloneId !== '') {
@@ -33,68 +33,33 @@ if ($cloneId !== '') {
 if ($id !== '' && !$isNew) {
 	$report = $db->one("SELECT * FROM $T WHERE zzzzsys_report_id = ?", [$id]);
 	if (!$report) { http_response_code(404); nu_fatal(t('record_not_found'), '', true); }
-	if ($_SERVER['REQUEST_METHOD'] === 'GET') NuOpened::touch('report', $id);   // "Last opened" (0.8.1117)
+	if ($_SERVER['REQUEST_METHOD'] === 'GET') NuOpened::touch('report', $id);   // "Last opened"
 }
 $locked = !($report ? $rights['save'] : $rights[$src ? 'clone' : 'create']);
 $errors = [];
 
 // ------------------------------------------------------------------ save / clone / delete
-if (nu_is_post()) {
-	$action = nu_post('action');
-	if ($action === 'save') {
-		NuAcl::require(NuAcl::FORM_REPORT, $report ? 'save' : ($src ? 'clone' : 'create'));
-		$in = [];
-		foreach (['sre_code', 'sre_description', 'sre_group', 'sre_zzzzsys_form_id', 'sre_zzzzsys_php_id'] as $f) $in[$f] = $_POST[$f] ?? '';
-		[$newId, $errors] = NuReport::save($in, $report ? $id : '');
-		if (!$errors) {
-			// a clone takes the layout of its source as stored (as nuBuilder Forte copies the field)
-			if (!$report && $src) $db->update($T, ['sre_layout' => $src['sre_layout']], 'zzzzsys_report_id', (string)$newId);
-			$after = $db->one("SELECT * FROM $T WHERE zzzzsys_report_id = ?", [$newId]) ?? [];
-			$acc = isset($_POST['access_sent']) ? NuReport::setAccess($newId, array_filter((array)($_POST['access'] ?? []), 'is_string')) : ['added' => [], 'removed' => []];
-			$details = ['code' => (string)$after['sre_code'], 'fields' => NuReport::diff($report, $after)];
-			if ($acc['added']) $details['access_added'] = implode(', ', $acc['added']);
-			if ($acc['removed']) $details['access_removed'] = implode(', ', $acc['removed']);
-			if ($src) $details['clone_of'] = (string)$db->value("SELECT sre_code FROM $T WHERE zzzzsys_report_id = ?", [$cloneId]);
-			if ($details['fields'] || count($details) > 2 || !$report) NuLog::write($report ? 'report_changed' : 'report_created', $T, $newId, $details);
-			nu_flash('success', t('saved'));
-			nu_redirect(nu_post('then') === 'design' ? nu_url('reportdesigner', ['id' => $newId]) : nu_url('reports', ['id' => $newId, 'ai' => nu_post('then') === 'ai' ? '1' : null]));
-		}
-	}
-	if ($action === 'delete' && $report) {
-		NuAcl::require(NuAcl::FORM_REPORT, 'delete');
-		$objects = array_filter(NuReport::usage($id, (string)$report['sre_code']), static fn($u) => $u['kind'] === 'object');
-		if ($objects) {
-			$errors['_'] = t('rpt_err_used', implode(', ', array_map(static fn($u) => trim($u['form'] . ' · ' . $u['where'], ' ·'), $objects)));
-		} else {
-			$db->transaction(static function (NuDB $db) use ($id, $T) {
-				$db->delete(NuReport::ACCESS, 'sre_zzzzsys_report_id', $id);
-				$db->delete($T, 'zzzzsys_report_id', $id);
-			});
-			NuReportSpec::deleteVersions($id);
-			NuLog::write('report_deleted', $T, $id, ['code' => (string)$report['sre_code']]);
-			nu_flash('success', t('rpt_deleted'));
-			nu_redirect(nu_url('reports'));
-		}
-	}
-}
+['report' => $report, 'src' => $src, 'f' => $f, 'errors' => $errors, 'id' => $id, 'db' => $db, 'T' => $T, 'cloneId' => $cloneId]
+	= NuReportsPage::post(get_defined_vars());   // the POST actions (code review R7, nureportspage.php)
 
 $forms = $db->all("SELECT zzzzsys_form_id, sfo_code, sfo_description, sfo_type FROM zzzzsys_form WHERE COALESCE(sfo_type,'') <> 'subform' ORDER BY CASE WHEN sfo_type = 'launch' THEN 0 ELSE 1 END, sfo_code");
 $formCode = array_column($forms, 'sfo_code', 'zzzzsys_form_id');
 
 // ------------------------------------------------------------------ list (also Print / CSV)
 if ($id === '') {
-	// list: columns, filters and sort of the chosen list view (0.8.334, core/nulistdefs.php)
+	// list: columns, filters and sort of the chosen list view (core/nulistdefs.php)
 	NuListView::page('reports', [
 		'before' => NuListView::crumbs([[t('nav_forms'), nu_url('forms')], [t('rpt_title_list')]]), 'active' => 'forms',
 		'title_extra' => NuListView::infoToggle('rptHint'), 'title_sub' => '<div class="collapse nuTitleSub text-body-secondary small" id="rptHint">' . h(t('rpt_hint')) . '</div>',
-		'buttons' => ($rights['add'] ? '<a class="btn nuAddBtn" title="' . h(t('rpt_new')) . '" href="' . h(nu_url('reports', ['id' => 'new'])) . '"><i class="bi bi-plus-lg me-1"></i>' . h(t('add')) . '</a>' : '')
+		'buttons' => ($rights['add'] ? '<a class="btn nuAddBtn" title="' . h(t('rpt_new')) . '" href="' . h(nu_url('reports', ['id' => 'new']))
+			. '"><i class="bi bi-plus-lg me-1"></i>' . h(t('add')) . '</a>' : '')
 			. (NuAcl::can(NuAcl::FORM_SELECT) ? '<a class="btn btn-outline-secondary" href="' . h(nu_url('sqlbuilder')) . '"><i class="bi bi-diagram-3 me-1"></i>' . h(t('sqb_title')) . '</a>' : ''),
 	]);
 	return;
 }
 
 // ------------------------------------------------------------------ view
-// Launch form and Data source: searchable (Tom Select, 0.8.510 – assets/js/nulistselect.js, class nuListTomSelect, description as second line)
+// Launch form and Data source: searchable (Tom Select – assets/js/nulistselect.js, class nuListTomSelect, description as second line)
 $foot = $id !== '' ? '<script src="' . nu_asset(NU_TOMSELECT . '/tom-select.complete.min.js') . '"></script><script src="' . nu_asset('assets/js/nulistselect.js') . '"></script>'
 	. '<script src="' . nu_asset('assets/js/nureports.js') . '"></script>' : '';
 if ($id !== '') nu_body_class('nuRecPage');
@@ -126,7 +91,8 @@ $tcpdf = NuReport::tcpdfDir();
 	$err = static fn(string $k) => isset($errors[$k]) ? ' is-invalid' : '';
 	$fb = static fn(string $k) => '<div class="invalid-feedback">' . h($errors[$k] ?? '') . '</div>';
 	$row = static fn(string $k, string $label, string $control, bool $req = false) =>
-		'<div class="procField mb-3"><label class="form-label procLabel" for="' . $k . '">' . h($label) . ($req ? ' <span class="text-danger">*</span>' : '') . ($k === 'sre_code' ? nu_unique_mark($req) : '') . '</label>' . $control . '</div>';   // key: unique (0.8.627)
+		'<div class="procField mb-3"><label class="form-label procLabel" for="' . $k . '">' . h($label) . ($req ? ' <span class="text-danger">*</span>' : '')
+			. ($k === 'sre_code' ? nu_unique_mark($req) : '') . '</label>' . $control . '</div>';   // key: unique
 	$access = NuReport::access($report ? $id : $cloneId);
 	if ($posted) { $sent = array_flip(array_filter((array)($_POST['access'] ?? []), 'is_string')); foreach ($access as &$a) $a['granted'] = isset($sent[$a['zzzzsys_access_id']]); unset($a); }
 	$usage = $report ? NuReport::usage($id, (string)$report['sre_code']) : [];
@@ -150,29 +116,37 @@ $tcpdf = NuReport::tcpdfDir();
 		<?php if (!$locked): ?><button data-nu-save class="btn nuBtnAct nuBtnSave" type="submit" form="nuRecordForm" id="rptSave"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button><?php endif; ?>
 		<?php if ($report): ?>
 			<a class="btn btn-outline-primary" href="<?= h(nu_url('reportdesigner', ['id' => $id])) ?>" id="rptDesign"><i class="bi bi-vector-pen me-1"></i><?= h(t('rpt_designer')) ?></a>
-			<?php if ($rights['save']): ?><button type="button" class="btn btn-outline-primary" data-rai-open id="rptAi" title="<?= h(t('rai_button_tip')) ?>"><i class="bi bi-stars me-1"></i><?= h(t($nObjects ? 'rai_button_change' : 'rai_button_new')) ?></button><?php endif; ?>
-			<a class="btn btn-outline-secondary" href="<?= h(nu_url('report', ['c' => (string)$report['sre_code']])) ?>" target="_blank" rel="noopener" id="rptRun"><i class="bi bi-file-earmark-pdf me-1"></i><?= h(t('rpt_run')) ?></a>
+			<?php if ($rights['save']): ?><button type="button" class="btn btn-outline-primary" data-rai-open id="rptAi"
+				title="<?= h(t('rai_button_tip')) ?>"><i class="bi bi-stars me-1"></i><?= h(t($nObjects ? 'rai_button_change' : 'rai_button_new')) ?></button><?php endif; ?>
+			<a class="btn btn-outline-secondary" href="<?= h(nu_url('report', ['c' => (string)$report['sre_code']])) ?>" target="_blank" rel="noopener"
+				id="rptRun"><i class="bi bi-file-earmark-pdf me-1"></i><?= h(t('rpt_run')) ?></a>
 		<?php endif; ?>
 		<?php if ($report && $rights['clone']): ?>
 			<a class="btn nuBtnAct" href="<?= h(nu_url('reports', ['id' => 'new', 'clone' => $id])) ?>" id="rptClone"><i class="bi bi-copy me-1"></i><?= h(t('clone')) ?></a>
 		<?php endif; ?>
 		<?php if ($report && $rights['delete']): ?>
-			<form method="post" action="<?= h(nu_url('reports', ['id' => $id])) ?>" data-confirm="<?= h(t('rpt_delete_confirm', (string)$report['sre_code'])) ?>" data-confirm-ok="<?= h(t('delete')) ?>" data-confirm-class="btn btn-danger">
+			<form method="post" action="<?= h(nu_url('reports', ['id' => $id])) ?>"
+				data-confirm="<?= h(t('rpt_delete_confirm', (string)$report['sre_code'])) ?>" data-confirm-ok="<?= h(t('delete')) ?>"
+				data-confirm-class="btn btn-danger">
 				<?= nu_csrf_field() ?><input type="hidden" name="action" value="delete">
 				<button class="btn nuBtnAct nuBtnDel" type="submit" id="rptDelete"><i class="bi bi-trash me-1"></i><?= h(t('delete')) ?></button></form>
 		<?php endif; ?>
-		<?php if ($report): ?><?= NuFormInfo::record('zzzzsys_report', (string)$id, ['code' => (string)$report['sre_code']]) /* (i) record info (0.8.501) */ ?><?php endif; ?>
+		<?php if ($report): ?><?= NuFormInfo::record('zzzzsys_report', (string)$id, ['code' => (string)$report['sre_code']]) /* (i) record info */ ?><?php endif; ?>
 		</div>
 	</div>
 
-	<form method="post" action="<?= h(nu_url('reports', ['id' => $id, 'clone' => $cloneId])) ?>" id="nuRecordForm"<?= $src ? ' data-nu-clone="' . h(t('form_clone_badge')) . '"' : '' ?> data-nu-focus-first data-nu-guard novalidate>
+	<form method="post" action="<?= h(nu_url('reports', ['id' => $id, 'clone' => $cloneId])) ?>"
+		id="nuRecordForm"<?= $src ? ' data-nu-clone="' . h(t('form_clone_badge')) . '"' : '' ?> data-nu-focus-first data-nu-guard novalidate>
 		<?= nu_csrf_field() ?><input type="hidden" name="action" value="save"><input type="hidden" name="access_sent" value="1">
 		<ul class="nav nav-tabs" role="tablist" id="rptTabs">
 			<li class="nav-item" role="presentation"><button class="nav-link active" type="button" data-bs-toggle="tab" data-bs-target="#rptTabMain" role="tab"><?= h(t('rpt_tab_report')) ?></button></li>
-			<li class="nav-item" role="presentation"><button class="nav-link" type="button" data-bs-toggle="tab" data-bs-target="#rptTabAccess" role="tab"><?= h(t('nav_access')) ?> <span class="badge text-bg-secondary" id="rptAccessCount"><?= $nAccess ?></span></button></li>
+			<li class="nav-item" role="presentation"><button class="nav-link" type="button" data-bs-toggle="tab" data-bs-target="#rptTabAccess"
+				role="tab"><?= h(t('nav_access')) ?> <span class="badge text-bg-secondary" id="rptAccessCount"><?= $nAccess ?></span></button></li>
 			<?php if ($report): ?>
-				<li class="nav-item" role="presentation"><button class="nav-link" type="button" data-bs-toggle="tab" data-bs-target="#rptTabUsage" role="tab"><?= h(t('proc_usage')) ?> <span class="badge text-bg-secondary"><?= count($usage) ?></span></button></li>
-				<li class="nav-item" role="presentation"><button class="nav-link" type="button" data-bs-toggle="tab" data-bs-target="#rptTabHistory" role="tab"><?= h(t('proc_history')) ?> <span class="badge text-bg-secondary"><?= count($history) ?></span></button></li>
+				<li class="nav-item" role="presentation"><button class="nav-link" type="button" data-bs-toggle="tab" data-bs-target="#rptTabUsage"
+					role="tab"><?= h(t('proc_usage')) ?> <span class="badge text-bg-secondary"><?= count($usage) ?></span></button></li>
+				<li class="nav-item" role="presentation"><button class="nav-link" type="button" data-bs-toggle="tab" data-bs-target="#rptTabHistory"
+					role="tab"><?= h(t('proc_history')) ?> <span class="badge text-bg-secondary"><?= count($history) ?></span></button></li>
 			<?php endif; ?>
 		</ul>
 		<fieldset class="card shadow-sm border-top-0 rounded-top-0"<?= $locked ? ' disabled' : '' ?>>
@@ -222,22 +196,7 @@ $tcpdf = NuReport::tcpdfDir();
 			</div>
 
 			<div class="tab-pane fade" id="rptTabAccess" role="tabpanel">
-				<div class="d-flex flex-wrap gap-2 mb-2">
-					<input type="search" class="form-control form-control-sm w-auto" id="rptAccessSearch" placeholder="<?= h(t('search')) ?>" aria-label="<?= h(t('search')) ?>">
-					<button class="btn btn-sm btn-outline-secondary" type="button" data-access-all="1"><?= h(t('proc_access_all')) ?></button>
-					<button class="btn btn-sm btn-outline-secondary" type="button" data-access-all="0"><?= h(t('proc_access_none')) ?></button>
-				</div>
-				<div class="list-group procAccessList" id="rptAccessList">
-					<?php if (!$access): ?><div class="text-body-secondary small"><?= h(t('no_records')) ?></div><?php endif; ?>
-					<?php foreach ($access as $a): ?>
-						<label class="list-group-item d-flex gap-2 align-items-center" data-text="<?= h(strtolower($a['sal_code'] . ' ' . $a['sal_description'] . ' ' . $a['sal_group'])) ?>">
-							<input class="form-check-input mt-0" type="checkbox" name="access[]" value="<?= h($a['zzzzsys_access_id']) ?>"<?= $a['granted'] ? ' checked' : '' ?>>
-							<span class="fw-semibold"><?= h($a['sal_code']) ?></span><span class="small text-body-secondary me-auto"><?= h($a['sal_description']) ?></span>
-							<?php if ((string)$a['sal_group'] !== ''): ?><span class="badge bg-secondary-subtle text-secondary-emphasis"><?= h($a['sal_group']) ?></span><?php endif; ?>
-						</label>
-					<?php endforeach; ?>
-				</div>
-				<p class="small text-body-secondary mt-2 mb-0"><?= h(t('rpt_access_hint')) ?></p>
+				<?= nu_access_checklist('rptAccessSearch', 'rptAccessList', $access, t('rpt_access_hint')) ?>
 			</div>
 
 			<?php if ($report): ?>
@@ -262,7 +221,8 @@ $tcpdf = NuReport::tcpdfDir();
 								<td class="small"><?= h((string)$ver['saved_by']) ?></td>
 								<td><span class="badge bg-secondary-subtle text-secondary-emphasis"><?= h(t($ver['reason'] === 'restore' ? 'rai_ver_restore' : 'rai_ver_ai')) ?></span></td>
 								<td class="small text-body-secondary w-100"><?= h((string)$ver['note']) ?></td>
-								<td class="text-end"><?php if ($rights['save']): ?><button type="button" data-version="<?= h((string)$ver['id']) ?>" class="btn btn-sm btn-outline-secondary text-nowrap rptVerRestore"><i class="bi bi-arrow-counterclockwise me-1"></i><?= h(t('rai_restore')) ?></button><?php endif; ?></td></tr>
+								<td class="text-end"><?php if ($rights['save']): ?><button type="button" data-version="<?= h((string)$ver['id']) ?>"
+									class="btn btn-sm btn-outline-secondary text-nowrap rptVerRestore"><i class="bi bi-arrow-counterclockwise me-1"></i><?= h(t('rai_restore')) ?></button><?php endif; ?></td></tr>
 						<?php endforeach; ?></tbody>
 					</table>
 				<?php endif; ?>

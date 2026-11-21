@@ -208,7 +208,7 @@ final class NufFs
 	{
 		$uid = @fileowner($abs); $gid = @filegroup($abs);
 		if ($uid === false) return [];
-		// every posix_* function on its own: hosts disable single ones (disable_functions) – e.g. posix_geteuid there, posix_getpwuid not (0.8.813)
+		// every posix_* function on its own: hosts disable single ones (disable_functions) – e.g. posix_geteuid there, posix_getpwuid not
 		$user = static fn(int $id): string => function_exists('posix_getpwuid') && is_array($r = @posix_getpwuid($id)) && !empty($r['name']) ? (string)$r['name'] : (string)$id;
 		$u = $user((int)$uid);
 		$g = function_exists('posix_getgrgid') && is_array($r = @posix_getgrgid((int)$gid)) && !empty($r['name']) ? (string)$r['name'] : (string)$gid;
@@ -431,7 +431,9 @@ final class NufFs
 	{
 		$out = null;
 		if (strtolower(pathinfo($abs, PATHINFO_EXTENSION)) === 'svg') {
-			if ((int)filesize($abs) <= 1024 * 1024 && in_array(self::mime($abs), ['image/svg+xml', 'image/svg', 'text/xml', 'application/xml', 'text/plain', 'text/html'], true)) $out = [(string)file_get_contents($abs), 'image/svg+xml'];
+			if ((int)filesize($abs) <= 1024 * 1024
+				&& in_array(self::mime($abs), ['image/svg+xml', 'image/svg', 'text/xml', 'application/xml', 'text/plain', 'text/html'], true)) $out = [(string)file_get_contents($abs),
+				'image/svg+xml'];
 		} else {
 			try { $out = self::thumb($share, $abs); } catch (Throwable) { $out = null; }
 		}
@@ -761,7 +763,8 @@ final class NufFs
 		while (ob_get_level() > 0) ob_end_clean();
 		@set_time_limit(0);
 		header_remove('Content-Security-Policy');
-		header('Content-Security-Policy: default-src \'none\'; img-src \'self\' data:; media-src \'self\'; style-src \'unsafe-inline\'; frame-ancestors \'self\'' . ($mime === 'application/pdf' ? '' : '; sandbox'));
+		header('Content-Security-Policy: default-src \'none\'; img-src \'self\' data:; media-src \'self\'; style-src \'unsafe-inline\'; frame-ancestors \'self\''
+			. ($mime === 'application/pdf' ? '' : '; sandbox'));
 		header('X-Content-Type-Options: nosniff');
 		header('Cache-Control: private, no-store');
 		header('Content-Type: ' . ($inline ? $mime : 'application/octet-stream'));

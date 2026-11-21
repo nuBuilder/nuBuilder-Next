@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Setup wizard (0.8.312): nuBuilder Next's own settings after the database exists – for the globeadmin, right after the login.
+ * Setup wizard: nuBuilder Next's own settings after the database exists – for the globeadmin, right after the login.
  * Shown while nuconfig.php does not say $nuConfigShowInstaller = false (true = always, e.g. to run it again); when PHP cannot write
  * nuconfig.php, "done" is kept in zzzzsys_nunext_setting (row setup_wizard). The first-run installer (nuconfig.php missing) leads here
  * after the first login, so a new installation gets the same choices.
@@ -210,7 +210,8 @@ final class NuSetupWizard
 		// only what changed – an unchanged empty label does not add a line to nuconfig.php
 		foreach ($out as $k => $_) {
 			$key = ['nuConfigTimezone' => 'timezone', 'nuConfigBaseURL' => 'base_url', 'nuConfigSessionTimeout' => 'timeout', 'nuConfigSessionTimeoutGlobeadmin' => 'timeout_ga',
-				'nuConfigSharedLogin' => 'shared', 'nuConfigNuBuilderPath' => 'nub_path', 'nuConfigTitle' => 'title', 'nuConfigApi' => 'api', 'nuConfig2FAAdmin' => 'twofa', 'nuConfigGlobeadminEmail' => 'admin_email'][$k];
+				'nuConfigSharedLogin' => 'shared', 'nuConfigNuBuilderPath' => 'nub_path', 'nuConfigTitle' => 'title', 'nuConfigApi' => 'api',
+					'nuConfig2FAAdmin' => 'twofa', 'nuConfigGlobeadminEmail' => 'admin_email'][$k];
 			if ($v[$key] === $cur[$key]) unset($out[$k]);
 		}
 		// environment label: nuconfig.php only when it is set there already, otherwise Branding (database) – see apply()
@@ -263,7 +264,7 @@ final class NuSetupWizard
 				$res['errors'][] = t('wiz_lang') . ': ' . $e->getMessage();
 			}
 		}
-		// the environment label, and the title when Branding has one of its own (0.8.736 – it wins over $nuConfigTitle)
+		// the environment label, and the title when Branding has one of its own (it wins over $nuConfigTitle)
 		$bt = NuBranding::get()['title'];
 		$envChg = !NuBranding::envFromConfig() && ($v['env_label'] !== $cur['env_label'] || $v['env_color'] !== $cur['env_color']);
 		if ($envChg || ($bt !== '' && $v['title'] !== $cur['title'])) {

@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Change the database column of a builder object (0.8.623, as nuBuilder Forte's "Alter Database Column" form – with a data check):
+ * Change the database column of a builder object (as nuBuilder Forte's "Alter Database Column" form – with a data check):
  * info() reads the column, plan() builds the ALTER TABLE for a new type / length and counts the values that would be cut, rounded or
  * lost, run() executes it (recent password, logged). The globeadmin may also send his own ALTER TABLE for this table (free SQL, no
  * data check). MySQL / MariaDB and SQL Server; not SQLite. Called by pages/nubuilderapi.php (column.info / column.check / column.change).
@@ -35,12 +35,13 @@ final class NuColumnChange
 					WHERE tc.CONSTRAINT_TYPE = 'PRIMARY KEY' AND k.TABLE_NAME = c.TABLE_NAME AND k.COLUMN_NAME = c.COLUMN_NAME) THEN 'PRI' ELSE '' END AS ck, '' AS cm
 				FROM INFORMATION_SCHEMA.COLUMNS c WHERE c.TABLE_NAME = ? AND c.COLUMN_NAME = ?", [$table, $column]);
 			if ($c) $c['ct'] = strtolower((string)$c['dt']) . (in_array(strtolower((string)$c['dt']), ['varchar', 'nvarchar', 'char', 'nchar'], true)
-				? '(' . ((int)$c['len'] === -1 ? 'max' : (int)$c['len']) . ')' : (in_array(strtolower((string)$c['dt']), ['decimal', 'numeric'], true) ? '(' . (int)$c['prec'] . ',' . (int)$c['scale'] . ')' : ''));
+				? '(' . ((int)$c['len'] === -1 ? 'max' : (int)$c['len'])
+					. ')' : (in_array(strtolower((string)$c['dt']), ['decimal', 'numeric'], true) ? '(' . (int)$c['prec'] . ',' . (int)$c['scale'] . ')' : ''));
 		}
 		if (!$c) throw new RuntimeException(t('builder_colchg_err_missing', $column, $table));
 		[$type, $length] = self::guess($c);
 		$rows = null;
-		try { $rows = (int)$db->value('SELECT COUNT(*) FROM ' . NuDB::ident($table)); } catch (Throwable) {}
+		try { $rows = (int)$db->value('SELECT COUNT(*) FROM ' . NuDB::ident($table)); } catch (Throwable $ig) { nu_ignored($ig); }
 		return [
 			'table' => $table, 'column' => (string)$c['name'], 'sql_type' => strtolower((string)$c['ct']), 'nullable' => strtoupper((string)$c['nul']) === 'YES',
 			'default' => $c['def'], 'pk' => (string)$c['ck'] === 'PRI', 'auto' => str_contains(strtolower((string)$c['ex']), 'auto_increment'),
@@ -122,10 +123,8 @@ final class NuColumnChange
 				return;
 			}
 			if ($n === 0) return;
-			$top = $db->type === 'sqlsrv' ? 'TOP ' . self::SAMPLES . ' ' : '';
-			$lim = $db->type === 'mysql' ? ' LIMIT ' . self::SAMPLES : '';
 			$s = [];
-			try { foreach ($db->all("SELECT {$top}$txt AS v FROM $t WHERE $where$lim") as $r) $s[] = mb_substr((string)$r['v'], 0, 60); } catch (Throwable) {}
+			try { foreach ($db->all($db->firstRows("SELECT $txt AS v FROM $t WHERE $where", self::SAMPLES)) as $r) $s[] = mb_substr((string)$r['v'], 0, 60); } catch (Throwable $ig) { nu_ignored($ig); }
 			$out[] = ['key' => $key, 'arg' => $arg, 'n' => $n, 'samples' => $s];
 		};
 		$num = $my ? "TRIM($txt) REGEXP '^-?[0-9]+(\\\\.[0-9]+)?$'" : "TRY_CAST($c AS DECIMAL(38,10)) IS NOT NULL";

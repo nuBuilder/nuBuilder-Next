@@ -15,7 +15,7 @@ $T      = NuProcedure::TABLE;
 $id    = (string)($_GET['id'] ?? '');
 $isNew = $id === 'new';
 $proc  = null;
-// clone (0.8.680, as nuBuilder Forte): ?id=new&clone=<id> opens a copy that is saved only with Save
+// clone (as nuBuilder Forte): ?id=new&clone=<id> opens a copy that is saved only with Save
 $cloneId = $isNew ? (string)($_GET['clone'] ?? '') : '';
 $src = null;
 if ($cloneId !== '') {
@@ -30,69 +30,23 @@ if ($cloneId !== '') {
 if ($id !== '' && !$isNew) {
 	$proc = NuProcedure::load($id);
 	if (!$proc || ((string)$proc['sph_system'] === '1' && !NuHash::devMode())) { http_response_code(404); nu_fatal(t('record_not_found'), '', true); }
-	if ($_SERVER['REQUEST_METHOD'] === 'GET') NuOpened::touch('procedure', $id);   // "Last opened" (0.8.1117)
+	if ($_SERVER['REQUEST_METHOD'] === 'GET') NuOpened::touch('procedure', $id);   // "Last opened"
 }
 $locked = ($proc && NuProcedure::locked($proc)) || !($proc ? $rights['save'] : $rights[$src ? 'clone' : 'create']);
 $errors = [];
 
 // ------------------------------------------------------------------ test run (JSON)
-if (nu_is_post() && nu_post('action') === 'run') {
-	header('Content-Type: application/json; charset=utf-8');
-	if (!$proc) { echo json_encode(['ok' => false, 'errors' => [['message' => t('record_not_found')]]]); exit; }
-	$props = json_decode((string)($_POST['props'] ?? '{}'), true);
-	$res = NuProcedure::run($proc, is_array($props) ? $props : []);
-	NuLog::write('procedure_run', $T, $id, ['code' => (string)$proc['sph_code'], 'ok' => $res['ok']]);
-	echo json_encode($res, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
-	exit;
-}
-
-// ------------------------------------------------------------------ save / clone / delete
-if (nu_is_post()) {
-	$action = nu_post('action');
-	if ($action === 'save') {
-		NuAcl::require(NuAcl::FORM_PROCEDURE, $proc ? 'save' : ($src ? 'clone' : 'create'));
-		if ($proc && NuProcedure::locked($proc)) NuAcl::require('__globeadmin_only__');
-		$in = [];
-		foreach (NuProcedure::FIELDS as $f) $in[$f] = $_POST[$f] ?? '';
-		foreach (['sph_javascript_active', 'sph_global', 'sph_demo'] as $f) $in[$f] = nu_check($f) === '1';
-		[$newId, $errors] = NuProcedure::save($in, $proc ? $id : '');
-		if (!$errors) {
-			$after = $db->one("SELECT * FROM $T WHERE zzzzsys_php_id = ?", [$newId]) ?? [];
-			$acc = isset($_POST['access_sent']) ? NuProcedure::setAccess($newId, array_filter((array)($_POST['access'] ?? []), 'is_string')) : ['added' => [], 'removed' => []];
-			$details = ['code' => (string)$after['sph_code'], 'fields' => NuProcedure::diff($proc, $after)];
-			if ($acc['added']) $details['access_added'] = implode(', ', $acc['added']);
-			if ($acc['removed']) $details['access_removed'] = implode(', ', $acc['removed']);
-			if ($src) $details['clone_of'] = (string)($src['sph_code'] ?? '');
-			if ($details['fields'] || count($details) > 2 || !$proc) NuLog::write($proc ? 'procedure_changed' : 'procedure_created', $T, $newId, $details);
-			nu_flash('success', t('saved'));
-			nu_redirect(nu_url('procedures', ['id' => $newId]));
-		}
-	}
-	if ($action === 'delete' && $proc) {
-		NuAcl::require(NuAcl::FORM_PROCEDURE, 'delete');
-		if (NuProcedure::locked($proc)) NuAcl::require('__globeadmin_only__');
-		$objects = array_filter(NuProcedure::usage($id, (string)$proc['sph_code']), static fn($u) => $u['kind'] === 'object' || $u['kind'] === 'report');
-		if ($objects) {
-			$errors['_'] = t('proc_err_used', implode(', ', array_map(static fn($u) => trim($u['form'] . ' · ' . $u['where'], ' ·'), $objects)));
-		} else {
-			$db->transaction(static function (NuDB $db) use ($id, $T) {
-				$db->delete('zzzzsys_access_php', 'slp_zzzzsys_php_id', $id);
-				$db->delete($T, 'zzzzsys_php_id', $id);
-			});
-			NuLog::write('procedure_deleted', $T, $id, ['code' => (string)$proc['sph_code'], 'fields' => ['sph_php' => [(string)$proc['sph_php'], null]]]);
-			nu_flash('success', t('proc_deleted'));
-			nu_redirect(nu_url('procedures'));
-		}
-	}
-}
+['proc' => $proc, 'T' => $T, 'id' => $id, 'src' => $src, 'f' => $f, 'errors' => $errors, 'db' => $db]
+	= NuProceduresPage::post(get_defined_vars());   // the POST actions (code review R7, nuprocedurespage.php)
 
 // ------------------------------------------------------------------ list (also Print / CSV)
 if ($id === '') {
-	// list: columns, filters and sort of the chosen list view (0.8.334, core/nulistdefs.php)
+	// list: columns, filters and sort of the chosen list view (core/nulistdefs.php)
 	NuListView::page('procedures', [
 		'before' => NuListView::crumbs([[t('nav_forms'), nu_url('forms')], [t('proc_title')]]), 'active' => 'forms',
 		'title_extra' => NuListView::infoToggle('procHint'), 'title_sub' => '<div class="collapse nuTitleSub text-body-secondary small" id="procHint">' . h(t('proc_hint')) . '</div>',
-		'buttons' => $rights['add'] ? '<a class="btn nuAddBtn" title="' . h(t('proc_new')) . '" href="' . h(nu_url('procedures', ['id' => 'new'])) . '"><i class="bi bi-plus-lg me-1"></i>' . h(t('add')) . '</a>' : '',
+		'buttons' => $rights['add'] ? '<a class="btn nuAddBtn" title="' . h(t('proc_new')) . '" href="' . h(nu_url('procedures', ['id' => 'new']))
+			. '"><i class="bi bi-plus-lg me-1"></i>' . h(t('add')) . '</a>' : '',
 	]);
 	return;
 }
@@ -112,7 +66,7 @@ if ($id !== '') {
 		. '<script src="' . nu_asset(NU_CODEMIRROR . '/codemirror-bundle.js') . '"></script>'
 		. '<script src="' . nu_asset('assets/js/nu/nucodetools.js') . '"></script>'
 		. '<script src="' . nu_asset('assets/js/nu/nuhashvars.js') . '"></script>'
-		. nu_ts_foot()   // Launch form: searchable (0.8.536)
+		. nu_ts_foot()   // Launch form: searchable
 		. '<script src="' . nu_asset('assets/js/nuprocedures.js') . '"></script>';
 }
 if ($id !== '') nu_body_class('nuRecPage');
@@ -141,12 +95,12 @@ nu_layout_start(t('proc_title'), 'forms', ['head' => $head]);
 	$err = static fn(string $k) => isset($errors[$k]) ? ' is-invalid' : '';
 	$fb = static fn(string $k) => '<div class="invalid-feedback">' . h($errors[$k] ?? '') . '</div>';
 	// label above the field (full width on phones, two columns from md)
-	// 0.8.837 (the owner's layout B): two rows of fields sized to their content – class pf_<name> sets the width (nuapp.css)
+	// (the owner's layout B): two rows of fields sized to their content – class pf_<name> sets the width (nuapp.css)
 	$row = static fn(string $k, string $label, string $control, bool $req = false, string $tip = '') =>
 		'<div class="procField pf_' . substr($k, 4) . '"><label class="form-label procLabel" for="' . $k . '">' . h($label)
 		. ($req ? ' <span class="text-danger">*</span>' : '') . ($k === 'sph_code' ? nu_unique_mark($req) : '') . '</label>'
 		. ($tip !== '' ? nu_info_tip($tip) : '')
-		. $control . '</div>';   // key: unique (0.8.627)
+		. $control . '</div>';   // key: unique
 	$distinct = static fn(string $c) => array_column($db->all("SELECT DISTINCT $c AS v FROM $T WHERE $c IS NOT NULL AND $c <> '' AND " . NuProcedure::listCondition() . " ORDER BY $c"), 'v');
 	$forms = $db->all("SELECT zzzzsys_form_id, sfo_code, sfo_description FROM zzzzsys_form WHERE COALESCE(sfo_type,'') <> 'subform' ORDER BY sfo_code");
 	$access = NuProcedure::access($proc ? $id : $cloneId);
@@ -172,38 +126,47 @@ nu_layout_start(t('proc_title'), 'forms', ['head' => $head]);
 	<div class="nuTitleBar nuRecHead mb-3">
 		<h1 class="h4 mb-0"><i class="bi bi-filetype-php me-2"></i><?= h($proc ? (string)$proc['sph_code'] : t('proc_new')) ?>
 			<?php if ($proc && (string)$proc['sph_template'] === '1'): ?><span class="badge text-bg-light border fs-6 align-middle"><?= h(t('proc_template')) ?></span><?php endif; ?></h1>
-		<div class="d-flex flex-wrap gap-2 align-items-center">   <!-- buttons in their own row, as on every page (0.8.474) -->
+		<div class="d-flex flex-wrap gap-2 align-items-center">   <!-- buttons in their own row, as on every page -->
 		<a class="btn nuBtnAct" href="<?= h(nu_url('procedures')) ?>"><i class="bi bi-arrow-left me-1"></i><?= h(t('back')) ?></a>
-		<?php if (!$locked): ?><button data-nu-save class="btn nuBtnAct nuBtnSave" type="submit" form="nuRecordForm" id="procSave"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button><?php endif; ?>
+		<?php if (!$locked): ?><button data-nu-save class="btn nuBtnAct nuBtnSave" type="submit" form="nuRecordForm"
+			id="procSave"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button><?php endif; ?>
 		<?php if ($proc && $rights['clone']): ?>
 			<a class="btn nuBtnAct" href="<?= h(nu_url('procedures', ['id' => 'new', 'clone' => $id])) ?>" id="procClone"><i class="bi bi-copy me-1"></i><?= h(t('clone')) ?></a>
 		<?php endif; ?>
 		<?php if ($proc && $rights['delete'] && !NuProcedure::locked($proc)): ?>
-			<form method="post" action="<?= h(nu_url('procedures', ['id' => $id])) ?>" data-confirm="<?= h(t('proc_delete_confirm', (string)$proc['sph_code'])) ?>" data-confirm-ok="<?= h(t('delete')) ?>" data-confirm-class="btn btn-danger">
+			<form method="post" action="<?= h(nu_url('procedures', ['id' => $id])) ?>"
+				data-confirm="<?= h(t('proc_delete_confirm', (string)$proc['sph_code'])) ?>" data-confirm-ok="<?= h(t('delete')) ?>"
+				data-confirm-class="btn btn-danger">
 				<?= nu_csrf_field() ?><input type="hidden" name="action" value="delete">
 				<button class="btn nuBtnAct nuBtnDel" type="submit" id="procDelete"><i class="bi bi-trash me-1"></i><?= h(t('delete')) ?></button></form>
 		<?php endif; ?>
-		<?php if ($proc): ?><?= NuFormInfo::record('zzzzsys_php', (string)$id, ['code' => (string)$proc['sph_code']]) /* (i): record ID … (0.8.500) */ ?><?php endif; ?>
+		<?php if ($proc): ?><?= NuFormInfo::record('zzzzsys_php', (string)$id, ['code' => (string)$proc['sph_code']]) /* (i): record ID … */ ?><?php endif; ?>
 		</div>
 	</div>
 	<?php if ($proc && NuProcedure::locked($proc)): ?><div class="alert alert-info py-2 small"><?= h(t('proc_template_locked')) ?></div><?php endif; ?>
 
-	<form method="post" action="<?= h(nu_url('procedures', ['id' => $id, 'clone' => $cloneId])) ?>" id="nuRecordForm" data-nu-focus-first data-nu-guard<?= $src ? ' data-nu-clone="' . h(t('form_clone_badge')) . '"' : '' ?> novalidate>
+	<form method="post" action="<?= h(nu_url('procedures', ['id' => $id, 'clone' => $cloneId])) ?>" id="nuRecordForm" data-nu-focus-first
+		data-nu-guard<?= $src ? ' data-nu-clone="' . h(t('form_clone_badge')) . '"' : '' ?> novalidate>
 		<?= nu_csrf_field() ?><input type="hidden" name="action" value="save"><input type="hidden" name="access_sent" value="1">
 		<ul class="nav nav-tabs" role="tablist" id="procTabs" data-nu-tab-restore>
 			<li class="nav-item" role="presentation"><button class="nav-link active" type="button" data-bs-toggle="tab" data-bs-target="#procTabPhp" role="tab" data-tab="php">PHP</button></li>
-			<li class="nav-item" role="presentation"><button class="nav-link<?= trim($v('sph_javascript')) !== '' ? ' nuHasCode' : '' ?>" type="button" data-bs-toggle="tab" data-bs-target="#procTabJs" role="tab" data-tab="js" id="procTabJsBtn" data-has="<?= h(t('code_has')) ?>">JS</button></li>
-			<li class="nav-item" role="presentation"><button class="nav-link" type="button" data-bs-toggle="tab" data-bs-target="#procTabAccess" role="tab" data-tab="access"><?= h(t('nav_access')) ?> <span class="badge text-bg-secondary" id="procAccessCount" data-everyone="<?= h(t('proc_everyone')) ?>"><?= $chk('sph_global') ? h(t('proc_everyone')) : $nAccess ?></span></button></li>
+			<li class="nav-item" role="presentation"><button class="nav-link<?= trim($v('sph_javascript')) !== '' ? ' nuHasCode' : '' ?>" type="button"
+				data-bs-toggle="tab" data-bs-target="#procTabJs" role="tab" data-tab="js" id="procTabJsBtn" data-has="<?= h(t('code_has')) ?>">JS</button></li>
+			<li class="nav-item" role="presentation"><button class="nav-link" type="button" data-bs-toggle="tab" data-bs-target="#procTabAccess" role="tab"
+				data-tab="access"><?= h(t('nav_access')) ?> <span class="badge text-bg-secondary" id="procAccessCount"
+				data-everyone="<?= h(t('proc_everyone')) ?>"><?= $chk('sph_global') ? h(t('proc_everyone')) : $nAccess ?></span></button></li>
 			<?php if ($proc): ?>
-				<li class="nav-item" role="presentation"><button class="nav-link" type="button" data-bs-toggle="tab" data-bs-target="#procTabUsage" role="tab" data-tab="usage"><?= h(t('proc_usage')) ?> <span class="badge text-bg-secondary"><?= count($usage) ?></span></button></li>
-				<li class="nav-item" role="presentation"><button class="nav-link" type="button" data-bs-toggle="tab" data-bs-target="#procTabHistory" role="tab" data-tab="history"><?= h(t('proc_history')) ?> <span class="badge text-bg-secondary"><?= count($history) ?></span></button></li>
+				<li class="nav-item" role="presentation"><button class="nav-link" type="button" data-bs-toggle="tab" data-bs-target="#procTabUsage" role="tab"
+					data-tab="usage"><?= h(t('proc_usage')) ?> <span class="badge text-bg-secondary"><?= count($usage) ?></span></button></li>
+				<li class="nav-item" role="presentation"><button class="nav-link" type="button" data-bs-toggle="tab" data-bs-target="#procTabHistory" role="tab"
+					data-tab="history"><?= h(t('proc_history')) ?> <span class="badge text-bg-secondary"><?= count($history) ?></span></button></li>
 			<?php endif; ?>
 		</ul>
 		<fieldset class="card shadow-sm border-top-0 rounded-top-0"<?= $locked ? ' disabled' : '' ?>>
 		<div class="card-body tab-content" data-nu-tab-restore>
 			<!-- ============================================================ PHP -->
 			<div class="tab-pane fade show active" id="procTabPhp" role="tabpanel">
-				<?php // code, description, group, category, status, launch form (0.8.225): collapsed for a saved procedure, open for a new one or after an error
+				<?php // code, description, group, category, status, launch form: collapsed for a saved procedure, open for a new one or after an error
 				$fieldsOpen = $isNew || array_intersect_key($errors, array_flip(['sph_code', 'sph_description', 'sph_status', 'sph_zzzzsys_form_id']));
 				$sumDesc = trim($v('sph_description')); ?>
 				<details class="procFields mb-3" id="procFields"<?= $fieldsOpen ? ' open' : '' ?>>
@@ -223,7 +186,10 @@ nu_layout_start(t('proc_title'), 'forms', ['head' => $head]);
 				<?= $row('sph_category', t('proc_category'), '<input class="form-control" id="sph_category" name="sph_category" maxlength="300" list="procCats" value="' . h($v('sph_category')) . '">'
 						. '<datalist id="procCats">' . implode('', array_map(static fn($g) => '<option value="' . h($g) . '">', $distinct('sph_category'))) . '</datalist>') ?>
 				<?= $row('sph_zzzzsys_form_id', t('proc_launch'), '<select class="form-select nuListTomSelect' . $err('sph_zzzzsys_form_id') . '" id="sph_zzzzsys_form_id" name="sph_zzzzsys_form_id"><option value=""></option>'
-						. implode('', array_map(static fn($f) => '<option value="' . h($f['zzzzsys_form_id']) . '"' . ($f['zzzzsys_form_id'] === $v('sph_zzzzsys_form_id') ? ' selected' : '') . '>' . h($f['sfo_code'] . ($f['sfo_description'] ? ' – ' . $f['sfo_description'] : '')) . '</option>', $forms))
+						. implode('',
+							array_map(static fn($f) => '<option value="' . h($f['zzzzsys_form_id']) . '"'
+								. ($f['zzzzsys_form_id'] === $v('sph_zzzzsys_form_id') ? ' selected' : '') . '>'
+								. h($f['sfo_code'] . ($f['sfo_description'] ? ' – ' . $f['sfo_description'] : '')) . '</option>', $forms))
 						. '</select>' . $fb('sph_zzzzsys_form_id'), false, t('proc_launch_hint')) ?>
 				</div>
 				</div>
@@ -236,16 +202,18 @@ nu_layout_start(t('proc_title'), 'forms', ['head' => $head]);
 						<?php if ($proc): ?>
 							<span class="procTestRun d-inline-flex flex-wrap align-items-center gap-2"><span class="small text-body-secondary"><?= h(t('proc_test_run')) ?></span><?= nu_info_tip(t('proc_test_run_tip'), '') ?>
 							<button class="btn btn-outline-secondary procRunBtn" type="button" data-run="hide" id="procRunHidden"><i class="bi bi-eye-slash me-1"></i><?= h(t('proc_run_hidden')) ?></button>
-							<button class="btn btn-outline-secondary procRunBtn" type="button" data-run="window" id="procRunWindow"><i class="bi bi-box-arrow-up-right me-1"></i><?= h(t('proc_run_window')) ?></button></span>
+							<button class="btn btn-outline-secondary procRunBtn" type="button" data-run="window"
+								id="procRunWindow"><i class="bi bi-box-arrow-up-right me-1"></i><?= h(t('proc_run_window')) ?></button></span>
 						<?php else: ?><span class="small text-body-secondary"><?= h(t('proc_run_after_save')) ?></span><?php endif; ?>
 				</div>
 				<div class="procResult mb-2" id="procResult" aria-live="polite" hidden></div>
 				<div class="procEditor">
 				<div class="d-flex flex-wrap gap-2 align-items-center mb-1">
 					<label class="form-label small fw-semibold mb-0" for="sph_php">PHP <span class="text-danger">*</span></label>
-					<span class="procCodeTools d-flex gap-2 ms-3 me-auto" data-for="sph_php"></span><?php // editor toolbar next to the label (0.8.592: nearer for the mouse) ?>
+					<span class="procCodeTools d-flex gap-2 ms-3 me-auto" data-for="sph_php"></span><?php // editor toolbar next to the label (nearer for the mouse) ?>
 				</div>
-				<textarea class="form-control font-monospace procCode<?= $err('sph_php') ?>" id="sph_php" name="sph_php" rows="18" spellcheck="false" data-mode="php"><?= h($v('sph_php')) ?></textarea><?= $fb('sph_php') ?>
+				<textarea class="form-control font-monospace procCode<?= $err('sph_php') ?>" id="sph_php" name="sph_php" rows="18" spellcheck="false"
+					data-mode="php"><?= h($v('sph_php')) ?></textarea><?= $fb('sph_php') ?>
 				</div>
 			</div>
 
@@ -274,22 +242,7 @@ nu_layout_start(t('proc_title'), 'forms', ['head' => $head]);
 					<div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" id="sph_demo" name="sph_demo" value="1"<?= $chk('sph_demo') ? ' checked' : '' ?>>
 						<label class="form-check-label" for="sph_demo"><?= h(t('proc_demo_long')) ?></label></div>
 				</div>
-				<div class="d-flex flex-wrap gap-2 mb-2">
-					<input type="search" class="form-control form-control-sm w-auto" id="procAccessSearch" placeholder="<?= h(t('search')) ?>" aria-label="<?= h(t('search')) ?>">
-					<button class="btn btn-sm btn-outline-secondary" type="button" data-access-all="1"><?= h(t('proc_access_all')) ?></button>
-					<button class="btn btn-sm btn-outline-secondary" type="button" data-access-all="0"><?= h(t('proc_access_none')) ?></button>
-				</div>
-				<div class="list-group procAccessList" id="procAccessList">
-					<?php if (!$access): ?><div class="text-body-secondary small"><?= h(t('no_records')) ?></div><?php endif; ?>
-					<?php foreach ($access as $a): ?>
-						<label class="list-group-item d-flex gap-2 align-items-center" data-text="<?= h(strtolower($a['sal_code'] . ' ' . $a['sal_description'] . ' ' . $a['sal_group'])) ?>">
-							<input class="form-check-input mt-0" type="checkbox" name="access[]" value="<?= h($a['zzzzsys_access_id']) ?>"<?= $a['granted'] ? ' checked' : '' ?>>
-							<span class="fw-semibold"><?= h($a['sal_code']) ?></span><span class="small text-body-secondary me-auto"><?= h($a['sal_description']) ?></span>
-							<?php if ((string)$a['sal_group'] !== ''): ?><span class="badge bg-secondary-subtle text-secondary-emphasis"><?= h($a['sal_group']) ?></span><?php endif; ?>
-						</label>
-					<?php endforeach; ?>
-				</div>
-				<p class="small text-body-secondary mt-2 mb-0"><?= h(t('proc_access_hint')) ?></p>
+				<?= nu_access_checklist('procAccessSearch', 'procAccessList', $access, t('proc_access_hint')) ?>
 			</div>
 
 			<?php if ($proc): ?>

@@ -97,7 +97,7 @@
 	var cj = document.getElementById('inspCopyJson');
 	if (cj) cj.addEventListener('click', function () { copy(card.getAttribute('data-json') || '{}', cj); });
 
-	// the hint below the table (0.8.1157): closed for good with ×, (i) brings it back – localStorage nunext-insp-hint-hidden
+	// the hint below the table: closed for good with ×, (i) brings it back – localStorage nunext-insp-hint-hidden
 	var hint = document.getElementById('inspHint'), hintShow = document.getElementById('inspHintShow');
 	var setHint = function (off) {
 		if (!hint || !hintShow) return;

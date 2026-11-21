@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * My account (0.8.454): the custom user fields a user fills in himself (edit_by "user", core/nuuserfields.php). Shown in the user menu
+ * My account: the custom user fields a user fills in himself (edit_by "user", core/nuuserfields.php). Shown in the user menu
  * when there are such fields; not for the globeadmin (no user record) and read only while acting as a user or in the demo.
  */
 
@@ -18,18 +18,8 @@ $id = (string)$me['id'];
 $vals = NuUserFields::values($id);
 $errors = [];
 
-if (nu_is_post() && nu_post('action') === 'save' && !$readOnly) {
-	$post = is_array($_POST['uf'] ?? null) ? $_POST['uf'] : [];
-	[$new, $errors] = NuUserFields::validate($post, $id, 'self');
-	if (!$errors) {
-		$diff = NuUserFields::save($id, $new);
-		if ($diff) { NuLog::write('user_updated', 'zzzzsys_user', $id, ['fields' => $diff, 'via' => 'account']); NuUserJson::stamp($id, false, 'account'); }
-		nu_flash('success', t('saved'));
-		nu_redirect(nu_url('account'));
-	}
-	$vals = array_merge($vals, array_map(static fn($x) => is_scalar($x) ? (string)$x : '', array_intersect_key($post, $own)));
-	nu_flash('danger', t('err_check_form'));
-}
+['readOnly' => $readOnly, 'errors' => $errors, 'vals' => $vals, 'own' => $own]
+	= NuAccountPage::post(get_defined_vars());   // the POST actions (code review R7, nuaccountpage.php)
 
 nu_layout_start(t('acc_title'), 'home');
 ?>

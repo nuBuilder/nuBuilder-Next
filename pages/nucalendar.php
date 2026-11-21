@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Calendars (0.8.1165, core/form/nucalendar.php, assets/js/nu/nucalendar.js). POST (X-CSRF-Token, form fields) → JSON:
+ * Calendars (core/form/nucalendar.php, assets/js/nu/nucalendar.js). POST (X-CSRF-Token, form fields) → JSON:
  *   action events: start, end (the shown range) and
  *     - f = a form with a list calendar (sfo_json nunext.calendar) + the list's search state (q, rf, flt[], adv, nsc, sc) – the list view, or
  *     - f + o (+ r) = the calendar object o of form f on record r – its source "form" (that form's list calendar, run filter with hash
@@ -81,7 +81,7 @@ try {
 	}
 } catch (Throwable $e) {
 	NuBrowse::dropTempTable();
-	if (class_exists('NuDebugLog')) { try { NuDebugLog::write("Calendar:\n" . $e->getMessage()); } catch (Throwable) {} }
+	if (class_exists('NuDebugLog')) { try { NuDebugLog::write("Calendar:\n" . $e->getMessage()); } catch (Throwable $ig) { nu_ignored($ig); } }
 	$json(['ok' => false, 'error' => t('cal_err_query') . (nu_debug() || !empty(NuAuth::user()['globeadmin']) ? ' ' . $e->getMessage() : '')]);
 }
 $json(['ok' => false, 'error' => t('err_invalid')], 400);

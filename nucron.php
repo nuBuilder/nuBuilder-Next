@@ -4,35 +4,35 @@ declare(strict_types=1);
 /*
  * nuBuilder Next on the command line (the web server never runs this file: .htaccess, PHP_SAPI).
  *
- * Housekeeping (0.8.207), e.g. every 15 minutes:  *\/15 * * * *  php /var/www/html/nunext/nucron.php > /dev/null
+ * Housekeeping, e.g. every 15 minutes:  *\/15 * * * *  php /var/www/html/nunext/nucron.php > /dev/null
  *     php nucron.php
  *   Removes expired tokens and sessions, old API counters, log rows beyond "Keep the log" (Admin tools → Security check) and temporary
  *   files; finishes an unattended update whose database steps are still pending. Without cron, page views do this now and then.
  *
- * Unattended update (0.8.301) – run it as the web server's user (e.g. sudo -u www-data php nucron.php update …), so the new files
+ * Unattended update – run it as the web server's user (e.g. sudo -u www-data php nucron.php update …), so the new files
  * belong to it:
  *     php nucron.php update --url=https://example.com/nunext.zip [options]
  *     php nucron.php update --zip=/path/nunext.zip [options]
- *     php nucron.php update --github [options]   the newest release of the repository set on the update page (0.8.374, NuGitHub)
+ *     php nucron.php update --github [options]   the newest release of the repository set on the update page (NuGitHub)
  *   options:  --dry-run                 check only (signature, requirements, files, database structure, sample data) – nothing changes
  *             --sha256=<hex>            expected checksum of the package
  *             --backup=auto|files|nubuilder|sql|sql_nologs   (auto = nubuilder: the zzzzsys_* tables without logs; sql = whole database)
  *             --schema=none|missing|safe|all       database columns to add / widen first (safe = as the update page preselects)
  *             --sample=auto|yes|no      refresh the sample data (auto: when the package brings a newer sample version)
  *             --reinstall               install even when the package is not newer
- *             --ignore-integrity        install although the integrity check of the database found problems (0.8.698)
+ *             --ignore-integrity        install although the integrity check of the database found problems
  *             --json                    output as JSON
  *     php nucron.php update --status [job]     the last jobs / one job
  *     php nucron.php update --finish=<job>     database steps of an installed job (started automatically in a new process)
  *   Exit code: 0 = done / checked, 1 = failed, 2 = wrong call.
  *
- * Run a procedure (0.8.1135) – the crontab decides when, e.g. every day at 6:00:  0 6 * * *  php /var/www/html/nunext/nucron.php run my_procedure
+ * Run a procedure – the crontab decides when, e.g. every day at 6:00:  0 6 * * *  php /var/www/html/nunext/nucron.php run my_procedure
  *     php nucron.php run <procedure code> [--user=<login name>] [--mail=<address>] [--quiet] [name=value …]
  *   --user   the user it runs as (rights, #USER_ID#; default: the globeadmin)      name=value  hash variables of the run (#name#)
  *   --mail   where the e-mail goes when the run fails (default: the address of Settings → Data & logs; --mail= sends none)
  *   --quiet  no output unless it fails. One log entry per run. Exit code: 0 = done, 1 = failed, 2 = wrong call.
  *
- * Secrets at rest (0.8.1326, NuSecret – SMTP copy, 2FA, OAuth mail, single sign-on, webhooks, AI providers; encrypted with $nuConfigSecretKey):
+ * Secrets at rest (NuSecret – SMTP copy, 2FA, OAuth mail, single sign-on, webhooks, AI providers; encrypted with $nuConfigSecretKey):
  *     php nucron.php secrets status [--json]       what is encrypted, stored as plain text or cannot be decrypted with the key
  *     php nucron.php secrets seal                  encrypt the secrets stored as plain text with the key of nuconfig.php
  *     php nucron.php secrets rekey --new=<key>|--new=generate [--dry-run] [--force] --yes
@@ -44,32 +44,32 @@ declare(strict_types=1);
  *   After a new key: API client secrets and auto login links (HMACs with the key) stop working – give the clients new secrets.
  *   Exit code: 0 = done, 1 = failed / a value cannot be decrypted, 2 = wrong call.
  *
- * Health check (0.8.1335) – the same checks as index.php?p=health with the key (database, disk, last backup, last cron run):
+ * Health check – the same checks as index.php?p=health with the key (database, disk, last backup, last cron run):
  *     php nucron.php health [--json]      Exit code: 0 = ok, 1 = a warning, 2 = failed (the database does not answer)
  *
- * IP access (0.8.722) – switched off when the rules lock everybody out (they stay stored):
+ * IP access – switched off when the rules lock everybody out (they stay stored):
  *     php nucron.php iprules off
  *
- * Passkeys (0.8.877) – removes every passkey of a user (lost device; the globeadmin: his login name or "globeadmin"):
+ * Passkeys – removes every passkey of a user (lost device; the globeadmin: his login name or "globeadmin"):
  *     php nucron.php passkeys off <login name>
  *
- * Integrity check of the database (0.8.698) – what would make an update fail or leave data broken:
+ * Integrity check of the database – what would make an update fail or leave data broken:
  *     php nucron.php integrity [--json]      Exit code: 0 = no problems (warnings / notes allowed), 1 = problems found
  *
- * Self-test (0.8.889, only with $nuConfigDevMode = true – test installations; the form checks write into the sample application and clean up):
+ * Self-test (only with $nuConfigDevMode = true – test installations; the form checks write into the sample application and clean up):
  *     php nucron.php selftest [--sample] [--groups=system,data,forms,rights,features] [--lang=en] [--json]
  *   --sample  install the sample application first when it is missing (the form / rights checks are skipped without it)
  *   --lang    language of the titles (an installed one; default: the installation's fallback)
  *   Exit code: 0 = no failed check (warnings / skipped allowed), 1 = a check failed, 2 = wrong call.
  *
- * Reset database (0.8.628, only with $nuConfigDevMode = true, MySQL / MariaDB): deletes ALL tables of the database, imports a nuBuilder
+ * Reset database (only with $nuConfigDevMode = true, MySQL / MariaDB): deletes ALL tables of the database, imports a nuBuilder
  * Forte (4.x) SQL file (nubuilder4.sql or a complete dump, .sql / .sql.gz / .zip) and creates nuBuilder Next's tables:
  *     php nucron.php reset --sql=<file> [--check] [--backup] [--sample] --yes
  *   --check  read and check the file only, list the tables that would be deleted – nothing changes (no --yes needed)
  *   --backup a backup with the whole database first (Update → Backups)      --sample  install the sample application afterwards
  */
 /*
- * Restore the database part of a backup (0.8.1031, MySQL / MariaDB; Update → Backups, file name as listed there or in _backup/):
+ * Restore the database part of a backup (MySQL / MariaDB; Update → Backups, file name as listed there or in _backup/):
  *     php nucron.php restore <backup file name> [--check] [--no-backup] --yes
  *   --check      read and check the dump only – nothing changes (no --yes needed)
  *   --no-backup  no backup of the current database first (default: one with the same scope – put back by itself when the restore fails)
@@ -177,7 +177,8 @@ if (($args[0] ?? '') === 'secrets') {
 		$st = NuSecret::status();
 		if (!empty($so['json'])) { echo json_encode($st, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n"; exit(0); }
 		echo 'key ' . ($st['key'] ? 'set' : 'MISSING') . ', libsodium ' . ($st['sodium'] ? 'yes' : 'NO') . "\n";
-		foreach ($st['places'] as $pl => $c) echo str_pad($pl, 12) . 'encrypted ' . $c['sealed'] . ', plain ' . $c['plain'] . ', unreadable ' . $c['bad'] . ($c['locked'] ? ', behind a password ' . $c['locked'] : '') . "\n";
+		foreach ($st['places'] as $pl => $c) echo str_pad($pl, 12) . 'encrypted ' . $c['sealed'] . ', plain ' . $c['plain'] . ', unreadable ' . $c['bad']
+			. ($c['locked'] ? ', behind a password ' . $c['locked'] : '') . "\n";
 		echo str_pad('smtp_shared', 12) . ($st['smtp_shared'] ? 'plain text in zzzzsys_setup (nuBuilder Forte reads it)' : 'empty') . ($st['smtp_only'] ? ' – kept only by nuBuilder Next' : '') . "\n";
 		if ($st['api_clients']) echo str_pad('api_clients', 12) . $st['api_clients'] . " (HMAC with the key – a new key needs new client secrets)\n";
 		exit($st['total']['bad'] ? 1 : 0);
@@ -252,7 +253,7 @@ if (($args[0] ?? '') === 'selftest') {
 	$groups = is_string($so['groups'] ?? null) ? array_values(array_filter(explode(',', (string)$so['groups']))) : [];
 	if ($bad = array_diff($groups, NuSelfTest::GROUPS)) { fwrite(STDERR, 'Unknown group(s): ' . implode(', ', $bad) . ' – ' . implode(', ', NuSelfTest::GROUPS) . "\n"); exit(2); }
 	NuAuth::cliGlobeadmin();
-	if (is_string($so['lang'] ?? null) && NuLanguages::has((string)$so['lang'])) $_SESSION['nu_lang'] = (string)$so['lang'];
+	if (is_string($so['lang'] ?? null) && NuLanguages::has((string)$so['lang'])) $_SESSION[NuSess::LANG] = (string)$so['lang'];
 	if (!empty($so['sample']) && !NuSample::status()['installed']) {
 		try { NuSample::install(); echo str_pad('sample', 10) . "installed\n"; } catch (Throwable $e) { fwrite(STDERR, 'Sample application: ' . $e->getMessage() . "\n"); exit(1); }
 	}
@@ -260,7 +261,8 @@ if (($args[0] ?? '') === 'selftest') {
 	$sum = array_count_values(array_column($res, 'status'));
 	if (!empty($so['json'])) echo json_encode(['summary' => $sum, 'results' => $res], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\n";
 	else {
-		foreach ($res as $r) echo str_pad($r['status'], 6) . str_pad($r['group'], 10) . str_pad($r['id'], 18) . str_pad($r['ms'] . ' ms', 9) . $r['title'] . ($r['detail'] !== '' ? ' – ' . $r['detail'] : '') . "\n";
+		foreach ($res as $r) echo str_pad($r['status'], 6) . str_pad($r['group'], 10) . str_pad($r['id'], 18) . str_pad($r['ms'] . ' ms', 9) . $r['title']
+			. ($r['detail'] !== '' ? ' – ' . $r['detail'] : '') . "\n";
 		echo 'ok ' . ($sum['ok'] ?? 0) . ', warn ' . ($sum['warn'] ?? 0) . ', fail ' . ($sum['fail'] ?? 0) . ', skip ' . ($sum['skip'] ?? 0) . "\n";
 	}
 	exit(!empty($sum['fail']) ? 1 : 0);
@@ -292,7 +294,7 @@ $out = static function (array $r) use ($json): void {
 	foreach ($r as $k => $v) {
 		if ($v === null || $v === [] || $k === 'options') continue;
 		if ($k === 'requirements' && is_array($v)) $v = array_map(static fn($q) => (!empty($q['ok']) ? 'ok   ' : 'FAIL ') . $q['check'] . ': ' . $q['detail'], $v);
-		if ($k === 'database' && is_array($v)) {                         // database changes of the update (0.8.346), readable
+		if ($k === 'database' && is_array($v)) {                         // database changes of the update, readable
 			$lines = !empty($v['none']) ? ['no changes to the database'] : [];
 			if (empty($v['described'])) $lines[] = '(the package does not describe its database steps – structure only)';
 			foreach ((array)($v['steps'] ?? []) as $st) $lines[] = 'step ' . $st['id'] . ': ' . $st['description'];
@@ -312,7 +314,8 @@ $out = static function (array $r) use ($json): void {
 
 if (!empty($flags['status'])) {
 	$job = (string)($opt['_job'] ?? '');
-	$r = $job !== '' ? (NuAutoUpdate::job($job) ?? ['errors' => ['Unknown job.']]) : ['installed' => NU_VERSION, 'jobs' => array_map(static fn($j) => $j['job'] . '  ' . $j['status'] . '  ' . $j['from'] . ' → ' . $j['to'] . '  ' . $j['started'], NuAutoUpdate::jobs())];
+	$r = $job !== '' ? (NuAutoUpdate::job($job) ?? ['errors' => ['Unknown job.']]) : ['installed' => NU_VERSION,
+		'jobs' => array_map(static fn($j) => $j['job'] . '  ' . $j['status'] . '  ' . $j['from'] . ' → ' . $j['to'] . '  ' . $j['started'], NuAutoUpdate::jobs())];
 	$out($r);
 	exit(isset($r['errors']) ? 1 : 0);
 }
@@ -324,7 +327,8 @@ if (isset($opt['finish'])) {
 
 [$o, $errors] = NuAutoUpdate::options($opt + ['dry_run' => !empty($flags['dry_run']), 'reinstall' => !empty($flags['reinstall']), 'github' => !empty($flags['github'])], true);
 if ($errors) {
-	fwrite(STDERR, implode("\n", $errors) . "\nUsage: php nucron.php update --url=https://…/nunext.zip | --zip=/path/nunext.zip [--dry-run] [--sha256=…] [--backup=…] [--schema=…] [--sample=…] [--reinstall] [--json]\n");
+	fwrite(STDERR, implode("\n", $errors)
+		. "\nUsage: php nucron.php update --url=https://…/nunext.zip | --zip=/path/nunext.zip [--dry-run] [--sha256=…] [--backup=…] [--schema=…] [--sample=…] [--reinstall] [--json]\n");
 	exit(2);
 }
 $r = NuAutoUpdate::run($o, 'cli');

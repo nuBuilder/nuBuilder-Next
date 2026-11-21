@@ -35,8 +35,7 @@ final class NuDDL
 		try {
 			// $db: the installer's connection – nu_db() needs nuconfig.php, which the installer writes only afterwards
 			$coll = (string)($db ?? nu_db())->value('SELECT TABLE_COLLATION FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?', [$like]);
-		} catch (Throwable) {
-		}
+		} catch (Throwable $ig) { nu_ignored($ig); }
 		if (!preg_match('/^(utf8mb4|utf8mb3|utf8)_\w+$/', $coll, $m)) return $cache[$like] = ' ENGINE=InnoDB DEFAULT CHARSET=utf8mb4';
 		return $cache[$like] = ' ENGINE=InnoDB DEFAULT CHARSET=' . $m[1] . ' COLLATE=' . $coll;
 	}
@@ -51,7 +50,7 @@ final class NuDDL
 				return $driver === 'sqlsrv' ? "NVARCHAR($n)" : ($driver === 'mysql' ? "VARCHAR($n)" : 'TEXT');
 			case 'id':
 				return $driver === 'sqlsrv' ? 'NVARCHAR(25)' : ($driver === 'mysql' ? 'VARCHAR(25)' : 'TEXT');
-			case 'uuid':                                   // 36 characters: new keys are UUIDs (nu_new_key, 0.8.622)
+			case 'uuid':                                   // 36 characters: new keys are UUIDs (nu_new_key)
 				return $driver === 'sqlsrv' ? 'NVARCHAR(36)' : 'VARCHAR(36)';
 			case 'longtext':
 				return $driver === 'sqlsrv' ? 'NVARCHAR(MAX)' : ($driver === 'mysql' ? 'LONGTEXT' : 'TEXT');
@@ -79,7 +78,7 @@ final class NuDDL
 	/**
 	 * @param array $columns [['name' => …, 'type' => …, 'length' => …], …]  (primary key excluded)
 	 */
-	/** $pkType 'id' (nuBuilder's id, VARCHAR(25)) or 'uuid' (VARCHAR(36): new records get a UUID, 0.8.622). */
+	/** $pkType 'id' (nuBuilder's id, VARCHAR(25)) or 'uuid' (VARCHAR(36): new records get a UUID). */
 	public static function createTable(string $table, string $pk, array $columns, bool $audit, bool $nulog = false, string $pkType = 'id'): void
 	{
 		$db = nu_db();
@@ -103,7 +102,7 @@ final class NuDDL
 	}
 
 	/**
-	 * An index on a column unless one starts with it already (0.8.366): sub-form foreign keys – without it every form with a sub-form
+	 * An index on a column unless one starts with it already: sub-form foreign keys – without it every form with a sub-form
 	 * reads the whole child table (300,000 order items: seconds per record). MySQL / MariaDB and SQL Server. @return bool created
 	 */
 	public static function ensureIndex(string $table, string $column): bool
@@ -127,14 +126,13 @@ final class NuDDL
 	{
 		$db = nu_db();
 		$t  = NuDB::ident($table);
-		$db->run($db->type === 'sqlsrv' ? "IF OBJECT_ID('$t') IS NOT NULL DROP TABLE $t" : "DROP TABLE IF EXISTS $t");
+		$db->run($db->dropTableSql($t));
 	}
 
 	public static function addColumn(string $table, string $name, string $type, string $length = ''): void
 	{
 		$db  = nu_db();
-		$add = $db->type === 'sqlsrv' ? 'ADD' : 'ADD COLUMN';
-		$db->run('ALTER TABLE ' . NuDB::ident($table) . " $add " . NuDB::ident($name) . ' ' . self::sqlType($type, $length) . ' NULL');
+		$db->run($db->addColumnSql(NuDB::ident($table), NuDB::ident($name), self::sqlType($type, $length) . ' NULL'));
 		NuDB::forgetColumns($table);
 	}
 
@@ -143,7 +141,7 @@ final class NuDDL
 	{
 		$type = (string)($o['sob_all_type'] ?? '');
 		$it   = (string)($o['sob_input_type'] ?? '');
-		if (NuRender::isUppy($o)) return null;                // file target "File System": nothing is stored in the record (0.8.459)
+		if (NuRender::isUppy($o)) return null;                // file target "File System": nothing is stored in the record
 		switch ($type) {
 			case 'textarea':
 			case 'editor':

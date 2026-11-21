@@ -23,7 +23,7 @@ final class NuDebugLog
 		$T = static fn(string $t, string $l = '') => NuDDL::sqlType($t, $l);
 		$db->run('CREATE TABLE ' . self::TABLE . ' (zzzzsys_debug_id ' . $T('id') . ' NOT NULL PRIMARY KEY, deb_message ' . $T('longtext') . ' NULL, '
 			. 'deb_flag ' . $T('text', '50') . ' NULL, deb_added ' . $T('int') . ' NULL, deb_user_id ' . $T('id') . ' NULL, deb_json ' . $T('longtext') . ' NULL)'
-			. ($db->type === 'mysql' ? NuDDL::mysqlTableOptions() : ''));
+			. $db->tableOptions());
 	}
 
 	/** nuBuilder's message: "<date> - <code> line <n>\n\n<br>\n" + "[i] : value" per argument. */
@@ -58,7 +58,7 @@ final class NuDebugLog
 	}
 
 	/**
-	 * nuBuilder's hook nu_debug_result_added (0.8.462, gap analysis B5) after each new Debug result – the procedure reads $nuDebugId,
+	 * nuBuilder's hook nu_debug_result_added (gap analysis B5) after each new Debug result – the procedure reads $nuDebugId,
 	 * $nuDebugFlag and $nuDebugMessage. It usually runs inside other PHP code (nuDebug in a procedure): that code's hash variables
 	 * and $result stay as they were; the hook does not run for its own nuDebug calls (NuProcedure::hook).
 	 */

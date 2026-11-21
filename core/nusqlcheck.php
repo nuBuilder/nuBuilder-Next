@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * SQL check of the code editors (0.8.999, the owner picked "check against the database"): the database parses the statement without
+ * SQL check of the code editors (the owner picked "check against the database"): the database parses the statement without
  * running it – MySQL / MariaDB: a server-side prepare (PDO with emulated prepares off: syntax, tables, columns, GROUP BY), SQL Server:
  * SET NOEXEC ON (compiled, not executed). Only statements nuBuilder runs as a query (NuSelectSource::kind = query: SELECT, WITH, EXEC,
  * SHOW …) – lists, JSON, %LANGUAGES% and empty code are not SQL and give no errors.

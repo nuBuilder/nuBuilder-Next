@@ -30,7 +30,7 @@ final class NuReport
 	{
 		$db = nu_db();
 		$T = static fn(string $t, string $l = '') => NuDDL::sqlType($t, $l);
-		$opt = $db->type === 'mysql' ? NuDDL::mysqlTableOptions() : '';
+		$opt = $db->tableOptions();
 		$tables = [
 			'zzzzsys_report' => 'zzzzsys_report_id ' . $T('id') . ' NOT NULL PRIMARY KEY, sre_code ' . $T('text', '300') . ' NULL, sre_description ' . $T('text', '300') . ' NULL, '
 				. 'sre_group ' . $T('text', '100') . ' NULL, sre_zzzzsys_php_id ' . $T('text', '200') . ' NULL, sre_zzzzsys_form_id ' . $T('id') . ' NULL, '
@@ -78,8 +78,8 @@ final class NuReport
 		if (!$u) return false;
 		if ($u['globeadmin']) return true;
 		if (!nu_db()->tableExists(self::ACCESS)) return false;
-		[$in, $lv] = NuUserAccess::inSql('sre_zzzzsys_access_id', $u);   // main + additional access levels (0.8.585)
-		// the reports of the user's levels in one statement per request (0.8.1341: one COUNT per report – every report tile of the start page)
+		[$in, $lv] = NuUserAccess::inSql('sre_zzzzsys_access_id', $u);   // main + additional access levels
+		// the reports of the user's levels in one statement per request (one COUNT per report – every report tile of the start page)
 		$mine = NuMemo::get('reports:' . implode('|', $lv), ['zzzzsys_access_report', 'zzzzsys_nunext_user_access'], static function () use ($in, $lv): array {
 			$out = [];
 			foreach (nu_db()->all("SELECT sre_zzzzsys_report_id AS r FROM zzzzsys_access_report WHERE $in", $lv) as $x) $out[mb_strtolower(rtrim((string)$x['r'], ' '))] = true;
@@ -166,7 +166,8 @@ final class NuReport
 	{
 		try {
 			NuSchema::ensure();
-			return nu_db()->page("SELECT log_time, login, event, details FROM zzzzsys_nunext_log WHERE object = 'zzzzsys_report' AND record_id = ?", [$id], 'log_time DESC, zzzzsys_nunext_log_id DESC', $limit, 0);
+			return nu_db()->page("SELECT log_time, login, event, details FROM zzzzsys_nunext_log WHERE object = 'zzzzsys_report' AND record_id = ?", [$id],
+				'log_time DESC, zzzzsys_nunext_log_id DESC', $limit, 0);
 		} catch (Throwable) {
 			return [];
 		}
@@ -179,11 +180,13 @@ final class NuReport
 		$out = [];
 		foreach ($db->all("SELECT o.sob_all_id, o.sob_all_label, f.sfo_code, f.zzzzsys_form_id FROM zzzzsys_object o LEFT JOIN zzzzsys_form f ON f.zzzzsys_form_id = o.sob_all_zzzzsys_form_id
 			WHERE o.sob_all_type = 'run' AND o.sob_run_zzzzsys_form_id = ?", [$id]) as $r) {
-			$out[] = ['kind' => 'object', 'form' => (string)$r['sfo_code'], 'form_id' => (string)$r['zzzzsys_form_id'], 'where' => trim($r['sob_all_id'] . ' · ' . strip_tags((string)$r['sob_all_label']), ' ·')];
+			$out[] = ['kind' => 'object', 'form' => (string)$r['sfo_code'], 'form_id' => (string)$r['zzzzsys_form_id'],
+				'where' => trim($r['sob_all_id'] . ' · ' . strip_tags((string)$r['sob_all_label']), ' ·')];
 		}
 		if ($code !== '') {
 			$like = NuDB::like($code);
-			foreach ($db->all("SELECT zzzzsys_form_id, sfo_code FROM zzzzsys_form WHERE sfo_javascript LIKE ? ESCAPE '!' OR sfo_browse_javascript LIKE ? ESCAPE '!' OR sfo_edit_javascript LIKE ? ESCAPE '!'", [$like, $like, $like]) as $f) {
+			foreach ($db->all("SELECT zzzzsys_form_id, sfo_code FROM zzzzsys_form WHERE sfo_javascript LIKE ? ESCAPE '!' OR sfo_browse_javascript LIKE ? ESCAPE '!' OR sfo_edit_javascript LIKE ? ESCAPE '!'",
+				[$like, $like, $like]) as $f) {
 				$out[] = ['kind' => 'code', 'form' => (string)$f['sfo_code'], 'form_id' => (string)$f['zzzzsys_form_id'], 'where' => 'JavaScript'];
 			}
 			foreach ($db->all("SELECT zzzzsys_php_id, sph_code FROM zzzzsys_php WHERE sph_php LIKE ? ESCAPE '!' OR sph_javascript LIKE ? ESCAPE '!'", [$like, $like]) as $p) {
@@ -235,7 +238,7 @@ final class NuReport
 		if (!isset($l->height) || (float)$l->height <= 0) { $l->height = $l->orientation === 'L' ? $w : $h; $l->width = $l->orientation === 'L' ? $h : $w; }
 		$l->height = (float)$l->height;
 		$l->width = (float)($l->width ?? $w);
-		if (isset($l->ishtml)) $l->ishtml = $l->ishtml === 'Y' ? 'Y' : 'N';   // nuBuilder Forte's older layouts have no ishtml – it stays absent (0.8.957)
+		if (isset($l->ishtml)) $l->ishtml = $l->ishtml === 'Y' ? 'Y' : 'N';   // nuBuilder Forte's older layouts have no ishtml – it stays absent
 		return $l;
 	}
 
@@ -250,7 +253,7 @@ final class NuReport
 		foreach (['id', 'objectType', 'fieldName', 'fontFamily', 'fontWeight', 'format', 'textAlign', 'backgroundColor', 'borderColor', 'fontColor'] as $k) $o->$k = (string)$o->$k;
 		if (!in_array($o->objectType, ['field', 'label', 'image'], true)) $o->objectType = 'field';
 		if ($o->textAlign === '') $o->textAlign = 'left';
-		// content type of nuBuilder Next (0.8.874): only set when chosen – nuBuilder Forte ignores the key
+		// content type of nuBuilder Next: only set when chosen – nuBuilder Forte ignores the key
 		if (isset($o->contentType) && !in_array($o->contentType, ['text', 'html', 'md'], true)) unset($o->contentType);
 	}
 
@@ -268,14 +271,14 @@ final class NuReport
 
 	/**
 	 * The layout to store, with every value in the JSON type it had in the stored layout ("10" stays text, 10 stays a number) – a
-	 * save without a change leaves sre_layout as nuBuilder wrote it (0.8.364, dev/tests/compat.js meta:report).
+	 * save without a change leaves sre_layout as nuBuilder wrote it (dev/tests/compat.js meta:report).
 	 */
 	public static function keepTypes(string $newJson, string $oldJson): string
 	{
 		$old = json_decode($oldJson);
 		$new = json_decode($newJson);
 		if (!is_object($old) || !is_object($new)) return $newJson;
-		// the designer state nuBuilder Forte stores (setFocus = the property that had the focus) stays as it was (0.8.957)
+		// the designer state nuBuilder Forte stores (setFocus = the property that had the focus) stays as it was
 		if (property_exists($old, 'setFocus') && !property_exists($new, 'setFocus')) $new->setFocus = $old->setFocus;
 		$walk = static function (mixed $n, mixed $o) use (&$walk): mixed {
 			if (is_object($n) && is_object($o)) { foreach (get_object_vars($n) as $k => $v) if (property_exists($o, $k)) $n->$k = $walk($v, $o->$k); return $n; }
@@ -342,8 +345,7 @@ final class NuReport
 				return t('rpt_src_sql') . ' ' . ($s ? trim(($s['sse_code'] ?: '') . ' – ' . $s['sse_description'], ' –') : $id);
 			}
 			if ($kind === 'TABLE') return t('rpt_src_table') . ' ' . $id;
-		} catch (Throwable) {
-		}
+		} catch (Throwable $ig) { nu_ignored($ig); }
 		return $parentId;
 	}
 
@@ -354,7 +356,7 @@ final class NuReport
 	 * Rows of a data source as associative arrays, with nuBuilder's criteria values: every hash variable that is not a column becomes one
 	 * (so form fields of the launch form can be printed). $forFields: only the columns are needed (designer) – a SQL source is tried without
 	 * its WHERE clause when it fails with empty criteria, as nuBuilder's designer does.
-	 * $source (0.8.1324): set to the columns of the data source alone (without the criteria columns).
+	 * $source: set to the columns of the data source alone (without the criteria columns).
 	 * @return array{0: string[], 1: array<int, array>} [columns, rows]
 	 */
 	public static function data(string $parentId, array $hash, bool $forFields = false, ?array &$source = null): array
@@ -383,7 +385,7 @@ final class NuReport
 				if (!$db->tableExists($tt)) throw new RuntimeException(t('rpt_err_no_table', (string)$php['sph_code']));
 				[$cols, $rows] = $fetch("SELECT * FROM $tt");
 			} finally {
-				try { $db->run($db->type === 'sqlsrv' ? "IF OBJECT_ID('$tt') IS NOT NULL DROP TABLE $tt" : "DROP TABLE IF EXISTS $tt"); } catch (Throwable) {}
+				try { $db->run($db->dropTableSql($tt)); } catch (Throwable $ig) { nu_ignored($ig); }
 			}
 		} elseif ($kind === 'TABLE') {
 			[$cols, $rows] = $fetch('SELECT * FROM ' . NuDB::ident($id) . ($forFields ? ' WHERE 1 = 0' : ''));
@@ -435,7 +437,8 @@ final class NuReport
 		$hash = NuHash::plain();
 		$criteria = [];
 		if ($launchFormId !== '') {
-			foreach (nu_db()->all("SELECT sob_all_id FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id = ? AND sob_all_type NOT IN ('run', 'html', 'word', 'contentbox', 'subform', 'chart', 'image') ORDER BY sob_all_order", [$launchFormId]) as $o) {
+			foreach (nu_db()->all("SELECT sob_all_id FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id = ? AND sob_all_type NOT IN ('run', 'html', 'word', 'contentbox', 'subform', 'chart', 'image') ORDER BY sob_all_order",
+				[$launchFormId]) as $o) {
 				$hash[(string)$o['sob_all_id']] = '';
 				$criteria[] = (string)$o['sob_all_id'];
 			}
@@ -473,8 +476,7 @@ final class NuReport
 			foreach (nu_db()->all('SELECT srm_type, srm_format FROM zzzzsys_format ORDER BY srm_type, srm_format') as $f) {
 				$out[] = [substr((string)$f['srm_type'], 0, 1) . '|' . trim((string)$f['srm_format']), trim((string)$f['srm_format'])];
 			}
-		} catch (Throwable) {
-		}
+		} catch (Throwable $ig) { nu_ignored($ig); }
 		return $out;
 	}
 
@@ -497,10 +499,10 @@ final class NuReport
 		static $dir = false;
 		if ($dir !== false) return $dir;
 		$cfg = trim((string)nu_cfg('nuConfigTCPDFPath'));
-		// library pack (0.8.405) after an own $nuConfigTCPDFPath; the old places only while no pack is installed
+		// library pack after an own $nuConfigTCPDFPath; the old places only while no pack is installed
 		foreach ([$cfg !== '' ? NuBuilderLib::absPath($cfg) : '', (string)NuLibs::activeDir('tcpdf'), NU_ROOT . '/third_party/tcpdf', NuBuilderLib::path() . '/third_party/tcpdf'] as $d) {
 			if ($d !== '' && is_file("$d/tcpdf.php")) return $dir = rtrim($d, '/\\');
-			// TCPDF 7 (0.8.232): a Composer project folder – vendor/tecnickcom/tcpdf + tc-lib-pdf and its libraries
+			// TCPDF 7: a Composer project folder – vendor/tecnickcom/tcpdf + tc-lib-pdf and its libraries
 			if ($d !== '' && is_file("$d/vendor/tecnickcom/tcpdf/tcpdf.php")) return $dir = rtrim($d, '/\\') . '/vendor/tecnickcom/tcpdf';
 		}
 		return $dir = null;
@@ -559,10 +561,10 @@ final class NuReport
 		$fonts = $dir . '/fonts/';
 		if (is_dir(dirname($dir) . '/tc-lib-pdf-font/target/fonts')) $fonts = dirname($dir) . '/tc-lib-pdf-font/target/fonts/';    // TCPDF 7
 		if (!defined('K_TCPDF_THROW_EXCEPTION_ERROR')) define('K_TCPDF_THROW_EXCEPTION_ERROR', true);
-		// own cache folder (0.8.770): TCPDF deletes every image it used whose path starts with K_PATH_CACHE – with the default (the system's
+		// own cache folder: TCPDF deletes every image it used whose path starts with K_PATH_CACHE – with the default (the system's
 		// temp folder, e.g. /tmp/) that included a report's photos stored below it
 		if (!defined('K_PATH_CACHE')) define('K_PATH_CACHE', self::tcpdfCacheDir() . '/');
-		// TCPDF 7 reads local files only below its own folders and the running script's folder, and no remote ones (0.8.1062): pictures of a
+		// TCPDF 7 reads local files only below its own folders and the running script's folder, and no remote ones: pictures of a
 		// report (<img> in HTML fields, image objects with a path) usually sit elsewhere below the web root or in nuBuilder Forte's folder –
 		// without these they are silently left out. Remote pictures: only from this installation's own host.
 		if (!defined('K_ALLOWED_PATHS')) define('K_ALLOWED_PATHS', self::tcpdfAllowedPaths());
@@ -631,23 +633,23 @@ final class NuReport
 	public static function token(array $r, array $hash): string
 	{
 		$t = bin2hex(random_bytes(12));
-		$list = $_SESSION['nu_report_runs'] ?? [];
+		$list = $_SESSION[NuSess::REPORT_RUNS] ?? [];
 		$list[$t] = ['id' => (string)$r['zzzzsys_report_id'], 'hash' => $hash, 'time' => time()];
 		if (count($list) > 30) $list = array_slice($list, -30, null, true);
-		$_SESSION['nu_report_runs'] = $list;
+		$_SESSION[NuSess::REPORT_RUNS] = $list;
 		return $t;
 	}
 
 	public static function fromToken(string $t): ?array
 	{
-		$run = $_SESSION['nu_report_runs'][$t] ?? null;
+		$run = $_SESSION[NuSess::REPORT_RUNS][$t] ?? null;
 		if (!is_array($run) || time() - (int)$run['time'] > 6 * 3600) return null;
 		$r = self::load((string)$run['id']);
 		return $r ? ['report' => $r, 'hash' => (array)$run['hash']] : null;
 	}
 
 	/**
-	 * TCPDF's cache folder (0.8.770): <nuBuilder Next>/temp/tcpdf (protected from the web), or – when that cannot be written – a folder of
+	 * TCPDF's cache folder: <nuBuilder Next>/temp/tcpdf (protected from the web), or – when that cannot be written – a folder of
 	 * its own below the system's temp folder. Never the temp folder itself: TCPDF deletes the images it used from below K_PATH_CACHE.
 	 */
 	public static function tcpdfCacheDir(): string
@@ -686,10 +688,10 @@ final class NuReport
 		$T = static fn(string $t, string $l = '') => NuDDL::sqlType($t, $l);
 		if (!$db->tableExists('pdf_temp')) {
 			$db->run('CREATE TABLE pdf_temp (pdf_temp_id ' . $T('id') . ' NOT NULL PRIMARY KEY, pdf_added_by ' . $T('id') . ' NULL, pdf_code ' . $T('text', '100') . ' NULL, '
-				. 'pdf_tag ' . $T('text', '100') . ' NULL, pdf_file_name ' . $T('text', '255') . ' NULL, pdf_created ' . $T('datetime') . ' NULL)' . ($db->type === 'mysql' ? NuDDL::mysqlTableOptions() : ''));
+				. 'pdf_tag ' . $T('text', '100') . ' NULL, pdf_file_name ' . $T('text', '255') . ' NULL, pdf_created ' . $T('datetime') . ' NULL)' . $db->tableOptions());
 		}
 		$db->insert('pdf_temp', ['pdf_temp_id' => $id, 'pdf_added_by' => (string)(NuAuth::user()['id'] ?? ''), 'pdf_code' => mb_substr($code, 0, 100),
-			'pdf_tag' => mb_substr($tag, 0, 100), 'pdf_file_name' => $path, 'pdf_created' => date($db->type === 'sqlsrv' ? 'Y-m-d\TH:i:s' : 'Y-m-d H:i:s')]);
+			'pdf_tag' => mb_substr($tag, 0, 100), 'pdf_file_name' => $path, 'pdf_created' => $db->stamp()]);
 		return ['id' => $id, 'filename' => $path];
 	}
 
@@ -717,7 +719,7 @@ final class NuReport
 		header('X-Frame-Options: SAMEORIGIN');
 		header("Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'self'");
 		header('Content-Type: text/html; charset=utf-8');
-		// light / dark as the browser (the page has no theme script – the strict CSP allows inline styles only); Home in the window (UI review 0.8.1007)
+		// light / dark as the browser (the page has no theme script – the strict CSP allows inline styles only); Home in the window (UI review)
 		echo '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>' . h(t('rpt_title')) . '</title>'
 			. '<style>:root{color-scheme:light dark}body{font:15px system-ui,sans-serif;margin:0;padding:1.25rem;color:#842029;background:#f8d7da}'
 			. 'a{display:inline-block;margin-top:1rem;color:inherit;font-weight:600}'

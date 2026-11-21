@@ -15,7 +15,7 @@
 		li.className = 'list-group-item d-flex gap-3 align-items-center small' + (state === 'open' ? ' sec-open' : '');
 		var i = document.createElement('i');
 		i.className = 'bi ' + (state === 'ok' ? 'bi-check-circle-fill text-success' : state === 'open' ? 'bi-x-octagon-fill text-danger' : 'bi-question-circle text-secondary');
-		var c = document.createElement('a');                    // a link (0.8.502): open the file yourself, e.g. in a private window
+		var c = document.createElement('a');                    // a link: open the file yourself, e.g. in a private window
 		c.className = 'flex-grow-1 text-break font-monospace';
 		c.dir = 'ltr';
 		c.href = url;
@@ -39,7 +39,7 @@
 
 	if (!urls.length) { sum.textContent = '–'; return; }
 	urls.forEach(function (u) {
-		// with the browser's cookies (0.8.503): hosts with a bot protection (InfinityFree …) answer cookie-less requests with their own page
+		// with the browser's cookies: hosts with a bot protection (InfinityFree …) answer cookie-less requests with their own page
 		fetch(u + (u.indexOf('?') < 0 ? '?' : '&') + 'probe=' + Date.now(), { cache: 'no-store', credentials: 'same-origin', redirect: 'manual' })
 			.then(function (r) {
 				return r.text().then(function (body) {
@@ -59,7 +59,7 @@
 	});
 })();
 
-// checks list: the badges Problem / Check / OK filter the list (0.8.693) – a second click on the same badge shows every check again
+// checks list: the badges Problem / Check / OK filter the list – a second click on the same badge shows every check again
 (function () {
 	'use strict';
 	var box = document.getElementById('secChecks');
@@ -67,7 +67,8 @@
 	var btns = box.querySelectorAll('.secFlt'), cur = '';
 	function apply() {
 		box.querySelectorAll('.list-group > li').forEach(function (li) { li.hidden = cur !== '' && !li.classList.contains('sec-' + cur); });
-		btns.forEach(function (b) { var on = b.getAttribute('data-sec-filter') === cur; b.setAttribute('aria-pressed', on ? 'true' : 'false'); b.classList.toggle('secFltOn', on); b.classList.toggle('secFltOff', cur !== '' && !on); });
+		btns.forEach(function (b) { var on = b.getAttribute('data-sec-filter') === cur; b.setAttribute('aria-pressed',
+			on ? 'true' : 'false'); b.classList.toggle('secFltOn', on); b.classList.toggle('secFltOff', cur !== '' && !on); });
 	}
 	btns.forEach(function (b) {
 		b.addEventListener('click', function () { var f = b.getAttribute('data-sec-filter'); cur = cur === f ? '' : f; apply(); });

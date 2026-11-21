@@ -4,8 +4,14 @@
 # level 3 (0.8.368): return types and array shapes. Levels 4 / 5 were tried (0.8.368): ~70 findings, all "always true / false" or
 # "unreachable" through closures with references, eval'd procedure code, static state and the NU_FEATURE_* constants – no real bug,
 # so they stay off; the few argument-type points of level 5 were fixed.
+# Level 4 (code review Q3): on, with dev/phpstan-baseline.neon holding the 176 findings of the existing code (all of the kind above –
+# closures with references, static state, values set by eval'd code). New code is checked at level 4; a finding that is gone drops out
+# of the baseline by itself (reportUnmatchedIgnoredErrors off). Renew it only after checking each new entry:
+#   php ../phpstan.phar analyse -c dev/phpstan.neon --generate-baseline dev/phpstan-baseline.neon --memory-limit=2G
+includes:
+	- phpstan-baseline.neon
 parameters:
-	level: 3
+	level: 4
 	phpVersion: 80100
 	excludePaths:
 		- ../core/nutcpdf.php

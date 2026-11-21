@@ -1,5 +1,5 @@
 /* global nuBs */
-// Host side of page forms (form type "page", 0.8.387): listens to the messages of page iframes (class nuPageFrame) – sent by
+// Host side of page forms (form type "page"): listens to the messages of page iframes (class nuPageFrame) – sent by
 // assets/js/nupage.js. Only messages of the same origin from one of this window's page iframes count; nothing from a message is run.
 (function () {
 	'use strict';
@@ -82,7 +82,7 @@
 				break;
 			case 'open':
 				if (typeof d.form !== 'string' || !/^[\w-]{1,64}$/.test(d.form)) break;
-				var url = formUrl(d.form, typeof d.record === 'string' ? d.record : '') + (typeof d.bt === 'string' && /^[0-9a-f]{12}$/.test(d.bt) ? '&bt=' + d.bt : '');   // Back → the page (0.8.422)
+				var url = formUrl(d.form, typeof d.record === 'string' ? d.record : '') + (typeof d.bt === 'string' && /^[0-9a-f]{12}$/.test(d.bt) ? '&bt=' + d.bt : '');   // Back → the page
 				if (d.target === 'tab') window.open(url, '_blank', 'noopener'); else window.location.href = url;
 				break;
 			case 'toast':

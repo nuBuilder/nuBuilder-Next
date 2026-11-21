@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * List views (0.8.329) – actions of the "View" menu and the editor (core/nulistview.php, assets/js/nulistview.js).
+ * List views – actions of the "View" menu and the editor (core/nulistview.php, assets/js/nulistview.js).
  *   POST action save (JSON answer) | delete (JSON) | my_default | list_default | share | import (JSON)
  *   GET  action=export&list=…  → JSON download of the shared views
  * Every action needs the view right on the list's form; shared views, the list default, share / export / import: NuListView::canManage().

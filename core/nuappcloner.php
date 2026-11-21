@@ -14,7 +14,7 @@ defined('NU_ROOT') || exit;
  *   - DEFINER=… is removed from views, routines, triggers and events (the target user may differ – otherwise they fail);
  *   - views are created in dependency order (a view that uses another view comes after it);
  *   - data is read in pages and written in batches (no whole table in memory), binary data stays binary;
- *   - MySQL / MariaDB (0.8.295, ideas from mysqldump – no code taken over): all tables are read in one consistent snapshot
+ *   - MySQL / MariaDB (ideas from mysqldump – no code taken over): all tables are read in one consistent snapshot
  *     (START TRANSACTION WITH CONSISTENT SNAPSHOT – a save during the clone cannot leave an order without its items), each table is
  *     streamed with one unbuffered SELECT (no LIMIT/OFFSET pages that get slower towards the end), INSERT batches are limited by
  *     size as well (about 1 MB, below max_allowed_packet – large BLOBs no longer break the clone or the import), TIMESTAMP values
@@ -49,7 +49,7 @@ final class NuAppCloner
 	private const BATCH_EXPORT = 10000;
 	/** Size of one INSERT (bytes) – as mysqldump's net_buffer_length; in a direct copy at most half of the target's max_allowed_packet. */
 	private const BATCH_BYTES = 1048576;
-	/** SQL file: a COMMIT after about this many bytes of INSERTs within one table (0.8.1032, as myloader's --max-transaction-size) – a large
+	/** SQL file: a COMMIT after about this many bytes of INSERTs within one table (as myloader's --max-transaction-size) – a large
 	 *  table is no longer imported in one huge transaction. */
 	private const COMMIT_BYTES = 10485760;
 
@@ -61,14 +61,14 @@ final class NuAppCloner
 	private $out;                 // callable(string $sql) – SQL file
 	private array $stats = ['tables' => 0, 'views' => 0, 'rows' => 0, 'functions' => 0, 'procedures' => 0, 'triggers' => 0, 'events' => 0, 'files' => 0, 'bytes' => 0];
 	private array $warnings = [];
-	/** Rows written per table (0.8.1032): stored with a backup, compared after a restore. @var array<string, int> */
+	/** Rows written per table: stored with a backup, compared after a restore. @var array<string, int> */
 	private array $counts = [];
 	private string $srcDb;
 	/** SQL Server instead of MySQL / MariaDB (source and target are the same kind). */
 	private bool $ms = false;
 	private static bool $brackets = false;
 	private string $srcCollation = '';
-	/** MariaDB sequences of the source (TABLE_TYPE SEQUENCE): created with CREATE SEQUENCE + SETVAL, no rows copied (0.8.291). */
+	/** MariaDB sequences of the source (TABLE_TYPE SEQUENCE): created with CREATE SEQUENCE + SETVAL, no rows copied. */
 	private array $sequences = [];
 	/** Tables that could not be created in the target: their rows are left out. */
 	private array $failed = [];
@@ -142,18 +142,19 @@ final class NuAppCloner
 		}
 
 		if ($this->o['files'] && !$this->o['export']) $this->copyFiles();
-		// page forms (0.8.387): their folders are files – without the file copy they must be copied by FTP (secrets.php never goes along)
+		// page forms: their folders are files – without the file copy they must be copied by FTP (secrets.php never goes along)
 		try {
 			if ((!$this->o['files'] || $this->o['export']) && (int)nu_db()->value("SELECT COUNT(*) FROM zzzzsys_form WHERE sfo_type = 'page'")) $this->warn(t('ac_page_folders', NuPage::shownFolder('')));
-		} catch (Throwable) {}
+		} catch (Throwable $ig) { nu_ignored($ig); }
 
 		$this->say(t('ac_done_in', round(microtime(true) - $start, 1)), 'ok');
-		if (!$this->o['dry'] && !$this->o['export']) NuLog::write('app_cloned', 'database', (string)$this->o['target']['db'], ['stats' => $this->stats, 'files' => $this->o['files'] ? $this->o['target_path'] : '']);
+		if (!$this->o['dry'] && !$this->o['export']) NuLog::write('app_cloned', 'database', (string)$this->o['target']['db'],
+			['stats' => $this->stats, 'files' => $this->o['files'] ? $this->o['target_path'] : '']);
 		return ['stats' => $this->stats, 'warnings' => $this->warnings, 'counts' => $this->counts];
 	}
 
 	/**
-	 * MySQL / MariaDB source (0.8.295): one consistent snapshot for all tables (InnoDB; as mysqldump --single-transaction) and
+	 * MySQL / MariaDB source: one consistent snapshot for all tables (InnoDB; as mysqldump --single-transaction) and
 	 * time_zone '+00:00', so TIMESTAMP values are read in UTC. Not when the connection is already inside a transaction.
 	 */
 	private function beginSource(): void
@@ -174,8 +175,8 @@ final class NuAppCloner
 	private function endSource(): void
 	{
 		if ($this->ms) return;
-		if ($this->snapshot) { try { $this->s->exec('COMMIT'); } catch (PDOException) {} $this->snapshot = false; }
-		if ($this->srcTz !== null) { try { $this->s->exec('SET SESSION time_zone = ' . $this->s->quote($this->srcTz)); } catch (PDOException) {} $this->srcTz = null; }
+		if ($this->snapshot) { try { $this->s->exec('COMMIT'); } catch (PDOException $ig) { nu_ignored($ig); } $this->snapshot = false; }
+		if ($this->srcTz !== null) { try { $this->s->exec('SET SESSION time_zone = ' . $this->s->quote($this->srcTz)); } catch (PDOException $ig) { nu_ignored($ig); } $this->srcTz = null; }
 	}
 
 	private function runParts(array $parts): void
@@ -183,7 +184,7 @@ final class NuAppCloner
 		[$sysT, $userT, $sysV, $userV] = $this->selectedObjects();
 		if ($this->ms && $this->o['export']) $this->dropForeignKeysMs(array_merge(isset($parts['sys_struct']) ? $sysT : [], isset($parts['user_struct']) ? $userT : []));
 		// SQL Server: a view must find the functions it uses – views come after the functions (below)
-		// MySQL / MariaDB: views come after the functions and procedures (a view may call a function – 0.8.291)
+		// MySQL / MariaDB: views come after the functions and procedures (a view may call a function)
 		if (isset($parts['sys_struct'])) { $this->step(t('ac_s_sys_struct')); $this->createTables($sysT); }
 		if (isset($parts['user_struct'])) { $this->step(t('ac_s_user_struct')); $this->createTables($userT); }
 		if (isset($parts['sys_rows']) || isset($parts['app_rows'])) {
@@ -277,7 +278,7 @@ final class NuAppCloner
 			return new PDO($dsn, (string)$t['user'], (string)$t['password'], [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
 		}
 		$dsn = 'mysql:host=' . $t['host'] . ';port=' . (int)($t['port'] ?: 3306) . ($db !== null ? ';dbname=' . $db : '') . ';charset=' . ($t['charset'] ?: 'utf8mb4');
-		// native prepares (0.8.295): binary values are sent as they are – emulated, they were escaped and could grow to twice their size
+		// native prepares: binary values are sent as they are – emulated, they were escaped and could grow to twice their size
 		return new PDO($dsn, (string)$t['user'], (string)$t['password'], [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_TIMEOUT => 10, PDO::ATTR_EMULATE_PREPARES => false]);
 	}
 
@@ -292,7 +293,8 @@ final class NuAppCloner
 			if (!$this->o['create_db']) throw new RuntimeException(t('ac_err_db_missing', $t['db']));
 			if ($this->o['dry']) $this->say(t('ac_would_create_db', $t['db']));
 			else {
-				$server->exec('CREATE DATABASE ' . self::q((string)$t['db']) . ' CHARACTER SET ' . preg_replace('/\W/', '', (string)$t['charset']) . ' COLLATE ' . preg_replace('/\W/', '', (string)$t['collation']));
+				$server->exec('CREATE DATABASE ' . self::q((string)$t['db']) . ' CHARACTER SET ' . preg_replace('/\W/', '', (string)$t['charset']) . ' COLLATE '
+					. preg_replace('/\W/', '', (string)$t['collation']));
 				$this->say(t('ac_db_created', $t['db']), 'ok');
 			}
 		}
@@ -315,9 +317,9 @@ final class NuAppCloner
 	{
 		$this->t->exec("SET FOREIGN_KEY_CHECKS = 0");
 		// as mysqldump: only NO_AUTO_VALUE_ON_ZERO – no strict mode, so whatever the source holds (zero dates, old ENUM definitions …)
-		// is created and inserted unchanged (0.8.291; before, the server's strict sql_mode refused such tables / rows)
+		// is created and inserted unchanged (before, the server's strict sql_mode refused such tables / rows)
 		$this->t->exec("SET SESSION sql_mode = 'NO_AUTO_VALUE_ON_ZERO'");
-		// TIMESTAMP values are read in UTC and written in UTC (0.8.295) – no shift when the servers run in different time zones
+		// TIMESTAMP values are read in UTC and written in UTC – no shift when the servers run in different time zones
 		$this->t->exec("SET SESSION time_zone = '+00:00'");
 		$max = (int)$this->t->query('SELECT @@max_allowed_packet')->fetchColumn();
 		if ($max > 0) $this->maxBytes = max(65536, min(self::BATCH_BYTES, intdiv($max, 2)));
@@ -344,7 +346,8 @@ final class NuAppCloner
 	private function emitHeader(): void
 	{
 		if ($this->ms) {
-			$this->emit('-- ' . ($this->o['title'] !== '' ? $this->o['title'] : 'nuBuilder Next app cloner') . ' – SQL export of database [' . $this->srcDb . "] (SQL Server)\n-- Created: " . date('Y-m-d H:i:s')
+			$this->emit('-- ' . ($this->o['title'] !== '' ? $this->o['title'] : 'nuBuilder Next app cloner') . ' – SQL export of database [' . $this->srcDb
+				. "] (SQL Server)\n-- Created: " . date('Y-m-d H:i:s')
 				. ' · nuBuilder Next ' . NU_VERSION . "\n-- Import into an empty database, e.g. with SQL Server Management Studio or: sqlcmd -S server -d newdb -i file.sql\n-- Batches are separated by GO.\n\n"
 				. "SET NOCOUNT ON;\nSET DATEFORMAT ymd;\nSET QUOTED_IDENTIFIER ON;\nSET ANSI_NULLS ON;\nGO\n");
 			return;
@@ -391,7 +394,7 @@ final class NuAppCloner
 		if ($tables) $this->say(t('ac_n_tables', count($tables)), 'ok');
 	}
 
-	/** One DDL statement; an error is a warning (the object is named) and the clone goes on (0.8.291). */
+	/** One DDL statement; an error is a warning (the object is named) and the clone goes on. */
 	private function tryDdl(string $sql, string $kind, string $name): bool
 	{
 		try {
@@ -458,13 +461,14 @@ final class NuAppCloner
 		if ($this->o['skip_sessions'] && in_array($tb, self::SESSION_TABLES, true)) { $this->say(t('ac_skip_sessions', $tb)); return; }
 		if (in_array($tb, (array)$this->o['skip_rows'], true)) { if ($this->o['export']) $this->emit("\n-- " . $tb . ": rows left out\n"); return; }
 		if ($this->ms) { $this->copyRowsMs($tb, $sysRows, $appRows); return; }
-		$cols = $this->s->query('SELECT COLUMN_NAME, DATA_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ' . $this->s->quote($tb) . ' AND EXTRA NOT LIKE \'%GENERATED%\' ORDER BY ORDINAL_POSITION')->fetchAll(PDO::FETCH_NUM);
+		$cols = $this->s->query('SELECT COLUMN_NAME, DATA_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '
+			. $this->s->quote($tb) . ' AND EXTRA NOT LIKE \'%GENERATED%\' ORDER BY ORDINAL_POSITION')->fetchAll(PDO::FETCH_NUM);
 		if (!$cols) return;
 		$names = array_column($cols, 0);
 		$binary = array_flip(array_column(array_filter($cols, static fn($c) => preg_match('/blob|binary|geometry|point|linestring|polygon|geometrycollection/i', $c[1])), 0));
-		// BIT: read as a number and written as a number (0.8.291 – PDO returns BIT as an integer; written as text "170" it became 0xFF)
+		// BIT: read as a number and written as a number (PDO returns BIT as an integer; written as text "170" it became 0xFF)
 		$bits = array_flip(array_column(array_filter($cols, static fn($c) => strtolower((string)$c[1]) === 'bit'), 0));
-		// numbers without quotes in the SQL file (0.8.1031, as mysqldump): smaller, and imported without a text → number conversion
+		// numbers without quotes in the SQL file (as mysqldump): smaller, and imported without a text → number conversion
 		$nums = array_flip(array_column(array_filter($cols, static fn($c) => in_array(strtolower((string)$c[1]), self::NUMERIC, true)), 0));
 		$selList = implode(', ', array_map(static fn($n) => isset($bits[$n]) ? 'CAST(' . self::q($n) . ' AS UNSIGNED) AS ' . self::q($n) : self::q($n), $names));
 		$where = '';
@@ -472,7 +476,7 @@ final class NuAppCloner
 		if (str_starts_with($tb, 'zzzzsys') && in_array($pk, $names, true) && !($sysRows && $appRows)) {
 			$where = ' WHERE ' . self::q($pk) . ($sysRows ? '' : ' NOT') . " LIKE 'nu%'";
 		}
-		// pages in a fixed order: by the primary key (any name, also composite – 0.8.291), else nuBuilder's <table>_id
+		// pages in a fixed order: by the primary key (any name, also composite), else nuBuilder's <table>_id
 		$pkCols = $this->s->query("SELECT COLUMN_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = " . $this->s->quote($tb)
 			. " AND CONSTRAINT_NAME = 'PRIMARY' ORDER BY ORDINAL_POSITION")->fetchAll(PDO::FETCH_COLUMN);
 		if (!$pkCols && in_array($pk, $names, true)) $pkCols = [$pk];
@@ -486,7 +490,7 @@ final class NuAppCloner
 		$colList = '(' . implode(', ', array_map([self::class, 'q'], $names)) . ')';
 		$verb = ['INSERT IGNORE' => 'INSERT IGNORE INTO ', 'REPLACE' => 'REPLACE INTO '][$this->o['insert']] ?? 'INSERT INTO ';
 		$export = (bool)$this->o['export'];
-		// rows per INSERT: in a direct copy at most 65535 placeholders; and never more than about 1 MB per statement (0.8.295)
+		// rows per INSERT: in a direct copy at most 65535 placeholders; and never more than about 1 MB per statement
 		$maxRows = $export ? self::BATCH_EXPORT : max(1, min(self::BATCH, intdiv(60000, max(1, count($names)))));
 		$maxBytes = $export ? self::BATCH_BYTES : $this->maxBytes;
 		$ph = '(' . implode(', ', array_fill(0, count($names), '?')) . ')';
@@ -513,7 +517,7 @@ final class NuAppCloner
 			$buf = []; $bytes = 0;
 		};
 
-		// one unbuffered SELECT per table (0.8.295, as mysqldump): read once from start to end, constant memory – LIMIT/OFFSET pages
+		// one unbuffered SELECT per table (as mysqldump): read once from start to end, constant memory – LIMIT/OFFSET pages
 		// had to skip all earlier rows again and again. Nothing else may run on the source connection until the result is read.
 		$buffered = $this->s->getAttribute(nu_pdo_mysql_buffered());
 		$this->s->setAttribute(nu_pdo_mysql_buffered(), false);
@@ -547,10 +551,10 @@ final class NuAppCloner
 			if (!$export && $this->t->inTransaction()) {
 				try { $this->t->rollBack(); }
 				catch (PDOException) {                                      // the server closed the connection (packet too large): connect again
-					try { $this->t = $this->connect((string)$this->o['target']['db']); $this->targetSession(); } catch (PDOException) {}
+					try { $this->t = $this->connect((string)$this->o['target']['db']); $this->targetSession(); } catch (PDOException $ig) { nu_ignored($ig); }
 				}
 			}
-			if ($rs) { try { $rs->closeCursor(); } catch (PDOException) {} }
+			if ($rs) { try { $rs->closeCursor(); } catch (PDOException $ig) { nu_ignored($ig); } }
 			$this->s->setAttribute(nu_pdo_mysql_buffered(), $buffered);
 			if ($export) throw $e;
 			$this->warn(t('ac_obj_failed', 'rows', $tb, $e->getMessage()));
@@ -582,7 +586,8 @@ final class NuAppCloner
 	{
 		$list = $type === 'EVENT'
 			? $this->s->query('SELECT EVENT_NAME FROM information_schema.EVENTS WHERE EVENT_SCHEMA = DATABASE() ORDER BY EVENT_NAME')->fetchAll(PDO::FETCH_COLUMN)
-			: $this->s->query('SELECT ROUTINE_NAME FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA = DATABASE() AND ROUTINE_TYPE = ' . $this->s->quote($type) . ' ORDER BY ROUTINE_NAME')->fetchAll(PDO::FETCH_COLUMN);
+			: $this->s->query('SELECT ROUTINE_NAME FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA = DATABASE() AND ROUTINE_TYPE = '
+				. $this->s->quote($type) . ' ORDER BY ROUTINE_NAME')->fetchAll(PDO::FETCH_COLUMN);
 		$n = 0;
 		foreach ($list as $name) {
 			$row = $this->s->query('SHOW CREATE ' . $type . ' ' . self::q($name))->fetch(PDO::FETCH_ASSOC);
@@ -599,7 +604,7 @@ final class NuAppCloner
 	{
 		$n = 0;
 		$tset = array_flip($tables);
-		// in the order they run (ACTION_ORDER): a trigger with FOLLOWS / PRECEDES needs the other one first (0.8.291)
+		// in the order they run (ACTION_ORDER): a trigger with FOLLOWS / PRECEDES needs the other one first
 		foreach ($this->s->query('SELECT TRIGGER_NAME, EVENT_OBJECT_TABLE FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE()
 			ORDER BY EVENT_OBJECT_TABLE, ACTION_TIMING, EVENT_MANIPULATION, ACTION_ORDER, TRIGGER_NAME')->fetchAll(PDO::FETCH_NUM) as [$name, $tb]) {
 			if ($this->o['tables'] !== null && !isset($tset[$tb])) continue;
@@ -616,7 +621,7 @@ final class NuAppCloner
 
 	/**
 	 * Function / procedure / trigger / event with the sql_mode it was created with (and an event's time zone) – as mysqldump does;
-	 * otherwise e.g. a function written for PIPES_AS_CONCAT or ANSI_QUOTES behaves differently in the copy (0.8.291).
+	 * otherwise e.g. a function written for PIPES_AS_CONCAT or ANSI_QUOTES behaves differently in the copy.
 	 * An error is a warning; returns whether it was created.
 	 */
 	private function routineSql(string $type, string $name, string $create, string $sqlMode = '', string $tz = ''): bool
@@ -678,7 +683,8 @@ final class NuAppCloner
 	{
 		$t = $this->t;
 		$drop = [];
-		foreach ($t->query('SELECT name, OBJECT_NAME(parent_object_id) FROM sys.foreign_keys')->fetchAll(PDO::FETCH_NUM) as [$n, $tb]) $drop[] = 'ALTER TABLE ' . self::b((string)$tb) . ' DROP CONSTRAINT ' . self::b((string)$n);
+		foreach ($t->query('SELECT name, OBJECT_NAME(parent_object_id) FROM sys.foreign_keys')->fetchAll(PDO::FETCH_NUM) as [$n, $tb]) $drop[] = 'ALTER TABLE '
+			. self::b((string)$tb) . ' DROP CONSTRAINT ' . self::b((string)$n);
 		$kinds = ['V' => 'VIEW', 'P' => 'PROCEDURE', 'FN' => 'FUNCTION', 'IF' => 'FUNCTION', 'TF' => 'FUNCTION', 'U' => 'TABLE'];
 		foreach (['V', 'P', 'FN', 'IF', 'TF', 'U'] as $ty) {
 			foreach ($t->query("SELECT name FROM sys.objects WHERE type = '$ty' AND is_ms_shipped = 0")->fetchAll(PDO::FETCH_COLUMN) as $n) $drop[] = 'DROP ' . $kinds[$ty] . ' ' . self::b((string)$n);
@@ -860,7 +866,8 @@ final class NuAppCloner
 	private function dropForeignKeysMs(array $tables): void
 	{
 		foreach ($this->fksMs($tables) as $f) {
-			$this->emit("\nIF OBJECT_ID(" . self::nq(self::b((string)$f['name'])) . ", N'F') IS NOT NULL ALTER TABLE " . self::b((string)$f['tb']) . ' DROP CONSTRAINT ' . self::b((string)$f['name']) . ";\nGO\n");
+			$this->emit("\nIF OBJECT_ID(" . self::nq(self::b((string)$f['name'])) . ", N'F') IS NOT NULL ALTER TABLE " . self::b((string)$f['tb'])
+				. ' DROP CONSTRAINT ' . self::b((string)$f['name']) . ";\nGO\n");
 		}
 	}
 
@@ -985,7 +992,7 @@ final class NuAppCloner
 			static function (SplFileInfo $f) use ($sp, $ex): bool {
 				$rel = ltrim(str_replace('\\', '/', substr($f->getPathname(), strlen($sp))), '/');
 				foreach ($ex as $e) if ($rel === $e || str_starts_with($rel, $e . '/') || $f->getFilename() === $e) return false;
-				if (preg_match('~(^|/)custom/pages/[^/]+/secrets\.php$~', $rel)) return false;    // secrets of page forms are never copied (0.8.387)
+				if (preg_match('~(^|/)custom/pages/[^/]+/secrets\.php$~', $rel)) return false;    // secrets of page forms are never copied
 				return !$f->isLink();
 			}), RecursiveIteratorIterator::SELF_FIRST);
 		foreach ($it as $f) {

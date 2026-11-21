@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Admin roles (0.8.323): users of zzzzsys_user who get a defined part of the globeadmin's rights in nuBuilder Next.
+ * Admin roles: users of zzzzsys_user who get a defined part of the globeadmin's rights in nuBuilder Next.
  * A role (zzzzsys_nunext_admin_role) is a set of rights – one per tool, each "view" or "change"; a user gets at most one role
  * (zzzzsys_nunext_admin_user, key = zzzzsys_user_id). nuBuilder itself does not know these roles: there the user stays a normal
  * user with his access level.
@@ -27,54 +27,60 @@ final class NuAdmin
 		'update'        => ['system', 'upd_title', true, 'vc', []],
 		'configfile'    => ['system', 'cfg_title', true, 'c', []],
 		'settings'      => ['system', 'set_title', false, 'vc', []],
-		'globalcode'     => ['system', 'scode_title', true, 'vc', []],   // 0.8.444: JavaScript for every form page = full access
+		'globalcode'     => ['system', 'scode_title', true, 'vc', []],   // JavaScript for every form page = full access
 		'securitycheck' => ['system', 'secchk_title', false, 'vc', []],
 		'setupwizard'   => ['system', 'wiz_title', false, 'c', []],
 		'status'        => ['system', 'status_title', false, 'vc', []],
 		'dbtool'        => ['data', 'home_db', true, 'c', []],
 		'filemanager'   => ['data', 'vendor_tfm', true, 'c', []],
 		'import'        => ['data', 'imp_title', false, 'c', []],
-		'dataexport'    => ['data', 'dxp_title', true, 'vc', [NuAcl::FORM_EXPORT]],   // data export (0.8.758): any table / query leaves the server – full access; view = run, change = edit
+		'dataexport'    => ['data', 'dxp_title', true, 'vc', [NuAcl::FORM_EXPORT]],   // data export: any table / query leaves the server – full access; view = run, change = edit
 		'appcloner'     => ['data', 'ac_title', true, 'c', []],
-		'recyclebin'    => ['data', 'rb_title', false, 'vc', [NuAcl::FORM_RECYCLE]],   // recycle bin (0.8.1325): view = all forms' entries, change = restore / delete them
+		'recyclebin'    => ['data', 'rb_title', false, 'vc', [NuAcl::FORM_RECYCLE]],   // recycle bin: view = all forms' entries, change = restore / delete them
 		'sample'        => ['data', 'smp_title', false, 'vc', []],
 		'forms'         => ['dev', 'adm_r_forms', true, 'vc', [NuAcl::FORM_FORM, NuAcl::FORM_ITEM, NuAcl::FORM_FILE, NuAcl::FORM_FORMAT, NuAcl::FORM_TRANSLATE, 'nucodesnippet']],
-		'formpublish'   => ['dev', 'adm_r_formpublish', true, 'c', []],   // form drafts (0.8.386): publishing puts PHP / JavaScript live – full access
+		'formpublish'   => ['dev', 'adm_r_formpublish', true, 'c', []],   // form drafts: publishing puts PHP / JavaScript live – full access
 		'procedures'    => ['dev', 'proc_title', true, 'vc', [NuAcl::FORM_PROCEDURE]],
 		'reports'       => ['dev', 'adm_r_reports', false, 'vc', [NuAcl::FORM_REPORT, NuAcl::FORM_SELECT]],
-		'dashboards'    => ['dev', 'dash_title', false, 'vc', [NuAcl::FORM_DASHBOARD]],   // list: system list (0.8.690)
+		'dashboards'    => ['dev', 'dash_title', false, 'vc', [NuAcl::FORM_DASHBOARD]],   // list: system list
 		'prompts'       => ['dev', 'pg_title', false, 'vc', [NuAcl::FORM_PROMPT]],
 		'projects'      => ['dev', 'prj_title', false, 'vc', [NuAcl::FORM_PROJECT]],
-		'codesearch'    => ['dev', 'cs_title', true, 'c', []],   // code search (0.8.1172): reads all code of the application – full access, read only   // projects (0.8.1035): view = read, change = members / notes / to-dos; import only the globeadmin
+		'codesearch'    => ['dev', 'cs_title', true, 'c', []],
+			// code search: reads all code of the application – full access, read only   // projects: view = read, change = members / notes / to-dos; import only the globeadmin
 		'users'         => ['users', 'adm_r_users', false, 'vc', [NuAcl::FORM_USER, NuAcl::FORM_PERMISSION]],
 		'access'        => ['users', 'nav_access', false, 'vc', [NuAcl::FORM_ACCESS]],
-		'userfields'    => ['users', 'uf_title', false, 'vc', [NuAcl::FORM_USERFIELD]],   // custom user fields (0.8.454): change = add / change / delete fields
+		'userfields'    => ['users', 'uf_title', false, 'vc', [NuAcl::FORM_USERFIELD]],   // custom user fields: change = add / change / delete fields
 		'sessions'      => ['users', 'sess_title', false, 'vc', []],
 		'impersonate'   => ['users', 'adm_r_impersonate', true, 'c', []],
-		'adminroles'    => ['users', 'adm_title', true, 'c', [NuAcl::FORM_ADMINROLE]],   // list: system list (0.8.687)
+		'adminroles'    => ['users', 'adm_title', true, 'c', [NuAcl::FORM_ADMINROLE]],   // list: system list
 		'branding'      => ['look', 'brand_title', false, 'vc', []],
 		'homelayout'    => ['look', 'adm_r_homelayout', false, 'c', []],
-		'listviews'     => ['look', 'adm_r_listviews', false, 'c', []],   // shared list views, default view of a list (0.8.329)
+		'listviews'     => ['look', 'adm_r_listviews', false, 'c', []],   // shared list views, default view of a list
 		'email'         => ['comm', 'nav_email', false, 'vc', [NuAcl::FORM_SETUP, NuAcl::FORM_EMAILLOG, NuAcl::FORM_EMAILTEMPLATE]],
 		'notifications' => ['comm', 'ntf_title', false, 'vc', [NuAcl::FORM_NOTIFY]],
-		'userhelp'      => ['comm', 'uh_admin_title', false, 'vc', [NuAcl::FORM_USERHELP]],   // user help pages (0.8.1023): view = list, change = write; HTML cleaned on save   // notification centre (0.8.357): view = all + read receipts, change = send
+		'userhelp'      => ['comm', 'uh_admin_title', false, 'vc', [NuAcl::FORM_USERHELP]],
+			// user help pages: view = list, change = write; HTML cleaned on save   // notification centre: view = all + read receipts, change = send
 		'apiclients'    => ['integration', 'api_title', true, 'vc', [NuAcl::FORM_APICLIENT]],
 		'webhooks'      => ['integration', 'wh_title', true, 'vc', [NuAcl::FORM_WEBHOOK]],
-		'aiproviders'   => ['integration', 'aip_title', true, 'vc', [NuAcl::FORM_AIPROVIDER]],   // AI providers (0.8.1099): keys of AI services, prompts leave the server – full access   // webhooks (0.8.715): calls other systems with record data – full access
+		'aiproviders'   => ['integration', 'aip_title', true, 'vc', [NuAcl::FORM_AIPROVIDER]],
+			// AI providers: keys of AI services, prompts leave the server – full access   // webhooks: calls other systems with record data – full access
 		'log'           => ['logs', 'adm_r_log', false, 'vc', [NuAcl::FORM_LOG]],
-		'audit'         => ['logs', 'aud_title', true, 'vc', [NuAcl::FORM_AUDIT]],   // audit trail (0.8.350): change = its settings
+		'audit'         => ['logs', 'aud_title', true, 'vc', [NuAcl::FORM_AUDIT]],   // audit trail: change = its settings
 		'debug'         => ['logs', 'debug_title', false, 'vc', [NuAcl::FORM_DEBUG]],
 		'compat'        => ['logs', 'compat_title', false, 'vc', []],
 	];
-	/** The page of a right (0.8.739: the role form links it, new tab) – right => [route, params]; rights without a page of their own are missing. */
+	/** The page of a right (the role form links it, new tab) – right => [route, params]; rights without a page of their own are missing. */
 	public const PAGES = [
 		'update' => ['update', []], 'configfile' => ['configfile', []], 'settings' => ['settings', []], 'globalcode' => ['globalcode', []],
 		'securitycheck' => ['securitycheck', []], 'setupwizard' => ['setupwizard', []], 'status' => ['vendor', []], 'filemanager' => ['filemanager', []],
-		'import' => ['import', []], 'dataexport' => ['dataexport', []], 'appcloner' => ['appcloner', []], 'sample' => ['sample', []], 'recyclebin' => ['recyclebin', []], 'forms' => ['forms', []], 'procedures' => ['procedures', []],
-		'reports' => ['reports', []], 'dashboards' => ['dashboards', []], 'prompts' => ['prompts', []], 'projects' => ['projects', []], 'codesearch' => ['codesearch', []], 'users' => ['users', []], 'access' => ['access', []],
+		'import' => ['import', []], 'dataexport' => ['dataexport', []], 'appcloner' => ['appcloner', []], 'sample' => ['sample', []],
+			'recyclebin' => ['recyclebin', []], 'forms' => ['forms', []], 'procedures' => ['procedures', []],
+		'reports' => ['reports', []], 'dashboards' => ['dashboards', []], 'prompts' => ['prompts', []], 'projects' => ['projects', []],
+			'codesearch' => ['codesearch', []], 'users' => ['users', []], 'access' => ['access', []],
 		'userfields' => ['userfields', []], 'sessions' => ['sessions', []], 'adminroles' => ['adminroles', []], 'branding' => ['branding', []],
 		'homelayout' => ['home', ['customize' => '1']], 'email' => ['email', []], 'notifications' => ['notifications', ['tab' => 'manage']],
-		'apiclients' => ['apiclients', []], 'webhooks' => ['webhooks', []], 'aiproviders' => ['aiproviders', []], 'userhelp' => ['helppages', []], 'log' => ['log', []], 'audit' => ['audit', []], 'debug' => ['debug', []],
+		'apiclients' => ['apiclients', []], 'webhooks' => ['webhooks', []], 'aiproviders' => ['aiproviders', []], 'userhelp' => ['helppages', []],
+			'log' => ['log', []], 'audit' => ['audit', []], 'debug' => ['debug', []],
 		'compat' => ['compat', []],
 	];
 	public const GROUPS = ['system' => 'home_group_system', 'data' => 'home_group_data', 'dev' => 'home_group_dev', 'users' => 'home_group_users',
@@ -106,7 +112,7 @@ final class NuAdmin
 		$u = NuAuth::user();
 		if (!$u || $u['globeadmin'] || !empty($u['demo'])) return null;
 		$id = (string)$u['id'];
-		$test = NuImpersonate::testRole();                 // testing an admin role (0.8.1318): that role, for this session only
+		$test = NuImpersonate::testRole();                 // testing an admin role: that role, for this session only
 		if ($test) {
 			$key = $id . '|test:' . $test['role'];
 			if (self::$mineFor === $key) return self::$mine;

@@ -1,5 +1,5 @@
 /*
- * Shared helpers of nuBuilder Next's page scripts (0.8.1350, code review R1 / R2 / Q4) – loaded on every page right after nubs.js,
+ * Shared helpers of nuBuilder Next's page scripts (code review R1 / R2 / Q4) – loaded on every page right after nubs.js,
  * before nuapp.js and the page's own script. One place to review instead of a copy in every file:
  *   NuUtil.el(tag, classOrAttrs, textOrChildren)  an element: 'cls' or {class, text, html, onclick …, other attributes}; a text, a node or a list
  *   NuUtil.esc(value)                             HTML-escaped text (& < > " ')

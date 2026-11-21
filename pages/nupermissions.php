@@ -22,7 +22,7 @@ if ($id !== '' && !$isNew) {
 	$item = $db->one("SELECT * FROM $T WHERE zzzzsys_permission_item_id = ?", [$id]);
 	if (!$item) { nu_flash('warning', t('record_not_found')); nu_redirect(nu_url('permissions')); }
 }
-// clone (0.8.680, as nuBuilder Forte): ?id=new&clone=<id> opens a copy with a free ident that is saved only with Save
+// clone (as nuBuilder Forte): ?id=new&clone=<id> opens a copy with a free ident that is saved only with Save
 $cloneId = $isNew ? (string)($_GET['clone'] ?? '') : '';
 $src = null;
 if ($cloneId !== '') {
@@ -36,52 +36,17 @@ if ($cloneId !== '') {
 } elseif ($isNew) NuAcl::require(NuAcl::FORM_PERMISSION, 'create');
 $errors = [];
 
-if (nu_is_post()) {
-	$action = nu_post('action');
-	if ($action === 'save') {
-		NuAcl::require(NuAcl::FORM_PERMISSION, $item ? 'save' : ($src ? 'clone' : 'create'));
-		$in = ['pme_ident' => nu_post('pme_ident'), 'pme_group' => nu_post('pme_group'), 'pme_description' => (string)($_POST['pme_description'] ?? '')];
-		// type of the item (0.8.773, own table – nuBuilder Forte's item stays a plain item)
-		$ptype = isset(NuPermType::TYPES[nu_post('ptype')]) ? nu_post('ptype') : 'plain';
-		$pset = NuPermType::clean($ptype, ['tables' => is_array($_POST['ptype_tables'] ?? null) ? $_POST['ptype_tables'] : [], 'add' => nu_check('ptype_add') === '1', 'update' => nu_check('ptype_update') === '1']);
-		$errors = NuPermType::errors($ptype, $pset);
-		$newId = '';
-		if (!$errors) [$newId, $errors] = NuPermission::save($in, $item ? $id : '');
-		if (!$errors) {
-			$oldType = $item ? NuPermType::of($id) : ['type' => 'plain', 'settings' => []];
-			NuPermType::set((string)$newId, $ptype, $pset);
-			if ($oldType['type'] !== $ptype || $oldType['settings'] != NuPermType::clean($ptype, $pset)) {
-				NuLog::write('permission_type', $T, (string)$newId, ['type' => $ptype, 'before' => $oldType['type'], 'summary' => NuPermType::summary($ptype, NuPermType::clean($ptype, $pset))]);
-			}
-			$after = $db->one("SELECT * FROM $T WHERE zzzzsys_permission_item_id = ?", [$newId]) ?? [];
-			NuLog::write($item ? 'permission_changed' : 'permission_created', $T, (string)$newId, $item ? ['fields' => NuLog::diff($item, $after)] : ['ident' => $after['pme_ident'] ?? ''] + ($src ? ['clone_of' => $cloneId] : []));
-			if ($userEdit && isset($_POST['users_sent'])) {
-				$users = is_array($_POST['users'] ?? null) ? $_POST['users'] : [];
-				[$add, $rem] = NuPermission::setItemUsers((string)$newId, $users);
-				if ($add || $rem) NuLog::write('permission_users', $T, (string)$newId, ['ident' => $after['pme_ident'] ?? '', 'added' => $add, 'removed' => $rem]);
-			}
-			nu_flash('success', t('saved'));
-			nu_redirect(nu_url('permissions', ['id' => $newId]));
-		}
-		nu_flash('danger', t('err_check_form'));
-	}
-	if ($action === 'delete' && $item) {
-		NuAcl::require(NuAcl::FORM_PERMISSION, 'delete');
-		NuPermission::delete($id);
-		NuPermType::delete($id);
-		NuLog::write('permission_deleted', $T, $id, ['ident' => (string)$item['pme_ident']]);
-		nu_flash('success', t('perm_deleted', (string)$item['pme_ident']));
-		nu_redirect(nu_url('permissions'));
-	}
-}
+['item' => $item, 'src' => $src, 'errors' => $errors, 'id' => $id, 'T' => $T, 'db' => $db, 'cloneId' => $cloneId, 'userEdit' => $userEdit]
+	= NuPermissionsPage::post(get_defined_vars());   // the POST actions (code review R7, nupermissionspage.php)
 
 // ------------------------------------------------------------------ list (also Print / CSV)
 if ($id === '') {
-	// list: columns, filters and sort of the chosen list view (0.8.334, core/nulistdefs.php)
+	// list: columns, filters and sort of the chosen list view (core/nulistdefs.php)
 	NuListView::page('permissions', [
 		'before' => NuListView::crumbs([[t('nav_users'), nu_url('users')], [t('perm_title')]]), 'active' => 'users',
 		'title_extra' => NuListView::infoToggle('permHint'), 'title_sub' => '<div class="collapse nuTitleSub text-body-secondary small" id="permHint">' . h(t('perm_intro')) . '</div>',
-		'buttons' => $rights['add'] ? '<a class="btn nuAddBtn" title="' . h(t('perm_new')) . '" href="' . h(nu_url('permissions', ['id' => 'new'])) . '"><i class="bi bi-plus-lg me-1"></i>' . h(t('add')) . '</a>' : '',
+		'buttons' => $rights['add'] ? '<a class="btn nuAddBtn" title="' . h(t('perm_new')) . '" href="' . h(nu_url('permissions', ['id' => 'new']))
+			. '"><i class="bi bi-plus-lg me-1"></i>' . h(t('add')) . '</a>' : '',
 	]);
 	return;
 }
@@ -116,8 +81,9 @@ nu_layout_start($title, 'users', ['head' => $head]);
 	$uname = static fn(array $u) => trim((string)($u['sus_name'] ?: trim($u['sus_first_name'] . ' ' . $u['sus_last_name'])));
 	$usage = $item ? NuPermission::usage((string)$item['pme_ident']) : [];
 	$groups = array_column($db->all("SELECT DISTINCT pme_group FROM $T WHERE pme_group IS NOT NULL AND pme_group <> '' ORDER BY pme_group"), 'pme_group');
-	// type (0.8.773): saved type, a clone's type, or the posted one
-	$pt = $posted ? ['type' => isset(NuPermType::TYPES[nu_post('ptype')]) ? nu_post('ptype') : 'plain', 'settings' => ['tables' => is_array($_POST['ptype_tables'] ?? null) ? array_map('strval', $_POST['ptype_tables']) : [],
+	// type: saved type, a clone's type, or the posted one
+	$pt = $posted ? ['type' => isset(NuPermType::TYPES[nu_post('ptype')]) ? nu_post('ptype') : 'plain',
+		'settings' => ['tables' => is_array($_POST['ptype_tables'] ?? null) ? array_map('strval', $_POST['ptype_tables']) : [],
 		'add' => nu_check('ptype_add') === '1', 'update' => nu_check('ptype_update') === '1']] : NuPermType::of($item ? $id : $cloneId);
 	if (!$item && !$src && !$posted) $pt['settings'] = ['tables' => [], 'add' => true, 'update' => false];
 	?>
@@ -130,17 +96,20 @@ nu_layout_start($title, 'users', ['head' => $head]);
 				<a class="btn nuBtnAct" href="<?= h(nu_url('permissions', ['id' => 'new', 'clone' => $id])) ?>" id="permClone"><i class="bi bi-copy me-1"></i><?= h(t('clone')) ?></a>
 			<?php endif; ?>
 			<?php if ($item && $rights['delete']): ?>
-				<form method="post" action="<?= h(nu_url('permissions', ['id' => $id])) ?>" data-confirm="<?= h(t('perm_delete_confirm', (string)$item['pme_ident'], count($assigned))) ?>" data-confirm-ok="<?= h(t('delete')) ?>" data-confirm-class="btn btn-danger">
+				<form method="post" action="<?= h(nu_url('permissions', ['id' => $id])) ?>"
+					data-confirm="<?= h(t('perm_delete_confirm', (string)$item['pme_ident'], count($assigned))) ?>" data-confirm-ok="<?= h(t('delete')) ?>"
+					data-confirm-class="btn btn-danger">
 					<?= nu_csrf_field() ?><input type="hidden" name="action" value="delete">
 					<button class="btn nuBtnAct nuBtnDel" type="submit"><i class="bi bi-trash me-1"></i><?= h(t('delete')) ?></button>
 				</form>
 			<?php endif; ?>
-			<?php if ($item): ?><?= NuFormInfo::record('zzzzsys_permission_item', (string)$id, ['code' => (string)$item['pme_ident']]) /* (i) record info (0.8.501) */ ?><?php endif; ?>
+			<?php if ($item): ?><?= NuFormInfo::record('zzzzsys_permission_item', (string)$id, ['code' => (string)$item['pme_ident']]) /* (i) record info */ ?><?php endif; ?>
 		</div>
 	</div>
 	<?php if ($locked): ?><div class="alert alert-info d-flex gap-2"><i class="bi bi-eye mt-1"></i><div><?= h(t('read_only')) ?></div></div><?php endif; ?>
 
-	<form method="post" data-nu-focus-first data-nu-guard id="nuRecordForm" action="<?= h(nu_url('permissions', ['id' => $item ? $id : 'new', 'clone' => $cloneId])) ?>"<?= $src ? ' data-nu-clone="' . h(t('form_clone_badge')) . '"' : '' ?> novalidate>
+	<form method="post" data-nu-focus-first data-nu-guard id="nuRecordForm"
+		action="<?= h(nu_url('permissions', ['id' => $item ? $id : 'new', 'clone' => $cloneId])) ?>"<?= $src ? ' data-nu-clone="' . h(t('form_clone_badge')) . '"' : '' ?> novalidate>
 		<?= nu_csrf_field() ?><input type="hidden" name="action" value="save">
 		<fieldset<?= $locked ? ' disabled' : '' ?>>
 		<div class="row g-3">
@@ -150,7 +119,8 @@ nu_layout_start($title, 'users', ['head' => $head]);
 					<div class="card-body">
 						<div class="mb-3">
 							<label class="form-label" for="pme_ident"><?= h(t('perm_ident')) ?> <span class="text-danger">*</span><?= nu_unique_mark(true) ?></label>
-							<input class="form-control permField font-monospace<?= nu_invalid($errors, 'pme_ident') ?>" id="pme_ident" name="pme_ident" maxlength="50" required spellcheck="false" autocomplete="off" value="<?= h($v('pme_ident')) ?>"<?= $isNew ? ' autofocus' : '' ?>>
+							<input class="form-control permField font-monospace<?= nu_invalid($errors, 'pme_ident') ?>" id="pme_ident" name="pme_ident" maxlength="50"
+								required spellcheck="false" autocomplete="off" value="<?= h($v('pme_ident')) ?>"<?= $isNew ? ' autofocus' : '' ?>>
 							<?= nu_feedback($errors, 'pme_ident') ?>
 							<div class="form-text"><?= h(t('perm_ident_hint')) ?></div>
 						</div>
@@ -165,12 +135,12 @@ nu_layout_start($title, 'users', ['head' => $head]);
 							<textarea class="form-control" id="pme_description" name="pme_description" rows="4"><?= h($v('pme_description')) ?></textarea>
 						</div>
 						<?php if ($item): ?>
-							<?php // usage in code (0.8.614): folded by default ?>
+							<?php // usage in code: folded by default ?>
 							<details class="mt-3 permUsage" id="permUsage">
 								<summary class="small fw-semibold"><i class="bi bi-code-slash me-1"></i><?= h(t('perm_code_usage')) ?></summary>
 								<div class="mt-2 small text-body-secondary"><?= h(t('perm_code_hint')) ?></div>
 								<pre class="small bg-body-tertiary border rounded p-2 mb-0 mt-1"><code>if (nuUserHasPermission('<?= h((string)$item['pme_ident']) ?>')) { … }</code></pre>
-								<?php // SQL (0.8.613): #USER_PERMISSIONS# = the user's idents "a, b, c" – works on MySQL and SQL Server; the sub-query for any user column ?>
+								<?php // SQL: #USER_PERMISSIONS# = the user's idents "a, b, c" – works on MySQL and SQL Server; the sub-query for any user column ?>
 								<div class="mt-3 small text-body-secondary"><?= h(t('perm_code_sql')) ?></div>
 								<pre class="small bg-body-tertiary border rounded p-2 mb-0 mt-1"><code>WHERE (', #USER_PERMISSIONS#,' LIKE '%, <?= h((string)$item['pme_ident']) ?>,%'
     OR '#GLOBAL_ACCESS#' = '1')</code></pre>
@@ -186,7 +156,7 @@ nu_layout_start($title, 'users', ['head' => $head]);
 				</div>
 			</div>
 			<div class="col-12 order-lg-last">
-				<?php // type of the item (0.8.773, core/nupermtype.php): plain = a flag for code; Data import = tables the user may import into ?>
+				<?php // type of the item (core/nupermtype.php): plain = a flag for code; Data import = tables the user may import into ?>
 				<div class="card shadow-sm" id="permTypeCard">
 					<div class="card-header fw-semibold d-flex align-items-center gap-2"><i class="bi bi-diagram-3"></i><span><?= h(t('ptype_title')) ?></span>
 						<?= nu_info_tip(t('ptype_tip'), '') ?></div>
@@ -206,8 +176,12 @@ nu_layout_start($title, 'users', ['head' => $head]);
 							</select>
 							<?= nu_feedback($errors, 'ptype_tables') ?>
 							<div class="mt-3"><span class="form-label d-block mb-1"><?= h(t('ptype_modes')) ?></span>
-								<div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="ptypeAdd" name="ptype_add" value="1"<?= !empty($pt['settings']['add']) ? ' checked' : '' ?>><label class="form-check-label" for="ptypeAdd"><?= h(t('ptype_add_long')) ?></label></div>
-								<div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="ptypeUpdate" name="ptype_update" value="1"<?= !empty($pt['settings']['update']) ? ' checked' : '' ?>><label class="form-check-label" for="ptypeUpdate"><?= h(t('ptype_update_long')) ?></label></div>
+								<div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="ptypeAdd" name="ptype_add"
+									value="1"<?= !empty($pt['settings']['add']) ? ' checked' : '' ?>><label class="form-check-label"
+									for="ptypeAdd"><?= h(t('ptype_add_long')) ?></label></div>
+								<div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="ptypeUpdate" name="ptype_update"
+									value="1"<?= !empty($pt['settings']['update']) ? ' checked' : '' ?>><label class="form-check-label"
+									for="ptypeUpdate"><?= h(t('ptype_update_long')) ?></label></div>
 								<?php if (isset($errors['ptype_modes'])): ?><div class="text-danger small mt-1" id="ptypeModesErr"><?= h($errors['ptype_modes']) ?></div><?php endif; ?>
 							</div>
 							<div class="alert alert-warning small mt-3 mb-0 d-flex gap-2"><i class="bi bi-exclamation-triangle mt-1" aria-hidden="true"></i><div><?= h(t('ptype_import_warn')) ?></div></div>
@@ -224,7 +198,8 @@ nu_layout_start($title, 'users', ['head' => $head]);
 							<label class="form-label visually-hidden" for="permUsers"><?= h(t('perm_users')) ?></label>
 							<select id="permUsers" name="users[]" multiple class="permUsers" placeholder="<?= h(t('perm_users_ph')) ?>">
 								<?php foreach ($allUsers as $u): $n = $uname($u); ?>
-									<option value="<?= h($u['zzzzsys_user_id']) ?>"<?= in_array((string)$u['zzzzsys_user_id'], $selUsers, true) ? ' selected' : '' ?> data-sub="<?= h(trim($n . ($u['sal_code'] ? ' · ' . $u['sal_code'] : ''))) ?>"><?= h($u['sus_login_name']) ?></option>
+									<option value="<?= h($u['zzzzsys_user_id']) ?>"<?= in_array((string)$u['zzzzsys_user_id'], $selUsers, true) ? ' selected' : '' ?>
+										data-sub="<?= h(trim($n . ($u['sal_code'] ? ' · ' . $u['sal_code'] : ''))) ?>"><?= h($u['sus_login_name']) ?></option>
 								<?php endforeach; ?>
 							</select>
 							<div class="form-text"><?= h(t('perm_users_hint')) ?></div>
@@ -232,7 +207,7 @@ nu_layout_start($title, 'users', ['head' => $head]);
 							<div class="text-body-secondary small"><?= h(t('perm_no_users')) ?></div>
 						<?php endif; ?>
 					</div>
-					<?php if ($assigned): // the users that have the item (saved): search + Active / Archived / All, each opens the user (0.8.687)
+					<?php if ($assigned): // the users that have the item (saved): search + Active / Archived / All, each opens the user
 						$archived = static fn(array $u): bool => nu_is_expired($u['sus_expires_on'] ?? null);
 						$nArch = count(array_filter($assigned, $archived)); ?>
 					<div class="card-body border-top py-2 d-flex flex-wrap gap-2 align-items-center">
@@ -246,14 +221,19 @@ nu_layout_start($title, 'users', ['head' => $head]);
 					</div>
 					<ul class="list-group list-group-flush small nu-scroll" id="permUserList">
 						<?php foreach ($assigned as $u): $ar = $archived($u); ?>
-							<li class="list-group-item d-flex justify-content-between gap-2" data-st="<?= $ar ? 'archived' : 'active' ?>" data-q="<?= h(mb_strtolower($u['sus_login_name'] . ' ' . $uname($u) . ' ' . $u['sal_code'])) ?>"<?= $ar ? ' hidden' : '' ?>>
-								<?php if (NuAcl::can(NuAcl::FORM_USER)): ?><a class="text-decoration-none<?= $ar ? ' text-body-secondary' : '' ?>" target="_blank" rel="noopener" href="<?= h(nu_url('user', ['id' => $u['zzzzsys_user_id']])) ?>"><?= h($u['sus_login_name']) ?></a><?php else: ?><span><?= h($u['sus_login_name']) ?></span><?php endif; ?>
+							<li class="list-group-item d-flex justify-content-between gap-2" data-st="<?= $ar ? 'archived' : 'active' ?>"
+								data-q="<?= h(mb_strtolower($u['sus_login_name'] . ' ' . $uname($u) . ' ' . $u['sal_code'])) ?>"<?= $ar ? ' hidden' : '' ?>>
+								<?php if (NuAcl::can(NuAcl::FORM_USER)): ?><a class="text-decoration-none<?= $ar ? ' text-body-secondary' : '' ?>" target="_blank"
+									rel="noopener"
+									href="<?= h(nu_url('user', ['id' => $u['zzzzsys_user_id']])) ?>"><?= h($u['sus_login_name']) ?></a><?php else: ?><span><?= h($u['sus_login_name']) ?></span><?php endif; ?>
 								<span class="text-body-secondary text-truncate"><?= h($uname($u)) ?><?= $u['sal_code'] ? ' · ' . h($u['sal_code']) : '' ?></span>
 							</li>
 						<?php endforeach; ?>
 						<li class="list-group-item text-body-secondary permUserNone"<?= count($assigned) - $nArch > 0 ? ' hidden' : '' ?>><?= h(t('no_records')) ?></li>
 					</ul>
-					<?php if (NuAcl::can(NuAcl::FORM_USER)): ?><div class="card-footer small py-2"><a class="text-decoration-none" id="permUsersList" target="_blank" rel="noopener" href="<?= h(nu_url('users', ['perm' => $id, 'state' => 'all'])) ?>"><i class="bi bi-list-ul me-1"></i><?= h(t('access_users_in_list')) ?></a></div><?php endif; ?>
+					<?php if (NuAcl::can(NuAcl::FORM_USER)): ?><div class="card-footer small py-2"><a class="text-decoration-none" id="permUsersList" target="_blank"
+						rel="noopener"
+						href="<?= h(nu_url('users', ['perm' => $id, 'state' => 'all'])) ?>"><i class="bi bi-list-ul me-1"></i><?= h(t('access_users_in_list')) ?></a></div><?php endif; ?>
 					<?php endif; ?>
 				</div>
 				<?php if ($item): ?>

@@ -3,13 +3,13 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Unattended updates (0.8.301): the update page's steps without a browser – for the command line (php nucron.php update …) and the
+ * Unattended updates: the update page's steps without a browser – for the command line (php nucron.php update …) and the
  * REST API (POST api.php/v1/system/update, scope system:update). Uses NuUpdate (checks, signature, backup, maintenance, install,
  * restore when copying fails) and the same options as the page.
  *
  *   options: url (https; http only for localhost), zip (a file on the server – command line only) or github (the newest release of the
- *            repository set on the update page, 0.8.374 – NuGitHub), sha256 (optional checksum),
- *            backup files|nubuilder|sql|sql_nologs|auto (auto = nubuilder: the zzzzsys_* tables without logs, 0.8.615), schema none|missing|safe|all, sample auto|yes|no, reinstall, dry_run
+ *            repository set on the update page – NuGitHub), sha256 (optional checksum),
+ *            backup files|nubuilder|sql|sql_nologs|auto (auto = nubuilder: the zzzzsys_* tables without logs), schema none|missing|safe|all, sample auto|yes|no, reinstall, dry_run
  *
  * Two phases, like the page: run() checks and installs; finish() runs the database steps and the sample refresh with the NEW code,
  * so it must run in a new PHP process – the command line starts one itself, the API's status request (GET …/update/{job}) does it,
@@ -72,12 +72,13 @@ final class NuAutoUpdate
 		$tmp = null;
 		try {
 			// --------------------------------------------------- the package
-			if ($o['github']) {                                         // newest release on GitHub (0.8.374): its download address
+			if ($o['github']) {                                         // newest release on GitHub: its download address
 				$gs = NuGitHub::check();
 				if ($gs['error'] !== '') throw new RuntimeException('GitHub: ' . $gs['error']);
 				if (!$gs['latest']) throw new RuntimeException('GitHub: no release with ' . NuGitHub::ASSET . ' in ' . $gs['repo'] . '.');
 				$r['github'] = ['repo' => $gs['repo'], 'tag' => $gs['latest']['tag'], 'pre' => $gs['latest']['pre']];
-				if (!version_compare((string)$gs['latest']['version'], NU_VERSION, '>') && !$o['reinstall']) throw new RuntimeException('GitHub: the newest release (' . $gs['latest']['version'] . ') is not newer than the installed version (' . NU_VERSION . ').');
+				if (!version_compare((string)$gs['latest']['version'], NU_VERSION, '>') && !$o['reinstall']) throw new RuntimeException('GitHub: the newest release ('
+					. $gs['latest']['version'] . ') is not newer than the installed version (' . NU_VERSION . ').');
 				$o['url'] = (string)$gs['latest']['url'];
 			}
 			if ($o['url'] !== '') {
@@ -94,7 +95,8 @@ final class NuAutoUpdate
 			$r['signature'] = (string)($info['signature'] ?? '');
 			foreach ($info['errors'] as $err) $r['errors'][] = $err;
 			if ($info['ok'] && $r['signature'] !== 'valid') $r['errors'][] = 'Unattended updates need a package with a valid signature (signature: ' . $r['signature'] . ').';
-			if ($info['ok'] && !version_compare($r['to'], NU_VERSION, '>') && !$o['reinstall']) $r['errors'][] = 'The package (' . $r['to'] . ') is not newer than the installed version (' . NU_VERSION . ') – use reinstall.';
+			if ($info['ok'] && !version_compare($r['to'], NU_VERSION, '>') && !$o['reinstall']) $r['errors'][] = 'The package (' . $r['to']
+				. ') is not newer than the installed version (' . NU_VERSION . ') – use reinstall.';
 			$r['requirements'] = [];
 			foreach (NuUpdate::requirements() as [$label, $ok, $detail]) {
 				if ($label === t('upd_req_upload')) continue;                 // no upload here
@@ -103,7 +105,7 @@ final class NuAutoUpdate
 			}
 			if (!$info['ok']) return $r;
 
-			// --------------------------------------------------- integrity of the database (0.8.698): problems stop the update
+			// --------------------------------------------------- integrity of the database: problems stop the update
 			$ic = NuIntegrity::forPackage($zip, $info['prefix']);
 			$r['integrity'] = NuIntegrity::summary($ic);
 			if ($ic['errors'] && !$o['ignore_integrity']) {
@@ -125,14 +127,14 @@ final class NuAutoUpdate
 			$sampleTo = $st['installed'] ? NuSample::versionInZip($zip, $info['prefix']) : 0;
 			$refresh = $st['installed'] && ($o['sample'] === 'yes' || ($o['sample'] === 'auto' && $sampleTo > (int)$st['version']));
 			$r['sample'] = ['installed' => $st['installed'], 'from' => $st['installed'] ? (int)$st['version'] : null, 'to' => $sampleTo ?: null, 'refresh' => $refresh];
-			// database changes of this update grouped by table, with the SQL (0.8.346)
+			// database changes of this update grouped by table, with the SQL
 			$r['database'] = NuDbChanges::report(NuDbChanges::preview(NuDbChanges::fromZip($zip, $info['prefix']), $exp, $cmp,
 				$refresh ? ['from' => (int)$st['version'], 'to' => $sampleTo] : null));
-			// library packs the new version needs (0.8.406) – reported only; installed on Update → Libraries
+			// library packs the new version needs – reported only; installed on Update → Libraries
 			$r['libraries'] = array_values(array_map(static fn($x) => ['library' => $x['slot'], 'min' => $x['min'], 'needed' => $x['needed'], 'installed' => $x['have'],
 				'available' => $x['best']['version'] ?? null], NuLibs::unmet(NuLibs::required((array)$info['manifest']), null, NuLibs::available())));
 			$scope = $o['backup'];
-			if ($scope === 'auto') $scope = 'nubuilder';                      // what an update can change: nuBuilder's zzzzsys_* tables (0.8.615)
+			if ($scope === 'auto') $scope = 'nubuilder';                      // what an update can change: nuBuilder's zzzzsys_* tables
 			if ($scope !== 'files' && !(NuUpdate::loadDump() && NuSqlDump::available())) $scope = 'files';
 			$r['backup_mode'] = $scope;
 			if ($r['errors']) return $r;
@@ -147,7 +149,7 @@ final class NuAutoUpdate
 				if ($sr['errors']) throw new RuntimeException('Database structure: ' . implode(' · ', $sr['errors']));
 			}
 			$backup = NuUpdate::install($zip, $info, $scope === 'files' ? 'none' : ($scope === 'nubuilder' ? 'nubuilder' : 'all'), $scope !== 'sql');
-			unset($_SESSION['nu_update']);                                      // the page's finish step is not needed – this job does it
+			unset($_SESSION[NuSess::UPDATE]);                                      // the page's finish step is not needed – this job does it
 			$r['backup'] = $backup;
 			$r['ok'] = true;
 			$r['status'] = 'installed';
@@ -256,9 +258,9 @@ final class NuAutoUpdate
 			$j = self::job($job) ?? $j;                                         // finished meanwhile by another process?
 			if ($j['status'] !== 'installed') return $j + ['ok' => $j['status'] === 'done'];
 			try {
-				unset($_SESSION['nu_schema']);
+				unset($_SESSION[NuSess::SCHEMA]);
 				$j['steps'] = NuMigrate::run();
-				if (($hookErr = NuUpdate::afterUpdateHook()) !== '') $j['hook_error'] = $hookErr;   // nu_after_update (0.8.462)
+				if (($hookErr = NuUpdate::afterUpdateHook()) !== '') $j['hook_error'] = $hookErr;   // nu_after_update
 				if (!empty($j['sample_refresh'])) {
 					try {
 						NuSample::install();                                     // new passwords: Admin tools → Sample data → New passwords

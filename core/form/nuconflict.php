@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Concurrent edits (0.8.401): optimistic check of the edited fields and the "also open" hint (presence).
+ * Concurrent edits: optimistic check of the edited fields and the "also open" hint (presence).
  *
  * Conflict check: when an edit form is drawn, the browser gets a short signature of every column of the record and of its sub-form
  * rows (sigs()). On save it sends the signatures of the fields it edited (payload cc); the server compares them with the database
@@ -47,7 +47,7 @@ final class NuConflict
 		$out = [];
 		foreach ($row as $k => $v) {
 			$k = strtolower((string)$k);
-			// nuBuilder Forte's <table>_nulog column changes on every view ("viewed", NuRecord::nulogViewed) – never a conflict (0.8.1215)
+			// nuBuilder Forte's <table>_nulog column changes on every view ("viewed", NuRecord::nulogViewed) – never a conflict
 			if (str_ends_with($k, '_nulog')) continue;
 			$out[$k] = self::sig($v);
 		}
@@ -66,7 +66,7 @@ final class NuConflict
 	public static function forRecord(NuFormMeta $meta, string $recordId, array $row): array
 	{
 		$sigs = self::rowSigs($row);
-		foreach ($meta->objects as $o) if (NuFieldAccess::withheld($o) || NuFieldAccess::masked($o)) unset($sigs[strtolower((string)$o['sob_all_id'])]);   // no trace of what the user must not see (0.8.480)
+		foreach ($meta->objects as $o) if (NuFieldAccess::withheld($o) || NuFieldAccess::masked($o)) unset($sigs[strtolower((string)$o['sob_all_id'])]);   // no trace of what the user must not see
 		$out = ['f' => (object)$sigs, 'h' => self::rowHash($row), 'sf' => []];
 		foreach ($meta->objects as $o) {
 			if ($o['sob_all_type'] !== 'subform') continue;
@@ -220,7 +220,7 @@ final class NuConflict
 				$r = $db->page($sql, $params, 'changed_at DESC', 1, 0)[0] ?? null;
 				if ($r) return [(string)$r['login'], date(nu_dfmt('d.m.Y H:i'), (int)strtotime((string)$r['changed_at']))];
 			}
-		} catch (Throwable) { /* no audit information */ }
+		} catch (Throwable $ig) { nu_ignored($ig, 'no audit information'); }
 		if ($row) {
 			foreach ($row as $k => $v) {
 				if (strcasecmp((string)$k, $table . '_nulog') !== 0) continue;

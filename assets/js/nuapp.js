@@ -6,7 +6,7 @@
 	var $ = function (sel, root) { return (root || document).querySelector(sel); };
 	var $$ = function (sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); };
 
-	// ---------------------------------------------------------------- rows marked for removal (0.8.139)
+	// ---------------------------------------------------------------- rows marked for removal
 	// Instead of removing a row at once, the remove button crosses it out (class nuRowRemoved, nuapp.css) and turns into
 	// "Undo removal"; the page leaves crossed-out rows out when it saves. Used by the access level's form rights, the form
 	// builder lists and the attribute editor. labels: {remove, undo, pending}; on: true / false, or omitted to toggle.
@@ -47,10 +47,10 @@
 		try { q.setSelectionRange(q.value.length, q.value.length); } catch (e) { /* type=search may not support it */ }
 	})();
 
-	// ---------------------------------------------------------------- edit forms: focus the first field (0.8.145)
+	// ---------------------------------------------------------------- edit forms: focus the first field
 	// Only with mouse / trackpad: on touch screens a focused field would pop up the on-screen keyboard, so there nothing gets the
 	// focus automatically (also autofocus attributes are dropped). nuFocusFirst(root) is used by the form runtime after nuOnLoad.
-	// a real keyboard is likely: mouse-like pointer, and not a touch device with a phone-sized screen (0.8.1046 – some phones report
+	// a real keyboard is likely: mouse-like pointer, and not a touch device with a phone-sized screen (some phones report
 	// hover / fine pointer, so the search field got the focus and the on-screen keyboard popped up)
 	window.nuHasKeyboard = function () {
 		if (!matchMedia('(hover: hover) and (pointer: fine)').matches) return false;
@@ -68,7 +68,7 @@
 			var el = list[i], ts = el.tomselect, box = ts ? ts.wrapper : el;
 			if (focusSkip.test(el.type) || el.disabled || el.readOnly || el.classList.contains('nuReadonly')) continue;
 			if (!ts && el.tabIndex < 0) continue;
-			// sub-form rows carry a prefix; fields of the form itself have data-nu-prefix="" (the selector skipped them all before 0.8.899,
+			// sub-form rows carry a prefix; fields of the form itself have data-nu-prefix="" (a selector on data-nu-prefix alone would skip them all,
 			// so the search box of the first Tom Select got the focus – and opened its list)
 			// controls of form code inside an HTML object are not fields of the form (nuBuilder Forte focuses only its own objects)
 			if (el.closest('.CodeMirror, .nuHtml, .nuSubform, .nuSubformTable, .nuRowRemoved, .modal, .dropdown-menu, [data-nu-prefix]:not([data-nu-prefix=""]), .ts-wrapper')) continue;
@@ -94,7 +94,7 @@
 		if (f) window.nuFocusFirst(f);
 	})();
 
-	// ---------------------------------------------------------------- unsaved changes: ask before leaving (0.8.146)
+	// ---------------------------------------------------------------- unsaved changes: ask before leaving
 	// Sources register with nuLeaveGuard.add({dirty(), save(then) | null, discard()}). A click on a link (Back, breadcrumbs, menu, …)
 	// while a source is dirty opens the dialog #nuLeave (core/nulayout.php): Save (then go on), Discard changes, Keep editing.
 	// Browser back / reload / closing the tab can only show the browser's own question (beforeunload).
@@ -160,7 +160,7 @@
 		window.nuLeaveGuard.leave();
 	});
 	$$('form[data-nu-guard]').forEach(function (f) {
-		var changed = f.hasAttribute('data-nu-clone');                  // a clone that is not saved yet counts as changed (0.8.680)
+		var changed = f.hasAttribute('data-nu-clone');                  // a clone that is not saved yet counts as changed
 		var mark = function (e) {
 			var el = e.target;
 			if (!el || !(f.contains(el) || el.form === f) || (el.closest && el.closest('[data-nu-noguard]'))) return;
@@ -231,11 +231,11 @@
 		if (el instanceof HTMLInputElement && el.list) el.style.cursor = dlUsable(el) && dlOnArrow(el, e.clientX) ? 'pointer' : '';
 	});
 
-	// ---------------------------------------------------------------- F1 = the documentation page of this page (0.8.528, core/nuhelplink.php)
+	// ---------------------------------------------------------------- F1 = the documentation page of this page (core/nuhelplink.php)
 	// <body data-nu-help="index.php?p=help#…">, opened in a new tab; pages without it leave F1 to the browser
 	document.addEventListener('keydown', function (e) {
 		if (e.key !== 'F1' || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
-		// a user help page of this form / tab (0.8.1023, assets/js/nuuserhelp.js) comes first
+		// a user help page of this form / tab (assets/js/nuuserhelp.js) comes first
 		if (typeof window.nuUserHelpF1 === 'function' && window.nuUserHelpF1()) { e.preventDefault(); return; }
 		var url = document.body && document.body.getAttribute('data-nu-help');
 		if (!url) return;
@@ -282,7 +282,7 @@
 		});
 	});
 	applyTheme(document.documentElement.getAttribute('data-nu-theme') || 'light');
-	// theme buttons at the top of the user menu (phones, 0.8.990): a click there keeps the menu open (Bootstrap closes it on clicks inside)
+	// theme buttons at the top of the user menu (phones): a click there keeps the menu open (Bootstrap closes it on clicks inside)
 	var menuPrefs = document.getElementById('nuMenuPrefs');
 	if (menuPrefs) menuPrefs.addEventListener('click', function (e) { e.stopPropagation(); });
 	if (window.matchMedia) {
@@ -291,14 +291,14 @@
 		});
 	}
 
-	// ---------------------------------------------------------------- menus whose content grows after they open (lists filled by script, UI review
-	// 0.8.1007): place them again, so Popper turns one that no longer fits below the button upwards instead of running below the screen
+	// ---------------------------------------------------------------- menus whose content grows after they open (lists filled by script, UI review):
+	// place them again, so Popper turns one that no longer fits below the button upwards instead of running below the screen
 	document.addEventListener('shown.bs.dropdown', function (e) {
 		var t = e.target;
 		setTimeout(function () { try { if (t.classList.contains('show') || t.getAttribute('aria-expanded') === 'true') nuBs.dropdown(t).update(); } catch (x) { /* static menu */ } }, 80);
 	});
 
-	// ---------------------------------------------------------------- tooltips that only repeat the visible text (UI review 0.8.1007): a screen reader
+	// ---------------------------------------------------------------- tooltips that only repeat the visible text (UI review): a screen reader
 	// reads the name twice and the tooltip adds nothing – the title goes. Kept: buttons (phones show some only as an icon), cut text (… shows
 	// the whole), elements with their own tooltip set-up, and anything marked data-nu-keep-title.
 	function nuDropEchoTitles(root) {
@@ -318,7 +318,7 @@
 	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { nuDropEchoTitles(); }); else nuDropEchoTitles();
 	document.addEventListener('nu:listrefresh', function () { nuDropEchoTitles(); });
 
-	// ---------------------------------------------------------------- "+ Add" buttons: the text as name / tooltip (phones show only the icon, 0.8.994)
+	// ---------------------------------------------------------------- "+ Add" buttons: the text as name / tooltip (phones show only the icon)
 	function nuAddBtnNames() {
 		var sel = '.nuAddBtn, .nuIconPhone, .nuBackBtn, #nuBackButton';
 		try { document.querySelector('.btn.nuBtnAct:has(> .bi-arrow-left)'); sel += ', .btn.nuBtnAct:has(> .bi-arrow-left)'; } catch (x) { /* no :has */ }
@@ -335,7 +335,7 @@
 	// ---------------------------------------------------------------- show / hide password
 	$$('[data-pw-toggle]').forEach(function (btn) {
 		var own = $(btn.getAttribute('data-pw-toggle'));
-		if (own) own.classList.add('nuOwnPwToggle');                         // 0.8.944: no second eye of Edge next to ours (nuapp.css ::-ms-reveal)
+		if (own) own.classList.add('nuOwnPwToggle');                         // no second eye of Edge next to ours (nuapp.css ::-ms-reveal)
 		btn.addEventListener('click', function () {
 			var input = $(btn.getAttribute('data-pw-toggle'));
 			if (!input) return;
@@ -360,7 +360,7 @@
 	});
 
 	// ---------------------------------------------------------------- filters submit on change
-	// delegated (0.8.776: lists refreshed in place get new selects); requestSubmit fires "submit", so the list refresh can take it over
+	// delegated (lists refreshed in place get new selects); requestSubmit fires "submit", so the list refresh can take it over
 	document.addEventListener('change', function (e) {
 		var sel = e.target;
 		if (!sel || !sel.classList || !sel.classList.contains('js-autosubmit') || !sel.form) return;
@@ -376,12 +376,12 @@
 		sync();   // also after the browser restores a chosen file (back button)
 	});
 
-	// ---------------------------------------------------------------- height of the sticky top bar as --nu-nav-h (0.8.318): sticky
+	// ---------------------------------------------------------------- height of the sticky top bar as --nu-nav-h: sticky
 	// bars below it (start page edit bar) stop under it instead of sliding behind it
 	(function () {
 		var nav = $('.nu-navbar');
 		if (!nav) return;
-		// Written only when it differs (0.8.1341): a custom property set on <html> makes the browser work out the style of every element
+		// Written only when it differs: a custom property set on <html> makes the browser work out the style of every element
 		// again – the style sheet's own value (57px) and a height that did not change need no write.
 		var root = document.documentElement;
 		var set = function () {
@@ -393,7 +393,7 @@
 		if (window.ResizeObserver) new ResizeObserver(set).observe(nav); else window.addEventListener('resize', set);
 	})();
 
-	// ---------------------------------------------------------------- menus of the collapsed top bar (phones, 0.8.324): Bootstrap places them
+	// ---------------------------------------------------------------- menus of the collapsed top bar (phones): Bootstrap places them
 	// without Popper (data-bs-popper="static") at the button's left edge, so the user menu ran off the right side – shift it into the screen
 	document.addEventListener('shown.bs.dropdown', function (e) {
 		var menu = e.target && e.target.parentNode ? e.target.parentNode.querySelector('.dropdown-menu.show') : null;
@@ -409,7 +409,7 @@
 		menu.style.maxWidth = (vw - 2 * gap) + 'px';
 	});
 
-	// ---------------------------------------------------------------- view only (admin role with "view", 0.8.323): the buttons of forms that
+	// ---------------------------------------------------------------- view only (admin role with "view"): the buttons of forms that
 	// send something are switched off and a note says why – the server refuses the change anyway (NuAdmin::require)
 	if (document.body.classList.contains('nuViewOnly')) {
 		var voMain = $('main');
@@ -426,7 +426,7 @@
 		}
 	}
 
-	// ---------------------------------------------------------------- copy button: data-nu-copy="#field" puts the field's value on the clipboard (0.8.312)
+	// ---------------------------------------------------------------- copy button: data-nu-copy="#field" puts the field's value on the clipboard
 	$$('[data-nu-copy]').forEach(function (b) {
 		b.addEventListener('click', function () {
 			var f = $(b.getAttribute('data-nu-copy'));
@@ -438,7 +438,7 @@
 		});
 	});
 
-	// ---------------------------------------------------------------- dialogues opened from inside a toolbar / dropdown (0.8.676, form info):
+	// ---------------------------------------------------------------- dialogues opened from inside a toolbar / dropdown (form info):
 	// a sticky toolbar is its own stacking context, so the dialogue moves to <body> first (else it sits below its backdrop), and the
 	// dropdown it was opened from closes
 	document.addEventListener('click', function (e) {
@@ -450,7 +450,7 @@
 		if (tg && window.nuBs) try { nuBs.dropdown(tg).hide(); } catch (x) { /* not a dropdown */ }
 	}, true);
 
-	// ---------------------------------------------------------------- copy a text: data-nu-copy-text="…" (form info, 0.8.435)
+	// ---------------------------------------------------------------- copy a text: data-nu-copy-text="…" (form info)
 	function nuCopyText(text) {
 		if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text).then(function () { return true; }, function () { return fallback(); });
 		return Promise.resolve(fallback());
@@ -544,7 +544,7 @@
 	var recForm = $('#nuRecordForm');
 	if (recForm) {
 		var markDirty = function (e) {
-			if (e && e.target && e.target.closest && e.target.closest('[data-nu-noguard]')) return;   // view switches, not data (0.8.552)
+			if (e && e.target && e.target.closest && e.target.closest('[data-nu-noguard]')) return;   // view switches, not data
 			$$('button[form="nuRecordForm"]').forEach(function (b) { b.classList.add('nuSaveEdited'); });
 		};
 		recForm.addEventListener('input', markDirty);
@@ -565,10 +565,10 @@
 		if (f.form) f.form.addEventListener('submit', store);
 	});
 
-	// ---------------------------------------------------------------- flash messages shown as toasts (nu_flash(type, msg, true), 0.8.377)
+	// ---------------------------------------------------------------- flash messages shown as toasts (nu_flash(type, msg, true))
 	if (nuBs.ready()) $$('.nuFlashToast').forEach(function (t) { nuBs.toast(t).show(); });
 
-	// ---------------------------------------------------------------- messages at the top of the page that close by themselves (0.8.1119):
+	// ---------------------------------------------------------------- messages at the top of the page that close by themselves:
 	// the server says after how long (data-nu-autoclose, nu_flash_autoclose() in core/nulayout.php – "done" messages and short notes; warnings,
 	// errors and messages with a link stay). Signed-in pages only; the time stands still while the pointer or the focus is on the message
 	// and while the tab is in the background, so nothing disappears unread.
@@ -590,14 +590,14 @@
 		run();
 	});
 
-	// ---------------------------------------------------------------- tabs restored by a script (0.8.444): shown once every script of the
+	// ---------------------------------------------------------------- tabs restored by a script: shown once every script of the
 	// page has run (the hash tabs below, a remembered tab in nuprocedures.js …) – nutheme.js hid [data-nu-tab-restore] in the meantime
 	(function () {
 		var done = function () { document.documentElement.classList.remove('nuTabsPending'); };
 		if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', done); else done();
 	})();
 
-	// ---------------------------------------------------------------- tabs kept in the address (0.8.392, update page: ul[data-nu-hash-tabs])
+	// ---------------------------------------------------------------- tabs kept in the address (update page: ul[data-nu-hash-tabs])
 	// #<tab> opens that tab, #<element id> the tab that holds the element (old anchors such as #updHistory); a tab shown by a click
 	// writes its name into the address (the first tab: none), so reloads, links and redirects after a form post come back to it
 	$$('[data-nu-hash-tabs]').forEach(function (nav) {
@@ -622,7 +622,7 @@
 			if (!n || ('#' + n) === location.hash) return;
 			var target = location.hash && document.getElementById(location.hash.slice(1));
 			if (target && e.target.getAttribute('data-bs-target') === '#' + (target.closest('.tab-pane') || {}).id) return;   // #updHistory inside it: keep
-			// ?tab= of the server (0.8.451) follows the tab clicked, so a reload opens the same tab without hiding the page
+			// ?tab= of the server follows the tab clicked, so a reload opens the same tab without hiding the page
 			var u = new URL(location.href);
 			if (u.searchParams.has('tab')) { if (e.target === first) u.searchParams.delete('tab'); else u.searchParams.set('tab', n); }
 			u.hash = e.target === first ? '' : n;
@@ -634,7 +634,7 @@
 
 	// ---------------------------------------------------------------- collapse whose open / closed state is remembered in this browser
 	// <div class="collapse" id="x" data-nu-remember-open="key">: opened at once when it was open last time (localStorage key = '1');
-	// data-nu-force-open: the server opened it (e.g. a package waits in _update/) – the stored state does not close it. (0.8.376)
+	// data-nu-force-open: the server opened it (e.g. a package waits in _update/) – the stored state does not close it.
 	$$('.collapse[data-nu-remember-open]').forEach(function (el) {
 		var key = el.getAttribute('data-nu-remember-open');
 		var toggles = el.id ? $$('[data-bs-target="#' + el.id + '"]') : [];
@@ -644,7 +644,7 @@
 			el.classList.add('show');
 			toggles.forEach(function (b) { b.classList.remove('collapsed'); b.setAttribute('aria-expanded', 'true'); });
 		}
-		// open by default (0.8.450, update page → GitHub): folded last time → folded again, unless the server forces it open
+		// open by default (update page → GitHub): folded last time → folded again, unless the server forces it open
 		if (saved === '0' && el.classList.contains('show') && !el.hasAttribute('data-nu-force-open')) {
 			el.classList.remove('show');
 			toggles.forEach(function (b) { b.classList.add('collapsed'); b.setAttribute('aria-expanded', 'false'); });
@@ -654,7 +654,7 @@
 		el.addEventListener('hidden.bs.collapse', store('0'));
 	});
 
-	// a button inside a folded area's header that opens something inside it: data-nu-open-first="#area" unfolds the area first (0.8.450)
+	// a button inside a folded area's header that opens something inside it: data-nu-open-first="#area" unfolds the area first
 	$$('[data-nu-open-first]').forEach(function (b) {
 		b.addEventListener('click', function () {
 			var area = $(b.getAttribute('data-nu-open-first'));
@@ -663,7 +663,7 @@
 	});
 
 	// ---------------------------------------------------------------- list footer: click on "Page x / y" → enter a page, Enter jumps there
-	window.nuBindPagerJump = function (root) { $$('.nuPagerJump', root).forEach(bindJump); };   // also for lists refreshed in place (0.8.776)
+	window.nuBindPagerJump = function (root) { $$('.nuPagerJump', root).forEach(bindJump); };   // also for lists refreshed in place
 	window.nuBindPagerJump(document);
 	function bindJump(btn) {
 		if (btn.nuJump) return;
@@ -704,7 +704,7 @@
 	// ---------------------------------------------------------------- list filters shown at once on wide screens
 	// <div class="collapse" data-nu-open-min="800">: open when the window is at least that wide (the filter button still hides them)
 	window.nuOpenMin = function (root) {
-		// list filters opened because one is set stay folded on phones (0.8.1093) – the chips show what is set
+		// list filters opened because one is set stay folded on phones – the chips show what is set
 		$$('.collapse.nuLvPhFold', root).forEach(function (c) {
 			if (window.innerWidth < 768) {
 				c.classList.remove('show');
@@ -712,6 +712,8 @@
 			}
 			c.classList.remove('nuLvPhFold');
 		});
+		// notices folded on phones: <details open data-nu-phone-fold> closes below 576 px (the page starts open – no shift on wider screens)
+		$$('details[data-nu-phone-fold][open]', root).forEach(function (d) { if (window.innerWidth < 576) d.open = false; });
 		$$('.collapse[data-nu-open-min]', root).forEach(function (c) {
 			var min = parseInt(c.getAttribute('data-nu-open-min'), 10) || 0;
 			if (window.innerWidth < min || c.classList.contains('show')) return;
@@ -724,12 +726,12 @@
 	document.addEventListener('click', function (e) {
 		var b = e.target.closest && e.target.closest('.nuFilterToggle[data-bs-target="#nuBrowseFilters"]');
 		var c = b && document.getElementById('nuBrowseFilters');
-		if (!c || !c.classList.contains('nuFltPhoneHide') || window.innerWidth >= 576) return;
+		if (!c || !c.classList.contains('nuFltPhoneHide') || window.innerWidth >= (c.classList.contains('nuFltTabHide') ? 992 : 576)) return;
 		e.preventDefault(); e.stopImmediatePropagation();
-		c.classList.remove('nuFltPhoneHide'); c.classList.add('show'); b.setAttribute('aria-expanded', 'true');
+		c.classList.remove('nuFltPhoneHide', 'nuFltTabHide'); c.classList.add('show'); b.setAttribute('aria-expanded', 'true');
 	}, true);
 
-	// ---------------------------------------------------------------- "Please check the highlighted fields" (0.8.718)
+	// ---------------------------------------------------------------- "Please check the highlighted fields"
 	// The message becomes a button: it lists the fields marked .is-invalid (label + message); a click on one shows its tab / folded
 	// section, scrolls to it and puts the cursor there.
 	$$('.alert.nuCheckForm').forEach(function (al) {
@@ -800,14 +802,14 @@
 			if (f.hasAttribute('data-nu-once') && f.requestSubmit) f.requestSubmit(f.querySelector('[type="submit"][data-nu-busy]') || undefined);
 			else f.submit();
 		});
-		window.nuBindConfirm = function (root) { $$('form[data-confirm]', root).forEach(bindConfirm); };   // lists refreshed in place (0.8.776)
+		window.nuBindConfirm = function (root) { $$('form[data-confirm]', root).forEach(bindConfirm); };   // lists refreshed in place
 		window.nuBindConfirm(document);
 		function bindConfirm(f) {
 			if (f.nuConfirmBound) return;
 			f.nuConfirmBound = true;
 			f.addEventListener('submit', function (e) {
 				if (f.dataset.confirmed === '1') return;
-				if (e.submitter && e.submitter.hasAttribute('data-no-confirm')) return;   // e.g. "Save rule" next to "Delete now" (0.8.451)
+				if (e.submitter && e.submitter.hasAttribute('data-no-confirm')) return;   // e.g. "Save rule" next to "Delete now"
 				e.preventDefault();
 				pending = f;
 				askCancel = null;
@@ -823,12 +825,12 @@
 			});
 		}
 		/** The same dialog for a script: nuConfirmAsk(text, onOk[, okLabel, okClass]) – onOk runs after OK, nothing on Cancel. */
-		// extra (0.8.763, review E4): {title, details: [lines shown as a list below the text], note, cancelFirst: true = Cancel gets the focus}
+		// extra (review E4): {title, details: [lines shown as a list below the text], note, cancelFirst: true = Cancel gets the focus}
 		var titleEl = $('#nuConfirmTitle', modalEl), titleText = titleEl ? titleEl.textContent : '';
 		window.nuConfirmAsk = function (text, onOk, okLabel, cls, extra) {
 			extra = extra || {};
 			pending = onOk;
-			askCancel = typeof extra.onCancel === 'function' ? extra.onCancel : null;   // extra.onCancel (0.8.781): after Cancel / Esc / ×
+			askCancel = typeof extra.onCancel === 'function' ? extra.onCancel : null;   // extra.onCancel: after Cancel / Esc / ×
 			var box = $('.js-confirm-text', modalEl);
 			box.textContent = text;
 			if (extra.details && extra.details.length) {
@@ -906,7 +908,7 @@
 		});
 	});
 
-	// ---------------------------------------------------------------- tabs that remember the open tab (0.8.484, access level form)
+	// ---------------------------------------------------------------- tabs that remember the open tab (access level form)
 	// <ul class="nav-tabs" data-nu-tabfield="<hidden input id>">: the open tab's data-nu-tab goes into that input (sent with Save, so the
 	// page after saving shows the same tab) and into the address (?tab=…, kept on reload); a field the browser finds invalid opens its tab.
 	$$('ul[data-nu-tabfield]').forEach(function (tabs) {
@@ -1063,7 +1065,7 @@
 			}
 		}
 
-		// remove (0.8.139): the row is crossed out and deleted when the access level is saved; the same button undoes it.
+		// remove: the row is crossed out and deleted when the access level is saved; the same button undoes it.
 		// The form stays taken in "Add form" meanwhile – undo brings the row back instead of adding it twice.
 		var markRemoved = function (tr, on) {
 			var flag = $('.js-remove-flag', tr);
@@ -1124,7 +1126,7 @@
 	'use strict';
 	if (!nuBs.ready()) return;
 	document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) { nuBs.tooltip(el); });
-	// only one tooltip at a time (0.8.243): showing one hides the others; a tap / click elsewhere closes them (touch screens keep
+	// only one tooltip at a time: showing one hides the others; a tap / click elsewhere closes them (touch screens keep
 	// click-triggered tooltips open otherwise)
 	var hideOthers = function (keep) {
 		document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
@@ -1134,11 +1136,11 @@
 		});
 	};
 	document.addEventListener('show.bs.tooltip', function (e) {
-		// none from the page behind an open dialogue (0.8.1208)
+		// none from the page behind an open dialogue
 		if (document.querySelector('.modal.show') && !(e.target.closest && e.target.closest('.modal'))) { e.preventDefault(); return; }
 		hideOthers(e.target);
 	});
-	// a dialogue or a send closes every tooltip (0.8.1208): a tap on a button with a tooltip (Check & install) showed it on top
+	// a dialogue or a send closes every tooltip: a tap on a button with a tooltip (Check & install) showed it on top
 	// of the progress dialogue that the same tap opened – touch screens show tooltips on tap and keep them
 	document.addEventListener('show.bs.modal', function () { hideOthers(null); });
 	document.addEventListener('submit', function () { hideOthers(null); }, true);
@@ -1192,7 +1194,7 @@
 				b.appendChild(sp);
 				b.appendChild(document.createTextNode(busy));
 			}
-			// data-nu-progress="#modal" (0.8.308): a modal that cannot be closed while the request runs – e.g. Install on the update page
+			// data-nu-progress="#modal": a modal that cannot be closed while the request runs – e.g. Install on the update page
 			// the pressed button's own data-nu-progress wins (update page: only "Check & install" of the upload form shows one)
 			var pm = b.getAttribute('data-nu-progress') || f.getAttribute('data-nu-progress');
 			var pel = pm ? document.querySelector(pm) : null;
@@ -1216,7 +1218,7 @@
 	});
 })();
 
-// Save buttons (.nuBtnSave, 0.8.199): red while their form has unsaved changes – for every page; record pages, forms and the editors also
+// Save buttons (.nuBtnSave): red while their form has unsaved changes – for every page; record pages, forms and the editors also
 // set .nuSaveEdited themselves. Changes made by scripts while the page loads do not count (only after the user did something).
 (function () {
 	'use strict';
@@ -1233,7 +1235,7 @@
 	}
 	document.addEventListener('input', mark, true);
 	document.addEventListener('change', mark, true);
-	// own record pages opened as a clone (0.8.680, as nuBuilder Forte): the copy is not saved yet – red Save, a badge next to the title
+	// own record pages opened as a clone (as nuBuilder Forte): the copy is not saved yet – red Save, a badge next to the title
 	document.querySelectorAll('form[data-nu-clone]').forEach(function (f) {
 		document.querySelectorAll('.nuBtnSave').forEach(function (b) {
 			if (b.form === f || (f.id && b.getAttribute('form') === f.id)) b.classList.add('nuSaveEdited');
@@ -1249,13 +1251,14 @@
 	});
 })();
 
-// accessibility (0.8.368, dev/tests/a11y.js): fields without a name get one from their label, the sub-form column title or the
+// accessibility (dev/tests/a11y.js): fields without a name get one from their label, the sub-form column title or the
 // lookup's label; selects behind Tom Select and CodeMirror's hidden input keep a name; tables that scroll sideways can be focused.
 (function () {
 	function text(el) { return el ? el.textContent.replace(/\s+/g, ' ').trim() : ''; }
 	function labelFor(id) { return id ? text(document.querySelector('label[for="' + CSS.escape(id) + '"]')) : ''; }
 	function named(el) {
-		return el.getAttribute('aria-label') || el.getAttribute('aria-labelledby') || el.getAttribute('title') || (el.id && document.querySelector('label[for="' + CSS.escape(el.id) + '"]')) || el.closest('label');
+		return el.getAttribute('aria-label') || el.getAttribute('aria-labelledby') || el.getAttribute('title')
+			|| (el.id && document.querySelector('label[for="' + CSS.escape(el.id) + '"]')) || el.closest('label');
 	}
 	function name(el) {
 		var field = el.getAttribute('data-nu-field') || '', prefix = el.getAttribute('data-nu-prefix') || '';
@@ -1281,7 +1284,7 @@
 			var cs = getComputedStyle(t), x = /(auto|scroll)/.test(cs.overflowX) && t.scrollWidth > t.clientWidth + 1, y = /(auto|scroll)/.test(cs.overflowY) && t.scrollHeight > t.clientHeight + 1;
 			if (x || y) t.setAttribute('tabindex', '0');
 		});
-		// CodeMirror's scroll box (0.8.761, axe scrollable-region-focusable): reachable with the keyboard; coming from outside the editor
+		// CodeMirror's scroll box (axe scrollable-region-focusable): reachable with the keyboard; coming from outside the editor
 		// the focus goes on to the editor itself, from inside (Tab after the editor) it stays so the arrows scroll the code
 		document.querySelectorAll('.CodeMirror-scroll:not([data-nu-a11y])').forEach(function (t) {
 			var w = t.closest('.CodeMirror');
@@ -1303,7 +1306,7 @@
 })();
 
 /*
- * Search highlighting (0.8.427): marks the words of a search in text – form browse lists (nuHighlightSearch() / $.fn.nuHighlight in
+ * Search highlighting: marks the words of a search in text – form browse lists (nuHighlightSearch() / $.fn.nuHighlight in
  * assets/js/nu/nucompat.js, run after loading as in nuBuilder) and the system lists (data-nu-highlight on their rows). Better than
  * nuBuilder's nuHighlight: every occurrence (not only the first of a text node), all terms in one pass (longest first, no marks inside
  * marks), case- and accent-insensitive like the database's collation (é = e, ß = ss) with exact positions in the original text, and
@@ -1401,12 +1404,12 @@
 			highlight(box, q.split(/\s+/));
 		});
 	}
-	window.nuHighlightLists = lists;                        // lists refreshed in place (0.8.776)
+	window.nuHighlightLists = lists;                        // lists refreshed in place
 	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { lists(); }); else lists();
 })();
 
 /*
- * Search fields of lists (0.8.428, form browse lists and nuBuilder Next's own lists): the browser's × in the field and Esc empty the field
+ * Search fields of lists (form browse lists and nuBuilder Next's own lists): the browser's × in the field and Esc empty the field
  * and show the list without the search words at once (before, the × only emptied the box). Esc in an empty field does nothing here, so
  * a lookup window can still be closed with it.
  */
@@ -1432,7 +1435,7 @@
 })();
 
 /*
- * Page hook (0.8.523, Admin tools → Custom code → Global JS): every page names itself on <body> (data-nu-page = the ?p= route,
+ * Page hook (Admin tools → Custom code → Global JS): every page names itself on <body> (data-nu-page = the ?p= route,
  * data-nu-mode / data-nu-form on form pages, data-nu-admin="1" for admins). Once the page is ready nuOnPageLoad(page, info) is called
  * when defined, then the event nu:pageload ({detail: {page, mode, form, admin}}) lets several snippets react. Form pages: the runtime
  * calls it after nuOnLoad (nuruntime.js); everywhere else: here, when the DOM is ready. Errors are logged, the page keeps working.
@@ -1455,7 +1458,7 @@
 	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run); else setTimeout(run, 0);
 })();
 
-// Pin of the ☰ menu (0.8.637, phones / tablets): pinned = the collapsed top bar menu stays open on every page (localStorage nunext-nav-pin)
+// Pin of the ☰ menu (phones / tablets): pinned = the collapsed top bar menu stays open on every page (localStorage nunext-nav-pin)
 (function () {
 	'use strict';
 	var pin = document.getElementById('nuNavPin'), nav = document.getElementById('nuNav');
@@ -1482,7 +1485,7 @@
 	});
 })();
 
-// Sections of a tab (0.8.638): a long tap on a tab (or right-click) lists the cards of its page – Login credentials, Access & roles …;
+// Sections of a tab: a long tap on a tab (or right-click) lists the cards of its page – Login credentials, Access & roles …;
 // a tap on one opens the tab and scrolls to that card. Only for tabs whose page has at least two cards with a header.
 (function () {
 	'use strict';
@@ -1492,7 +1495,7 @@
 		var sel = tab.getAttribute('data-bs-target') || tab.getAttribute('href') || '';
 		var pane = sel.charAt(0) === '#' ? document.querySelector(sel) : null;
 		if (!pane) return [];
-		// a card's header, or the title of a section card (user form, 0.8.1248: <section class="card"><div class="card-body"><h2 class="userSecTitle">)
+		// a card's header, or the title of a section card (user form: <section class="card"><div class="card-body"><h2 class="userSecTitle">)
 		return Array.prototype.filter.call(pane.querySelectorAll('.card > .card-header, .card > .card-body > .userSecTitle:first-child'), function (h) {
 			return !h.closest('.modal') && !h.closest('.card.d-none') && h.closest('.tab-pane') === pane && (h.textContent || '').trim() !== '';
 		});
@@ -1519,7 +1522,7 @@
 				if (!tab.classList.contains('active') && window.nuBs) nuBs.tab(tab).show();
 				setTimeout(function () {
 					var card = h.closest('.card'), nav = document.querySelector('.nu-navbar.sticky-top'), bar = document.querySelector('.nuStickyBar');
-					var y = card.getBoundingClientRect().top + window.scrollY - (nav ? nav.offsetHeight : 0) - (bar ? bar.offsetHeight + 16 : 0) - 8;   // below the sticky button row (0.8.642)
+					var y = card.getBoundingClientRect().top + window.scrollY - (nav ? nav.offsetHeight : 0) - (bar ? bar.offsetHeight + 16 : 0) - 8;   // below the sticky button row
 					window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
 					var f = card.querySelector('input:not([type=hidden]):not([disabled]), select:not([disabled]), textarea:not([disabled])');
 					card.classList.add('nuSectionFlash'); setTimeout(function () { card.classList.remove('nuSectionFlash'); }, 1200);
@@ -1558,13 +1561,13 @@
 		var tab = e.target.closest && e.target.closest('.nav-tabs [data-bs-toggle="tab"]');
 		if (tab && (open || show(tab))) e.preventDefault();
 	});
-	// a small ▾ in the tab shows that there is a menu (0.8.639) – a tap on it opens the list at once
+	// a small ▾ in the tab shows that there is a menu – a tap on it opens the list at once
 	var label = (document.body && document.body.getAttribute('data-nu-tab-sections')) || '';
 	function arrows() {
 		document.querySelectorAll('.nav-tabs [data-bs-toggle="tab"]').forEach(function (tab) {
 			if (tab.querySelector('.nuTabSecArrow') || sections(tab).length < 2) return;
 			var a = document.createElement('span');
-			// no role / tab stop inside the tab button (0.8.761, axe nested-interactive): the tab says it has a menu, Shift+F10 opens it
+			// no role / tab stop inside the tab button (axe nested-interactive): the tab says it has a menu, Shift+F10 opens it
 			a.className = 'nuTabSecArrow'; a.setAttribute('aria-hidden', 'true');
 			if (label) { a.title = label; tab.setAttribute('aria-haspopup', 'menu'); tab.setAttribute('aria-description', label); }
 			a.innerHTML = '<i class="bi bi-chevron-down" aria-hidden="true"></i>';
@@ -1582,7 +1585,7 @@
 	window.addEventListener('resize', close);
 })();
 
-// ---------------------------------------------------------------- sticky button row (0.8.642): the header row of form pages and of record pages
+// ---------------------------------------------------------------- sticky button row: the header row of form pages and of record pages
 // (breadcrumb / title · Back · Save · …) stays under the top bar while the page scrolls; .nuStuck adds the background edge once it sticks
 (function () {
 	'use strict';
@@ -1603,7 +1606,7 @@
 	}
 	// --nu-sticky-top: where the row sticks (below the top bar and a form-draft banner); --nu-sticky-h: the room it takes, so
 	// sticky side panels (help, preview, field lists) stop below it
-	// Both are written only when they differ from what applies (0.8.1341; the style sheet's own values: below the top bar, no room
+	// Both are written only when they differ from what applies (the style sheet's own values: below the top bar, no room
 	// taken) – a custom property set on <html> makes the browser work out the style of every element again, and this runs several
 	// times while a page loads (ready, load, every size observer).
 	var stickTop = 0;
@@ -1638,7 +1641,7 @@
 	window.addEventListener('load', find);   // form pages: buttons added by nuOnLoad
 })();
 
-// ---------------------------------------------------------------- column widths by dragging a title (0.8.650 browse lists, 0.8.651 system lists)
+// ---------------------------------------------------------------- column widths by dragging a title (browse lists, system lists)
 // nuColResize(table, opt) – as nuBuilder Forte: drag anywhere on a title to the left / right (mouse, pen, touch), at least opt.min (40) px; a click
 // without moving still sorts, the drag does not. Kept for this browser tab only (sessionStorage opt.key – paging, sort and search reload the page),
 // never stored anywhere else. The first drag fixes the widths as shown (table-layout: fixed + opt.fixedClass), so a column can get narrower
@@ -1681,7 +1684,7 @@ window.nuColResize = function (table, opt) {
 		var o = {};
 		titles().forEach(function (th) { if (shown(th)) o[idOf(th)] = Math.round(th.getBoundingClientRect().width); });
 		nuStore.session.set(opt.key, JSON.stringify(o));
-		if (opt.saved) opt.saved(o);                                       // e.g. a cookie, so the server draws the widths (0.8.933)
+		if (opt.saved) opt.saved(o);                                       // e.g. a cookie, so the server draws the widths
 	}
 	function restore() {
 		var o = null;
@@ -1738,7 +1741,7 @@ window.nuColResize = function (table, opt) {
 	};
 };
 
-// system lists (NuListView, 0.8.651): <table data-nu-resize="<route>:<view>">, titles th[data-nu-col]
+// system lists (NuListView): <table data-nu-resize="<route>:<view>">, titles th[data-nu-col]
 (function () {
 	'use strict';
 	function init() {
@@ -1749,10 +1752,10 @@ window.nuColResize = function (table, opt) {
 			if (t.nuColResize) t.nuColResize.restore();
 		});
 	}
-	window.nuInitResize = init;                             // lists refreshed in place (0.8.776)
+	window.nuInitResize = init;                             // lists refreshed in place
 	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 
-	// no logo in the top bar (0.8.730): on desktop the page's breadcrumb sits next to the Home button; on phones it stays in the page.
+	// no logo in the top bar: on desktop the page's breadcrumb sits next to the Home button; on phones it stays in the page.
 	// The <ol> itself is moved (its id and links keep working – the form page's back button counts its items); the first item, when it
 	// is the start page, is hidden there (the Home button is that step)
 	function navCrumbs() {
@@ -1779,7 +1782,7 @@ window.nuColResize = function (table, opt) {
 	}
 	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', navCrumbs); else navCrumbs();
 
-	// right-click on the logo in the top bar (0.8.734, the globeadmin): asks, then hides it there (Branding → Show logo: only sign-in pages)
+	// right-click on the logo in the top bar (the globeadmin): asks, then hides it there (Branding → Show logo: only sign-in pages)
 	document.addEventListener('contextmenu', function (e) {
 		var a = e.target.closest ? e.target.closest('[data-nu-logo-hide]') : null;
 		if (!a) return;
@@ -1790,11 +1793,11 @@ window.nuColResize = function (table, opt) {
 	});
 })();
 
-/* Home button / logo of the top bar (0.8.774): the start page puts the cursor into its search field (assets/js/nuhome.js reads the flag). */
+/* Home button / logo of the top bar: the start page puts the cursor into its search field (assets/js/nuhome.js reads the flag). */
 (function () {
 	'use strict';
 	// the Home button of the compact bar and the logo (both open the start page)
-	// a link to the page that is open already (0.8.787): the active tab / menu entry (class active or aria-current) of the same page – no
+	// a link to the page that is open already: the active tab / menu entry (class active or aria-current) of the same page – no
 	// reload, nothing would change (the e-mail page's tabs, the settings centre's side bar, view switches …). A link with parameters the
 	// address does not have counts as the same page when it is marked active (index.php?p=email = its tab Settings).
 	document.addEventListener('click', function (e) {
@@ -1814,14 +1817,14 @@ window.nuColResize = function (table, opt) {
 	document.querySelectorAll('#nuHomeBtn, .nu-navbar .navbar-brand').forEach(function (b) {
 		b.addEventListener('click', function (e) {
 			if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;   // a new tab / window: no flag
-			// on the start page already (0.8.786): no reload – nuhome.js resets it in place
+			// on the start page already: no reload – nuhome.js resets it in place
 			if (typeof window.nuHomeReset === 'function' && b.href && window.nuHomeReset(b.href)) { e.preventDefault(); return; }
 			nuStore.session.set('nunext-home-focus', '1');
 		});
 	});
 })();
 
-// Page numbers (0.8.804, core/nupageno.php): "P100" (also "p 100", "P100.2" = a tab) typed into a search field + Enter → ?p=pageno, which
+// Page numbers (core/nupageno.php): "P100" (also "p 100", "P100.2" = a tab) typed into a search field + Enter → ?p=pageno, which
 // opens the page – or comes back here with a message when there is no such number. Used by the start page search and the Ctrl+K search.
 window.nuPageNoGo = function (value) {
 	if (!/^\s*p\s*\d{1,3}(\.\d)?\s*$/i.test(String(value || ''))) return false;
@@ -1831,7 +1834,7 @@ window.nuPageNoGo = function (value) {
 };
 
 
-// 0.8.852: database tools (phpMyAdmin / Adminer) open in a new window by a one-time GET link – a POST with target=_blank loses its
+// database tools (phpMyAdmin / Adminer) open in a new window by a one-time GET link – a POST with target=_blank loses its
 // body in the window of an installed app (Chrome "Install" / home screen) and showed System status. The window opens at once
 // (popup blockers), then gets the link; without fetch the form posts as before.
 (function () {
@@ -1839,7 +1842,7 @@ window.nuPageNoGo = function (value) {
 		var f = e.target;
 		if (!(f instanceof HTMLFormElement) || f.getAttribute('target') !== '_blank' || !/[?&]p=vendor(&|$)/.test(f.getAttribute('action') || '')) return;
 		var app = f.querySelector('input[name=app]');
-		// 0.8.925: opened on a form page with a table (user menu, side bar) → the tool opens that table
+		// opened on a form page with a table (user menu, side bar) → the tool opens that table
 		var nx = window.nuNext, tbl = nx && nx.form && typeof nx.form.table === 'string' ? nx.form.table : '';
 		if (app && /^(PMA|ADM|DB)$/i.test(app.value) && tbl && !f.querySelector('input[name=table]')) {
 			var ti = document.createElement('input'); ti.type = 'hidden'; ti.name = 'table'; ti.value = tbl; ti.setAttribute('data-nu-auto', '1');
@@ -1861,7 +1864,7 @@ window.nuPageNoGo = function (value) {
 	}, true);
 })();
 
-// ---------------------------------------------------------------- sticky list titles (0.8.910): the title row of long lists (form browse lists,
+// ---------------------------------------------------------------- sticky list titles: the title row of long lists (form browse lists,
 // system lists) stays below the top bar / the sticky button row while the page scrolls. The tables sit in .table-responsive (horizontal
 // scrolling), which stops position: sticky – so the cells of the <thead> are moved down with a transform instead: they keep their width,
 // scroll sideways with the table, sorting / column resizing keep working. Tables swapped by a list refresh are found again on every check.
@@ -1972,7 +1975,7 @@ window.nuPageNoGo = function (value) {
 (function () {
 	'use strict';
 	function keep(el) {
-		if (el.matches('.nuBackBtn, .nuAddBtn, .nuMoreMenu, .nuPhMore, .nuPhKeep')) return true;   // .nuPhKeep: the page's main action (0.8.1096)
+		if (el.matches('.nuBackBtn, .nuAddBtn, .nuMoreMenu, .nuPhMore, .nuPhKeep')) return true;   // .nuPhKeep: the page's main action
 		if (el.querySelector('.nuLvMenuBtn')) return true;                                   // the view menu
 		return /(?:New|Add)$/.test(el.id || '');
 	}
@@ -2000,12 +2003,13 @@ window.nuPageNoGo = function (value) {
 			var extra = [].filter.call(bar.children, function (el) { return !keep(el) && !el.matches('.d-none, [hidden]') && (el.matches('a.btn, button.btn, .dropdown, .btn-group')); });
 			if (!extra.length) return;
 			var menu = bar.querySelector('.nuMoreMenu .dropdown-menu');
-			// a single button stays in the bar – a ⋮ with one entry only costs a tap (Debug results: Refresh, 0.8.1096)
+			// a single button stays in the bar – a ⋮ with one entry only costs a tap (Debug results: Refresh)
 			if (!menu && extra.length === 1 && !extra[0].matches('.dropdown, .btn-group')) return;
 			if (!menu) {
 				var dd = document.createElement('div'); dd.className = 'dropdown d-sm-none nuMoreMenu nuPhMore';
 				var lb = head.getAttribute('data-nu-more-label') || '⋮';
-				var b = document.createElement('button'); b.type = 'button'; b.className = 'btn nuBtnAct'; b.setAttribute('data-bs-toggle', 'dropdown'); b.setAttribute('aria-expanded', 'false'); b.title = lb; b.setAttribute('aria-label', lb);
+				var b = document.createElement('button'); b.type = 'button'; b.className = 'btn nuBtnAct'; b.setAttribute('data-bs-toggle',
+					'dropdown'); b.setAttribute('aria-expanded', 'false'); b.title = lb; b.setAttribute('aria-label', lb);
 				var bi = document.createElement('i'); bi.className = 'bi bi-three-dots-vertical'; b.appendChild(bi);
 				menu = document.createElement('ul'); menu.className = 'dropdown-menu dropdown-menu-end shadow-sm';
 				dd.appendChild(b); dd.appendChild(menu); bar.appendChild(dd);
@@ -2014,7 +2018,8 @@ window.nuPageNoGo = function (value) {
 				el.classList.add('nuPhOverflow');
 				var sub = el.matches('.dropdown, .btn-group') ? el.querySelectorAll('.dropdown-menu .dropdown-item') : [];
 				if (sub.length) {
-					var h = document.createElement('li'); var h6 = document.createElement('h6'); h6.className = 'dropdown-header'; h6.textContent = label(el.querySelector('[data-bs-toggle="dropdown"]') || el); h.appendChild(h6); menu.appendChild(h);
+					var h = document.createElement('li'); var h6 = document.createElement('h6'); h6.className = 'dropdown-header'; h6.textContent = label(el.querySelector('[data-bs-toggle="dropdown"]')
+						|| el); h.appendChild(h6); menu.appendChild(h);
 					[].forEach.call(sub, function (x) { menu.appendChild(item(x, label(x))); });
 				} else {
 					var btn = el.matches('a, button') ? el : el.querySelector('a.btn, button.btn');
@@ -2055,7 +2060,7 @@ window.nuPageNoGo = function (value) {
 	document.addEventListener('nu:listrefresh', function () { label(); });
 })();
 
-// ---------------------------------------------------------------- Back = the page you came from (0.8.1017)
+// ---------------------------------------------------------------- Back = the page you came from
 // Every app page is noted in sessionStorage (this browser tab only). Back buttons (nu_back_button, the form runtime's
 // #nuBackButton, the phone header's ‹) then lead to the page before instead of the fixed parent – the server's link stays the
 // fallback (a new tab, a page opened from a bookmark). Going back (Back, breadcrumb, the browser's Back) cuts the trail at that
@@ -2116,7 +2121,7 @@ window.nuPageNoGo = function (value) {
 			var c = l.firstElementChild;
 			if (c && c.classList.contains('bi-arrow-left') && links.indexOf(l) < 0) links.push(l);
 		});
-		// 0.8.1225: every Back button counts as going back – also one whose link already is the page before (a hand-written Back of a
+		// every Back button counts as going back – also one whose link already is the page before (a hand-written Back of a
 		// record page was taken for a step forward: Back on the list then led to the record again instead of the start page)
 		links.forEach(function (l) { l.setAttribute('data-nu-back', ''); });
 		if (!prev) return;
@@ -2133,7 +2138,7 @@ window.nuPageNoGo = function (value) {
 	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', apply); else apply();
 })();
 
-// ---------------------------------------------------------------- keyboard navigation in lists (0.8.1026)
+// ---------------------------------------------------------------- keyboard navigation in lists
 // Rows that open something – tr[data-href] of the system lists and own pages, tr.nuBrowseRow of form lists and lookups – are one tab
 // stop (roving tabindex). On a row: ↑ / ↓ next row, Home / End first / last, PageDown / PageUp next / previous page (the pager's
 // link; the new page starts on its first / last row), Enter opens (Ctrl+Enter: new tab; form rows: nuruntime.js openRow), Esc back to
@@ -2164,7 +2169,7 @@ window.nuPageNoGo = function (value) {
 		r.focus({preventScroll: true});
 		reveal(r);
 	}
-	// keep the focused row in view (0.8.1190): scroll boxes the row sits in first, then the window so that the row is not under
+	// keep the focused row in view: scroll boxes the row sits in first, then the window so that the row is not under
 	// what sticks at the top (top bar, sticky title bar, the list's floating column titles) or at the bottom (sticky pager /
 	// list footer, floating totals row); twice, because scrolling can make a title bar or the column titles stick
 	function reveal(r) {
@@ -2248,7 +2253,7 @@ window.nuPageNoGo = function (value) {
 			}
 			case ' ':
 			case 'ArrowRight':
-			case 'ArrowLeft': {                                        // row details (0.8.1027): Space toggles, → opens, ← closes
+			case 'ArrowLeft': {                                        // row details: Space toggles, → opens, ← closes
 				var rd = window.nuNext && window.nuNext.rowDetails;
 				if (!rd || !t.querySelector('.nuDetBtn')) return;
 				e.preventDefault();
@@ -2274,7 +2279,7 @@ window.nuPageNoGo = function (value) {
 		if (go) focusRow(go);
 	});
 	// Ctrl+Shift+← / → / Home / End = previous / next / first / last page of the system lists and own pages, as in nuBuilder Forte's
-	// browse lists (0.8.1265; form lists: nuruntime.js shortcutActions, which handles the keys first in the capture phase)
+	// browse lists (form lists: nuruntime.js shortcutActions, which handles the keys first in the capture phase)
 	var PAGE_KEYS = {ArrowLeft: 'Prev', ArrowRight: 'Next', Home: 'First', End: 'Last'};
 	document.addEventListener('keydown', function (e) {
 		var cls = PAGE_KEYS[e.key];
@@ -2290,13 +2295,14 @@ window.nuPageNoGo = function (value) {
 	});
 	document.addEventListener('focusin', function (e) { if (ok(e.target)) rove(e.target); });
 	document.addEventListener('focusout', function (e) { if (e.target && e.target.removeAttribute && e.target.hasAttribute('data-nu-kb')) e.target.removeAttribute('data-nu-kb'); });
-	document.addEventListener('pointerdown', function (e) { var r = e.target.closest && e.target.closest('tr[data-nu-kb]'); if (r) r.removeAttribute('data-nu-kb'); });   // a click / Tab makes it the list's stop
+	document.addEventListener('pointerdown',
+		function (e) { var r = e.target.closest && e.target.closest('tr[data-nu-kb]'); if (r) r.removeAttribute('data-nu-kb'); });   // a click / Tab makes it the list's stop
 	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setup); else setup();
 	document.addEventListener('nu:listrefresh', setup);
 	window.nuListKeyNav = setup;
 })();
 
-// Form info (i) panel (0.8.1180): as tall as the window allows below its button, so the panel and its SQL boxes need no scroll bar
+// Form info (i) panel: as tall as the window allows below its button, so the panel and its SQL boxes need no scroll bar
 // of their own while they fit; only when the window is too short the panel itself scrolls.
 (function () {
 	'use strict';
@@ -2305,18 +2311,18 @@ window.nuPageNoGo = function (value) {
 		menu.style.maxHeight = '';
 		var top = menu.getBoundingClientRect().top, room = Math.max(160, window.innerHeight - Math.max(top, 0) - 12);
 		menu.style.maxHeight = room + 'px';
-		menu.querySelectorAll('.nuFormInfoSql').forEach(function (b) { b.classList.toggle('nuFiCut', b.scrollHeight > b.clientHeight + 2); });   // fade only what is cut (0.8.1182)
+		menu.querySelectorAll('.nuFormInfoSql').forEach(function (b) { b.classList.toggle('nuFiCut', b.scrollHeight > b.clientHeight + 2); });   // fade only what is cut
 	}
 	document.addEventListener('shown.bs.dropdown', function (e) {
 		var btn = e.target, wrap = btn && btn.closest ? btn.closest('.dropdown') : null;
 		var menu = wrap ? wrap.querySelector(':scope > .dropdown-menu.nuFormInfo') : null;
 		if (menu) setTimeout(function () { fit(menu); }, 0);
-		if (menu) document.documentElement.classList.add('nuFiOpen');   // its bar above the list's side pane while open (0.8.1185)
+		if (menu) document.documentElement.classList.add('nuFiOpen');   // its bar above the list's side pane while open
 	});
 	document.addEventListener('hidden.bs.dropdown', function () {
 		if (!document.querySelector('.dropdown-menu.nuFormInfo.show')) document.documentElement.classList.remove('nuFiOpen');
 	});
-	// Esc closes the panel wherever the focus is (0.8.1186) – Bootstrap only does so with the focus in the panel or on its button;
+	// Esc closes the panel wherever the focus is – Bootstrap only does so with the focus in the panel or on its button;
 	// not while one of its dialogues is open or a value is being changed (that Esc cancels the field)
 	document.addEventListener('keydown', function (e) {
 		if (e.key !== 'Escape' || document.querySelector('.modal.show')) return;
@@ -2331,7 +2337,7 @@ window.nuPageNoGo = function (value) {
 	window.addEventListener('resize', function () { document.querySelectorAll('.dropdown-menu.nuFormInfo.show').forEach(fit); });
 })();
 
-// Date fields of nuBuilder Next's own pages in the format of the language (0.8.1332): a browser's <input type="date"> shows the
+// Date fields of nuBuilder Next's own pages in the format of the language: a browser's <input type="date"> shows the
 // device's format, whatever the page's language. Each one gets a text field in the format of <html data-nu-dfmt> (nu_dfmt: d.m.Y,
 // d/m/Y, m/d/Y, d-m-Y, Y-m-d) and a calendar button that opens the browser's picker; the date input itself stays (hidden) and keeps
 // name, id and the ISO value the server reads – code that reads it is unchanged. Not on form pages (the form runtime has its own date
@@ -2405,7 +2411,8 @@ window.nuPageNoGo = function (value) {
 		txt.addEventListener('input', function () { commit(false); });
 		txt.addEventListener('change', function () { commit(true); });
 		txt.addEventListener('blur', function () { commit(true); });
-		inp.addEventListener('change', function () { var s = show(inp.value, dt); if (txt.value !== s && parse(txt.value, dt) !== inp.value) txt.value = s; txt.setCustomValidity(''); txt.classList.remove('is-invalid'); });
+		inp.addEventListener('change',
+			function () { var s = show(inp.value, dt); if (txt.value !== s && parse(txt.value, dt) !== inp.value) txt.value = s; txt.setCustomValidity(''); txt.classList.remove('is-invalid'); });
 		btn.addEventListener('click', function () {
 			try { if (typeof inp.showPicker === 'function') { inp.showPicker(); return; } } catch (e) { /* not allowed – fall back */ }
 			txt.focus();
@@ -2419,13 +2426,14 @@ window.nuPageNoGo = function (value) {
 	var start = function () {
 		window.nuDateLocal(document);
 		new MutationObserver(function (ms) {
-			ms.forEach(function (m) { m.addedNodes.forEach(function (n) { if (n.nodeType !== 1) return; if (n.matches && n.matches('input[type="date"], input[type="datetime-local"]')) enhance(n); else if (n.querySelectorAll) window.nuDateLocal(n); }); });
+			ms.forEach(function (m) { m.addedNodes.forEach(function (n) { if (n.nodeType !== 1) return; if (n.matches
+				&& n.matches('input[type="date"], input[type="datetime-local"]')) enhance(n); else if (n.querySelectorAll) window.nuDateLocal(n); }); });
 		}).observe(document.body, {childList: true, subtree: true});
 	};
 	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();
 
-// ---------------------------------------------------------------- usability review G5 / G6 / G7 (0.8.1344)
+// ---------------------------------------------------------------- usability review G5 / G6 / G7
 // G5 phones: the tabs of a form that take three rows or more become one row that scrolls sideways (fewer stay as they are).
 // G6 every row that scrolls sideways (tabs, sections – overflow-x auto): the open entry is scrolled into view and the cut edges fade
 // (classes nuHsL / nuHsR, nuapp.css). G7 below 992 px the buttons of a form show only their icons: the label becomes their tooltip.

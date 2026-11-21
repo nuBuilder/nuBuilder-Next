@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Suggestions while typing (0.8.1212): a text input offers a list of values – a fixed list or the rows of a query – and a choice
+ * Suggestions while typing: a text input offers a list of values – a fixed list or the rows of a query – and a choice
  * fills the field, and other fields from the row's columns.
  *
  * Stored in sob_all_json nunext.suggest of the input object (nuBuilder Forte ignores it):
@@ -165,7 +165,7 @@ final class NuSuggest
 		try {
 			$rows = $db->readOnly(static function () use ($db, $sql, $max): array {
 				try {
-					return $db->type === 'sqlsrv' ? $db->all("SELECT TOP $max * FROM ($sql) nuS") : $db->all("SELECT * FROM ($sql) nuS LIMIT $max");
+					return $db->all($db->firstRows($sql, $max));
 				} catch (Throwable) {                               // two columns of one name, ORDER BY on SQL Server …: as written
 					return array_slice($db->all($sql), 0, $max);
 				}

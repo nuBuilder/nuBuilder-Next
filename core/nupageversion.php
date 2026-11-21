@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Draft and versions of a page form's files (0.8.599). The page folder custom/pages/<code>/ holds the live files; a draft is a copy
+ * Draft and versions of a page form's files. The page folder custom/pages/<code>/ holds the live files; a draft is a copy
  * in <folder>/_draft/ that the designers edit (File Manager, FTP, git) and see when they switch to it (?p=page&f=<code>&nudraft=1,
  * remembered in the session; other users always get the live files). Publish moves the live files into <folder>/_versions/<stamp>/
  * and the draft's files into the folder; Restore copies a version back (the current files become a version first, so a restore can
@@ -57,10 +57,10 @@ final class NuPageVersion
 		if (!self::designer()) return false;
 		$sw = $_GET['nudraft'] ?? null;
 		if (($sw === '1' || $sw === '0') && session_status() === PHP_SESSION_ACTIVE) {
-			if ($sw === '1') $_SESSION['nu_page_draft'][$code] = 1;
-			else unset($_SESSION['nu_page_draft'][$code]);
+			if ($sw === '1') $_SESSION[NuSess::PAGE_DRAFT][$code] = 1;
+			else unset($_SESSION[NuSess::PAGE_DRAFT][$code]);
 		}
-		return !empty($_SESSION['nu_page_draft'][$code]) && self::hasDraft($code);
+		return !empty($_SESSION[NuSess::PAGE_DRAFT][$code]) && self::hasDraft($code);
 	}
 
 	/** Top-level entries of a folder that belong to the page's code (not SKIP, no dot names). @return list<string> */

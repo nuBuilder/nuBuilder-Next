@@ -36,7 +36,7 @@ final class NuMailer
 		$dirs = [];
 		$cfg = trim((string)nu_cfg('nuConfigPHPMailerPath'));
 		if ($cfg !== '') $dirs[] = self::absPath($cfg);
-		$pack = NuLibs::activeDir('phpmailer');                  // library pack (0.8.405): files at the top or in src/
+		$pack = NuLibs::activeDir('phpmailer');                  // library pack: files at the top or in src/
 		if ($pack !== null) $dirs[] = is_file($pack . '/PHPMailer.php') ? $pack : $pack . '/src';
 		$dirs[] = self::nuBuilderPath() . '/third_party/phpmailer';
 		$dirs[] = NU_ROOT . '/lib/PHPMailer';
@@ -62,7 +62,7 @@ final class NuMailer
 		foreach (self::phpMailerCandidates() as $dir) {
 			if (!is_file("$dir/PHPMailer.php") || !is_file("$dir/SMTP.php") || !is_file("$dir/Exception.php")) continue;
 			require_once "$dir/Exception.php";
-			if (is_file("$dir/OAuthTokenProvider.php")) require_once "$dir/OAuthTokenProvider.php";   // XOAUTH2 (0.8.445, NuMailOAuth)
+			if (is_file("$dir/OAuthTokenProvider.php")) require_once "$dir/OAuthTokenProvider.php";   // XOAUTH2 (NuMailOAuth)
 			require_once "$dir/PHPMailer.php";
 			require_once "$dir/SMTP.php";
 			return self::$phpMailerDir = $dir;
@@ -136,18 +136,18 @@ final class NuMailer
 		self::$probeResult = ['offered' => $offered, 'used' => $used, 'forced' => (bool)$s->smtp_use_authentication ? (string)($s->auth_type ?? '') : '', 'auth' => (bool)$s->smtp_use_authentication];
 	}
 
-	/** The base64 string after "AUTH XOAUTH2" holds the access token – hidden in every debug output (0.8.445). */
+	/** The base64 string after "AUTH XOAUTH2" holds the access token – hidden in every debug output. */
 	public static function maskOAuth(string $line): string
 	{
 		return (string)preg_replace('/(AUTH XOAUTH2\s+)\S+/i', '$1********', $line);
 	}
 
 	/** SMTP authentication methods that can be forced ('' = automatic: PHPMailer takes CRAM-MD5, LOGIN, PLAIN, XOAUTH2 – the first the server offers). */
-	public const AUTH_TYPES = ['', 'LOGIN', 'PLAIN', 'CRAM-MD5', 'XOAUTH2'];   // XOAUTH2 = OAuth 2 (0.8.445, NuMailOAuth)
+	public const AUTH_TYPES = ['', 'LOGIN', 'PLAIN', 'CRAM-MD5', 'XOAUTH2'];   // XOAUTH2 = OAuth 2 (NuMailOAuth)
 	private const AUTH_SETTING = 'mail_auth_type';
 
 	/**
-	 * Forced SMTP authentication method (0.8.342) – nuBuilder Next's own setting (zzzzsys_nunext_setting 'mail_auth_type'), because
+	 * Forced SMTP authentication method – nuBuilder Next's own setting (zzzzsys_nunext_setting 'mail_auth_type'), because
 	 * nuBuilder's zzzzsys_setup has no column for it; applies to both sources (E-mail settings and the nuconfig.php SMTP settings).
 	 */
 	public static function authType(): string
@@ -203,7 +203,7 @@ final class NuMailer
 			'host'         => self::setupValue('set_smtp_host'),
 			'port'         => $port,
 			'username'     => $user,
-			'password'     => NuSecret::smtpPassword(self::setupValue('set_smtp_password')),   // nuBuilder Next's encrypted copy first (0.8.1326)
+			'password'     => NuSecret::smtpPassword(self::setupValue('set_smtp_password')),   // nuBuilder Next's encrypted copy first
 			// nuBuilder: '1' = authenticate. Not set at all → authenticate when a user name is given.
 			'auth'         => $authV === '1' || ($authV === '' && $user !== ''),
 			'secure'       => self::secureForPort($port, $useSsl),
@@ -230,7 +230,7 @@ final class NuMailer
 	}
 
 	/**
-	 * Connection check without sending (0.8.432, E-mail → Test → Check connection): connect, EHLO, encryption (SMTPS or STARTTLS), login and
+	 * Connection check without sending (E-mail → Test → Check connection): connect, EHLO, encryption (SMTPS or STARTTLS), login and
 	 * MAIL FROM with the sender address, then RSET and QUIT – no message is transferred (no RCPT, no DATA). Uses the saved settings.
 	 * @return array{ok: bool, steps: list<array{0: string, 1: ?bool, 2: string}>, debug: string} steps: [server|tls|login|sender, ok (null = note), detail]
 	 */
@@ -276,7 +276,7 @@ final class NuMailer
 			if ($s['auth']) {
 				$oauth = null;
 				$user = (string)$s['username'];
-				if ((string)$s['auth_type'] === 'XOAUTH2') {      // OAuth 2 (0.8.445): the access token first – its error is clearer than the server's
+				if ((string)$s['auth_type'] === 'XOAUTH2') {      // OAuth 2: the access token first – its error is clearer than the server's
 					$user = $user !== '' ? $user : NuMailOAuth::settings()['account'];
 					try { NuMailOAuth::accessToken(); $oauth = NuMailOAuth::tokenProvider($user); }
 					catch (Throwable $e) { $add('login', false, $e->getMessage()); return $done(); }
@@ -325,7 +325,7 @@ final class NuMailer
 			'set_smtp_from_name', 'set_smtp_use_authentication', 'set_smtp_use_ssl'] as $k) {
 			if (array_key_exists($k, $v) && isset($cols[$k])) $data[$k] = $v[$k];
 		}
-		if (array_key_exists('set_smtp_password', $v) || array_key_exists('smtp_only', $v)) {   // 0.8.1326: encrypted copy, opt-in "only in nuBuilder Next"
+		if (array_key_exists('set_smtp_password', $v) || array_key_exists('smtp_only', $v)) {   // encrypted copy, opt-in "only in nuBuilder Next"
 			$pw = array_key_exists('set_smtp_password', $v) ? (string)$v['set_smtp_password'] : null;
 			$shared = NuSecret::saveSmtp($pw, !empty($v['smtp_only']), self::setupValue('set_smtp_password'));
 			if ($shared !== null && isset($cols['set_smtp_password'])) $data['set_smtp_password'] = $shared;
@@ -463,7 +463,7 @@ final class NuMailer
 		try {
 			$level = (int)$o['debug'];
 			$raw = [];
-			// test e-mail (0.8.342): the server conversation is read for its AUTH list even when the chosen debug level shows less
+			// test e-mail: the server conversation is read for its AUTH list even when the chosen debug level shows less
 			$mail->SMTPDebug   = self::$probe ? max($level, 2) : $level;
 			$mail->Debugoutput = static function (string $str, int $lvl = 0) use (&$debug, &$raw, $secret, $level): void {
 				$line = self::maskOAuth(rtrim(str_replace(array_filter($secret, static fn($x) => strlen($x) > 2), '********', $str)));
@@ -480,9 +480,9 @@ final class NuMailer
 			$mail->Host     = (string)$s->host;
 			$mail->Port     = (int)$s->smtp_port;
 			$mail->SMTPAuth = (bool)$s->smtp_use_authentication;
-			if ($mail->SMTPAuth && (string)($s->auth_type ?? '') !== '') $mail->AuthType = (string)$s->auth_type;   // forced method (0.8.342)
+			if ($mail->SMTPAuth && (string)($s->auth_type ?? '') !== '') $mail->AuthType = (string)$s->auth_type;   // forced method
 			$mail->Username = (string)$s->username;
-			if ($mail->SMTPAuth && (string)($s->auth_type ?? '') === 'XOAUTH2') {   // OAuth 2 (0.8.445): the connected mailbox, token from NuMailOAuth
+			if ($mail->SMTPAuth && (string)($s->auth_type ?? '') === 'XOAUTH2') {   // OAuth 2: the connected mailbox, token from NuMailOAuth
 				if ($mail->Username === '') $mail->Username = NuMailOAuth::settings()['account'];
 				NuMailOAuth::accessToken();                       // a refresh error stops here with the provider's message
 				$mail->setOAuth(NuMailOAuth::tokenProvider($mail->Username));
@@ -569,7 +569,7 @@ final class NuMailer
 			'eml_importance ' . ($db->type === 'sqlite' ? 'INTEGER' : 'SMALLINT') . ' NULL', 'eml_error ' . $T('text', '200') . ' NULL',
 			'eml_table_name ' . $T('text', '100') . ' NULL', 'eml_tag ' . $T('text', '70') . ' NULL', 'eml_json ' . $T('longtext') . ' NULL',
 		];
-		$sql = 'CREATE TABLE ' . self::LOG_TABLE . " (\n  " . implode(",\n  ", $cols) . "\n)" . ($db->type === 'mysql' ? NuDDL::mysqlTableOptions() : '');
+		$sql = 'CREATE TABLE ' . self::LOG_TABLE . " (\n  " . implode(",\n  ", $cols) . "\n)" . $db->tableOptions();
 		try {
 			$db->run($sql);
 			$db->run('CREATE INDEX ix_eml_created_at ON ' . self::LOG_TABLE . ' (eml_created_at)');
@@ -581,7 +581,7 @@ final class NuMailer
 	/** Current time in a format every driver reads unambiguously. */
 	public static function now(): string
 	{
-		return nu_db()->type === 'sqlsrv' ? date('Y-m-d\TH:i:s') : date('Y-m-d H:i:s');
+		return nu_db()->stamp();
 	}
 
 	/**
@@ -693,7 +693,7 @@ final class NuMail
 		if ($bcc) $args['bcc'] = $bcc;
 		$r = nuEmail([$to], '', '', $html, $subject, [], true, $cc, $bcc);
 		$s = NuMailer::settings();
-		// the log keeps no body (codes, links) – except $failBody when sending failed (0.8.684: the edited welcome e-mail, link replaced)
+		// the log keeps no body (codes, links) – except $failBody when sending failed (the edited welcome e-mail, link replaced)
 		$logBody = !$r[0] && $failBody !== null ? $failBody : '[' . $tag . ']';
 		NuMailer::log(['from_email' => $s['from_address'], 'from_name' => $s['from_name'], 'body' => $logBody] + $args, $r,
 			['tag' => $tag, 'user_id' => (NuAuth::currentRaw()['id'] ?? '') ?: null]);
@@ -715,7 +715,7 @@ final class NuMail
 
 /**
  * Welcome e-mail for a user (user form → "Send welcome e-mail", like nuBuilder's user_send_welcome_email).
- * Order, as in nuBuilder Forte (0.8.658): own procedure nu_send_welcome_email (zzzzsys_php; Forte's shipped rows "nu…" are not own) →
+ * Order, as in nuBuilder Forte: own procedure nu_send_welcome_email (zzzzsys_php; Forte's shipped rows "nu…" are not own) →
  * own e-mail template nu_send_welcome_email (a clone of the read-only template below; user's language first) → nuBuilder Next's read-only
  * e-mail template nu_send_welcome_email_template (group nunext, one per language, ids nx_welcome_<lang> – a Forte update keeps them;
  * ensureTemplates()) → the built-in text (only while those rows are missing). Forte's own template row (group nubuilder, a password in the
@@ -728,11 +728,11 @@ final class NuWelcome
 {
 	public const PROCEDURE = 'nu_send_welcome_email';
 	public const TEMPLATE  = 'nu_send_welcome_email';       // nuBuilder: clone of nu_send_welcome_email_template
-	public const STD       = 'nu_send_welcome_email_template';   // nuBuilder Next's read-only templates (0.8.658) …
+	public const STD       = 'nu_send_welcome_email_template';   // nuBuilder Next's read-only templates …
 	public const STD_GROUP = 'nunext';                           // … in this group, one per language
 	public const STD_ID    = 'nx_welcome_';                      // + language code; not "nu…": a nuBuilder Forte update replaces only its own rows
 
-	/** Languages of the built-in welcome templates = the installed languages (NuLanguages, 0.8.701). */
+	/** Languages of the built-in welcome templates = the installed languages (NuLanguages). */
 	public static function langs(): array
 	{
 		return NuLanguages::installed();
@@ -759,7 +759,7 @@ final class NuWelcome
 		return max(1, min(720, (int)(nu_cfg('nuConfigWelcomeLinkHours') ?? 72) ?: 72));
 	}
 
-	/** Marker of the set-password link in a previewed welcome e-mail (0.8.684): replaced by the real link when it is sent. */
+	/** Marker of the set-password link in a previewed welcome e-mail: replaced by the real link when it is sent. */
 	public const MARKER = '#SET_PASSWORD_URL#';
 
 	/** @return string|null  null when sent, otherwise the error */
@@ -788,7 +788,7 @@ final class NuWelcome
 		return $err;
 	}
 
-	// ------------------------------------------------------------------ preview and edited e-mail (0.8.684, user form "Preview the e-mail")
+	// ------------------------------------------------------------------ preview and edited e-mail (user form "Preview the e-mail")
 
 	/** Does an own procedure send the welcome e-mail? Then there is nothing to preview. */
 	public static function hasProcedure(): bool
@@ -895,17 +895,17 @@ final class NuWelcome
 	public static function inUserLang(array $user, callable $fn): mixed
 	{
 		$lang = nu_lang_from_db((string)($user['sus_language'] ?? '')) ?? nu_lang();
-		$prev = $_SESSION['nu_lang'] ?? null;
-		$prevVar = $_SESSION['nu_lang_variant'] ?? null;
-		$_SESSION['nu_lang'] = $lang;
+		$prev = $_SESSION[NuSess::LANG] ?? null;
+		$prevVar = $_SESSION[NuSess::LANG_VARIANT] ?? null;
+		$_SESSION[NuSess::LANG] = $lang;
 		$uv = (string)($user['NUNEXT_LANG_VARIANT'] ?? NuUserJson::get((string)($user['zzzzsys_user_id'] ?? ''), 'NUNEXT_LANG_VARIANT'));   // English UK / Australia / US
 		$var = (NU_LANG_VARIANTS[$uv][0] ?? '') === $lang ? $uv : NuSetupWizard::defaultVariant($lang);
-		if ($var !== null) $_SESSION['nu_lang_variant'] = $var; else unset($_SESSION['nu_lang_variant']);
+		if ($var !== null) $_SESSION[NuSess::LANG_VARIANT] = $var; else unset($_SESSION[NuSess::LANG_VARIANT]);
 		try {
 			return $fn($lang);
 		} finally {
-			if ($prev === null) unset($_SESSION['nu_lang']); else $_SESSION['nu_lang'] = $prev;
-			if ($prevVar === null) unset($_SESSION['nu_lang_variant']); else $_SESSION['nu_lang_variant'] = $prevVar;
+			if ($prev === null) unset($_SESSION[NuSess::LANG]); else $_SESSION[NuSess::LANG] = $prev;
+			if ($prevVar === null) unset($_SESSION[NuSess::LANG_VARIANT]); else $_SESSION[NuSess::LANG_VARIANT] = $prevVar;
 		}
 	}
 
@@ -919,15 +919,17 @@ final class NuWelcome
 			$v = NuAuth::gaLanguage();
 			if ($v === null) return $fn();
 			$base = NU_LANG_VARIANTS[$v][0] ?? $v;
-			$prev = $_SESSION['nu_lang'] ?? null;
-			$prevVar = $_SESSION['nu_lang_variant'] ?? null;
-			$_SESSION['nu_lang'] = $base;
-			if ($base !== $v) $_SESSION['nu_lang_variant'] = $v; elseif (isset(NU_LANG_VARIANT_DEFAULT[$base])) $_SESSION['nu_lang_variant'] = NuLanguages::defaultVariant($base); else unset($_SESSION['nu_lang_variant']);
+			$prev = $_SESSION[NuSess::LANG] ?? null;
+			$prevVar = $_SESSION[NuSess::LANG_VARIANT] ?? null;
+			$_SESSION[NuSess::LANG] = $base;
+			if ($base !== $v) $_SESSION[NuSess::LANG_VARIANT] = $v;
+			elseif (isset(NU_LANG_VARIANT_DEFAULT[$base])) $_SESSION[NuSess::LANG_VARIANT] = NuLanguages::defaultVariant($base);
+			else unset($_SESSION[NuSess::LANG_VARIANT]);
 			try {
 				return $fn();
 			} finally {
-				if ($prev === null) unset($_SESSION['nu_lang']); else $_SESSION['nu_lang'] = $prev;
-				if ($prevVar === null) unset($_SESSION['nu_lang_variant']); else $_SESSION['nu_lang_variant'] = $prevVar;
+				if ($prev === null) unset($_SESSION[NuSess::LANG]); else $_SESSION[NuSess::LANG] = $prev;
+				if ($prevVar === null) unset($_SESSION[NuSess::LANG_VARIANT]); else $_SESSION[NuSess::LANG_VARIANT] = $prevVar;
 			}
 		}
 		$u = NuAuth::userRow($userId);
@@ -935,8 +937,8 @@ final class NuWelcome
 	}
 
 	/**
-	 * What send() will use (0.8.508, toast of the user form): {proc: code|null, tpl: {emt_language: "code (language) – description"},
-	 * std: {emt_language: "nu_send_welcome_email_template (language)"} (0.8.658), fallback: database language of the current session
+	 * What send() will use (toast of the user form): {proc: code|null, tpl: {emt_language: "code (language) – description"},
+	 * std: {emt_language: "nu_send_welcome_email_template (language)"}, fallback: database language of the current session
 	 * (used when the user has none), code: TEMPLATE}.
 	 */
 	public static function sources(): array
@@ -977,7 +979,7 @@ final class NuWelcome
 				$tpl ??= $db->one('SELECT * FROM ' . NuEmailTemplate::TABLE . " WHERE emt_code = ? AND COALESCE(emt_language,'') = ? AND COALESCE(emt_template,'') <> '1'", [self::TEMPLATE, $l]);
 			}
 			$src = 'template';
-			if (!$tpl) {                                                       // nuBuilder Next's read-only template (0.8.658)
+			if (!$tpl) {                                                       // nuBuilder Next's read-only template
 				foreach (array_values(array_unique([trim((string)($user['sus_language'] ?? '')), nu_lang_to_db($lang), 'English'])) as $l) {
 					$tpl ??= $db->one('SELECT * FROM ' . NuEmailTemplate::TABLE . " WHERE emt_code = ? AND emt_group = ? AND emt_template = '1' AND COALESCE(emt_language,'') = ?", [self::STD, self::STD_GROUP, $l]);
 				}
@@ -997,7 +999,7 @@ final class NuWelcome
 		return [t('welcome_subject'), NuMail::layout(t('welcome_title'), $body), 'builtin', [], []];
 	}
 
-	/** The welcome text in the current language – built-in mail and the read-only templates (0.8.658); every argument is HTML already. */
+	/** The welcome text in the current language – built-in mail and the read-only templates; every argument is HTML already. */
 	private static function body(string $name, string $login, string $setUrl, string $loginUrl, string $valid): string
 	{
 		$p = static fn(string $s) => '<p style="margin:0 0 14px">' . $s . '</p>';
@@ -1023,27 +1025,27 @@ final class NuWelcome
 	/** Runs $fn with $lang (and its default variant) as the session language – as send() does for the user's language. */
 	public static function inLang(string $lang, callable $fn): mixed
 	{
-		$prev = $_SESSION['nu_lang'] ?? null;
-		$prevVar = $_SESSION['nu_lang_variant'] ?? null;
-		$_SESSION['nu_lang'] = $lang;
+		$prev = $_SESSION[NuSess::LANG] ?? null;
+		$prevVar = $_SESSION[NuSess::LANG_VARIANT] ?? null;
+		$_SESSION[NuSess::LANG] = $lang;
 		// the language's own default (en-GB, de-DE) – not NuSetupWizard::defaultVariant(): it reads the settings, which may start the
 		// database steps once more while one of them (ensureTemplates) is running
-		if (isset(NU_LANG_VARIANT_DEFAULT[$lang])) $_SESSION['nu_lang_variant'] = NuLanguages::defaultVariant($lang); else unset($_SESSION['nu_lang_variant']);
+		if (isset(NU_LANG_VARIANT_DEFAULT[$lang])) $_SESSION[NuSess::LANG_VARIANT] = NuLanguages::defaultVariant($lang); else unset($_SESSION[NuSess::LANG_VARIANT]);
 		try {
 			return $fn();
 		} finally {
-			if ($prev === null) unset($_SESSION['nu_lang']); else $_SESSION['nu_lang'] = $prev;
-			if ($prevVar === null) unset($_SESSION['nu_lang_variant']); else $_SESSION['nu_lang_variant'] = $prevVar;
+			if ($prev === null) unset($_SESSION[NuSess::LANG]); else $_SESSION[NuSess::LANG] = $prev;
+			if ($prevVar === null) unset($_SESSION[NuSess::LANG_VARIANT]); else $_SESSION[NuSess::LANG_VARIANT] = $prevVar;
 		}
 	}
 
 	/**
-	 * nuBuilder Next's read-only welcome templates (0.8.658, step 0028 and every NuMigrate::run): one row per language – code
+	 * nuBuilder Next's read-only welcome templates (step 0028 and every NuMigrate::run): one row per language – code
 	 * nu_send_welcome_email_template, group nunext, emt_template 1, id nx_welcome_<lang> – added when missing, never changed. They are
 	 * cloned like nuBuilder Forte's templates: the copy is called nu_send_welcome_email, can be edited and is used first.
 	 * @return int rows added
 	 */
-	/** The description of the read-only templates until 0.8.1234 – replaced by the shorter one (0.8.1235) while a row still has it. */
+	/** The description of the read-only templates until 0.8.1234 – replaced by the shorter one while a row still has it. */
 	private const OLD_TPL_DESC = [
 		'en' => 'Welcome e-mail of nuBuilder Next (read-only), sent when “Send welcome e-mail” is ticked. Clone it to change the text – the copy, nu_send_welcome_email, is used instead.',
 		'de' => 'Willkommens-E-Mail von nuBuilder Next (schreibgeschützt), gesendet bei „Willkommens-E-Mail senden“. Zum Ändern klonen – die Kopie nu_send_welcome_email wird dann verwendet.',
@@ -1064,7 +1066,7 @@ final class NuWelcome
 		if (!$db->tableExists(NuEmailTemplate::TABLE)) return 0;
 		$cols = $db->columns(NuEmailTemplate::TABLE);
 		$n = 0;
-		foreach (self::langs() as $l) {                         // only the languages chosen at installation (0.8.693)
+		foreach (self::langs() as $l) {                         // only the languages chosen at installation
 			$id = self::STD_ID . $l;
 			$row = self::inLang($l, static fn() => [
 				'zzzzsys_email_template_id' => $id, 'emt_code' => self::STD, 'emt_group' => self::STD_GROUP, 'emt_category' => 'Email', 'emt_template' => '1',
@@ -1261,7 +1263,7 @@ final class NuEmailTemplate
 			. 'emt_group ' . $T('text', '100') . ' NULL, emt_category ' . $T('text', '100') . ' NULL, emt_template ' . $T('text', '1') . ' NULL, '
 			. 'emt_language ' . $T('text', '20') . ' NULL, emt_description ' . $T('text', '200') . ' NULL, emt_code ' . $T('text', '80') . ' NULL, '
 			. 'emt_body ' . $T('longtext') . ' NULL, emt_subject ' . $T('text', '1000') . ' NULL, emt_to ' . $T('text', '1000') . ' NULL, '
-			. 'emt_cc ' . $T('text', '1000') . ' NULL, emt_bcc ' . $T('text', '1000') . ' NULL)' . ($db->type === 'mysql' ? NuDDL::mysqlTableOptions() : ''));
+			. 'emt_cc ' . $T('text', '1000') . ' NULL, emt_bcc ' . $T('text', '1000') . ' NULL)' . $db->tableOptions());
 	}
 
 	/** Languages for the select: nuBuilder's set_languages_included (+ values in use), default English/German. */
@@ -1271,8 +1273,7 @@ final class NuEmailTemplate
 		$list = is_array($list) && $list ? array_map('strval', $list) : array_values(array_map(static fn($c) => NU_LANGS[$c][1], NuLanguages::installed()));
 		try {
 			foreach (nu_db()->all("SELECT DISTINCT emt_language FROM " . self::TABLE . " WHERE emt_language IS NOT NULL AND emt_language <> ''") as $r) $list[] = (string)$r['emt_language'];
-		} catch (Throwable) {
-		}
+		} catch (Throwable $ig) { nu_ignored($ig); }
 		$list = array_values(array_unique($list));
 		sort($list);
 		return $list;
@@ -1310,7 +1311,8 @@ final class NuEmailTemplate
 		$errors = [];
 		if ($row['emt_code'] === '') $errors['emt_code'] = t('err_required');
 		foreach (self::LEN as $k => $len) nu_maxlen($errors, $k, $row[$k], $len);
-		if ($row['emt_form_id'] !== '' && !str_starts_with($row['emt_form_id'], 'nu') && !NuFormMeta::load($row['emt_form_id'])) $errors['emt_form_id'] = t('form_err_not_found');   // nu…: nuBuilder's own forms (e.g. nuuser)
+		if ($row['emt_form_id'] !== '' && !str_starts_with($row['emt_form_id'], 'nu')
+			&& !NuFormMeta::load($row['emt_form_id'])) $errors['emt_form_id'] = t('form_err_not_found');   // nu…: nuBuilder's own forms (e.g. nuuser)
 		if (!$errors) {
 			$dup = $db->value('SELECT COUNT(*) FROM ' . self::TABLE . " WHERE COALESCE(emt_code,'') = ? AND COALESCE(emt_group,'') = ? AND COALESCE(emt_language,'') = ?"
 				. ($id !== '' ? ' AND zzzzsys_email_template_id <> ?' : ''),
@@ -1320,7 +1322,7 @@ final class NuEmailTemplate
 		if ($errors) return [null, $errors];
 		foreach ($row as $k => $v) if ($v === '' && $k !== 'emt_body') $row[$k] = null;
 		if ($id !== '') {
-			// the flag is nuBuilder's (its shipped templates) and never changed here: an unticked '' stays '' (0.8.364)
+			// the flag is nuBuilder's (its shipped templates) and never changed here: an unticked '' stays ''
 			if ($row['emt_template'] === '0' && (string)$db->value('SELECT emt_template FROM ' . self::TABLE . ' WHERE zzzzsys_email_template_id = ?', [$id]) !== '1') unset($row['emt_template']);
 			$db->update(self::TABLE, $row, 'zzzzsys_email_template_id', $id);
 		}
@@ -1339,7 +1341,7 @@ final class NuEmailTemplate
 		if ($meta && $recordId !== '' && $recordId !== '-1') $row = NuRecord::load($meta, $recordId) ?? [];
 		$hash = $meta ? NuHash::forForm($meta, $recordId !== '' ? $recordId : '-1', $row, []) : NuHash::base();
 		if ($meta && $row) {
-			// lookups and selects: the value as stored (like nuBuilder); passwords, keys and hashes never (0.8.207)
+			// lookups and selects: the value as stored (like nuBuilder); passwords, keys and hashes never
 			foreach ($row as $k => $v) {
 				$v = is_scalar($v) || $v === null ? (string)$v : json_encode($v);
 				$hash[$k] = NuSecurity::secretName((string)$k) || NuSecurity::hashValue($v) ? '•••' : $v;

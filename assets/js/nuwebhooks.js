@@ -1,4 +1,4 @@
-/* Webhooks (0.8.715, pages/nuwebhooks.php): copy the secret shown once. */
+/* Webhooks (pages/nuwebhooks.php): copy the secret shown once. */
 (function () {
 	'use strict';
 	var b = document.getElementById('whSecretCopy');

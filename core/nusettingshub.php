@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Settings centre (0.8.702): one place for every setting of the installation – Admin tools → Settings (?p=settings).
+ * Settings centre: one place for every setting of the installation – Admin tools → Settings (?p=settings).
  * A side bar of sections (nav()) with a search over all settings (index(): own settings, security settings, nuBuilder Forte's
  * zzzzsys_config, the variables of nuconfig.php, the editor pages), shown on the settings page itself (sections general, look, data,
  * updates, forte with the simple settings edited in place) and around the big editors, which keep their own pages: branding,
@@ -16,7 +16,7 @@ final class NuSettingsHub
 	public const SECTIONS = [
 		'general'    => ['bi-sliders', 'sh_general', 'sh_general_d'],
 		'look'       => ['bi-palette', 'sh_look', 'sh_look_d'],
-		'users'      => ['bi-people', 'sh_users', 'sh_users_d'],           // review G1 (0.8.763): links to the user and access tools
+		'users'      => ['bi-people', 'sh_users', 'sh_users_d'],           // review G1: links to the user and access tools
 		'security'   => ['bi-shield-lock', 'sh_security', 'sh_security_d'],
 		'mail'       => ['bi-envelope', 'sh_mail', 'sh_mail_d'],
 		'data'       => ['bi-database', 'sh_data', 'sh_data_d'],
@@ -46,7 +46,7 @@ final class NuSettingsHub
 		} elseif ($section === 'logs') {
 			if (NuAcl::can(NuAcl::FORM_LOG)) $out['log'] = ['bi-journal-text', t('nav_log'), t('sh_log_d'), nu_url('log')];
 			if (NuAdmin::can('audit', 'view')) $out['audit'] = ['bi-clock-history', t('aud_title'), t('sh_audit_d'), nu_url('audit')];
-			if (NuRecycle::canSeeAny()) $out['recyclebin'] = ['bi-trash3', t('rb_title'), t('rb_title_tip'), nu_url('recyclebin')];   // recycle bin (0.8.1325)
+			if (NuRecycle::canSeeAny()) $out['recyclebin'] = ['bi-trash3', t('rb_title'), t('rb_title_tip'), nu_url('recyclebin')];   // recycle bin
 			if (NuAcl::can(NuAcl::FORM_EMAILLOG)) $out['emaillog'] = ['bi-envelope-paper', t('mail_tab_log'), t('sh_emaillog_d'), nu_url('email', ['tab' => 'log'])];
 			if (NuAcl::can(NuAcl::FORM_DEBUG)) $out['debug'] = ['bi-bug', t('sh_debug'), t('sh_debug_d'), nu_url('debug')];
 			foreach (['apiclients', 'webhooks', 'aiproviders'] as $k) if ($x = $tile($k)) $out[$k] = $x;
@@ -128,11 +128,13 @@ final class NuSettingsHub
 			. ' autocomplete="off" data-url="' . h(nu_url('settings', ['index' => '1'])) . '" data-none="' . h(t('sh_search_none')) . '" aria-controls="nuSetResults">'
 			. '<div class="list-group nuSetResults" id="nuSetResults" role="listbox" hidden></div></div>'
 			. '<ul class="nav flex-column nuSetSections">'
-			. '<li class="nav-item"><a class="nav-link' . ($section === '' ? ' active" aria-current="page' : '') . '" href="' . h(nu_url('settings')) . '"><i class="bi bi-grid me-2" aria-hidden="true"></i>' . h(t('sh_overview')) . '</a></li>';
+			. '<li class="nav-item"><a class="nav-link' . ($section === '' ? ' active" aria-current="page' : '') . '" href="' . h(nu_url('settings'))
+				. '"><i class="bi bi-grid me-2" aria-hidden="true"></i>' . h(t('sh_overview')) . '</a></li>';
 		foreach ($pages as $s => $list) {
 			[$icon, $title] = self::SECTIONS[$s];
 			$on = $s === $section;
-			$html .= '<li class="nav-item" data-sh="' . h($s) . '"><a class="nav-link' . ($on ? ' active' : '') . '" href="' . h($list[0][2]) . '"' . ($on && count($list) === 1 ? ' aria-current="page"' : '') . '>'
+			$html .= '<li class="nav-item" data-sh="' . h($s) . '"><a class="nav-link' . ($on ? ' active' : '') . '" href="' . h($list[0][2]) . '"'
+				. ($on && count($list) === 1 ? ' aria-current="page"' : '') . '>'
 				. '<i class="bi ' . $icon . ' me-2" aria-hidden="true"></i>' . h(t($title)) . '</a>';
 			if ($on && count($list) > 1) {
 				$html .= '<ul class="nav flex-column nuSetSub">';
@@ -144,7 +146,7 @@ final class NuSettingsHub
 			}
 			$html .= '</li>';
 		}
-		// phones: the sections as one select (review H6, 0.8.1068)
+		// phones: the sections as one select (review H6)
 		$opt = '<option value="' . h(nu_url('settings')) . '"' . ($section === '' ? ' selected' : '') . '>' . h(t('sh_overview')) . '</option>';
 		foreach ($pages as $s => $list) {
 			$opt .= '<optgroup label="' . h(t(self::SECTIONS[$s][1])) . '">';
@@ -204,14 +206,16 @@ final class NuSettingsHub
 		foreach ($pages as $s => $list) foreach ($list as [$k, $label, $url]) $add($s, $label, t(self::SECTIONS[$s][2]), $url, $k);
 		// settings edited on the settings page
 		$own = static fn(string $s, string $anchor): string => nu_url('settings', ['s' => $s]) . '#' . $anchor;
-		if ($can('settings')) $add('general', t('lng_title'), t('lng_tip'), $own('general', 'setLangs'), 'languages language sprachen', implode(', ', array_map(static fn($c) => NU_LANGS[$c][0], NuLanguages::installed())));
+		if ($can('settings')) $add('general', t('lng_title'), t('lng_tip'), $own('general', 'setLangs'), 'languages language sprachen',
+			implode(', ', array_map(static fn($c) => NU_LANGS[$c][0], NuLanguages::installed())));
 		if (self::ga()) $add('look', t('sb_menu_default'), t('sh_sb_default_tip'), $own('look', 'shSidebar'), 'sidebar_default', t(NuSidebar::defaultOn() ? 'sh_on' : 'sh_off'));
 		if (self::ga() || $can('branding')) $add('look', t('pgw_title'), t('pgw_set_tip'), $own('look', 'shPageWidth'), 'page width wide full container breite', NuPageWidth::label(NuPageWidth::default()));
 		if ($can('homelayout')) $add('look', t('sh_home_layouts'), t('sh_home_layouts_d'), nu_url('home', ['customize' => '1']), 'home start page layout');
 		if ($can('audit')) {
 			$a = NuAudit::settings();
 			$add('data', t('aud_title') . ' · ' . t('aud_set_on'), t('aud_set_on_tip'), $own('data', 'shAudit'), 'audit', t($a['on'] ? 'sh_on' : 'sh_off'));
-			$add('data', t('aud_title') . ' · ' . t('aud_set_keep'), t('aud_set_keep_tip'), $own('data', 'shAudit'), 'audit keep_days', $a['keep_days'] ? t('aud_keep_days', $a['keep_days']) : t('aud_keep_ever'));
+			$add('data', t('aud_title') . ' · ' . t('aud_set_keep'), t('aud_set_keep_tip'), $own('data', 'shAudit'), 'audit keep_days',
+				$a['keep_days'] ? t('aud_keep_days', $a['keep_days']) : t('aud_keep_ever'));
 			$add('data', t('aud_title') . ' · ' . t('aud_set_exclude'), t('aud_set_exclude_tip'), $own('data', 'shAudit'), 'audit exclude', $a['exclude']);
 		}
 		if (self::ga() || NuAdmin::can('procedures', 'change')) {
@@ -224,7 +228,8 @@ final class NuSettingsHub
 		if ($can('update')) {
 			$add('data', t('upd_keep_label'), t('upd_keep_hint'), $own('data', 'shBackups'), 'backup_keep_sql backups', (string)NuUpdate::keepSql());
 			$r = NuUpdate::cleanupRule();
-			$add('data', t('sh_bk_rule'), t('sh_bk_rule_d'), $own('data', 'shBackups'), 'backup_cleanup backups', $r['mode'] === 'age' ? t('upd_bk_clean_age') . ' ' . $r['n'] : t('upd_bk_clean_keep') . ' ' . $r['n']);
+			$add('data', t('sh_bk_rule'), t('sh_bk_rule_d'), $own('data', 'shBackups'), 'backup_cleanup backups', $r['mode'] === 'age' ? t('upd_bk_clean_age')
+				. ' ' . $r['n'] : t('upd_bk_clean_keep') . ' ' . $r['n']);
 			$g = NuGitHub::settings();
 			$add('updates', t('gh_repo'), t('gh_repo_tip'), $own('updates', 'shGitHub'), 'github_update github', (string)$g['repo']);
 			$add('updates', t('gh_set_every'), t('gh_tip'), $own('updates', 'shGitHub'), 'github auto', t('gh_every_' . $g['every']));

@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Code search (0.8.1172, the owner: A3 · B2 · C2 · D2 · E1 · F1 · G1 + G2): one search over the code of the application – page
+ * Code search (the owner: A3 · B2 · C2 · D2 · E1 · F1 · G1 + G2): one search over the code of the application – page
  * ?p=codesearch (pages/nucodesearch.php, assets/js/nucodesearch.js), admin right 'codesearch' (or the globeadmin). Read only: nothing typed
  * here is ever run, nothing is changed.
  *
@@ -64,12 +64,13 @@ final class NuCodeSearch
 	/** The search of a request (GET or a saved search's query string). */
 	public static function request(array $q): array
 	{
-		$arr = static fn(string $k): array => array_values(array_filter(array_map('strval', is_array($q[$k] ?? null) ? $q[$k] : (($q[$k] ?? '') !== '' ? [(string)$q[$k]] : [])), static fn($v) => $v !== ''));
+		$arr = static fn(string $k): array => array_values(array_filter(array_map('strval', is_array($q[$k] ?? null) ? $q[$k] : (($q[$k] ?? '') !== '' ? [(string)$q[$k]] : [])),
+			static fn($v) => $v !== ''));
 		$go = isset($q['go']) || isset($q['q']);
 		$m = (string)($q['m'] ?? 'phrase');
 		return [
 			'q' => mb_substr((string)($q['q'] ?? ''), 0, 1000),
-			// a search the server builds (0.8.1173): 'missing' = calls of the functions nuBuilder Next lacks – one long regular expression,
+			// a search the server builds: 'missing' = calls of the functions nuBuilder Next lacks – one long regular expression,
 			// too long for an address (nginx: 414 Request-URI Too Large)
 			'preset' => ($q['preset'] ?? '') === 'missing' ? 'missing' : '',
 			'm' => in_array($m, ['phrase', 'all', 'any'], true) ? $m : 'phrase',
@@ -232,7 +233,7 @@ final class NuCodeSearch
 		$groups = [];
 		foreach ($sources as $src) {
 			$t = $terms;
-			if ($s['preset'] === 'missing') {                   // JavaScript names in JavaScript / HTML, PHP names in PHP (0.8.1176)
+			if ($s['preset'] === 'missing') {                   // JavaScript names in JavaScript / HTML, PHP names in PHP
 				$k = $src['lang'] === 'php' ? 'php' : (in_array($src['lang'], ['js', 'html'], true) ? 'js' : '');
 				if ($k === '' || !isset($preset[$k])) continue;
 				$t = [$preset[$k]];
@@ -249,7 +250,7 @@ final class NuCodeSearch
 			$groups[$g] ??= ['key' => $g, 'kind' => $src['gkind'], 'title' => $src['gtitle'], 'sub' => $src['gsub'] ?? '', 'url' => $src['gurl'] ?? $src['url'],
 				'draft' => !empty($src['draft']), 'sys' => !empty($src['sys']), 'hits' => 0, 'parts' => []];
 			$groups[$g]['hits'] += $h['hits'];
-			$src['hash'] = sha1($src['code']);                  // replace: the code as shown (0.8.1174) – changed since = not replaced
+			$src['hash'] = sha1($src['code']);                  // replace: the code as shown – changed since = not replaced
 			$src['key'] = !empty($src['rw']) ? self::key($src['rw']) : '';
 			unset($src['code']);
 			$groups[$g]['parts'][] = $src + $h;
@@ -324,7 +325,8 @@ final class NuCodeSearch
 		// ---- forms with their objects, events, list columns and hooks
 		$forms = [];
 		if ($db->tableExists('zzzzsys_form')) {
-			$fc = $pick('zzzzsys_form', ['zzzzsys_form_id', 'sfo_code', 'sfo_description', 'sfo_group', 'sfo_type', 'sfo_javascript', 'sfo_browse_javascript', 'sfo_edit_javascript', 'sfo_style', 'sfo_browse_sql', 'sfo_json']);
+			$fc = $pick('zzzzsys_form',
+				['zzzzsys_form_id', 'sfo_code', 'sfo_description', 'sfo_group', 'sfo_type', 'sfo_javascript', 'sfo_browse_javascript', 'sfo_edit_javascript', 'sfo_style', 'sfo_browse_sql', 'sfo_json']);
 			foreach ($db->all('SELECT ' . implode(', ', $fc) . ' FROM zzzzsys_form') as $f) $forms[(string)$f['zzzzsys_form_id']] = ['form' => $f, 'objects' => [], 'events' => [], 'browse' => [], 'php' => []];
 		}
 		$objForm = [];
@@ -374,14 +376,33 @@ final class NuCodeSearch
 			}
 		}
 
+		$out = self::sharedSources($procs, $out, $db, $pick);
+
+		$out = self::ownSources($db, $out);
+
+		// ---- files of custom pages
+		if ($s['pages'] ?? true) {
+			foreach ($forms as $fid => $d) {
+				if ((string)($d['form']['sfo_type'] ?? '') !== 'page') continue;
+				foreach (self::pageSources((string)$fid, (string)$d['form']['sfo_code'], (string)($d['form']['sfo_description'] ?? '')) as $x) $out[] = $x;
+			}
+		}
+		return array_values(array_filter($out, static fn($x) => trim((string)$x['code']) !== ''));
+	}
+
+	/** Code of the procedures, the SQL builder, the header / style / include of the form pages, Global JS / CSS, code snippets and e-mail templates. */
+	private static function sharedSources(array $procs, array $out, NuDB $db, Closure $pick): array
+	{
 		// ---- procedures
 		foreach ($procs as $p) {
 			$id = (string)$p['zzzzsys_php_id'];
 			$code = (string)($p['sph_code'] ?? $id);
 			$base = ['gkey' => 'p:' . $id, 'gkind' => 'proc', 'gtitle' => $code, 'gsub' => (string)($p['sph_description'] ?? ''), 'gurl' => nu_url('procedures', ['id' => $id]),
 				'proc' => $id, 'sys' => self::isSys($id), 'form' => ''];
-			$out[] = $base + ['place' => 'proc', 'lang' => 'php', 'label' => 'PHP', 'code' => (string)($p['sph_php'] ?? ''), 'url' => nu_url('procedures', ['id' => $id]), 'ck' => 'sph_php', 'rw' => ['zzzzsys_php', 'zzzzsys_php_id', $id, 'sph_php']];
-			$out[] = $base + ['place' => 'proc', 'lang' => 'js', 'label' => 'JavaScript', 'code' => (string)($p['sph_javascript'] ?? ''), 'url' => nu_url('procedures', ['id' => $id]), 'ck' => 'sph_javascript', 'rw' => ['zzzzsys_php', 'zzzzsys_php_id', $id, 'sph_javascript']];
+			$out[] = $base + ['place' => 'proc', 'lang' => 'php', 'label' => 'PHP', 'code' => (string)($p['sph_php'] ?? ''),
+				'url' => nu_url('procedures', ['id' => $id]), 'ck' => 'sph_php', 'rw' => ['zzzzsys_php', 'zzzzsys_php_id', $id, 'sph_php']];
+			$out[] = $base + ['place' => 'proc', 'lang' => 'js', 'label' => 'JavaScript', 'code' => (string)($p['sph_javascript'] ?? ''),
+				'url' => nu_url('procedures', ['id' => $id]), 'ck' => 'sph_javascript', 'rw' => ['zzzzsys_php', 'zzzzsys_php_id', $id, 'sph_javascript']];
 		}
 
 		// ---- SQL builder
@@ -401,14 +422,17 @@ final class NuCodeSearch
 		if ($db->tableExists('zzzzsys_setup')) {
 			$set = $pick('zzzzsys_setup', ['zzzzsys_setup_id', 'set_header', 'set_style', 'set_include']);
 			$row = $set ? ($db->one('SELECT ' . implode(', ', $set) . ' FROM zzzzsys_setup') ?: []) : [];
-			foreach (['set_header' => ['header', 'js', 'scode_tab_header'], 'set_style' => ['style', 'css', 'scode_tab_style'], 'set_include' => ['include', 'html', 'scode_tab_include']] as $c => [$tab, $lang, $lbl]) {
+			foreach (['set_header' => ['header', 'js', 'scode_tab_header'], 'set_style' => ['style', 'css', 'scode_tab_style'],
+				'set_include' => ['include', 'html', 'scode_tab_include']] as $c => [$tab, $lang, $lbl]) {
 				if (isset($row[$c])) $out[] = $gl + ['lang' => $lang, 'label' => t($lbl), 'code' => (string)$row[$c], 'url' => nu_url('globalcode', ['tab' => $tab]), 'ck' => 'scode-' . $tab,
 					'rw' => isset($row['zzzzsys_setup_id']) ? ['zzzzsys_setup', 'zzzzsys_setup_id', (string)$row['zzzzsys_setup_id'], $c] : null];
 			}
 		}
 		$cc = NuCustomCode::get();
-		$out[] = $gl + ['lang' => 'js', 'label' => t('scode_tab_gjs'), 'code' => (string)$cc['js'], 'url' => nu_url('globalcode', ['tab' => 'gjs']), 'ck' => 'scode-gjs', 'rw' => ['zzzzsys_nunext_setting', 'zzzzsys_nunext_setting_id', NuCustomCode::KEYS['js'], 'setting_value']];
-		$out[] = $gl + ['lang' => 'css', 'label' => t('scode_tab_gcss'), 'code' => (string)$cc['css'], 'url' => nu_url('globalcode', ['tab' => 'gcss']), 'ck' => 'scode-gcss', 'rw' => ['zzzzsys_nunext_setting', 'zzzzsys_nunext_setting_id', NuCustomCode::KEYS['css'], 'setting_value']];
+		$out[] = $gl + ['lang' => 'js', 'label' => t('scode_tab_gjs'), 'code' => (string)$cc['js'], 'url' => nu_url('globalcode', ['tab' => 'gjs']),
+			'ck' => 'scode-gjs', 'rw' => ['zzzzsys_nunext_setting', 'zzzzsys_nunext_setting_id', NuCustomCode::KEYS['js'], 'setting_value']];
+		$out[] = $gl + ['lang' => 'css', 'label' => t('scode_tab_gcss'), 'code' => (string)$cc['css'], 'url' => nu_url('globalcode', ['tab' => 'gcss']),
+			'ck' => 'scode-gcss', 'rw' => ['zzzzsys_nunext_setting', 'zzzzsys_nunext_setting_id', NuCustomCode::KEYS['css'], 'setting_value']];
 
 		// ---- code snippets
 		if ($db->tableExists('zzzzsys_code_snippet')) {
@@ -416,7 +440,8 @@ final class NuCodeSearch
 			foreach ($db->all('SELECT ' . implode(', ', $nc) . ' FROM zzzzsys_code_snippet') as $n) {
 				$id = (string)$n['zzzzsys_code_snippet_id'];
 				$l = strtolower((string)($n['cot_language'] ?? ''));
-				$lang = str_contains($l, 'php') ? 'php' : (str_contains($l, 'sql') ? 'sql' : (str_contains($l, 'css') ? 'css' : (str_contains($l, 'html') ? 'html' : (str_contains($l, 'java') || $l === 'js' ? 'js' : 'text'))));
+				$lang = str_contains($l,
+					'php') ? 'php' : (str_contains($l, 'sql') ? 'sql' : (str_contains($l, 'css') ? 'css' : (str_contains($l, 'html') ? 'html' : (str_contains($l, 'java') || $l === 'js' ? 'js' : 'text'))));
 				$out[] = ['gkey' => 'n:' . $id, 'gkind' => 'snippet', 'gtitle' => (string)($n['cot_code'] ?? $id), 'gsub' => (string)($n['cot_description'] ?? ''), 'place' => 'snippet',
 					'lang' => $lang, 'label' => t('cs_pl_snippet'), 'code' => (string)($n['cot_source_code'] ?? ''), 'url' => nu_url('form', ['f' => 'nucodesnippet', 'r' => $id]), 'ck' => 'cot_source_code',
 					'rw' => ['zzzzsys_code_snippet', 'zzzzsys_code_snippet_id', $id, 'cot_source_code'], 'snip' => $id, 'sys' => self::isSys($id), 'form' => ''];
@@ -430,11 +455,18 @@ final class NuCodeSearch
 				$id = (string)$e['zzzzsys_email_template_id'];
 				$b = ['gkey' => 'e:' . $id, 'gkind' => 'email', 'gtitle' => (string)($e['emt_code'] ?? $id), 'gsub' => (string)($e['emt_description'] ?? ''), 'place' => 'email',
 					'url' => nu_url('emailtemplates', ['id' => $id]), 'email' => $id, 'sys' => self::isSys($id), 'form' => ''];
-				$out[] = $b + ['lang' => 'text', 'label' => t('cs_subject'), 'code' => (string)($e['emt_subject'] ?? ''), 'ck' => 'emt_subject', 'rw' => ['zzzzsys_email_template', 'zzzzsys_email_template_id', $id, 'emt_subject']];
-				$out[] = $b + ['lang' => 'html', 'label' => t('cs_body'), 'code' => (string)($e['emt_body'] ?? ''), 'ck' => 'emt_body', 'rw' => ['zzzzsys_email_template', 'zzzzsys_email_template_id', $id, 'emt_body']];
+				$out[] = $b + ['lang' => 'text', 'label' => t('cs_subject'), 'code' => (string)($e['emt_subject'] ?? ''), 'ck' => 'emt_subject',
+					'rw' => ['zzzzsys_email_template', 'zzzzsys_email_template_id', $id, 'emt_subject']];
+				$out[] = $b + ['lang' => 'html', 'label' => t('cs_body'), 'code' => (string)($e['emt_body'] ?? ''), 'ck' => 'emt_body',
+					'rw' => ['zzzzsys_email_template', 'zzzzsys_email_template_id', $id, 'emt_body']];
 			}
 		}
+		return $out;
+	}
 
+	/** Code of nuBuilder Next's own tables: dashboard widgets, data exports, webhooks, defaults of custom user fields. */
+	private static function ownSources(NuDB $db, array $out): array
+	{
 		// ---- nuBuilder Next's own: dashboard widgets, data exports, webhooks, defaults of user fields
 		if ($db->tableExists('zzzzsys_nunext_widget') && $db->tableExists('zzzzsys_nunext_dashboard')) {
 			$titles = [];
@@ -473,15 +505,7 @@ final class NuCodeSearch
 					'rw' => ['zzzzsys_nunext_user_field', 'zzzzsys_nunext_user_field_id', (string)$u['id'], 'default_value']];
 			}
 		}
-
-		// ---- files of custom pages
-		if ($s['pages'] ?? true) {
-			foreach ($forms as $fid => $d) {
-				if ((string)($d['form']['sfo_type'] ?? '') !== 'page') continue;
-				foreach (self::pageSources((string)$fid, (string)$d['form']['sfo_code'], (string)($d['form']['sfo_description'] ?? '')) as $x) $out[] = $x;
-			}
-		}
-		return array_values(array_filter($out, static fn($x) => trim((string)$x['code']) !== ''));
+		return $out;
 	}
 
 	/** SQL strings in a JSON structure (keys sql / query). */
@@ -504,11 +528,12 @@ final class NuCodeSearch
 			'sys' => self::isSys($fid), 'draft' => $draft];
 		$out = [];
 		$code = static fn(string $item): string => self::designUrl($fid, ['open' => 'code', 'dsitem' => $item]);
-		// replaceable (0.8.1174): the live rows only – a draft's copy is changed in design mode
+		// replaceable: the live rows only – a draft's copy is changed in design mode
 		$rw = static fn(string $t, string $pk, string $id, string $c): ?array => !$draft && $id !== '' ? [$t, $pk, $id, $c] : null;
 		foreach (['sfo_javascript' => ['formjs', 'js', 'builder_js_both'], 'sfo_browse_javascript' => ['formjs', 'js', 'builder_js_browse'], 'sfo_edit_javascript' => ['formjs', 'js', 'builder_js_edit'],
 			'sfo_style' => ['css', 'css', 'builder_css'], 'sfo_browse_sql' => ['browsesql', 'sql', 'builder_browse_sql']] as $c => [$place, $lang, $lbl]) {
-			if (isset($f[$c])) $out[] = $g + ['place' => $place, 'lang' => $lang, 'label' => t($lbl), 'code' => (string)$f[$c], 'url' => $code($c), 'ck' => $c, 'rw' => $rw('zzzzsys_form', 'zzzzsys_form_id', $fid, $c)];
+			if (isset($f[$c])) $out[] = $g + ['place' => $place, 'lang' => $lang, 'label' => t($lbl), 'code' => (string)$f[$c], 'url' => $code($c), 'ck' => $c,
+				'rw' => $rw('zzzzsys_form', 'zzzzsys_form_id', $fid, $c)];
 		}
 		usort($browse, static fn($a, $b) => (int)($a['sbr_order'] ?? 0) <=> (int)($b['sbr_order'] ?? 0));
 		foreach ($browse as $b) {
@@ -532,7 +557,8 @@ final class NuCodeSearch
 			$hook = substr($id, -2);
 			$base = substr($id, 0, -3);
 			if ($base === $fid && $hook !== 'AB') {
-				$out[] = $g + ['place' => 'hook', 'lang' => 'php', 'label' => t(self::HOOK_NAMES[$hook] ?? 'cs_pl_hook'), 'code' => (string)($p['sph_php'] ?? ''), 'url' => $code('php:' . $hook), 'ck' => 'php:' . $hook, 'rw' => $rw('zzzzsys_php', 'zzzzsys_php_id', $id, 'sph_php')];
+				$out[] = $g + ['place' => 'hook', 'lang' => 'php', 'label' => t(self::HOOK_NAMES[$hook] ?? 'cs_pl_hook'), 'code' => (string)($p['sph_php'] ?? ''),
+					'url' => $code('php:' . $hook), 'ck' => 'php:' . $hook, 'rw' => $rw('zzzzsys_php', 'zzzzsys_php_id', $id, 'sph_php')];
 			} elseif (isset($objs[$base])) {
 				$out[] = $g + ['place' => 'hook', 'lang' => 'php', 'label' => (string)$objs[$base]['sob_all_id'] . ' · ' . t('cs_hook_AB'), 'code' => (string)($p['sph_php'] ?? ''),
 					'url' => self::designUrl($fid, ['obj' => $base]), 'ck' => '', 'rw' => $rw('zzzzsys_php', 'zzzzsys_php_id', $id, 'sph_php')];
@@ -591,7 +617,7 @@ final class NuCodeSearch
 		foreach (['php', 'js'] as $l) foreach (NuFnRef::documented($l) as $n) $fn[] = [$n, $l];
 		usort($fn, static fn($a, $b) => strcasecmp($a[0], $b[0]));
 		$tables = [];
-		try { $tables = array_values(array_filter(nu_db()->tableNames(), static fn($t) => !str_starts_with(strtolower($t), 'zzzzsys_'))); sort($tables); } catch (Throwable) {}
+		try { $tables = array_values(array_filter(nu_db()->tableNames(), static fn($t) => !str_starts_with(strtolower($t), 'zzzzsys_'))); sort($tables); } catch (Throwable $ig) { nu_ignored($ig); }
 		$hash = [];
 		foreach (NuHash::CATALOG as $names) foreach ($names as $n) $hash[] = '#' . $n . '#';
 		sort($hash);
@@ -629,7 +655,7 @@ final class NuCodeSearch
 		$k = strpos($h, '>PHP (');
 		if ($lang === 'js' && $k !== false) $h = substr($h, 0, $k);
 		if ($lang === 'php') $h = $k !== false ? substr($h, $k) : '';
-		// only the list paragraphs (<p><code>…) – the explanations above them also name functions that work (0.8.1175: nuSetFormValue)
+		// only the list paragraphs (<p><code>…) – the explanations above them also name functions that work (nuSetFormValue)
 		$out = [];
 		preg_match_all('~<p>\s*(<code>.*?)</p>~s', $h, $paras);
 		foreach ($paras[1] as $para) {
@@ -683,7 +709,7 @@ final class NuCodeSearch
 		nu_db()->run('DELETE FROM ' . NuListView::TABLE . " WHERE zzzzsys_nunext_list_view_id = ? AND list_key = ? AND scope = 'user' AND owner = ?", [$id, self::KEY, self::me()]);
 	}
 
-	// ================================================================= search and replace (E2, 0.8.1174)
+	// ================================================================= search and replace (E2)
 
 	public const KEEP_BATCHES = 100;
 	public const T = 'zzzzsys_nunext_code_replace';
@@ -812,7 +838,8 @@ final class NuCodeSearch
 			'changes' => json_encode($changes, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE)]);
 		NuLog::write('code_replaced', 'codesearch', $bid, ['search' => mb_substr($s['q'], 0, 200), 'replace' => mb_substr($rep, 0, 200), 'parts' => $out['parts'], 'lines' => $out['lines'],
 			'where' => array_slice(array_column($changes, 'label'), 0, 30)]);
-		foreach ($db->page('SELECT zzzzsys_nunext_code_replace_id AS id FROM ' . self::T, [], 'created_at DESC', 1000, self::KEEP_BATCHES) as $r) $db->delete(self::T, 'zzzzsys_nunext_code_replace_id', (string)$r['id']);
+		foreach ($db->page('SELECT zzzzsys_nunext_code_replace_id AS id FROM ' . self::T, [], 'created_at DESC', 1000, self::KEEP_BATCHES) as $r) $db->delete(self::T,
+			'zzzzsys_nunext_code_replace_id', (string)$r['id']);
 		$out['ok'] = true;
 		$out['batch'] = $bid;
 		return $out;
@@ -865,7 +892,8 @@ final class NuCodeSearch
 					foreach ($b as $l) {
 						if (!$l['hit']) continue;
 						$rows[] = [$g['title'] . ($g['draft'] ? ' (' . t('cs_draft') . ')' : ''), (string)$p['label'], t(self::PLACES[$p['place']][0] ?? 'cs_pl_own'),
-							strtoupper($p['lang']), (int)$l['n'], mb_substr(trim($l['text']), 0, 1000), nu_base_url() . '/' . ltrim(self::lineUrl($p, (int)$l['n'], ''), '/')];   // a full address (the base has no slash at its end)
+							strtoupper($p['lang']), (int)$l['n'], mb_substr(trim($l['text']), 0, 1000), nu_base_url() . '/'
+								. ltrim(self::lineUrl($p, (int)$l['n'], ''), '/')];   // a full address (the base has no slash at its end)
 					}
 				}
 			}

@@ -1,13 +1,13 @@
-// nuBuilder Next page SDK (form type "page", 0.8.387): loaded by a page with <?= $nu->sdk() ?>.
+// nuBuilder Next page SDK (form type "page"): loaded by a page with <?= $nu->sdk ?>.
 // NuPage.csrf · NuPage.fetch(url, options) · NuPage.resize() · NuPage.close() · NuPage.refreshParent() · NuPage.openForm(code, record, {target})
-// NuPage.toast(text, type) · NuPage.setTitle(text) · NuPage.inFrame · NuPage.version (= apiVersion, the page API version, 0.8.388). Messages to the nuBuilder Next window around the page:
+// NuPage.toast(text, type) · NuPage.setTitle(text) · NuPage.inFrame · NuPage.version (= apiVersion, the page API version). Messages to the nuBuilder Next window around the page:
 // postMessage({nuPage: 1, type, …}, location.origin) – handled by assets/js/nupagehost.js. Outside an iframe everything degrades quietly.
 (function () {
 	'use strict';
 	var me = document.currentScript;
 	var csrf = me ? me.getAttribute('data-csrf') || '' : '';
 	var home = me ? me.getAttribute('data-home') || 'index.php?p=home' : 'index.php?p=home';
-	var bt = me ? me.getAttribute('data-bt') || '' : '';                 // breadcrumb trail back to this page (0.8.422)
+	var bt = me ? me.getAttribute('data-bt') || '' : '';                 // breadcrumb trail back to this page
 	var inFrame = false;
 	try {
 		inFrame = window.parent !== window && window.parent.location.origin === window.location.origin

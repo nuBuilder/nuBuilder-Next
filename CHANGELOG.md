@@ -3,6 +3,84 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.1359 – Release gate
+- Release gate: smoke test, all end-to-end tests, the comparison with nuBuilder Forte and the security scan.
+
+## 0.8.1358 – Code review: long lines and comments
+- Code review, long lines (L5): long lines of the page templates are wrapped between the attributes of their tags – the pages send
+  the same HTML as before (only the spaces between attributes became line breaks). Long texts and strings stay on one line.
+- Code review, comments (Q6): version numbers taken out of the remaining comments; only the ones that say which data or links of
+  older versions the code still reads stay. The tests now check both rules.
+- Performance review: the cache of form definitions across requests is decided against – what it would save is small, and it would
+  need a safe way to notice changes made in nuBuilder Forte.
+
+## 0.8.1357 – Code review: long functions and copied code
+- Code review, long functions (L4): the user import now checks and writes its rows in named steps (the check of each row, the write, what
+  follows the write); the form's "Access levels" dialogue and the start page's Customise panel are built from one small function per part.
+- Code review, copied code (D5): IP access and single sign-on read and store their settings and list the access levels through shared
+  functions; advanced search and the pivot work out whether a list column holds dates, numbers or text with the same function. The two
+  cloners stay as they are – similar in shape, different jobs.
+
+## 0.8.1356 – Usability: the rest of the page list
+- Dashboards: table widgets show readable column titles instead of the column names of their query ("cus_name" → "Name"); a line chart
+  over many days shows about six dates on phones instead of overlapping labels.
+- Form lists with more than three column filters start with them folded on tablets too, as on phones – the funnel opens them.
+- Tablets (768–991 px): the fields of the automatic and grid layouts grow into the width of their row, so selects and lookups are no
+  longer cut; design mode uses the phone's bottom sheet, so the properties panel no longer covers the form.
+- Calendars: the arrow buttons have a name for screen readers.
+- Phones: list cards of nuBuilder Forte's system forms show the first five values; the dashboard editor shows each widget as a card; an
+  e-mail template has one way back (breadcrumb E-mail / Templates) and its notices folded behind "More information".
+- Settings → Data & logs: the audit trail switch and how long it is kept are in one row.
+- API clients: the note about the missing secret key stands below the page title.
+- Form cloner and App cloner: an empty list offers one way to add the first configuration.
+- Report designer: the page can be reached with the Tab key (focus ring; the arrow keys move the selection).
+- User Home: a tab without buttons shows whoever may design it a short hint instead of an empty card.
+- Ticket sample (version 12): the start page greets the globeadmin without an empty name; the Status and Due columns of the tickets list
+  fit their values. Refresh it under Sample data.
+
+## 0.8.1355 – Code review: style sheets by component, page classes, long functions and lines, shared code, comments
+- Code review, style sheets (L2): the corrections that had been added at the end of the style sheets now sit next to the rules of their
+  component; only moves that cannot change which rule wins were made, and the computed styles of every element on 48 pages (light,
+  dark, phone width) are the same as before.
+- Code review, pages (R7): every page with actions now hands them to a class of its own – the page reads, shows and renders, the class
+  does the work; no page defines functions of its own any more.
+- Code review, long functions (L4): saving a record, the top bar, the list card, saving a user, the code search sources and the check of
+  Form with AI are split into named steps.
+- Code review, long lines (L5): program lines longer than 200 characters are wrapped (only the spacing changed).
+- Code review, copied code (D5): one shared piece of code each for the design settings kept with an object (design mode and drafts),
+  the access level list of procedures and reports, the head of the sign-in pages, HTML cleaning, reading a JSON setting, reading a file
+  from an update package, the sort order and grouping of reports (PDF and Excel) and reading the JSON of an AI answer.
+- Code review, comments (Q6): version numbers removed from comments – the history stays in this changelog.
+
+## 0.8.1354 – Code review: session keys, SQL helpers, lists, pages, runtime, styles, tests
+- Code review R10: every key nuBuilder Next keeps in the session is now a named constant with one line saying what it holds (about 90
+  keys, 414 places); the unit tests fail on a key written as text.
+- Code review R8: SQL that differs between MySQL and SQL Server and came back again and again (date values, table options, text casts,
+  JSON values, the first rows of a query, adding a column, dropping a table, quoting a name, savepoints) is written once in the database
+  layer; about 40 places use it. Nothing changes on MySQL; the SQL Server forms are those of before.
+- Code review L3: the definitions of the system lists (columns, filters, views) moved from one 2,000-line file into one file per list.
+- Code review R7: the work of the three largest pages moved into classes – the actions of the update page (upload, install, backups,
+  library packs …), the actions and the Save of the user form, and the list / record preparation of the form page. The pages read the
+  input, call these classes and show the result. No change in use.
+- Code review L1: the form runtime (6,400 lines in one function) is kept as 39 parts by topic for development and joined into the one
+  file the pages load when a release is built – the delivered file is the same as before.
+- Code review L2: in the style sheets, 74 later corrections were folded back into the first rule of the same selector where that cannot
+  change any style (nothing in between sets the same kind of property); 20 rules fewer. A comparison of the computed styles of every
+  element on 48 pages in light, dark and phone width found no difference.
+- Developers: the end-to-end tests are one file per area (forms, design mode, lists, users, start page …) with the run order kept; see
+  CLAUDE.md, Conventions.
+
+## 0.8.1353 – Code review: errors, sessions, static analysis
+- Code review Q1: failures the code goes on without on purpose are no longer swallowed in silence. About 150 places that caught an
+  error and did nothing now pass it to one helper, which writes a line to the server's error log while developer mode is set in
+  nuconfig.php (nothing otherwise). Only failures that are expected in normal use (an index that already exists, a table that is not
+  there) stay quiet, marked as such; the unit tests fail on any new empty catch block.
+- Code review Q5: two places that read another session (the installable app's manifest and the sign-in taken over from nuBuilder
+  Forte) no longer change a session setting that PHP 8.4 marks as deprecated and PHP 9 removes. Nothing changes in use; the unit
+  tests now also look for the other session settings PHP 8.4 deprecates.
+- Code review Q3: static analysis (PHPStan) runs at level 4. The findings of the existing code – all false alarms of the kind
+  described in dev/phpstan.neon – are kept in a baseline file, so new code must pass level 4.
+
 ## 0.8.1352 – Release gate
 - Release gate: full test run (smoke, all end-to-end tests, the cross-tests against nuBuilder Forte, OWASP ZAP) over 0.8.1346–0.8.1351.
 

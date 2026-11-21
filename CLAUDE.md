@@ -10,7 +10,7 @@ one file per page in `docs/pages/`, listed in reading order in `docs/toc.json` (
 - Every request ends as a **new version**: bump, changelog, manifest, zips sent to the owner, who installs `nunext.zip` with Admin
   tools → *Update*. Version scheme 0.8.x, one step per delivery (0.8.201 → 0.8.202).
 - Use **`python3 dev/release.py <version> "<title>" <changes.txt>`** – checks (php -l of all files, check_lang, `dev/tests/run.php`,
-  PHPStan level 2 if `../phpstan.phar` exists, ESLint if `../node_modules/eslint` exists (unused variables = warnings, 0.8.1349) – see "Test environment"), README title, CHANGELOG.md
+  PHPStan (level 4 + baseline) if `../phpstan.phar` exists, ESLint if `../node_modules/eslint` exists (unused variables = warnings, 0.8.1349) – see "Test environment"), README title, CHANGELOG.md
   section, `NU_VERSION`, the manifest (hashes of every **deployed** file + the `changes` entry), the Ed25519 signature and
   two zips: **`../nunext.zip`** (install package: without CLAUDE.md, TODO.md, .gitignore, .deepsource.toml, dev/, .github/ – these are readable on a web
   server) and **`../nunext-dev.zip`** (everything). Send both; the owner sends `nunext-dev.zip` to the next session.
@@ -49,7 +49,7 @@ one file per page in `docs/pages/`, listed in reading order in `docs/toc.json` (
    `BASE=http://127.0.0.1:8099/nunext/ DB="-unu -pnu nutest" PKG=../nunext.zip NODE_PATH=$(npm root -g) node dev/tests/e2e.js`
    (113 tests in 0.8.484: forms, sub-forms, nuBuilder hooks, lookups, permission items, rights, admin roles, demo mode (needs SITE=<site folder>),
    login links, user import, audit, notifications, list views, favourites, branding, dashboards, login limit, CSV import, update check, self-test, CSRF …;
-   it saves the whole database first and puts it back – `ONLY=name1,name2` runs single tests). Add a test for every new feature.
+   it saves the whole database first and puts it back – `ONLY=name1,name2` runs single tests). Add a test for every new feature (in `dev/tests/e2e/<area>.js`, see Conventions).
    The test site runs with `$nuConfigDevMode = true`, so the in-app self-test (`?p=selftest`, core/nuselftest.php) runs too.
    **Cross-tests against nuBuilder itself** (0.8.364): `NUB=http://127.0.0.1:8099/ BASE=…/nunext/ DB=… node dev/tests/compat.js` – real
    nuBuilder 4.9 and nuBuilder Next on the same database: browse / edit / save-without-change for EVERY application form (so it also
@@ -69,7 +69,9 @@ one file per page in `docs/pages/`, listed in reading order in `docs/toc.json` (
    axe-core: `npm install --no-save --prefix .. axe-core@4.10.2`. In release.py: NUNEXT_TEST_A11Y=1. Rules that keep it green:
    colours in the "accessibility" blocks at the end of nuapp.css (4.5:1), assets/js/nuapp.js names unnamed fields (label, sub-form
    column title, lookup) and makes scrolling boxes focusable – new pages need nothing extra; icons with aria-label need role="img".
-   **PHPStan level 3** (0.8.368); 4 / 5 tried – only false alarms (see dev/phpstan.neon).
+   **PHPStan level 4** (0.8.1353, code review Q3; level 3 since 0.8.368) with `dev/phpstan-baseline.neon` = the findings of the older code
+   (all false alarms of the kind described in dev/phpstan.neon) – new code must be clean at level 4; renew the baseline only after
+   checking each new entry (command in dev/phpstan.neon).
    **Database statements per page** (0.8.1341): `BASE=… DB=… node dev/tests/perf.js` – needs developer mode (`#nuPerf`), the sample application
    and the user sample_anna; fails when a page asks more than its budget × 1.15 + 2 (`dev/tests/perf-budget.json`, `--write` to renew).
 5. Put the test database back as it was (see "Test database discipline").
@@ -475,7 +477,7 @@ Own tables: `zzzzsys_nunext_recent` (side bar, 0.8.460), `zzzzsys_nunext_log`, `
 `_widget`, `_admin_role`, `_admin_user`, `_list_view` (list views and saved start page layouts – with `fav` favourites), `_audit` (audit trail),
 `_notification` + `_notification_user` (notification centre), `_form_draft` (form drafts), `_page` (page forms), `_migration`. Settings pattern (0.8.827 / 0.8.1341): `nu_setting_value($id)`, `nu_setting_has($id)`, `nu_setting_values([ids])` – ALL rows come with ONE
 read per request (values over 8 KB – Global JS / CSS, the home hook cache – only when asked for; dropped by every write to the table through NuDB – `NuDB::noteWrite` – and after 2 s in long jobs)
-and `nu_setting_save($id, $row[, $db])` (update or insert) in core/nuapp.php, after `NuSchema::ensure()` where the table may be missing; never
+and `nu_setting_save($id, $row[, $db])` (update or insert; a JSON setting: `nu_setting_json($id)` / `nu_setting_json_save($id, $data, $by)`, 0.8.1357) in core/nuapp.php, after `NuSchema::ensure()` where the table may be missing; never
 write the SELECT / COUNT + update / insert by hand again. `NuDB::tableExists()` is cached per connection from ONE listing of all tables (`tableNames()`), refreshed by DDL through NuDB.
 
 ## Conventions
@@ -541,6 +543,37 @@ write the SELECT / COUNT + update / insert by hand again. `NuDB::tableExists()` 
   a loaded form names as sub-form / lookup ($wanted) and loads them together on the first miss (prime(): one statement per table), the
   hooks BB … AD of every loaded live form in one statement (primePhp → NuMemo 'php:<id>'); drafts in a preview never go through prime();
   NuFormMeta::reset() for tests, liveStatus() reads sfo_status from the loaded row. Field access rules: one read of the whole table.
+- **A failure the code goes on without** (0.8.1353, code review Q1): `catch (Throwable $ig) { nu_ignored($ig, 'why'); }` – one line in the
+  server's error log while `$nuConfigDevMode` is set in nuconfig.php, nothing otherwise (reads only the config file). Only a failure that
+  is EXPECTED in normal use may keep an empty block, with a comment containing "expected"; run.php fails on any other empty catch.
+- **Sessions** (0.8.1353, Q5): read another session with `session_id($id)` + `session_start(['read_and_close' => true, 'use_cookies' => false])`
+  – never change `use_only_cookies`, `use_trans_sid`, `sid_length`, `sid_bits_per_character`, `trans_sid_*`, `referer_check` (deprecated in
+  PHP 8.4; run.php checks).
+- **Session keys** (0.8.1354, code review R10): `$_SESSION[NuSess::X]` – every key is a constant of core/nusess.php with one line saying what
+  it holds; a new key = a new constant there. run.php fails on a key written as text (core / pages / root; nudbadmin.php = Adminer's own).
+- **SQL that differs per database** (0.8.1354, R8): NuDB `stamp(?ts)` (datetime parameter), `tableOptions()`, `castText()`, `jsonText(col, path)`,
+  `firstRows(select, n)`, `limitTail(n)`, `addColumnSql()`, `dropTableSql()`, `quoteName()`, `savepointSql()` / `rollbackToSql()`, `label()` –
+  use them instead of a new `$db->type === 'sqlsrv' ? … : …`; one-off catalogue queries keep their own branch.
+- **System lists** (0.8.1354, L3): one file per list, `core/lists/nulist_<key>.php` = a trait with the list's method (it runs in NuListDefs'
+  scope: `self::col()` …), used by NuListDefs and listed in NU_AUTOLOAD; core/nulistdefs.php keeps get(), the shared helpers and ADV.
+- **Comments say why, not when** (0.8.1355 / 0.8.1358, Q6): no version numbers in comments – the history is CHANGELOG.md; only data or links
+  of older versions keep theirs ("stored before 0.8.x", "until 0.8.x"; run.php checks PHP). Lines stay below 200 characters (L5): code
+  is wrapped; templates break between the attributes of a tag; long strings and text may stay.
+- **Pages do not do the work** (0.8.1354 / 0.8.1355, R7): a page's POST actions are `Nu<Route>Page::post(array $nuIn): array` in
+  core/nu<route>page.php (the page's variables in, what the page shows afterwards out), the update page `NuUpdatePage`, the user form
+  `NuUserPage` (core/nuuserpage.php; Save takes and returns the form state as arrays), the list / record preparation and the helpers of the
+  form page `NuFormPage` (core/form/nuformpage.php). New actions go into these classes; a page never defines a global function.
+- **The form runtime is joined** (0.8.1354, L1): edit `dev/src/nuruntime/<NNN-topic>.js` (pieces of ONE function – they share its variables),
+  never assets/js/nu/nuruntime.js: `python3 -I dev/nuruntime_join.py` writes it (release.py runs it first; run.php fails when it differs).
+  Sync the joined file to the test site after a join.
+- **Style sheets** (0.8.1354 / 0.8.1355, L2): `python3 -I dev/css_group.py <file.css> [--write]` moves a section (a comment at the line start
+  and its rules) to the last earlier section of the same component (COMPONENTS in the script) when nothing in between competes;
+  `python3 -I dev/css_fold.py <file.css> [--write]` folds a later rule of the same selector and context into
+  the first one when nothing in between sets a property of the same family (cascade unchanged); check pages with the computed-style
+  comparison afterwards. A NEW correction goes into the rule it corrects, not into a block at the end of the file.
+- **e2e tests** (0.8.1354, L6): dev/tests/e2e.js = helpers + runner; the tests are in `dev/tests/e2e/<area>.js` (read into e2e.js's scope –
+  they use login, open, sql, expect … directly); the run order is `dev/tests/e2e/order.txt`, unlisted tests run after it, logout last.
+  A new test goes at the end of the file of its area.
 - Long tasks / downloads: `session_write_close()` first (or `nu_session_release()` when something is stored in the session later); `nu_time_limit(0)` where needed. Functions hosts may disable
   (disable_functions) are never called directly – `@` does not stop "Call to undefined function": use `nu_time_limit()`,
   `nu_ignore_abort()`, `nu_ini_get()`, `nu_ini_set()` or a `function_exists()` check (disk_*_space, posix_*, opcache_*) (0.8.273).
@@ -695,14 +728,71 @@ Gotchas seen while testing:
   NU_VERSION back and remove its CHANGELOG.md section and manifest `changes` entry first (then run with `--no-checks`, the manifest
   signature test fails until the release re-signs it).
 
-## Where things stand (November 2026, 0.8.1352)
-Last gate 0.8.1352 (smoke, e2e 560, compat 84, ZAP 0 unknown; pushed 0.8.1346–0.8.1352; docs were current – the page fixes of 0.8.1348 were documented with them). Gate before: 0.8.1345 (smoke, e2e 557, compat 84, ZAP 0 unknown; pushed 0.8.1340–0.8.1345; docs before it: Sign in / Sign out in the help and the tutorial, FEATURES.md phones / touch / fast pages / sub-form cards). Gate before: 0.8.1339 (smoke, e2e 542, compat 84, ZAP 0 unknown; pushed 0.8.1307–0.8.1339; the first run (0.8.1338 attempt) stopped on 7 e2e tests + compat edit:samplecustomer – tests that still used the sales sample's old phone mask (0.8.1334 changed the mask; the test DB's sample objects are updated by hand: sob_input_format of cus_phone + format row sample_fmt_phone), the reports list's Excel button, the health check's key buttons in #shDataForm, a cron run left by earlier tests, and the lookup dialog that stayed at 240 px when its frame loaded during the fade-in (fixed in 0.8.1338). Lesson: a change of the sample application needs the e2e tests that use its data). Gate before: 0.8.1306 (smoke, e2e 521, compat 84, ZAP 0 unknown; pushed 0.8.1292–0.8.1306; the first run was cut off by a container restart during ZAP – database restored from /tmp/nunext-zap-<pid>.sql (all tables dropped first), whole gate run again). Gate before: 0.8.1291 (smoke, e2e 512, compat 84, ZAP 0 unknown; pushed 0.8.1288–0.8.1291; first run stopped on ZAP 90035 SSTI on ?state= of the notifications list – false positive: the proof was the sign-in redirect's next= of a session the scan had ended, zap-known.json entry). Gate before: 0.8.1287 (smoke, e2e 512, compat 84, ZAP 0 unknown; pushed 0.8.1263–0.8.1287; first run stopped at e2e admin_role_table – page.goto timeout, then the browser hung and the container was restarted (ZAP cut off; database restored from its dump) – passed alone and in the second full run). Gate before: 0.8.1262. Gate before: 0.8.1248 (smoke, e2e 494, compat 84, ZAP 0 unknown; pushed 0.8.1222–0.8.1248; first run stopped on e2e tab_sections – the user form's new section cards – and record_check_form (not reproduced alone; now picks sample_cus_* and reports why the field is not fillable), ZAP 40018 on bt of the Excel export = false positive: only the creation time of the .xlsx differs). Gate before: 0.8.1221 (pushed 0.8.1217–0.8.1221). Gate before: 0.8.1216 (smoke, e2e 477, compat 84, ZAP 0 unknown; pushed 0.8.1201–0.8.1216). Gate before: 0.8.1200 (pushed 0.8.1180–0.8.1200; published as v0.8.1200). Gate before: 0.8.1179 (pushed 0.8.1168–0.8.1179; published as v0.8.1179). Gate before: 0.8.1167 (pushed 0.8.1162–0.8.1167). Gate before: 0.8.1161 (pushed 0.8.1153–0.8.1161). Gate before: 0.8.1152 (smoke, e2e 442, compat 84, ZAP 0 unknown; pushed 0.8.1144–0.8.1152). Gate before: 0.8.1143 (smoke, e2e 440, compat 84, ZAP 0 unknown; first runs stopped: a run left going when the turn ended hung, then e2e db_reset_package timed out – service worker fix 0.8.1142; pushed 0.8.1139–0.8.1143). Gate before: 0.8.1138 (smoke, e2e 437, compat 84, ZAP 0 unknown; first run stopped on e2e hash_bound – networkidle timeout, now waits for the page marker; pushed 0.8.1130–0.8.1138). Gate before: 0.8.1129 (smoke, e2e 434, compat 84, ZAP 0 unknown; pushed 0.8.1104–0.8.1129; published as v0.8.1129). Gate before: 0.8.1103 (pushed 0.8.1090–0.8.1103; published as v0.8.1103). Gate before: 0.8.1089 (smoke, e2e 410, compat 84, ZAP 0 unknown; pushed 0.8.1077–0.8.1089; published as v0.8.1089). Gate before: 0.8.1076 (pushed 0.8.1072–0.8.1076). Gate before: 0.8.1071 (full test run: smoke, e2e 402, compat 84, ZAP 0 unknown; first run stopped on 6 e2e tests that still expected the old phone list layout; pushed: 0.8.1061–0.8.1071 in one push; docs 02-08 / 01-05 / 05-03, FEATURES.md and TODO checked first). Gate before: 0.8.1060 (e2e 398, compat 84, ZAP 0 unknown; pushed 0.8.1045–0.8.1060). First two runs stopped: help_panel_resize left the shared page at 390 px (every later test failed on phone layout) – e2e.js now resets the size after each test and fails a test that leaves a width < 992; when a gate is stopped, restore the database from /tmp/nunext-e2e-full-<pid>.sql (drop all tables first). Gate before: 0.8.1044 (pushed 0.8.1029–0.8.1044). Gate before that: 0.8.1028 (pushed 0.8.1011–0.8.1028). Gate 0.8.1044: e2e 390, compat 84, ZAP 0 unknown; first run failed on test set-up – the test database needs the ticket sample installed (dashboard_access_tab, form_everyone use its access levels; sample_ticket puts it back, a manual NuSampleSet::remove does not) – and on tests that assumed old content (help_level: detail passages inside an advanced page; home_hook_js: the Projects tile mentions notes); ZAP 40012 on ?q= of form lists accepted as a false positive (zap-known.json). Gate before that: 0.8.1010 (e2e 373, compat 84; pushed 0.8.980–0.8.1010). Gate lessons: the PHP test server needs -d upload_max_filesize=32M -d post_max_size=32M (e2e integrity uploads ../nunext.zip) and must run WITHOUT display_errors for compat (nuBuilder Forte's notices break its JSON – the sample ticket form timed out); smoke / e2e passed with display_errors=1 in the run before. Never start a single e2e / compat test while a gate runs (both dump and restore the whole database).
+## Where things stand (November 2026, 0.8.1359)
+Last gate 0.8.1359 (smoke, e2e 563, compat 84, ZAP 0 unknown; pushed 0.8.1353–0.8.1359). Gate before: 0.8.1352 (smoke, e2e 560, compat 84, ZAP 0 unknown; pushed 0.8.1346–0.8.1352; docs were current – the page fixes of 0.8.1348 were documented with them). Gate before: 0.8.1345 (smoke, e2e 557, compat 84, ZAP 0 unknown; pushed 0.8.1340–0.8.1345; docs before it: Sign in / Sign out in the help and the tutorial, FEATURES.md phones / touch / fast pages / sub-form cards). Gate before: 0.8.1339 (smoke, e2e 542, compat 84, ZAP 0 unknown; pushed 0.8.1307–0.8.1339; the first run (0.8.1338 attempt) stopped on 7 e2e tests + compat edit:samplecustomer – tests that still used the sales sample's old phone mask (0.8.1334 changed the mask; the test DB's sample objects are updated by hand: sob_input_format of cus_phone + format row sample_fmt_phone), the reports list's Excel button, the health check's key buttons in #shDataForm, a cron run left by earlier tests, and the lookup dialog that stayed at 240 px when its frame loaded during the fade-in (fixed in 0.8.1338). Lesson: a change of the sample application needs the e2e tests that use its data). Gate before: 0.8.1306 (smoke, e2e 521, compat 84, ZAP 0 unknown; pushed 0.8.1292–0.8.1306; the first run was cut off by a container restart during ZAP – database restored from /tmp/nunext-zap-<pid>.sql (all tables dropped first), whole gate run again). Gate before: 0.8.1291 (smoke, e2e 512, compat 84, ZAP 0 unknown; pushed 0.8.1288–0.8.1291; first run stopped on ZAP 90035 SSTI on ?state= of the notifications list – false positive: the proof was the sign-in redirect's next= of a session the scan had ended, zap-known.json entry). Gate before: 0.8.1287 (smoke, e2e 512, compat 84, ZAP 0 unknown; pushed 0.8.1263–0.8.1287; first run stopped at e2e admin_role_table – page.goto timeout, then the browser hung and the container was restarted (ZAP cut off; database restored from its dump) – passed alone and in the second full run). Gate before: 0.8.1262. Gate before: 0.8.1248 (smoke, e2e 494, compat 84, ZAP 0 unknown; pushed 0.8.1222–0.8.1248; first run stopped on e2e tab_sections – the user form's new section cards – and record_check_form (not reproduced alone; now picks sample_cus_* and reports why the field is not fillable), ZAP 40018 on bt of the Excel export = false positive: only the creation time of the .xlsx differs). Gate before: 0.8.1221 (pushed 0.8.1217–0.8.1221). Gate before: 0.8.1216 (smoke, e2e 477, compat 84, ZAP 0 unknown; pushed 0.8.1201–0.8.1216). Gate before: 0.8.1200 (pushed 0.8.1180–0.8.1200; published as v0.8.1200). Gate before: 0.8.1179 (pushed 0.8.1168–0.8.1179; published as v0.8.1179). Gate before: 0.8.1167 (pushed 0.8.1162–0.8.1167). Gate before: 0.8.1161 (pushed 0.8.1153–0.8.1161). Gate before: 0.8.1152 (smoke, e2e 442, compat 84, ZAP 0 unknown; pushed 0.8.1144–0.8.1152). Gate before: 0.8.1143 (smoke, e2e 440, compat 84, ZAP 0 unknown; first runs stopped: a run left going when the turn ended hung, then e2e db_reset_package timed out – service worker fix 0.8.1142; pushed 0.8.1139–0.8.1143). Gate before: 0.8.1138 (smoke, e2e 437, compat 84, ZAP 0 unknown; first run stopped on e2e hash_bound – networkidle timeout, now waits for the page marker; pushed 0.8.1130–0.8.1138). Gate before: 0.8.1129 (smoke, e2e 434, compat 84, ZAP 0 unknown; pushed 0.8.1104–0.8.1129; published as v0.8.1129). Gate before: 0.8.1103 (pushed 0.8.1090–0.8.1103; published as v0.8.1103). Gate before: 0.8.1089 (smoke, e2e 410, compat 84, ZAP 0 unknown; pushed 0.8.1077–0.8.1089; published as v0.8.1089). Gate before: 0.8.1076 (pushed 0.8.1072–0.8.1076). Gate before: 0.8.1071 (full test run: smoke, e2e 402, compat 84, ZAP 0 unknown; first run stopped on 6 e2e tests that still expected the old phone list layout; pushed: 0.8.1061–0.8.1071 in one push; docs 02-08 / 01-05 / 05-03, FEATURES.md and TODO checked first). Gate before: 0.8.1060 (e2e 398, compat 84, ZAP 0 unknown; pushed 0.8.1045–0.8.1060). First two runs stopped: help_panel_resize left the shared page at 390 px (every later test failed on phone layout) – e2e.js now resets the size after each test and fails a test that leaves a width < 992; when a gate is stopped, restore the database from /tmp/nunext-e2e-full-<pid>.sql (drop all tables first). Gate before: 0.8.1044 (pushed 0.8.1029–0.8.1044). Gate before that: 0.8.1028 (pushed 0.8.1011–0.8.1028). Gate 0.8.1044: e2e 390, compat 84, ZAP 0 unknown; first run failed on test set-up – the test database needs the ticket sample installed (dashboard_access_tab, form_everyone use its access levels; sample_ticket puts it back, a manual NuSampleSet::remove does not) – and on tests that assumed old content (help_level: detail passages inside an advanced page; home_hook_js: the Projects tile mentions notes); ZAP 40012 on ?q= of form lists accepted as a false positive (zap-known.json). Gate before that: 0.8.1010 (e2e 373, compat 84; pushed 0.8.980–0.8.1010). Gate lessons: the PHP test server needs -d upload_max_filesize=32M -d post_max_size=32M (e2e integrity uploads ../nunext.zip) and must run WITHOUT display_errors for compat (nuBuilder Forte's notices break its JSON – the sample ticket form timed out); smoke / e2e passed with display_errors=1 in the run before. Never start a single e2e / compat test while a gate runs (both dump and restore the whole database).
 
 Gate 0.8.979 (full test run: smoke, e2e, compat, ZAP; pushed: 0.8.964–0.8.979 in one push; docs 12-02 / 10-03 / 04-05, tutorial Forte track, TODO checked first). Comparison of a second nuBuilder Forte database form by form (0.8.965–0.8.978): scratch scripts cmp.js / cmpdiff.js / flow.js in the session scratchpad (not in the project), findings in a Claude Doc (no names of the owner's application in any project file). The test site of that dump sends mail into a file ($nuConfigMailLog) – keep it so.
 
 Since the gate, newest first:
 
 (none yet)
+
+Up to the gate 0.8.1359, newest first:
+- 0.8.1359 release gate (FEATURES: folded filters on tablets). Three runs stopped before it passed: notify_exclude (a click timed out – the
+  Tom Select option now waited for, typed again once; Publish = the visible button of the bar or the side), report_xlsx (headless
+  Chromium hands the designer's PDF preview over as a download, sometimes after the Excel click – the test waits for the non-PDF file),
+  and a run where ONE "nuStore is not defined" on the shared page failed every later test that checks script errors (cause not found:
+  nuutil.js was served each time, every page loads it first; not reproduced in two ordered runs). e2e.js since: the shared page's error
+  list is emptied at the start of each test, and every script error is printed with the page address ("pageerror: … @ url") – look
+  there when it comes back
+- 0.8.1358 code review L5 / Q6 / P6 C closed (the owner: "recommendations"): L5 – template lines wrapped between the attributes of a tag
+  (scratch l5html.php: breaks only at a space inside a tag of inline HTML, outside quotes / comments / PHP, never after the tag name;
+  checked per file: PHP tokens equal, inline HTML equal with whitespace collapsed; 770 lines in 72 files); left long on purpose: PHP inside
+  `<?= ?>`, text, string literals, 60 JS lines (strings / regular expressions). Q6 – about 470 version numbers taken out of comments (PHP,
+  JS incl. dev/src/nuruntime, CSS; checked: tokens without comments unchanged); kept 21 that name data or links of older versions
+  ("stored before 0.8.673", "packs of 0.8.405", "?p=customcode until 0.8.573", upgrade baseline). run.php: a version in a PHP comment only
+  after before / until / of / baseline / since; no line of plain PHP code over 200 characters. P6 C (form definitions across requests):
+  decided not to build – Option A left about 2 ms per record locally, and a cache would need a safe way to notice nuBuilder Forte
+  changing a form; revisit only with a measured slow page on a database on another server
+- 0.8.1357 code review L4 / D5 (the owner: "do 1–3"): NuImport::runUsers in steps (userContext / checkUserRow – uniqueness inside the file
+  through an explicit &$file – / writeUsers / afterUsers / userError; no closure writes into the result any more); nuformaccess.js show() →
+  buildEveryone / buildBar / buildTable / sortable; nuhome.js drawPanel() → panelLayout / panelScope / panelStyle / panelDesc / panelNav /
+  panelOnTop / panelPageWidth / panelLook / panelContent (drawPanel only gathers and renders); D5: nu_setting_json_save(id, data, by[, db])
+  (core/nuapp.php, counterpart of nu_setting_json – IP access, SSO settings + SSO cache), NuAcl::levelList() (was NuIpAccess::accessLevels;
+  IP access and SSO pages), NuFormat::kind(format) = date / number / text (advanced search typeOf, pivot fields); e2e code_review_l4_d5
+- 0.8.1356 usability review, the rest of the page list (the owner: "do"): nudashboard.js colTitle() (query column names → titles; line charts
+  on phones: tickAmount 6, dates d.m.); form lists with more than three filters folded below 992 px too (#nuBrowseFilters.nuFltTabHide,
+  nuapp.js funnel); grid rows on tablets: `.nuGridRow > [class*="col-md-"]` flex 1 1 auto, min 11rem (nuform.css); calendar arrows get
+  aria-label from their title (nucalendar.js datesSet); design mode's phone layout (bar, bottom sheet) up to 991.98 px (nudesign.css / .js);
+  Forte system list cards ≤ 5 values (body[data-nu-form^="nu"]); Data & logs audit switch + Keep in one row; e-mail template record: one Back,
+  breadcrumb E-mail / Templates, notices in details[data-nu-phone-fold] (nuOpenMin closes it < 576, summary hidden ≥ 576 – reusable);
+  dashboard widget table data-nu-phcards; API clients key note below the title ($keyNote, list title_sub); cloners: no + while empty;
+  report designer .rdCanvas tabindex 0 + aria-label rd_canvas; User Home: empty tab hint for designers (NuRender::userHomeEmpty, text
+  uhome_empty_tab); ticket sample 12 (greeting without empty name via sfo_style :has on the spans, list widths); e2e usability_pages_2
+- 0.8.1355 code review L2 / R7 / L4 / L5 / D5 / Q6 (the owner: "do"): L2 – the appended blocks of nuapp.css / nuform.css / nudesign.css /
+  nuhome.css moved next to the rules of their component with dev/css_group.py (moves only when no rule in between competes: same property
+  family + specificity + !important; 104 sections, 25 more folds; computed styles of 48 pages × light / dark / 390 px unchanged); R7 – every
+  page with POST actions: the actions are `Nu<Route>Page::post()` (core/nu<route>page.php, 52 new classes, NU_AUTOLOAD), the page keeps
+  reading, rendering and showing (call `[…] = NuXxxPage::post(get_defined_vars());`), functions of 14 pages moved into classes
+  (NuBuilderApi, NuFormApiPage, NuLoginPage …); run.php: pages define no global function. L4 – NuRecord::save (rowOf / serverColumns /
+  logChanges), nu_layout_start (nu_layout_nav), NuListView::card (chips), NuUserPage::save (checkIdentity / checkAccessMail / checkPassword),
+  NuCodeSearch::sources (sharedSources / ownSources), NuFormSpec::check (checkCode / planChanges). L5 – PHP / JS lines over 200 characters
+  wrapped (only whitespace between tokens, checked against the token stream). D5 – NuFormMeta::objectNunextFields (design API + draft
+  store), nu_access_checklist (procedures / reports), nu_center_top (sign-in pages), NuHtmlClean::through, nu_setting_json, nu_zip_entry,
+  NuReportEngine::compare / same (PDF + Excel), NuAiContext::answerJson (Form / Reports with AI). Q6 – version numbers removed from about
+  3,000 comments (run.php: no "(0.8.x)" tags in PHP comments)
+- 0.8.1354 code review R10 / R8 / L3 / R7 / L1 / L2 / L6 (the owner: "do these"; see Conventions): core/nusess.php NuSess (89 keys, the
+  old class constants of NuProject / NuSidebar / NuTutorial / NuImport / NuFormDraft / NuRecord / NuRowDetails point to it), NuDB stamp /
+  tableOptions / castText / jsonText / firstRows / limitTail / addColumnSql / dropTableSql / quoteName / savepointSql / rollbackToSql / label;
+  core/lists/nulist_<key>.php (28 traits); NuUpdatePage / NuUserPage / NuFormPage; dev/src/nuruntime/ (39 parts) + dev/nuruntime_join.py;
+  dev/css_fold.py (74 declarations, 20 rules; checked with scratch cssdiff.js = computed styles of ~6000 elements per page, 48 pages × light /
+  dark / 390 px, old CSS served by route: only data noise on log / security check / sessions, which differs old against old too);
+  dev/tests/e2e/<area>.js (15 files) + order.txt; PHPStan baseline renewed (172)
+- 0.8.1353 code review Q1 / Q5 / Q3 (the owner: all open review points, in batches): nu_ignored($e, 'why') in core/nuapp.php –
+  151 empty catch blocks of core / pages / root now call it (variable $ig), two expected ones keep a comment with "expected"; run.php
+  guard. Q5: session_start of index.php (?p=pwa manifest) and NuSharedLogin::readNuBuilderSession without use_only_cookies (the id set by
+  session_id() wins), run.php scans for PHP 8.4 deprecated session settings. Q3: PHPStan level 4 + dev/phpstan-baseline.neon (176
+  findings, generated). e2e review_q1_q5
 
 Up to the gate 0.8.1352, newest first:
 - 0.8.1352 release gate

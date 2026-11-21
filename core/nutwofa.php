@@ -170,7 +170,7 @@ final class NuTwoFA
 
 	private static function seal(string $s): string
 	{
-		return NuSecret::seal($s, '', null, true);   // 0.8.1326: one implementation (core/nusecret.php)
+		return NuSecret::seal($s, '', null, true);   // one implementation (core/nusecret.php)
 	}
 
 	/** Encrypts authenticator secrets stored as plain text (saved while $nuConfigSecretKey was empty) with the new $key. @return int count */

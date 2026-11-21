@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * ?p=jquery – jQuery of the form pages (0.8.741, core/nujquery.php): version for everyone (bundled 3.7.1 / 4.0.0 / a file of custom/jquery/),
+ * ?p=jquery – jQuery of the form pages (core/nujquery.php): version for everyone (bundled 3.7.1 / 4.0.0 / a file of custom/jquery/),
  * jQuery Migrate (off / warnings / restore), a test for the globeadmin, the Migrate messages collected per form. Settings centre → Code.
  * POST actions: save, clear.
  */
@@ -14,19 +14,7 @@ $canChange = NuAdmin::can('globalcode', 'change');
 if ($canChange && !is_dir(NuJquery::dir())) { @mkdir(NuJquery::dir(), 0775, true); }
 if (is_dir(NuJquery::dir())) NuSecurity::protectDir(NuJquery::dir());
 
-if (nu_is_post()) {
-	NuAdmin::require('globalcode', 'change');
-	$action = nu_post('action');
-	if ($action === 'save') {
-		$changed = NuJquery::save(['jq' => nu_post('jq'), 'migrate' => nu_post('migrate'), 'ga_jq' => nu_post('ga_jq'), 'ga_warn' => nu_check('ga_warn') === '1']);
-		nu_flash('success', $changed ? t('saved') : t('aud_set_nochange'));
-	}
-	if ($action === 'clear') {
-		NuJquery::clearWarnings();
-		nu_flash('success', t('jq_cleared'));
-	}
-	nu_redirect(nu_url('jquery'));
-}
+NuJqueryPage::post(get_defined_vars());   // the POST actions (code review R7, nujquerypage.php)
 
 $s = NuJquery::settings();
 $files = NuJquery::customFiles();
@@ -80,7 +68,8 @@ nu_layout_start(t('jq_title'), 'home', ['container' => 'nuContainer', 'settings'
 				<select class="form-select" name="ga_jq" id="jqGaUse"<?= $canChange ? '' : ' disabled' ?>><?= $opts($s['ga_jq'], true) ?></select>
 			</div>
 			<div class="col-md-6">
-				<div class="form-check form-switch mb-2"><input class="form-check-input" type="checkbox" role="switch" name="ga_warn" value="1" id="jqGaWarn"<?= $s['ga_warn'] ? ' checked' : '' ?><?= $canChange ? '' : ' disabled' ?>>
+				<div class="form-check form-switch mb-2"><input class="form-check-input" type="checkbox" role="switch" name="ga_warn" value="1"
+					id="jqGaWarn"<?= $s['ga_warn'] ? ' checked' : '' ?><?= $canChange ? '' : ' disabled' ?>>
 					<label class="form-check-label" for="jqGaWarn"><?= h(t('jq_ga_warn')) ?></label></div>
 			</div>
 		</div>
@@ -89,7 +78,8 @@ nu_layout_start(t('jq_title'), 'home', ['container' => 'nuContainer', 'settings'
 
 <div class="card shadow-sm mb-3" id="jqNow">
 	<div class="card-body small">
-		<i class="bi bi-info-circle me-1"></i><?= h(t('jq_now', $cur['jq']['version'], t('jq_mig_' . $cur['migrate']))) ?><?php if ($cur['test']): ?> <span class="badge text-bg-warning" id="jqTestBadge"><?= h(t('jq_test_on')) ?></span><?php endif; ?>
+		<i class="bi bi-info-circle me-1"></i><?= h(t('jq_now', $cur['jq']['version'], t('jq_mig_' . $cur['migrate']))) ?><?php if ($cur['test']): ?> <span class="badge text-bg-warning"
+			id="jqTestBadge"><?= h(t('jq_test_on')) ?></span><?php endif; ?>
 		· <?= h(t('jq_migrate_versions', NuJquery::MIGRATE[3][0], NuJquery::MIGRATE[4][0])) ?>
 	</div>
 </div>
@@ -108,12 +98,14 @@ nu_layout_start(t('jq_title'), 'home', ['container' => 'nuContainer', 'settings'
 </div>
 
 <div class="card shadow-sm mb-3" id="jqWarnings">
-	<div class="card-header fw-semibold d-flex align-items-center gap-2"><i class="bi bi-exclamation-diamond" aria-hidden="true"></i><span><?= h(t('jq_warnings')) ?></span><?= $tip(t('jq_warnings_tip')) ?>
+	<div class="card-header fw-semibold d-flex align-items-center gap-2"><i class="bi bi-exclamation-diamond"
+		aria-hidden="true"></i><span><?= h(t('jq_warnings')) ?></span><?= $tip(t('jq_warnings_tip')) ?>
 		<span class="badge text-bg-secondary"><?= count($warn) ?></span>
 		<a class="btn btn-sm btn-outline-secondary ms-auto" href="<?= h(nu_url('compat')) ?>#compat_findings" id="jqScanLink"><i class="bi bi-search me-1"></i><?= h(t('jq_scan_link')) ?></a>
 		<?php if ($warn && $canChange): ?>
 		<form method="post" action="<?= h(nu_url('jquery')) ?>" class="m-0" data-confirm="<?= h(t('jq_clear_confirm')) ?>" data-confirm-ok="<?= h(t('jq_clear')) ?>" data-confirm-class="btn btn-danger">
-			<?= nu_csrf_field() ?><input type="hidden" name="action" value="clear"><button class="btn btn-sm btn-outline-danger" type="submit" id="jqClear"><i class="bi bi-trash me-1"></i><?= h(t('jq_clear')) ?></button></form>
+			<?= nu_csrf_field() ?><input type="hidden" name="action" value="clear"><button class="btn btn-sm btn-outline-danger" type="submit"
+				id="jqClear"><i class="bi bi-trash me-1"></i><?= h(t('jq_clear')) ?></button></form>
 		<?php endif; ?>
 	</div>
 	<?php if (!$warn): ?><div class="card-body small text-body-secondary" id="jqNoWarnings"><?= h(t('jq_no_warnings')) ?></div>

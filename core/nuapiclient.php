@@ -162,7 +162,8 @@ final class NuApiClient
 		$db = nu_db();
 		$errors = [];
 		if (!preg_match('/^[A-Za-z0-9_.\-]{3,50}$/', $login)) $errors['su_login'] = t('api_err_login');
-		elseif ((int)$db->value('SELECT COUNT(*) FROM zzzzsys_user WHERE sus_login_name = ?', [$login]) || strcasecmp($login, (string)nu_cfg('nuConfigDBGlobeadminUsername')) === 0) $errors['su_login'] = t('user_err_login_taken');
+		elseif ((int)$db->value('SELECT COUNT(*) FROM zzzzsys_user WHERE sus_login_name = ?', [$login])
+			|| strcasecmp($login, (string)nu_cfg('nuConfigDBGlobeadminUsername')) === 0) $errors['su_login'] = t('user_err_login_taken');
 		if (!NuAcl::levelExists((string)$accessId)) $errors['su_access'] = t('err_required');
 		if ($errors) return [null, $errors];
 		$id = nu_id();

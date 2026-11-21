@@ -1,5 +1,4 @@
-/* nuBuilder Next: the "New form" wizard (index.php?p=builder&new=1). Forms are changed in design mode on the form page (0.8.670,
- * assets/js/nu/nudesign.js) – the former builder (object list, properties panel, preview) was replaced by it. Talks to index.php?p=builderapi. */
+/* nuBuilder Next: the "New form" wizard (index.php?p=builder&new=1). Forms are changed in design mode on the form page (* assets/js/nu/nudesign.js) – the former builder (object list, properties panel, preview) was replaced by it. Talks to index.php?p=builderapi. */
 (function () {
 	'use strict';
 
@@ -8,7 +7,7 @@
 	function t(k) { return L[k] || k; }
 
 	// ------------------------------------------------------------------ helpers
-	// chosen columns of an existing table (0.8.675): object yes / no, label, list column, order (drag, arrows, Alt+↑ / ↓).
+	// chosen columns of an existing table: object yes / no, label, list column, order (drag, arrows, Alt+↑ / ↓).
 	// Untouched, nothing is sent and the server makes its default (every column, the auto key left out, six list columns).
 	function pickList() {
 		var wrap = $('#nbPickWrap'), body = $('#nbPickRows'), all = $('#nbPickAll'), allL = $('#nbPickAllList');
@@ -31,7 +30,7 @@
 				var off = !$('.nbPickOn', x).checked;
 				x.classList.toggle('nbPickOff', off);
 				$('.nbPickList', x).disabled = off; $('.nbPickLabel', x).disabled = off;
-				$('.nbPickFlt', x).disabled = off || !$('.nbPickList', x).checked;   // a filter needs the list column (0.8.688)
+				$('.nbPickFlt', x).disabled = off || !$('.nbPickList', x).checked;   // a filter needs the list column
 				$('.nbPickUp', x).disabled = i === 0; $('.nbPickDown', x).disabled = i === r.length - 1;
 			});
 		}
@@ -121,7 +120,7 @@
 		};
 	}
 
-	// access levels of the wizard (0.8.674): "Select all" ticks / clears the levels shown, the group select filters by sal_group
+	// access levels of the wizard: "Select all" ticks / clears the levels shown, the group select filters by sal_group
 	function levelsBar() {
 		var all = document.getElementById('nbLvAll');
 		if (!all) return;
@@ -161,10 +160,12 @@
 	function $(s, r) { return (r || document).querySelector(s); }
 	function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
 
-	// remove button of a list row (0.8.139): the row is crossed out and the same button brings it back; crossed-out rows are
+	// remove button of a list row: the row is crossed out and the same button brings it back; crossed-out rows are
 	// left out when the panel (or the new form) is saved – window.nuToggleRemoved in nuapp.js
 	function removeBtn(row, cls) {
-		var b = h('button', {type: 'button', 'class': cls || 'btn btn-link btn-sm px-1 text-danger', title: t('remove'), 'aria-label': t('remove'), 'aria-pressed': 'false'}, [h('i', {'class': 'bi bi-x-circle'})]);
+		var b = h('button',
+			{type: 'button', 'class': cls || 'btn btn-link btn-sm px-1 text-danger', title: t('remove'), 'aria-label': t('remove'), 'aria-pressed': 'false'},
+			[h('i', {'class': 'bi bi-x-circle'})]);
 		b.addEventListener('click', function () {
 			window.nuToggleRemoved(row, b, {remove: t('remove'), undo: t('remove_undo'), pending: t('remove_pending')});
 		});
@@ -186,7 +187,7 @@
 
 		function mode() { return $('#nb_mode_new').checked ? 'new' : 'existing'; }
 		function applyMode() {
-			var launch = $('#nb_type').value === 'launch' || $('#nb_type').value === 'page';   // page forms (0.8.387): no table either
+			var launch = $('#nb_type').value === 'launch' || $('#nb_type').value === 'page';   // page forms: no table either
 			var nf = $('#nbNewForm');
 			if (nf) { nf.classList.toggle('nbIsNew', mode() === 'new'); nf.classList.toggle('nbIsExisting', mode() === 'existing'); nf.classList.toggle('nbIsLaunch', $('#nb_type').value === 'launch'); }
 			$('.nbTableSection').classList.toggle('d-none', launch);
@@ -195,13 +196,13 @@
 			$$('.nbExisting').forEach(function (e) { e.classList.toggle('d-none', launch || mode() !== 'existing'); });
 			$$('.nbNew').forEach(function (e) { e.classList.toggle('d-none', launch || mode() !== 'new'); });
 			if (mode() === 'new' && !$('#nbColRows').children.length) addCol();
-			var after = $('.nbAfter');                              // User Home button / access levels (0.8.602): not for sub-forms
+			var after = $('.nbAfter');                              // User Home button / access levels: not for sub-forms
 			if (after) after.classList.toggle('d-none', $('#nb_type').value === 'subform');
-			var noTable = $('.nbNoTable');                          // step 2 of a launch / page form: nothing to choose (0.8.663)
+			var noTable = $('.nbNoTable');                          // step 2 of a launch / page form: nothing to choose
 			if (noTable) noTable.classList.toggle('d-none', !launch);
 		}
 
-		// three steps (0.8.663): Form · Table and fields · Layout and access; Next checks the step, Enter = Next until the last one
+		// three steps: Form · Table and fields · Layout and access; Next checks the step, Enter = Next until the last one
 		var step = 1;
 		function showStep(n) {
 			step = n;
@@ -247,7 +248,7 @@
 		api('tables', {}).then(function (r) {
 			existingTables = r.tables.map(function (x) { return x.toLowerCase(); });
 			var s = $('#nb_table'), views = (r.views || []).map(function (x) { return x.toLowerCase(); });
-			// views (0.8.721; 0.8.851: under their own heading – Tables / Views – instead of a "(view)" suffix; no headings without views)
+			// views (under their own heading – Tables / Views – instead of a "(view)" suffix; no headings without views)
 			var vs = r.tables.filter(function (tb) { return views.indexOf(tb.toLowerCase()) >= 0; }), ts = r.tables.filter(function (tb) { return vs.indexOf(tb) < 0; });
 			var opt = function (tb, isView) { return h('option', {value: tb, text: tb, 'data-view': isView ? '1' : null}); };
 			if (vs.length) {
@@ -283,7 +284,7 @@
 
 		var pick = pickList();
 
-		// a view was picked (0.8.721): the suggested key column and whether the database can save to it; read only → form type Browse
+		// a view was picked: the suggested key column and whether the database can save to it; read only → form type Browse
 		function viewInfo(v) {
 			var vi = $('#nbViewInfo'), type = $('#nb_type'), lines = [], warn = false;
 			if (v.updatable === true) lines.push(t('builder_view_ok'));
@@ -307,7 +308,9 @@
 		function addCol(c) {
 			c = c || {};
 			var tr = h('tr', {});
-			var name = h('input', {'class': 'form-control form-control-sm', 'data-f': 'name', value: c.name || '', maxlength: 64, autocomplete: 'off', spellcheck: 'false', 'aria-label': t('builder_col_name'), pattern: '[A-Za-z_][A-Za-z0-9_]*'});
+			var name = h('input',
+				{'class': 'form-control form-control-sm', 'data-f': 'name', value: c.name || '', maxlength: 64, autocomplete: 'off', spellcheck: 'false',
+					'aria-label': t('builder_col_name'), pattern: '[A-Za-z_][A-Za-z0-9_]*'});
 			var label = h('input', {'class': 'form-control form-control-sm', 'data-f': 'label', value: c.label || '', maxlength: 100, 'aria-label': t('builder_obj_label')});
 			var type = h('select', {'class': 'form-select form-select-sm', 'data-f': 'type', 'aria-label': t('builder_col_type')});
 			COLTYPES.forEach(function (x) { type.appendChild(h('option', {value: x, text: t('builder_coltype_' + x)})); });
@@ -333,7 +336,10 @@
 			tr.appendChild(h('td', {}, [len]));
 			tr.appendChild(h('td', {'class': 'text-center'}, [req]));
 			tr.appendChild(h('td', {'class': 'text-nowrap'}, [
-				h('button', {type: 'button', 'class': 'btn btn-link btn-sm px-1', 'aria-label': t('builder_up'), onclick: function () { if (tr.previousElementSibling) tr.parentNode.insertBefore(tr, tr.previousElementSibling); }}, [h('i', {'class': 'bi bi-chevron-up'})]),
+				h('button',
+					{type: 'button', 'class': 'btn btn-link btn-sm px-1', 'aria-label': t('builder_up'),
+						onclick: function () { if (tr.previousElementSibling) tr.parentNode.insertBefore(tr, tr.previousElementSibling); }},
+					[h('i', {'class': 'bi bi-chevron-up'})]),
 				removeBtn(tr)
 			]));
 			$('#nbColRows').appendChild(tr);
@@ -386,7 +392,7 @@
 			var btn = form.querySelector('button[type=submit]');
 			btn.disabled = true;
 			api('form.create', d).then(function (r) {
-				// the new form opens in design mode (0.8.670: pages/nubuilder.php → NuDesign::fromBuilder; page forms: their own editor)
+				// the new form opens in design mode (pages/nubuilder.php → NuDesign::fromBuilder; page forms: their own editor)
 				window.location.href = 'index.php?p=builder&f=' + encodeURIComponent(r.form_id);
 			})
 				.catch(function (x) { err.textContent = x.message; err.classList.remove('d-none'); btn.disabled = false; });

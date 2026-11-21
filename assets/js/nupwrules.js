@@ -1,4 +1,4 @@
-/* nuBuilder Next – password policy checklist (0.8.745, NuPwPolicy::rulesHtml): ticks length and character classes while typing.
+/* nuBuilder Next – password policy checklist (NuPwPolicy::rulesHtml): ticks length and character classes while typing.
    Leaked passwords and the login / name rule are checked on saving. */
 (function () {
 	'use strict';
@@ -17,7 +17,7 @@
 		function run() {
 			var v = field.value;
 			box.classList.toggle('nuPwTyping', v !== '');
-			if (box.hasAttribute('data-on-type')) box.hidden = v === '';     // user form: only once something is typed (0.8.768)
+			if (box.hasAttribute('data-on-type')) box.hidden = v === '';     // user form: only once something is typed
 			box.querySelectorAll('li[data-rule]').forEach(function (li) {
 				var ok = v !== '' && tests[li.getAttribute('data-rule')](v);
 				li.classList.toggle('nuPwOk', ok);

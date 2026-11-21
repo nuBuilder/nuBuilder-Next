@@ -4,7 +4,7 @@ defined('NU_ROOT') || exit;
 
 /* Logged-in users (globeadmin only): nuBuilder Next sessions with IP and last activity, plus nuBuilder's sessions (zzzzsys_session). */
 
-// admin rights (0.8.323): the globeadmin, or a user whose admin role has the right (core/nuadmin.php)
+// admin rights: the globeadmin, or a user whose admin role has the right (core/nuadmin.php)
 NuAdmin::require('sessions');
 $db = nu_db();
 NuSchema::ensure();
@@ -21,7 +21,7 @@ if (nu_is_post() && nu_post('action') === 'end') {
 	nu_redirect(nu_url('sessions'));
 }
 
-// all sessions of one user (0.8.687, the group row of a user with several sessions) – never the own one
+// all sessions of one user (the group row of a user with several sessions) – never the own one
 if (nu_is_post() && nu_post('action') === 'end_user') {
 	$login = nu_post('login');
 	$mine = NuSessions::key();
@@ -36,7 +36,7 @@ if (nu_is_post() && nu_post('action') === 'end_user') {
 	nu_redirect(nu_url('sessions'));
 }
 
-// log out all users (0.8.254): end_others keeps the own session, end_all ends it too (sign in again afterwards)
+// log out all users: end_others keeps the own session, end_all ends it too (sign in again afterwards)
 if (nu_is_post() && in_array(nu_post('action'), ['end_others', 'end_all'], true)) {
 	$all  = nu_post('action') === 'end_all';
 	$mine = NuSessions::key();
@@ -57,7 +57,7 @@ if (nu_is_post() && in_array(nu_post('action'), ['end_others', 'end_all'], true)
 	nu_redirect(nu_url('sessions'));
 }
 
-// log out idle users (0.8.595): every session (not the own one) whose last activity is longer ago than the chosen hours
+// log out idle users: every session (not the own one) whose last activity is longer ago than the chosen hours
 // (only hours below the longest session timeout – older sessions end by themselves: NuSessions::purge, $nuConfigSessionTimeout / …Globeadmin)
 $idleHours = array_values(array_filter([1, 2, 4, 8, 12, 24], static fn($hh) => $hh * 3600 < max(nu_session_timeout(false), nu_session_timeout(true))));
 if (nu_is_post() && nu_post('action') === 'end_idle') {
@@ -101,7 +101,7 @@ if ($db->tableExists('zzzzsys_session')) {
 	}
 }
 
-// sortable columns (0.8.508): ?sort=user|ip|browser|login|last &dir=asc|desc – default: last activity, newest first
+// sortable columns: ?sort=user|ip|browser|login|last &dir=asc|desc – default: last activity, newest first
 $sort = in_array($_GET['sort'] ?? '', ['user', 'ip', 'browser', 'login', 'last'], true) ? (string)$_GET['sort'] : 'last';
 $dir  = ($_GET['dir'] ?? '') === 'asc' ? 'asc' : (($_GET['dir'] ?? '') === 'desc' || !isset($_GET['sort']) ? 'desc' : 'asc');
 $ts = static fn($v): int => $v === null || $v === '' ? 0 : (is_numeric($v) ? (int)$v : (int)strtotime((string)$v));
@@ -119,7 +119,7 @@ $cmp = static function (array $a, array $b) use ($key, $dir): int {
 };
 usort($rows, $cmp);
 usort($nb, $cmp);
-// search by user (0.8.540): login name, display name, full / first / last name – in both lists; End all / End others still mean all
+// search by user: login name, display name, full / first / last name – in both lists; End all / End others still mean all
 $q = trim((string)($_GET['q'] ?? ''));
 $allRows = $rows;
 if ($q !== '') {
@@ -133,7 +133,7 @@ if ($q !== '') {
 	$rows = array_values(array_filter($rows, static fn($r) => $hit((string)$r['user_id'], (string)$r['login'], (string)$r['display'])));
 	$nb = array_values(array_filter($nb, static fn($r) => $hit($r['uid'], $r['login'])));
 }
-// filters (0.8.687): user (id or login – the user form links with its id) and state (active = activity in the last 5 minutes, idle)
+// filters: user (id or login – the user form links with its id) and state (active = activity in the last 5 minutes, idle)
 $fUser = trim((string)($_GET['user'] ?? ''));
 $fState = in_array($_GET['state'] ?? '', ['active', 'idle'], true) ? (string)$_GET['state'] : '';
 $userOpts = [];
@@ -155,18 +155,11 @@ if ($fState !== '') {
 $qp = array_filter(['q' => $q, 'user' => $fUser, 'state' => $fState], static fn($v) => $v !== '');
 $th = static fn(string $label, string $col, string $class = ''): string => nu_sort_th($label, $col, $sort, $dir, 'sessions', $qp, $class);
 
-function nu_sess_ago(int $ts): string
-{
-	$d = max(0, time() - $ts);
-	if ($d < 60) return t('sess_ago_s', $d);
-	if ($d < 3600) return t('sess_ago_m', intdiv($d, 60));
-	return t('sess_ago_h', intdiv($d, 3600), intdiv($d % 3600, 60));
-}
 
 $me = NuSessions::key();
 nu_layout_start(t('sess_title'), 'log', ['head' => nu_ts_head()]);
 ?>
-<?php // like Debug and Log (0.8.271): the tabs first, then the card with title, Back · Refresh and the list ?>
+<?php // like Debug and Log: the tabs first, then the card with title, Back · Refresh and the list ?>
 <?= NuAudit::tabs('sessions') ?>
 
 <div class="card shadow-sm nuListCard mb-4">
@@ -174,17 +167,20 @@ nu_layout_start(t('sess_title'), 'log', ['head' => nu_ts_head()]);
 	<h1 class="h5 mb-0 fw-semibold"><?= h(t('sess_title')) ?><?php $tip = t('sess_hint', $timeout, $timeoutAdmin); ?>
 		<?= nu_info_tip($tip, 'fs-6 fw-normal ms-1') ?></h1>
 	<div class="d-flex flex-wrap gap-2 align-items-center"><?= nu_back_button() ?>
-		<a class="btn nuBtnAct" href="<?= h(nu_url('sessions', (isset($_GET['sort']) ? ['sort' => $sort, 'dir' => $dir] : []) + $qp)) ?>"><i class="bi bi-arrow-clockwise me-1"></i><?= h(t('debug_refresh')) ?></a>
+		<a class="btn nuBtnAct"
+			href="<?= h(nu_url('sessions', (isset($_GET['sort']) ? ['sort' => $sort, 'dir' => $dir] : []) + $qp)) ?>"><i class="bi bi-arrow-clockwise me-1"></i><?= h(t('debug_refresh')) ?></a>
 		<?php $others = count(array_filter($allRows, static fn($r) => (string)$r['zzzzsys_nunext_session_id'] !== $me)); ?>
-		<?php // one "Log out" button (0.8.653 phones, 0.8.654 every width): its menu holds the actions – idle users with one entry per time, all others,
+		<?php // one "Log out" button (phones, every width): its menu holds the actions – idle users with one entry per time, all others,
 		// everyone incl. me; each asks first (data-confirm) ?>
-		<div class="dropdown" id="sessLogoutMenu"><?php // right of Refresh (0.8.685; was at the far right) ?>
-			<button class="btn btn-outline-danger fw-normal dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-box-arrow-right me-1"></i><?= h(t('nav_logout')) ?></button>
+		<div class="dropdown" id="sessLogoutMenu"><?php // right of Refresh (was at the far right) ?>
+			<button class="btn btn-outline-danger fw-normal dropdown-toggle" type="button" data-bs-toggle="dropdown"
+				aria-expanded="false"><i class="bi bi-box-arrow-right me-1"></i><?= h(t('nav_logout')) ?></button>
 			<ul class="dropdown-menu">
 				<?php if ($idleHours): ?>
 				<li><h6 class="dropdown-header"><i class="bi bi-hourglass-split me-1"></i><?= h(t('sess_end_idle')) ?></h6></li>
 				<?php foreach ($idleHours as $hh): ?>
-				<li><form method="post" class="m-0" data-confirm="<?= h($hh === 1 ? t('sess_end_idle_confirm_1') : t('sess_end_idle_confirm', $hh)) ?>" data-confirm-ok="<?= h(t('sess_end_idle')) ?>" data-confirm-class="btn btn-danger">
+				<li><form method="post" class="m-0" data-confirm="<?= h($hh === 1 ? t('sess_end_idle_confirm_1') : t('sess_end_idle_confirm', $hh)) ?>"
+					data-confirm-ok="<?= h(t('sess_end_idle')) ?>" data-confirm-class="btn btn-danger">
 					<?= nu_csrf_field() ?><input type="hidden" name="action" value="end_idle"><input type="hidden" name="hours" value="<?= (int)$hh ?>">
 					<button class="dropdown-item ps-4" type="submit" data-hours="<?= (int)$hh ?>"><?= h(t('sess_idle_hours', $hh)) ?></button></form></li>
 				<?php endforeach; ?>
@@ -204,9 +200,9 @@ nu_layout_start(t('sess_title'), 'log', ['head' => nu_ts_head()]);
 		<input type="hidden" name="p" value="sessions">
 		<?php if (isset($_GET['sort'])): ?><input type="hidden" name="sort" value="<?= h($sort) ?>"><input type="hidden" name="dir" value="<?= h($dir) ?>"><?php endif; ?>
 		<div class="row g-2 align-items-end">
-			<?php $sessFiltered = $fUser !== '' || $fState !== ''; // phones (0.8.709): the filters behind the funnel next to the search, as on the users list ?>
+			<?php $sessFiltered = $fUser !== '' || $fState !== ''; // phones: the filters behind the funnel next to the search, as on the users list ?>
 			<div class="col-md-6"><?= nu_list_search($q, t('sess_search_hint'), 'sessFilters', $sessFiltered, $qp ? nu_url('sessions', isset($_GET['sort']) ? ['sort' => $sort, 'dir' => $dir] : []) : null) ?></div>
-			<?php $sessNf = ($_GET['nf'] ?? '') === '1'; /* opened from another page (record info links, 0.8.1017): filters folded */ ?>
+			<?php $sessNf = ($_GET['nf'] ?? '') === '1'; /* opened from another page (record info links): filters folded */ ?>
 			<div class="col-md-6 collapse<?= $sessFiltered && !$sessNf ? ' show' : '' ?>" id="sessFilters"<?= $sessNf ? '' : ' data-nu-open-min="768"' ?>><div class="row g-2">
 			<div class="col-sm-6"><label class="form-label small mb-1" for="sessFltUser"><?= h(t('user')) ?></label>
 				<select class="form-select js-autosubmit<?= count($userOpts) >= 15 ? ' nuListTomSelect' : '' ?>" id="sessFltUser" name="user"><option value=""><?= h(t('all')) ?></option>
@@ -224,7 +220,7 @@ nu_layout_start(t('sess_title'), 'log', ['head' => nu_ts_head()]);
 			<tbody>
 			<?php if (!$rows): ?><tr><td colspan="6" class="text-center text-body-secondary py-4"><?= h(t('no_records')) ?></td></tr><?php endif; ?>
 			<?php
-			// one group per user with several sessions (0.8.687): a folded header row, the sessions below it (assets/js/nusessions.js)
+			// one group per user with several sessions: a folded header row, the sessions below it (assets/js/nusessions.js)
 			$groups = [];
 			foreach ($rows as $r) $groups[(string)$r['login']][] = $r;
 			$userLink = static fn(array $r): string => NuAcl::can(NuAcl::FORM_USER) && isset($users[(string)$r['user_id']])
@@ -241,7 +237,8 @@ nu_layout_start(t('sess_title'), 'log', ['head' => nu_ts_head()]);
 					$gIps = array_values(array_unique(array_map(static fn($x) => NuDemo::ip($x['ip']), $gRows))); ?>
 				<tr class="nuSessGroup" data-grp="<?= $grp ?>">
 					<td class="sUser">
-						<button type="button" class="btn btn-sm btn-link p-0 me-1 nuSessFold" aria-expanded="false" title="<?= h(t('sess_group_toggle')) ?>" aria-label="<?= h(t('sess_group_toggle') . ': ' . $gLogin) ?>"><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+						<button type="button" class="btn btn-sm btn-link p-0 me-1 nuSessFold" aria-expanded="false" title="<?= h(t('sess_group_toggle')) ?>"
+							aria-label="<?= h(t('sess_group_toggle') . ': ' . $gLogin) ?>"><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
 						<span class="nuSessDot <?= $gIdle ? 'nuSessIdle' : 'nuSessActive' ?>" title="<?= h(t($gIdle ? 'sess_idle' : 'sess_active')) ?>"></span>
 						<?= $userLink($gRows[0]) ?>
 						<?php if ((string)$gRows[0]['display'] !== '' && $gRows[0]['display'] !== $gLogin): ?><span class="text-body-secondary small ms-1"><?= h($gRows[0]['display']) ?></span><?php endif; ?>
@@ -251,10 +248,12 @@ nu_layout_start(t('sess_title'), 'log', ['head' => nu_ts_head()]);
 					<td class="small text-nowrap sIp"><?= h(count($gIps) === 1 ? $gIps[0] : t('sess_group_ips', count($gIps))) ?></td>
 					<td class="small sAgent"></td>
 					<td class="small text-nowrap sLogin" data-label="<?= h(t('sess_login_at')) ?>"><?= $gFirst !== PHP_INT_MAX ? h(date(nu_dfmt('d.m.Y H:i'), $gFirst)) : '' ?></td>
-					<td class="small text-nowrap sLast" data-label="<?= h(t('sess_last')) ?>"><span class="sAbs"><?= h(date(nu_dfmt('d.m.Y H:i:s'), $gLast)) ?></span><div class="text-body-secondary sAgo"><?= h(nu_sess_ago($gLast)) ?></div></td>
+					<td class="small text-nowrap sLast"
+						data-label="<?= h(t('sess_last')) ?>"><span class="sAbs"><?= h(date(nu_dfmt('d.m.Y H:i:s'), $gLast)) ?></span><div class="text-body-secondary sAgo"><?= h(NuSessionsPage::ago($gLast)) ?></div></td>
 					<td class="text-end sActs">
 						<?php if (count($gRows) - ($gMine ? 1 : 0) > 0): ?>
-						<form method="post" class="d-inline" data-confirm="<?= h(t('sess_end_user_confirm', count($gRows) - ($gMine ? 1 : 0), $gLogin)) ?>" data-confirm-ok="<?= h(t('sess_end')) ?>" data-confirm-class="btn btn-danger">
+						<form method="post" class="d-inline" data-confirm="<?= h(t('sess_end_user_confirm', count($gRows) - ($gMine ? 1 : 0), $gLogin)) ?>"
+							data-confirm-ok="<?= h(t('sess_end')) ?>" data-confirm-class="btn btn-danger">
 							<?= nu_csrf_field() ?><input type="hidden" name="action" value="end_user"><input type="hidden" name="login" value="<?= h($gLogin) ?>">
 							<button class="btn btn-sm btn-outline-danger" type="submit"><i class="bi bi-box-arrow-right me-1"></i><?= h(t('sess_end_user')) ?></button>
 						</form>
@@ -278,7 +277,8 @@ nu_layout_start(t('sess_title'), 'log', ['head' => nu_ts_head()]);
 					<td class="small text-nowrap sIp"><?= h(NuDemo::ip($r['ip'])) ?></td>
 					<td class="small sAgent" title="<?= h($r['user_agent']) ?>"><?= h(NuSessions::agent((string)$r['user_agent'])) ?></td>
 					<td class="small text-nowrap sLogin" data-label="<?= h(t('sess_login_at')) ?>"><?= $r['login_at'] ? h(date(nu_dfmt('d.m.Y H:i'), strtotime((string)$r['login_at']))) : '' ?></td>
-					<td class="small text-nowrap sLast" data-label="<?= h(t('sess_last')) ?>"><span class="sAbs"><?= h(date(nu_dfmt('d.m.Y H:i:s'), $last)) ?></span><div class="text-body-secondary sAgo"><?= h(nu_sess_ago($last)) ?></div></td>
+					<td class="small text-nowrap sLast"
+						data-label="<?= h(t('sess_last')) ?>"><span class="sAbs"><?= h(date(nu_dfmt('d.m.Y H:i:s'), $last)) ?></span><div class="text-body-secondary sAgo"><?= h(NuSessionsPage::ago($last)) ?></div></td>
 					<td class="text-end sActs">
 						<div class="d-inline-flex flex-wrap gap-1 justify-content-end">
 						<?php if (!$mine && (string)$r['via'] !== 'impersonated' && isset($users[(string)$r['user_id']])): ?><?= NuImpersonate::button((string)$r['user_id'], (string)$r['login'], nu_url('sessions'), true) ?><?php endif; ?>
@@ -300,8 +300,9 @@ nu_layout_start(t('sess_title'), 'log', ['head' => nu_ts_head()]);
 
 <?php if ($db->tableExists('zzzzsys_session')): ?>
 	<div class="card shadow-sm">
-		<?php // folded by default (0.8.709) ?>
-		<div class="card-header"><button class="btn btn-link p-0 fw-semibold text-decoration-none text-body thLevelsToggle collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#sessForte" aria-expanded="false" aria-controls="sessForte" id="sessForteBtn">
+		<?php // folded by default ?>
+		<div class="card-header"><button class="btn btn-link p-0 fw-semibold text-decoration-none text-body thLevelsToggle collapsed" type="button"
+			data-bs-toggle="collapse" data-bs-target="#sessForte" aria-expanded="false" aria-controls="sessForte" id="sessForteBtn">
 			<i class="bi bi-chevron-right me-1 thChevron" aria-hidden="true"></i>nuBuilder Forte</button> <span class="badge text-bg-secondary ms-1"><?= count($nb) ?></span></div>
 		<div class="collapse" id="sessForte">
 		<div class="table-responsive">
@@ -313,7 +314,7 @@ nu_layout_start(t('sess_title'), 'log', ['head' => nu_ts_head()]);
 					<tr>
 						<td class="fw-semibold"><?= h($r['login']) ?></td>
 						<td class="small"><?= $r['login_at'] ? h(date(nu_dfmt('d.m.Y H:i'), strtotime((string)$r['login_at']))) : '' ?></td>
-						<td class="small"><?= h(date(nu_dfmt('d.m.Y H:i:s'), $r['last'])) ?> <span class="text-body-secondary">· <?= h(nu_sess_ago($r['last'])) ?></span></td>
+						<td class="small"><?= h(date(nu_dfmt('d.m.Y H:i:s'), $r['last'])) ?> <span class="text-body-secondary">· <?= h(NuSessionsPage::ago($r['last'])) ?></span></td>
 						<td class="text-end"><?php if ($r['uid'] !== '' && isset($users[$r['uid']])): ?><div class="d-inline-flex"><?= NuImpersonate::button($r['uid'], $r['login'], nu_url('sessions'), true) ?></div><?php endif; ?></td>
 					</tr>
 				<?php endforeach; ?>

@@ -1,4 +1,4 @@
-/* Logged-in users (0.8.687): a user with several sessions is one folded row – the chevron shows or hides the sessions below it. */
+/* Logged-in users: a user with several sessions is one folded row – the chevron shows or hides the sessions below it. */
 (function () {
 	'use strict';
 	document.querySelectorAll('tr.nuSessGroup').forEach(function (g) {

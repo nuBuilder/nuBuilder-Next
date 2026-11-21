@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Data export (0.8.758): saved exports of tables, views and queries to Excel (.xlsx) or CSV – Admin tools → Data export (?p=dataexport,
+ * Data export: saved exports of tables, views and queries to Excel (.xlsx) or CSV – Admin tools → Data export (?p=dataexport,
  * admin right dataexport) and the REST API (/v1/exports). An export (zzzzsys_nunext_export) has one or more DATASETS – each a sheet of
  * the workbook or a CSV file (several → ZIP):
  *   {name, source: table | sql | select, table, columns: [{col, head, fmt}], where: {m: all|any, c: [[col, op, value, value2], …]},
@@ -480,7 +480,8 @@ final class NuDataExport
 					$byName = [];
 					foreach ($meta as $i => $m) $byName[$m['name']] = $i;
 					$pick = [];
-					foreach ($d['columns'] as $c) if (isset($byName[$c['col']])) $pick[] = ['col' => $c['col'], 'head' => $c['head'] !== '' ? $c['head'] : $c['col'], 'fmt' => $c['fmt'], 'kind' => $meta[$byName[$c['col']]]['kind'], 'i' => $byName[$c['col']]];
+					foreach ($d['columns'] as $c) if (isset($byName[$c['col']])) $pick[] = ['col' => $c['col'], 'head' => $c['head'] !== '' ? $c['head'] : $c['col'],
+						'fmt' => $c['fmt'], 'kind' => $meta[$byName[$c['col']]]['kind'], 'i' => $byName[$c['col']]];
 					if (!$pick) foreach ($meta as $i => $m) $pick[] = ['col' => $m['name'], 'head' => $m['name'], 'fmt' => '', 'kind' => $m['kind'], 'i' => $i];
 					$cols = $pick;
 				} else {
@@ -503,8 +504,8 @@ final class NuDataExport
 				unset($c);
 				return ['cols' => $cols, 'rows' => $n, 'sample' => $sample];
 			} finally {
-				if ($st) { try { $st->closeCursor(); } catch (Throwable) {} }   // an open unbuffered cursor would block the ROLLBACK of readOnly()
-				if ($buffered !== null) { try { $pdo->setAttribute(nu_pdo_mysql_buffered(), $buffered); } catch (Throwable) {} }
+				if ($st) { try { $st->closeCursor(); } catch (Throwable $ig) { nu_ignored($ig); } }   // an open unbuffered cursor would block the ROLLBACK of readOnly()
+				if ($buffered !== null) { try { $pdo->setAttribute(nu_pdo_mysql_buffered(), $buffered); } catch (Throwable $ig) { nu_ignored($ig); } }
 			}
 		}, self::QUERY_SECONDS);
 	}
@@ -664,7 +665,8 @@ final class NuDataExport
 			$line = [];
 			foreach ($r as $k => $v) {
 				$c = $res['cols'][$k];
-				$line[] = $v === null ? null : ($v instanceof DateTimeInterface ? $v->format($c['kind'] === 'date' ? 'Y-m-d' : 'Y-m-d H:i:s') : (is_bool($v) ? ($v ? 'true' : 'false') : mb_substr((string)$v, 0, 200)));
+				$line[] = $v === null ? null : ($v instanceof DateTimeInterface ? $v->format($c['kind'] === 'date' ? 'Y-m-d' : 'Y-m-d H:i:s') : (is_bool($v) ? ($v ? 'true' : 'false') : mb_substr((string)$v,
+					0, 200)));
 			}
 			$rows[] = $line;
 		}

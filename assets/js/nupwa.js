@@ -1,4 +1,4 @@
-/* Installable app (0.8.1136): registers the service worker (core/nupwa.php) and offers "Install app" in the user menu. */
+/* Installable app: registers the service worker (core/nupwa.php) and offers "Install app" in the user menu. */
 (function () {
 	'use strict';
 	var meta = document.querySelector('meta[name="nu-pwa"]');
@@ -18,7 +18,7 @@
 	var deferred = null;
 	function item() { return document.getElementById('nuMenuInstall'); }
 	function show(yes) { var li = document.getElementById('nuMenuInstallLi'); if (li) li.hidden = !yes; }
-	// 0.8.1195: the event is kept for the menu entry; preventDefault() only on touch screens, where it stops Chrome's own mini bar –
+	// the event is kept for the menu entry; preventDefault() only on touch screens, where it stops Chrome's own mini bar –
 	// on desktops there is no such bar, and the call only made Chrome log "Banner not shown: … preventDefault() called" on every page
 	window.addEventListener('beforeinstallprompt', function (e) {
 		if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) e.preventDefault();

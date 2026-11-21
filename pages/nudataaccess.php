@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Data access of a form (0.8.480, handover specs 04 + 07): ?p=dataaccess&f=<form id>
+ * Data access of a form (handover specs 04 + 07): ?p=dataaccess&f=<form id>
  *   Fields        – default mode and rules per field (core/nufieldaccess.php, table zzzzsys_nunext_object_access)
  *   List columns  – visibility of the browse columns per subject (core/nubrowseaccess.php, sbr_json → nunext.access)
  *   Access level  – all fields and columns of the form for one access level (writes the "access" rules of that level)
@@ -46,57 +46,15 @@ $posted = static function (array $rows, bool $columns = false): array {
 	return $out;
 };
 
-if (nu_is_post()) {
-	if (!$canSave) { http_response_code(403); nu_fatal(t('err_forbidden'), t('err_forbidden_hint'), true); }
-	$a = nu_post('action');
-	try {
-		if ($a === 'save_fields') {
-			foreach ((array)($_POST['rules'] ?? []) as $oid => $rows) {
-				if (!isset($fields[(string)$oid])) continue;
-				NuFieldAccess::saveObject($fields[(string)$oid], $posted((array)$rows));
-			}
-			$tab = 'fields';
-		} elseif ($a === 'save_columns') {
-			foreach ((array)($_POST['cols'] ?? []) as $bid => $c) {
-				if (!isset($browse[(string)$bid]) || !is_array($c)) continue;
-				NuBrowseAccess::save((string)$bid, (string)($c['default'] ?? 'show'), $posted((array)($c['rules'] ?? []), true));
-			}
-			$tab = 'columns';
-		} elseif ($a === 'save_level') {
-			$lvl = nu_post('level');
-			if (!isset($levels[$lvl])) throw new RuntimeException(t('err_invalid'));
-			foreach ((array)($_POST['lf'] ?? []) as $oid => $mode) {
-				$o = $fields[(string)$oid] ?? null;
-				if ($o === null) continue;
-				$rules = array_values(array_filter(NuFieldAccess::rulesOf($o), static fn($r) => !($r['type'] === 'access' && $r['subject'] === $lvl)));
-				if (in_array((string)$mode, NuFieldAccess::MODES, true)) $rules[] = ['type' => 'access', 'subject' => $lvl, 'mode' => (string)$mode];
-				NuFieldAccess::saveObject($o, $rules);
-			}
-			foreach ((array)($_POST['lc'] ?? []) as $bid => $mode) {
-				$b = $browse[(string)$bid] ?? null;
-				if ($b === null) continue;
-				$cur = NuBrowseAccess::rules($b) ?? ['default' => 'show', 'rules' => []];
-				$rules = array_values(array_filter($cur['rules'], static fn($r) => !($r['type'] === 'access' && $r['subject'] === $lvl)));
-				if (in_array((string)$mode, ['show', 'hide'], true)) $rules[] = ['type' => 'access', 'subject' => $lvl, 'mode' => (string)$mode];
-				NuBrowseAccess::save((string)$bid, $cur['default'], $rules);
-			}
-			$tab = 'level';
-		} else {
-			throw new RuntimeException(t('err_invalid'));
-		}
-		nu_flash('success', t('da_saved'));
-	} catch (Throwable $e) {
-		nu_flash('danger', t('form_error') . ' ' . $e->getMessage());
-		$tab = 'fields';
-	}
-	nu_redirect(nu_url('dataaccess', ['f' => $meta->id, 'tab' => $tab, 'lvl' => $a === 'save_level' ? nu_post('level') : null]) . '#da_' . $tab);
-}
+['canSave' => $canSave, 'oid' => $oid, 'fields' => $fields, 'bid' => $bid, 'browse' => $browse, 'levels' => $levels, 'o' => $o, 'r' => $r, 'b' => $b, 'cur' => $cur, 'meta' => $meta]
+	= NuDataaccessPage::post(get_defined_vars());   // the POST actions (code review R7, nudataaccesspage.php)
 
 NuFieldAccess::reset();
 $cat = NuSubject::catalog();
 $typeOpts = ['default' => t('da_type_default'), 'access' => t('da_type_access'), 'user' => t('da_type_user'), 'perm' => t('da_type_perm'), 'team' => t('da_type_team'), 'dept' => t('da_type_dept')];
 $modeLabel = static fn(string $m): string => t('da_mode_' . $m);
-$nubAccess = static fn(array $o): string => (string)$o['sob_all_access'] === '9' ? t('da_nub_condition') : t('bf_access_' . (in_array((string)$o['sob_all_access'], ['0', '1', '2', '3', '4'], true) ? (string)$o['sob_all_access'] : '0'));
+$nubAccess = static fn(array $o): string => (string)$o['sob_all_access'] === '9' ? t('da_nub_condition') : t('bf_access_'
+	. (in_array((string)$o['sob_all_access'], ['0', '1', '2', '3', '4'], true) ? (string)$o['sob_all_access'] : '0'));
 $label = static fn(array $o): string => trim(strip_tags((string)$o['sob_all_label'])) ?: (string)$o['sob_all_id'];
 $subjectName = static function (string $type, string $subject) use ($cat): string {
 	foreach ($cat[$type] ?? [] as [$v, $l]) if ((string)$v === $subject) return $l;
@@ -118,10 +76,13 @@ $fieldRow = static function (string $oid, string $n, array $r) use ($sel, $typeO
 	$type = (string)($r['type'] ?? 'access');
 	return '<tr class="daRule">'
 		. '<td>' . $sel($p . '[type]', $typeOpts, $type, 'form-select form-select-sm daType', $ro . ' aria-label="' . h(t('da_type')) . '"') . '</td>'
-		. '<td><input class="form-control form-control-sm daSubject" name="' . h($p . '[subject]') . '" value="' . h((string)($r['subject'] ?? '')) . '" list="da_dl_' . h($type) . '" aria-label="' . h(t('da_subject')) . '"' . ($type === 'default' ? ' disabled' : '') . $ro . '></td>'
+		. '<td><input class="form-control form-control-sm daSubject" name="' . h($p . '[subject]') . '" value="' . h((string)($r['subject'] ?? ''))
+			. '" list="da_dl_' . h($type) . '" aria-label="' . h(t('da_subject')) . '"' . ($type === 'default' ? ' disabled' : '') . $ro . '></td>'
 		. '<td>' . $sel($p . '[mode]', $modes, (string)($r['mode'] ?? 'prot'), 'form-select form-select-sm daMode', $ro . ' aria-label="' . h(t('da_mode')) . '"') . '</td>'
-		. '<td><input class="form-control form-control-sm" name="' . h($p . '[mask]') . '" value="' . h((string)($r['mask'] ?? '')) . '" placeholder="last:4" aria-label="' . h(t('da_mask')) . '"' . $ro . '></td>'
-		. '<td><input class="form-control form-control-sm font-monospace" name="' . h($p . '[condition]') . '" value="' . h((string)($r['condition'] ?? '')) . '" aria-label="' . h(t('da_condition')) . '"' . $ro . '></td>'
+		. '<td><input class="form-control form-control-sm" name="' . h($p . '[mask]') . '" value="' . h((string)($r['mask'] ?? ''))
+			. '" placeholder="last:4" aria-label="' . h(t('da_mask')) . '"' . $ro . '></td>'
+		. '<td><input class="form-control form-control-sm font-monospace" name="' . h($p . '[condition]') . '" value="' . h((string)($r['condition'] ?? ''))
+			. '" aria-label="' . h(t('da_condition')) . '"' . $ro . '></td>'
 		. '<td><input class="form-control form-control-sm" name="' . h($p . '[note]') . '" value="' . h((string)($r['note'] ?? '')) . '" aria-label="' . h(t('da_note')) . '"' . $ro . '></td>'
 		. '<td class="text-center"><input class="form-check-input" type="checkbox" name="' . h($p . '[remove]') . '" value="1" aria-label="' . h(t('da_remove')) . '"' . $ro . '></td></tr>';
 };
@@ -130,8 +91,10 @@ $colRow = static function (string $bid, string $n, array $r) use ($sel, $typeOpt
 	$type = (string)($r['type'] ?? 'access');
 	return '<tr class="daRule">'
 		. '<td>' . $sel($p . '[type]', array_diff_key($typeOpts, ['default' => 1]), $type, 'form-select form-select-sm daType', $ro . ' aria-label="' . h(t('da_type')) . '"') . '</td>'
-		. '<td><input class="form-control form-control-sm daSubject" name="' . h($p . '[subject]') . '" value="' . h((string)($r['subject'] ?? '')) . '" list="da_dl_' . h($type) . '" aria-label="' . h(t('da_subject')) . '"' . $ro . '></td>'
-		. '<td>' . $sel($p . '[mode]', ['hide' => t('da_hide'), 'show' => t('da_show')], (string)($r['mode'] ?? 'hide'), 'form-select form-select-sm', $ro . ' aria-label="' . h(t('da_mode')) . '"') . '</td>'
+		. '<td><input class="form-control form-control-sm daSubject" name="' . h($p . '[subject]') . '" value="' . h((string)($r['subject'] ?? ''))
+			. '" list="da_dl_' . h($type) . '" aria-label="' . h(t('da_subject')) . '"' . $ro . '></td>'
+		. '<td>'
+			. $sel($p . '[mode]', ['hide' => t('da_hide'), 'show' => t('da_show')], (string)($r['mode'] ?? 'hide'), 'form-select form-select-sm', $ro . ' aria-label="' . h(t('da_mode')) . '"') . '</td>'
 		. '<td class="text-center"><input class="form-check-input" type="checkbox" name="' . h($p . '[remove]') . '" value="1" aria-label="' . h(t('da_remove')) . '"' . $ro . '></td></tr>';
 };
 $tip = static fn(string $text): string => nu_info_tip($text);
@@ -151,7 +114,9 @@ nu_layout_start(t('da_title_form', $meta->description()), 'forms');
 
 <ul class="nav nav-tabs mt-3" role="tablist" id="daTabs">
 	<?php foreach (['fields' => 'da_tab_fields', 'columns' => 'da_tab_columns', 'level' => 'da_tab_level', 'preview' => 'da_tab_preview'] as $k => $key): ?>
-		<li class="nav-item" role="presentation"><button class="nav-link<?= $tab === $k ? ' active' : '' ?>" id="da_<?= $k ?>_tab" data-bs-toggle="tab" data-bs-target="#da_<?= $k ?>" type="button" role="tab" aria-controls="da_<?= $k ?>" aria-selected="<?= $tab === $k ? 'true' : 'false' ?>"><?= h(t($key)) ?></button></li>
+		<li class="nav-item" role="presentation"><button class="nav-link<?= $tab === $k ? ' active' : '' ?>" id="da_<?= $k ?>_tab" data-bs-toggle="tab"
+			data-bs-target="#da_<?= $k ?>" type="button" role="tab" aria-controls="da_<?= $k ?>"
+			aria-selected="<?= $tab === $k ? 'true' : 'false' ?>"><?= h(t($key)) ?></button></li>
 	<?php endforeach; ?>
 </ul>
 <div class="tab-content card card-body border-top-0 rounded-top-0 shadow-sm mb-4">
@@ -256,7 +221,8 @@ nu_layout_start(t('da_title_form', $meta->description()), 'forms');
 				<?php foreach ($browse as $bid => $b):
 					$acc = NuBrowseAccess::rules($b); $mine = '';
 					foreach ($acc['rules'] ?? [] as $r) if ($r['type'] === 'access' && $r['subject'] === $lvl) $mine = $r['mode']; ?>
-					<tr><td><i class="bi bi-layout-three-columns me-1" aria-hidden="true"></i><?= h(trim(strip_tags((string)$b['sbr_title'])) ?: (string)$b['sbr_display']) ?> <span class="small text-body-secondary"><?= h(t('da_column')) ?></span></td>
+					<tr><td><i class="bi bi-layout-three-columns me-1"
+						aria-hidden="true"></i><?= h(trim(strip_tags((string)$b['sbr_title'])) ?: (string)$b['sbr_display']) ?> <span class="small text-body-secondary"><?= h(t('da_column')) ?></span></td>
 						<td class="small"><?= h($acc ? t('da_col_default') . ': ' . t($acc['default'] === 'hide' ? 'da_hide' : 'da_show') : t('da_show')) ?></td>
 						<td><?= $sel('lc[' . $bid . ']', ['' => t('da_no_rule'), 'show' => t('da_show'), 'hide' => t('da_hide')], $mine, 'form-select form-select-sm', ' aria-label="' . h((string)$b['sbr_title']) . '"' . $ro) ?></td>
 						<td></td></tr>
@@ -290,13 +256,16 @@ nu_layout_start(t('da_title_form', $meta->description()), 'forms');
 				<tbody>
 				<?php foreach ($fields as $oid => $o): [$m, $r] = $rows[$oid];
 					$warn = in_array((string)$o['sob_all_validate'], ['1', '3'], true) && in_array($m, ['wh', 'prot', 'mask', 'upd'], true); ?>
-					<tr data-field="<?= h((string)$o['sob_all_id']) ?>" data-mode="<?= h($m) ?>"><td><code><?= h((string)$o['sob_all_id']) ?></code> <span class="small text-body-secondary"><?= h($label($o)) ?></span></td>
+					<tr data-field="<?= h((string)$o['sob_all_id']) ?>"
+						data-mode="<?= h($m) ?>"><td><code><?= h((string)$o['sob_all_id']) ?></code> <span class="small text-body-secondary"><?= h($label($o)) ?></span></td>
 						<td><span class="badge <?= in_array($m, ['wh', 'mask', 'prot'], true) ? 'text-bg-warning' : 'text-bg-secondary' ?>"><?= h($modeLabel($m)) ?></span>
-							<?php if ($warn): ?><i class="bi bi-exclamation-triangle text-warning ms-1" role="img" aria-label="<?= h(t('da_warn_required')) ?>" title="<?= h(t('da_warn_required')) ?>"></i><?php endif; ?></td>
+							<?php if ($warn): ?><i class="bi bi-exclamation-triangle text-warning ms-1" role="img" aria-label="<?= h(t('da_warn_required')) ?>"
+								title="<?= h(t('da_warn_required')) ?>"></i><?php endif; ?></td>
 						<td class="small"><?= h($r === null ? t('da_rule_nub') : ($r['type'] === 'default' ? t('da_type_default') : t('da_type_' . $r['type']) . ' ' . $subjectName($r['type'], $r['subject']))) ?></td></tr>
 				<?php endforeach; ?>
 				<?php foreach ($browse as $bid => $b): $st = NuBrowseAccess::state($meta, $b, $me); ?>
-					<tr data-column="<?= h($bid) ?>" data-state="<?= h(explode(':', $st)[0]) ?>"><td><i class="bi bi-layout-three-columns me-1" aria-hidden="true"></i><?= h(trim(strip_tags((string)$b['sbr_title'])) ?: (string)$b['sbr_display']) ?> <span class="small text-body-secondary"><?= h(t('da_column')) ?></span></td>
+					<tr data-column="<?= h($bid) ?>" data-state="<?= h(explode(':', $st)[0]) ?>"><td><i class="bi bi-layout-three-columns me-1"
+						aria-hidden="true"></i><?= h(trim(strip_tags((string)$b['sbr_title'])) ?: (string)$b['sbr_display']) ?> <span class="small text-body-secondary"><?= h(t('da_column')) ?></span></td>
 						<td><span class="badge <?= $st === 'show' ? 'text-bg-secondary' : 'text-bg-warning' ?>"><?= h(t($st === 'show' ? 'da_show' : ($st === 'hide' ? 'da_hide' : 'da_mode_mask'))) ?></span></td><td></td></tr>
 				<?php endforeach; ?>
 				</tbody>

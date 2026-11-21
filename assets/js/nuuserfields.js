@@ -1,4 +1,4 @@
-/* Custom user fields (0.8.454): the settings of one field – choices only for "Choice list", "Unique" only for the types that support it. */
+/* Custom user fields: the settings of one field – choices only for "Choice list", "Unique" only for the types that support it. */
 (function () {
 	'use strict';
 	var type = document.getElementById('ufType');
@@ -13,7 +13,7 @@
 	sync();
 })();
 
-/* Default (0.8.1074): Insert ▾ puts a keyword / template at the cursor; below the field an example of the worked-out value, checked by the server. */
+/* Default: Insert ▾ puts a keyword / template at the cursor; below the field an example of the worked-out value, checked by the server. */
 (function () {
 	'use strict';
 	var inp = document.getElementById('ufDefault'), ex = document.getElementById('ufDefaultEx');

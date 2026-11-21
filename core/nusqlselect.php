@@ -44,7 +44,7 @@ final class NuSqlSelect
 	 * [ssc_type, ssc_field, ssc_clause, ssc_sort, ssc_order]). @return array{0: string, 1: array} [id, errors]
 	 */
 	/**
-	 * Same graphic although the builder writes it out fully (0.8.957): nuBuilder Forte leaves a table's checkbox list short when the last
+	 * Same graphic although the builder writes it out fully: nuBuilder Forte leaves a table's checkbox list short when the last
 	 * columns are not ticked – a missing entry is false.
 	 */
 	private static function sameGraphic(string $old, string $new): bool
@@ -75,7 +75,8 @@ final class NuSqlSelect
 		];
 		$errors = [];
 		if ($row['sse_description'] === '') $errors['sse_description'] = t('err_required');
-		if ($row['sse_code'] !== '' && (int)$db->value('SELECT COUNT(*) FROM zzzzsys_select WHERE sse_code = ? AND zzzzsys_select_id <> ?', [$row['sse_code'], $id])) $errors['sse_code'] = t('sqb_err_code_taken');
+		if ($row['sse_code'] !== ''
+			&& (int)$db->value('SELECT COUNT(*) FROM zzzzsys_select WHERE sse_code = ? AND zzzzsys_select_id <> ?', [$row['sse_code'], $id])) $errors['sse_code'] = t('sqb_err_code_taken');
 		if ($row['sse_json'] !== '' && !is_array(json_decode($row['sse_json'], true))) $errors['sse_json'] = t('sqb_err_json');
 		if (trim($row['sse_sql']) === '') $errors['sse_sql'] = t('sqb_err_empty');
 		if ($errors) return [$id, $errors];
@@ -95,7 +96,7 @@ final class NuSqlSelect
 				$id = nu_id();
 				$db->insert(self::TABLE, ['zzzzsys_select_id' => $id] + $row);
 			} else {
-				// an empty graphic the builder writes for nuBuilder Forte's NULL is no change (0.8.956)
+				// an empty graphic the builder writes for nuBuilder Forte's NULL is no change
 				$old = $db->one('SELECT * FROM ' . self::TABLE . ' WHERE zzzzsys_select_id = ?', [$id]);
 				if ($old && $old['sse_json'] === null && is_array($j = json_decode($row['sse_json'], true)) && empty($j['tables']) && empty($j['joins'])) unset($row['sse_json']);
 				elseif ($old && self::sameGraphic((string)$old['sse_json'], $row['sse_json'])) unset($row['sse_json']);
@@ -103,7 +104,7 @@ final class NuSqlSelect
 				$db->update(self::TABLE, $row, 'zzzzsys_select_id', $id);
 			}
 			// keep the clause rows (and their ids) that did not change, reuse the others – as nuBuilder's sub-form, which only
-			// writes edited rows; a save without a change leaves zzzzsys_select_clause as it was (0.8.364)
+			// writes edited rows; a save without a change leaves zzzzsys_select_clause as it was
 			$left = [];
 			foreach ($db->all('SELECT * FROM zzzzsys_select_clause WHERE ssc_zzzzsys_select_id = ? ORDER BY zzzzsys_select_clause_id', [$id]) as $o) $left[(string)$o['zzzzsys_select_clause_id']] = $o;
 			$same = static fn(array $o, array $c): bool => !array_filter(array_keys($c), static fn($k) => (string)($o[$k] ?? '') !== (string)($c[$k] ?? ''));
@@ -155,7 +156,7 @@ final class NuSqlSelect
 	public const DEMO_HIDDEN = NuDemo::HIDDEN_TABLES;
 
 	/**
-	 * Runs a SELECT typed in the SQL builder (first $limit rows). Since 0.8.207: exactly one reading statement (NuDemo::readOnlySql –
+	 * Runs a SELECT typed in the SQL builder (first $limit rows). exactly one reading statement (NuDemo::readOnlySql –
 	 * no INTO, locks, LOAD_FILE, writes after a WITH), inside a rolled-back read-only transaction with a 15 s time limit
 	 * (NuDB::readOnly). Demo visitors cannot read DEMO_HIDDEN / zzzzsys_nunext_* tables; password hashes are masked for them.
 	 */
@@ -165,7 +166,7 @@ final class NuSqlSelect
 		if (!NuDemo::readOnlySql(NuHash::replace($sql, [], NuHash::RAW))) throw new RuntimeException(t('sqb_err_select_only'));
 		$sql = NuHash::replace($sql, NuHash::plain(), NuHash::SQL);
 		if (!NuDemo::readOnlySql($sql)) throw new RuntimeException(t('sqb_err_select_only'));
-		if (NuDemo::active() && NuDemo::touchesHidden($sql)) throw new RuntimeException(t('demo_not_available'));   // 0.8.341: every word, not only FROM / JOIN
+		if (NuDemo::active() && NuDemo::touchesHidden($sql)) throw new RuntimeException(t('demo_not_available'));   // every word, not only FROM / JOIN
 		$db = nu_db();
 		return $db->readOnly(static function (NuDB $db) use ($sql, $limit): array {
 			$st = $db->run($sql);

@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Dashboards (0.8.298, Admin tools → Dashboards, globeadmin): KPI tiles, ApexCharts charts and small tables from SQL, a saved query of the
+ * Dashboards (Admin tools → Dashboards, globeadmin): KPI tiles, ApexCharts charts and small tables from SQL, a saved query of the
  * SQL builder (zzzzsys_select) or a PHP procedure (zzzzsys_php, returns its rows with nuDashboardData($rows)).
  *   - shown on the start page of users (on_home; access = access level ids, empty = every user) and anywhere on a form:
  *     an HTML object with <div data-nu-dashboard="CODE"></div> (nuBuilder shows an empty div) or nuNextDashboard('CODE', 'element_id');
@@ -115,7 +115,7 @@ final class NuDashboard
 		if (!$u) return false;
 		if ($u['globeadmin'] || NuAdmin::can('dashboards', 'view')) return true;
 		$a = self::access($d);
-		return !$a || (bool)array_intersect(NuUserAccess::levels($u), $a);   // main or additional access level (0.8.585)
+		return !$a || (bool)array_intersect(NuUserAccess::levels($u), $a);   // main or additional access level
 	}
 
 	/** Dashboards on the start page of the current user (not for the globeadmin – his start page is the tiles). */
@@ -150,7 +150,8 @@ final class NuDashboard
 			WHERE o.sob_all_type = 'html' AND o.sob_html_code LIKE ? ORDER BY f.sfo_code", [$like]) as $r) {
 			if (preg_match('/[\'"]' . preg_quote($code, '/') . '[\'"]/', (string)$r['sob_html_code'])) $out[] = [(string)$r['sfo_code'], (string)$r['sob_all_id']];
 		}
-		foreach ($db->all('SELECT sfo_code, sfo_javascript, sfo_edit_javascript, sfo_browse_javascript FROM zzzzsys_form WHERE sfo_javascript LIKE ? OR sfo_edit_javascript LIKE ? OR sfo_browse_javascript LIKE ?', [$like, $like, $like]) as $r) {
+		foreach ($db->all('SELECT sfo_code, sfo_javascript, sfo_edit_javascript, sfo_browse_javascript FROM zzzzsys_form WHERE sfo_javascript LIKE ? OR sfo_edit_javascript LIKE ? OR sfo_browse_javascript LIKE ?',
+			[$like, $like, $like]) as $r) {
 			if (preg_match('/nuNextDashboard\s*\(\s*[\'"]' . preg_quote($code, '/') . '[\'"]/', $r['sfo_javascript'] . $r['sfo_edit_javascript'] . $r['sfo_browse_javascript'])) $out[] = [(string)$r['sfo_code'], 'JavaScript'];
 		}
 		return $out;
@@ -220,7 +221,7 @@ final class NuDashboard
 	/**
 	 * Runs the widget's source with the hash and returns ['columns' => [...], 'rows' => [[...]], 'more' => bool] (values as text or number).
 	 * Results are cached per user for the widget's cache seconds ($force = read again).
-	 * $free (0.8.1341, the dashboard API): the session lock is given up while a query runs, so the widgets of a dashboard are answered
+	 * $free (the dashboard API): the session lock is given up while a query runs, so the widgets of a dashboard are answered
 	 * side by side and the user's other pages do not wait for a slow one. A procedure keeps the session – its code may use it.
 	 */
 	public static function data(array $w, array $hash, bool $force = false, bool $free = false): array
@@ -230,12 +231,12 @@ final class NuDashboard
 		foreach (array_keys(NuHash::now()) as $k) unset($h[$k]);
 		unset($h['TABLE_ID'], $h['SESSION_ID']);
 		$key = md5((string)$w['zzzzsys_nunext_widget_id'] . '|' . md5((string)$w['source'] . (string)$w['query'] . (string)$w['options']) . '|' . json_encode($h));
-		$hit = $_SESSION['nu_dash_cache'][$key] ?? null;
+		$hit = $_SESSION[NuSess::DASH_CACHE][$key] ?? null;
 		if (!$force && $ttl > 0 && is_array($hit) && $hit[0] > time()) return $hit[1] + ['cached' => true];
 		if ($free && (string)$w['source'] !== 'php') nu_session_release();
 		$res = self::run($w, $hash);
 		if ($ttl > 0) nu_session_write(static function () use ($key, $ttl, $res): void {
-			$cache = &$_SESSION['nu_dash_cache'];
+			$cache = &$_SESSION[NuSess::DASH_CACHE];
 			if (!is_array($cache)) $cache = [];
 			$cache[$key] = [time() + $ttl, $res];
 			if (count($cache) > 60) { uasort($cache, static fn($a, $b) => $a[0] <=> $b[0]); $cache = array_slice($cache, -60, null, true); }
@@ -254,7 +255,7 @@ final class NuDashboard
 			if (trim($sql) === '') throw new RuntimeException(t('dash_err_no_source'));
 			$res = self::runSql($sql, $hash, $limit);
 		}
-		if ($w['type'] === 'calendar') {                      // calendar (0.8.1165): columns id, start, end, title, color, group, allday → events
+		if ($w['type'] === 'calendar') {                      // calendar: columns id, start, end, title, color, group, allday → events
 			$ev = NuCalendar::fromRows($res['columns'], $res['rows']);
 			if (!empty($ev['error'])) throw new RuntimeException($ev['error']);
 			$res['events'] = $ev['events'];
@@ -476,7 +477,7 @@ final class NuDashboard
 				default => '',
 			};
 		}
-		// table rows → their record: the form's link with r=<value of the column nu_record_id> (0.8.682)
+		// table rows → their record: the form's link with r=<value of the column nu_record_id>
 		$rowLink = in_array($w['type'], ['table', 'calendar'], true) && $o['link_type'] === 'form' && $o['link'] !== '' ? nu_url('form', ['f' => $o['link'], 'r' => '__NU_RID__']) : '';
 		return ['id' => (string)$w['zzzzsys_nunext_widget_id'], 'type' => (string)$w['type'], 'title' => (string)$w['title'], 'link' => $link,
 			'row_link' => $rowLink, 'opt' => array_diff_key($o, array_flip(['link', 'link_type', 'cache']))];
@@ -489,7 +490,8 @@ final class NuDashboard
 	public static function csp(): void
 	{
 		self::$nonce = rtrim(strtr(base64_encode(random_bytes(16)), '+/', '-_'), '=');
-		header("Content-Security-Policy: default-src 'self'; img-src 'self' data:; style-src 'self' 'nonce-" . self::$nonce . "'; style-src-attr 'unsafe-inline'; script-src 'self'; font-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'");
+		header("Content-Security-Policy: default-src 'self'; img-src 'self' data:; style-src 'self' 'nonce-" . self::$nonce
+			. "'; style-src-attr 'unsafe-inline'; script-src 'self'; font-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'");
 	}
 
 	/** Style nonce of this page (ApexCharts' legend <style>, chart.nonce) – only set where csp() ran. */

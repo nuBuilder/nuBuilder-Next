@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * One form as data (0.8.386): all rows that define it – form, tabs, objects, events, browse columns, form / lookup PHP and the
+ * One form as data: all rows that define it – form, tabs, objects, events, browse columns, form / lookup PHP and the
  * SQL builder rows. Used by the history (snapshot / restore), form drafts (copy, preview, publish) and the compare view.
  *
  * Format: {v: 2, form: row, tabs: [rows], objects: [rows], events: [rows], browse: [rows], php: [rows], selects: [rows], clauses: [rows]}.
@@ -158,12 +158,15 @@ final class NuFormSnapshot
 			$f = $fields($ta[$id], $r, ['syt_zzzzsys_form_id', 'syt_order']);
 			if ($f) $d['tabs']['changed'][] = ['id' => $id, 'title' => $r['syt_title'] ?? '', 'fields' => $f];
 		}
-		$ord = static function (array $rows, string $o, string $pk): array { usort($rows, static fn($x, $y) => [(int)($x[$o] ?? 0), $x[$pk]] <=> [(int)($y[$o] ?? 0), $y[$pk]]); return array_column($rows, $pk); };
+		$ord = static function (array $rows, string $o,
+			string $pk): array { usort($rows, static fn($x, $y) => [(int)($x[$o] ?? 0), $x[$pk]] <=> [(int)($y[$o] ?? 0), $y[$pk]]); return array_column($rows, $pk); };
 		$common = array_intersect(array_keys($ta), array_keys($tb));
-		$d['tabs']['order'] = array_values(array_intersect($ord(array_values($ta), 'syt_order', 'zzzzsys_tab_id'), $common)) !== array_values(array_intersect($ord(array_values($tb), 'syt_order', 'zzzzsys_tab_id'), $common));
+		$d['tabs']['order'] = array_values(array_intersect($ord(array_values($ta), 'syt_order', 'zzzzsys_tab_id'),
+			$common)) !== array_values(array_intersect($ord(array_values($tb), 'syt_order', 'zzzzsys_tab_id'), $common));
 		// objects
 		$oa = $byId($A['objects'], 'zzzzsys_object_id'); $ob = $byId($B['objects'], 'zzzzsys_object_id');
-		$sum = static fn(array $r) => ['id' => $r['zzzzsys_object_id'] ?? '', 'sob_all_id' => $r['sob_all_id'] ?? '', 'type' => $r['sob_all_type'] ?? '', 'label' => $r['sob_all_label'] ?? '', 'tab' => $r['sob_all_zzzzsys_tab_id'] ?? ''];
+		$sum = static fn(array $r) => ['id' => $r['zzzzsys_object_id'] ?? '', 'sob_all_id' => $r['sob_all_id'] ?? '', 'type' => $r['sob_all_type'] ?? '',
+			'label' => $r['sob_all_label'] ?? '', 'tab' => $r['sob_all_zzzzsys_tab_id'] ?? ''];
 		$d['objects'] = ['added' => [], 'removed' => [], 'changed' => [], 'moved' => 0, 'order' => false];
 		foreach ($ob as $id => $r) if (!isset($oa[$id])) $d['objects']['added'][] = $sum($r);
 		foreach ($oa as $id => $r) if (!isset($ob[$id])) $d['objects']['removed'][] = $sum($r);
@@ -176,7 +179,8 @@ final class NuFormSnapshot
 			else $d['objects']['moved']++;
 		}
 		// events: per object and event name
-		$ev = static function (array $rows): array { $o = []; foreach ($rows as $r) { $k = ($r['sev_zzzzsys_object_id'] ?? '') . "\n" . strtolower(trim((string)($r['sev_event'] ?? ''))); $o[$k] = ltrim(($o[$k] ?? '') . "\n" . ($r['sev_javascript'] ?? '')); } return $o; };
+		$ev = static function (array $rows): array { $o = []; foreach ($rows as $r) { $k = ($r['sev_zzzzsys_object_id'] ?? '') . "\n"
+			. strtolower(trim((string)($r['sev_event'] ?? ''))); $o[$k] = ltrim(($o[$k] ?? '') . "\n" . ($r['sev_javascript'] ?? '')); } return $o; };
 		$ea = $ev($A['events']); $eb = $ev($B['events']);
 		$d['events'] = [];
 		foreach (array_unique(array_merge(array_keys($ea), array_keys($eb))) as $k) {
@@ -204,7 +208,8 @@ final class NuFormSnapshot
 			if ($f) $d['browse']['changed'][] = ['id' => $id, 'title' => $r['sbr_title'] ?? '', 'fields' => $f];
 		}
 		$cb = array_intersect(array_keys($ba), array_keys($bb));
-		$d['browse']['order'] = array_values(array_intersect($ord(array_values($ba), 'sbr_order', 'zzzzsys_browse_id'), $cb)) !== array_values(array_intersect($ord(array_values($bb), 'sbr_order', 'zzzzsys_browse_id'), $cb));
+		$d['browse']['order'] = array_values(array_intersect($ord(array_values($ba), 'sbr_order', 'zzzzsys_browse_id'),
+			$cb)) !== array_values(array_intersect($ord(array_values($bb), 'sbr_order', 'zzzzsys_browse_id'), $cb));
 		$d['sql_builder'] = json_encode([$A['selects'], $A['clauses']]) !== json_encode([$B['selects'], $B['clauses']]);
 		$d['counts'] = [
 			'form' => count($d['form']),

@@ -1,4 +1,4 @@
-/* "Ask AI" (0.8.1099, core/nuaiprovider.php, route ?p=aiask): sends the prompt of an AI dialogue to a configured AI service and puts
+/* "Ask AI" (core/nuaiprovider.php, route ?p=aiask): sends the prompt of an AI dialogue to a configured AI service and puts
    the answer where a pasted answer goes. The dialogue's own check then runs as for a pasted answer – nothing is applied here.
 
    NuAiAsk.mount(host, opt) – host: an element with data-nu-ai (NuAiProvider::host) or opt.data = NuAiProvider::client();

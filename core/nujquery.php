@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * jQuery of the form pages (0.8.741): the bundled 3.7.1 or 4.0.0, or a file the admin puts into custom/jquery/ (never touched by updates,
+ * jQuery of the form pages: the bundled 3.7.1 or 4.0.0, or a file the admin puts into custom/jquery/ (never touched by updates,
  * served through ?p=jqfile because custom/ is deny-all); jQuery Migrate (bundled 3.6.0 for jQuery 3, 4.0.2 for jQuery 4) off / warn (debug
  * build, messages collected per form through ?p=jqwarn) / restore (production build: removed functions back, no messages); a test for the
  * globeadmin only (own jQuery + warnings while users keep theirs). Setting row 'jquery'. Page ?p=jquery (settings centre → Code).
@@ -35,11 +35,7 @@ final class NuJquery
 	public static function settings(): array
 	{
 		if (NuMemo::find('set:jquery', $kept)) return $kept;   // NuMemo (code review R9): a write to the settings drops it
-		$s = [];
-		try {
-			$v = nu_setting_value(self::KEY);
-			$s = is_string($v) ? (json_decode($v, true) ?: []) : [];
-		} catch (Throwable) { /* no settings table yet */ }
+		$s = nu_setting_json(self::KEY);
 		return NuMemo::keep('set:jquery', ['zzzzsys_nunext_setting'], self::clean($s));
 	}
 

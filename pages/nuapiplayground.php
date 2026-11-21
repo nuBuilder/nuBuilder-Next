@@ -9,39 +9,14 @@ defined('NU_ROOT') || exit;
  * POST (JSON, X-CSRF-Token): action token | save | delete | settings. JavaScript: assets/js/nuapiplayground.js.
  */
 
-// admin rights (0.8.323): the globeadmin, or a user whose admin role has the right (core/nuadmin.php)
+// admin rights: the globeadmin, or a user whose admin role has the right (core/nuadmin.php)
 NuAdmin::require('apiclients');
 NuApiPlayground::ensure();
 $login = (string)(NuAuth::user()['login'] ?? 'globeadmin');
 
 // ------------------------------------------------------------------ JSON actions
-if (nu_is_post()) {
-	header('Content-Type: application/json; charset=utf-8');
-	header('Cache-Control: no-store');
-	$in = json_decode((string)file_get_contents('php://input'), true);
-	$in = is_array($in) ? $in : [];
-	$out = ['ok' => false];
-	switch ((string)($in['action'] ?? '')) {
-		case 'token':
-			[$res, $err] = NuApiClient::issueFor((string)($in['client_ref'] ?? ''), (string)($in['scope'] ?? ''), $login);
-			$out = $res ? ['ok' => true, 'token' => $res] : ['ok' => false, 'error' => t('apg_err_token', (string)$err)];
-			break;
-		case 'save':
-			[$req, $errors] = NuApiPlayground::save((array)($in['request'] ?? []), $login);
-			$out = $req ? ['ok' => true, 'request' => $req, 'requests' => NuApiPlayground::requests()] : ['ok' => false, 'errors' => $errors, 'error' => t('err_check_form')];
-			break;
-		case 'delete':
-			$out = NuApiPlayground::delete((string)($in['id'] ?? '')) ? ['ok' => true, 'requests' => NuApiPlayground::requests()] : ['ok' => false, 'error' => t('record_not_found')];
-			break;
-		case 'settings':
-			$out = ['ok' => true, 'settings' => NuApiPlayground::saveSettings((array)($in['settings'] ?? []), $login)];
-			break;
-		default:
-			http_response_code(400);
-			$out = ['ok' => false, 'error' => 'Unknown action'];
-	}
-	nu_json($out);
-}
+['login' => $login]
+	= NuApiplaygroundPage::post(get_defined_vars());   // the POST actions (code review R7, nuapiplaygroundpage.php)
 
 // ------------------------------------------------------------------ page
 $clients = array_map(static fn(array $c) => [
@@ -97,7 +72,8 @@ $data = [
 		'apg_no_saved', 'apg_json_invalid', 'apg_copied', 'apg_var_missing', 'apg_net_error', 'apg_session', 'apg_no_folder', 'apg_need_token', 'apg_ip_hint',
 		'apg_inactive', 'apg_var_auto', 'apg_header_name', 'apg_header_value', 'apg_new', 'remove', 'delete', 'apg_vars_saved'], array_map('t', $k)),
 ];
-$m = static fn(string $meth) => ['GET' => 'text-bg-success', 'POST' => 'text-bg-primary', 'PUT' => 'text-bg-warning', 'PATCH' => 'text-bg-info', 'DELETE' => 'text-bg-danger'][$meth] ?? 'text-bg-secondary';
+$m = static fn(string $meth) => ['GET' => 'text-bg-success', 'POST' => 'text-bg-primary', 'PUT' => 'text-bg-warning', 'PATCH' => 'text-bg-info', 'DELETE' => 'text-bg-danger'][$meth]
+	?? 'text-bg-secondary';
 
 nu_layout_start(t('apg_title'), 'home', ['container' => 'container-fluid', 'body_class' => 'nuApgPage']);
 ?>
@@ -125,15 +101,18 @@ nu_layout_start(t('apg_title'), 'home', ['container' => 'container-fluid', 'body
 		<div class="card shadow-sm apgSide">
 			<div class="card-header p-2">
 				<ul class="nav nav-tabs card-header-tabs small" role="tablist">
-					<li class="nav-item" role="presentation"><button class="nav-link active" id="apgTabSaved" data-bs-toggle="tab" data-bs-target="#apgSaved" type="button" role="tab" aria-controls="apgSaved" aria-selected="true"><i class="bi bi-bookmark me-1"></i><?= h(t('apg_saved_tab')) ?></button></li>
-					<li class="nav-item" role="presentation"><button class="nav-link" id="apgTabEp" data-bs-toggle="tab" data-bs-target="#apgEndpoints" type="button" role="tab" aria-controls="apgEndpoints" aria-selected="false"><i class="bi bi-signpost-split me-1"></i><?= h(t('apg_endpoints_tab')) ?></button></li>
+					<li class="nav-item" role="presentation"><button class="nav-link active" id="apgTabSaved" data-bs-toggle="tab" data-bs-target="#apgSaved"
+						type="button" role="tab" aria-controls="apgSaved" aria-selected="true"><i class="bi bi-bookmark me-1"></i><?= h(t('apg_saved_tab')) ?></button></li>
+					<li class="nav-item" role="presentation"><button class="nav-link" id="apgTabEp" data-bs-toggle="tab" data-bs-target="#apgEndpoints" type="button"
+						role="tab" aria-controls="apgEndpoints" aria-selected="false"><i class="bi bi-signpost-split me-1"></i><?= h(t('apg_endpoints_tab')) ?></button></li>
 				</ul>
 			</div>
 			<div class="tab-content">
 				<div class="tab-pane fade show active" id="apgSaved" role="tabpanel" aria-labelledby="apgTabSaved">
 					<div class="p-2 border-bottom d-flex gap-2">
 						<input class="form-control form-control-sm" type="search" id="apgFind" placeholder="<?= h(t('search_ph')) ?>" aria-label="<?= h(t('search')) ?>">
-						<button class="btn btn-sm btn-outline-primary text-nowrap" type="button" id="apgNew" title="<?= h(t('apg_new')) ?>"><i class="bi bi-plus-lg"></i><span class="visually-hidden"><?= h(t('apg_new')) ?></span></button>
+						<button class="btn btn-sm btn-outline-primary text-nowrap" type="button" id="apgNew"
+							title="<?= h(t('apg_new')) ?>"><i class="bi bi-plus-lg"></i><span class="visually-hidden"><?= h(t('apg_new')) ?></span></button>
 					</div>
 					<div class="list-group list-group-flush small apgList" id="apgSavedList"></div>
 				</div>
@@ -168,7 +147,9 @@ nu_layout_start(t('apg_title'), 'home', ['container' => 'container-fluid', 'body
 						<datalist id="apgScopes"></datalist></div>
 					<div class="col-md-4 d-flex gap-2 align-items-end">
 						<button class="btn btn-sm btn-outline-primary flex-grow-1" type="button" id="apgToken"<?= $clients ? '' : ' disabled' ?>><i class="bi bi-key me-1"></i><?= h(t('apg_get_token')) ?></button>
-						<button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#apgMore" aria-expanded="false" aria-controls="apgMore" title="<?= h(t('apg_more')) ?>"><i class="bi bi-sliders"></i><span class="visually-hidden"><?= h(t('apg_more')) ?></span></button>
+						<button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#apgMore" aria-expanded="false"
+							aria-controls="apgMore"
+							title="<?= h(t('apg_more')) ?>"><i class="bi bi-sliders"></i><span class="visually-hidden"><?= h(t('apg_more')) ?></span></button>
 					</div>
 				</div>
 				<div class="small mt-2 d-flex flex-wrap gap-2 align-items-center">
@@ -206,8 +187,10 @@ nu_layout_start(t('apg_title'), 'home', ['container' => 'container-fluid', 'body
 						<input class="form-control form-control-sm" id="apgFolder" maxlength="100" list="apgFolders" autocomplete="off"><datalist id="apgFolders"></datalist></div>
 					<div class="col-sm-4 d-flex gap-1 align-items-end justify-content-end">
 						<button class="btn btn-sm btn-outline-primary" type="button" id="apgSave"><i class="bi bi-bookmark-check me-1"></i><?= h(t('save')) ?></button>
-						<button class="btn btn-sm btn-outline-secondary" type="button" id="apgSaveNew" title="<?= h(t('apg_save_new')) ?>"><i class="bi bi-files"></i><span class="visually-hidden"><?= h(t('apg_save_new')) ?></span></button>
-						<button class="btn btn-sm btn-outline-danger" type="button" id="apgDelete" title="<?= h(t('delete')) ?>" disabled><i class="bi bi-trash"></i><span class="visually-hidden"><?= h(t('delete')) ?></span></button>
+						<button class="btn btn-sm btn-outline-secondary" type="button" id="apgSaveNew"
+							title="<?= h(t('apg_save_new')) ?>"><i class="bi bi-files"></i><span class="visually-hidden"><?= h(t('apg_save_new')) ?></span></button>
+						<button class="btn btn-sm btn-outline-danger" type="button" id="apgDelete" title="<?= h(t('delete')) ?>"
+							disabled><i class="bi bi-trash"></i><span class="visually-hidden"><?= h(t('delete')) ?></span></button>
 					</div>
 				</div>
 				<div class="input-group">
@@ -221,8 +204,11 @@ nu_layout_start(t('apg_title'), 'home', ['container' => 'container-fluid', 'body
 				<div class="invalid-feedback d-block small" data-for="path"></div>
 
 				<ul class="nav nav-underline small mt-2" role="tablist">
-					<li class="nav-item" role="presentation"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#apgBodyPane" type="button" role="tab" aria-controls="apgBodyPane" aria-selected="true" id="apgBodyTab"><?= h(t('apg_body')) ?></button></li>
-					<li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#apgHeadPane" type="button" role="tab" aria-controls="apgHeadPane" aria-selected="false" id="apgHeadTab"><?= h(t('apg_headers')) ?> <span class="badge text-bg-secondary" id="apgHeadCount">0</span></button></li>
+					<li class="nav-item" role="presentation"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#apgBodyPane" type="button"
+						role="tab" aria-controls="apgBodyPane" aria-selected="true" id="apgBodyTab"><?= h(t('apg_body')) ?></button></li>
+					<li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#apgHeadPane" type="button" role="tab"
+						aria-controls="apgHeadPane" aria-selected="false" id="apgHeadTab"><?= h(t('apg_headers')) ?> <span class="badge text-bg-secondary"
+						id="apgHeadCount">0</span></button></li>
 				</ul>
 				<div class="tab-content pt-2">
 					<div class="tab-pane fade show active" id="apgBodyPane" role="tabpanel" aria-labelledby="apgBodyTab">
@@ -248,16 +234,20 @@ nu_layout_start(t('apg_title'), 'home', ['container' => 'container-fluid', 'body
 				<span id="apgTime" class="small text-body-secondary"></span>
 				<div class="ms-auto d-flex gap-1">
 					<button class="btn btn-sm btn-outline-secondary" type="button" id="apgCurl"><i class="bi bi-terminal me-1"></i><?= h(t('apg_curl')) ?></button>
-					<button class="btn btn-sm btn-outline-secondary" type="button" id="apgCopyBody" title="<?= h(t('copy')) ?>"><i class="bi bi-clipboard"></i><span class="visually-hidden"><?= h(t('copy')) ?></span></button>
+					<button class="btn btn-sm btn-outline-secondary" type="button" id="apgCopyBody"
+						title="<?= h(t('copy')) ?>"><i class="bi bi-clipboard"></i><span class="visually-hidden"><?= h(t('copy')) ?></span></button>
 				</div>
 			</div>
 			<div class="card-body">
 				<ul class="nav nav-underline small mb-2" role="tablist">
-					<li class="nav-item" role="presentation"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#apgResBodyPane" type="button" role="tab" aria-controls="apgResBodyPane" aria-selected="true" id="apgResBodyTab"><?= h(t('apg_body')) ?></button></li>
-					<li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#apgResHeadPane" type="button" role="tab" aria-controls="apgResHeadPane" aria-selected="false" id="apgResHeadTab"><?= h(t('apg_headers')) ?></button></li>
+					<li class="nav-item" role="presentation"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#apgResBodyPane" type="button"
+						role="tab" aria-controls="apgResBodyPane" aria-selected="true" id="apgResBodyTab"><?= h(t('apg_body')) ?></button></li>
+					<li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#apgResHeadPane" type="button" role="tab"
+						aria-controls="apgResHeadPane" aria-selected="false" id="apgResHeadTab"><?= h(t('apg_headers')) ?></button></li>
 				</ul>
 				<div class="tab-content">
-					<div class="tab-pane fade show active" id="apgResBodyPane" role="tabpanel" aria-labelledby="apgResBodyTab"><pre class="apgOut mb-0" id="apgResBody" tabindex="0"><span class="text-body-secondary"><?= h(t('apg_response_hint')) ?></span></pre></div>
+					<div class="tab-pane fade show active" id="apgResBodyPane" role="tabpanel" aria-labelledby="apgResBodyTab"><pre class="apgOut mb-0"
+						id="apgResBody" tabindex="0"><span class="text-body-secondary"><?= h(t('apg_response_hint')) ?></span></pre></div>
 					<div class="tab-pane fade" id="apgResHeadPane" role="tabpanel" aria-labelledby="apgResHeadTab"><pre class="apgOut mb-0" id="apgResHead" tabindex="0"></pre></div>
 				</div>
 				<pre class="apgOut mt-2 mb-0" id="apgCurlOut" hidden></pre>

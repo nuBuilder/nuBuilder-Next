@@ -1,5 +1,5 @@
 /* global nuBs */
-/* User help pages – editor (0.8.1023, pages/nuhelppages.php): TinyMCE for HTML pages (library pack), a plain text field for Markdown,
+/* User help pages – editor (pages/nuhelppages.php): TinyMCE for HTML pages (library pack), a plain text field for Markdown,
    the Insert menu (access level parts, links to other help pages, hash variables) and the AI dialog (copy a prompt, paste the answer). */
 (function () {
 	'use strict';
@@ -25,7 +25,7 @@
 		});
 		return loading;
 	}
-	// pictures are stored as files on the server (0.8.1024): POST action upload_image → {location}
+	// pictures are stored as files on the server: POST action upload_image → {location}
 	function upload(blob, name) {
 		var fd = new FormData();
 		fd.append('_csrf', (form.querySelector('input[name=_csrf]') || {}).value || '');
@@ -35,7 +35,7 @@
 			return r.json().then(function (j) { if (!r.ok || !j.location) throw new Error(j.error || 'upload'); return j.location; });
 		});
 	}
-	// the HTML source stays hidden (class nuTmceWait, set by the page) until TinyMCE is there or cannot come (0.8.1040)
+	// the HTML source stays hidden (class nuTmceWait, set by the page) until TinyMCE is there or cannot come
 	function shown() { body.classList.remove('nuTmceWait'); }
 	setTimeout(shown, 10000);
 	function startEditor() {
@@ -55,7 +55,9 @@
 				file_picker_callback: function (cb) {
 					var inp = document.createElement('input');
 					inp.type = 'file'; inp.accept = 'image/*';
-					inp.addEventListener('change', function () { if (inp.files && inp.files[0]) upload(inp.files[0], inp.files[0].name).then(function (u) { cb(u, {alt: ''}); }, function (e) { if (editor) editor.notificationManager.open({text: e.message, type: 'error', timeout: 6000}); }); });
+					inp.addEventListener('change',
+						function () { if (inp.files && inp.files[0]) upload(inp.files[0], inp.files[0].name).then(function (u) { cb(u, {alt: ''}); },
+							function (e) { if (editor) editor.notificationManager.open({text: e.message, type: 'error', timeout: 6000}); }); });
 					inp.click();
 				},
 				skin: dark ? 'oxide-dark' : 'oxide', content_css: dark ? 'dark' : 'default',
@@ -68,7 +70,7 @@
 		}).catch(function () { shown(); var n = document.getElementById('uhNoTiny'); if (n) n.classList.remove('d-none'); });
 	}
 	function stopEditor() { if (editor) { editor.save(); editor.remove(); editor = null; } shown(); }   // after remove(): TinyMCE puts the class back
-	// light / dark switch (0.8.1041): TinyMCE cannot change its skin while it runs – started again with the other skin, the text kept,
+	// light / dark switch: TinyMCE cannot change its skin while it runs – started again with the other skin, the text kept,
 	// the page not marked as changed (quiet until the new editor is ready)
 	var quiet = false;
 	new MutationObserver(function () {
@@ -154,7 +156,7 @@
 	// ---------------------------------------------------------------- AI: copy a prompt, paste the answer
 	var ai = document.getElementById('uhAiBody');
 	var copyBtn = document.getElementById('uhAiCopy'), promptBox = document.getElementById('uhAiPrompt'), answer = document.getElementById('uhAiAnswer');
-	// related forms of the chosen form (0.8.1025): sub-forms ticked, lookups and buttons offered
+	// related forms of the chosen form: sub-forms ticked, lookups and buttons offered
 	var relBox = document.getElementById('uhAiRelBox'), relList = document.getElementById('uhAiRel'), aiForm = document.getElementById('uhAiForm');
 	var relSeq = 0;
 	function loadRelated() {
@@ -182,7 +184,7 @@
 		});
 	}
 	if (aiForm) { aiForm.addEventListener('change', loadRelated); if (aiForm.value) loadRelated(); }
-	// language of a draft (0.8.1037): the last choice is kept for the next draft, a change hides the old prompt
+	// language of a draft: the last choice is kept for the next draft, a change hides the old prompt
 	var aiLang = document.getElementById('uhAiLang');
 	if (aiLang) {
 		try { var keep = localStorage.getItem('nunext-uh-ai-lang'); if (keep && aiLang.querySelector('option[value="' + keep + '"]')) aiLang.value = keep; } catch (e) { /* no storage */ }
@@ -200,7 +202,7 @@
 			fd.append('action', 'ai_prompt');
 			fd.append('mode', ai.getAttribute('data-mode'));
 			fd.append('code', ai.getAttribute('data-code'));
-			var lg = document.getElementById('uhAiLang');               // draft: the chosen language (0.8.1037), translation: its own
+			var lg = document.getElementById('uhAiLang');               // draft: the chosen language, translation: its own
 			fd.append('lang', lg ? lg.value : ai.getAttribute('data-lang'));
 			var f = document.getElementById('uhAiForm'), n = document.getElementById('uhAiNote');
 			if (f) fd.append('form', f.value);
@@ -213,7 +215,7 @@
 				return j.prompt;
 			});
 		};
-		// "Ask AI" with a configured AI service (0.8.1099, assets/js/nuaiask.js): the answer lands in the answer box, Insert as before
+		// "Ask AI" with a configured AI service (assets/js/nuaiask.js): the answer lands in the answer box, Insert as before
 		if (window.NuAiAsk && document.getElementById('uhAiAsk')) window.NuAiAsk.mount(document.getElementById('uhAiAsk'), {prompt: aiPrompt, answer: function (text) { answer.value = text; }});
 		copyBtn.addEventListener('click', function () {
 			aiPrompt().then(function (p) {
@@ -240,7 +242,7 @@
 					put(a);
 					return;
 				}
-				// Markdown or plain text (0.8.1038): kept as it is on a Markdown page, converted to HTML for the visual editor
+				// Markdown or plain text: kept as it is on a Markdown page, converted to HTML for the visual editor
 				if (fmtMd && fmtMd.checked) { put(a); return; }
 				var fd = new FormData();
 				fd.append('_csrf', (form.querySelector('input[name=_csrf]') || {}).value || '');
@@ -253,7 +255,7 @@
 		});
 	}
 
-	// "Used on" (0.8.1054): link the page to a form, a tab or a field from here, × removes a link – POST actions link_targets / link
+	// "Used on": link the page to a form, a tab or a field from here, × removes a link – POST actions link_targets / link
 	var usage = document.getElementById('uhUsage'), linkDlg = document.getElementById('uhLinkDlg');
 	function linkPost(data) {
 		var fd = new FormData();
@@ -293,7 +295,8 @@
 				if (j.usage) drawUsage(j.usage); else if (j.error) window.alert(j.error);
 			});
 		};
-		if (window.nuConfirmAsk) window.nuConfirmAsk(tx('unlink-ask').replace('%s', b.getAttribute('data-what')), go, tx('unlink-ok'), 'btn btn-danger', {cancelFirst: true}); else if (window.confirm(tx('unlink-ask').replace('%s', b.getAttribute('data-what')))) go();
+		if (window.nuConfirmAsk) window.nuConfirmAsk(tx('unlink-ask').replace('%s', b.getAttribute('data-what')), go, tx('unlink-ok'), 'btn btn-danger',
+			{cancelFirst: true}); else if (window.confirm(tx('unlink-ask').replace('%s', b.getAttribute('data-what')))) go();
 	});
 	if (linkDlg) {
 		var lf = document.getElementById('uhLinkForm'), lp = document.getElementById('uhLinkPlace'), lgo = document.getElementById('uhLinkGo'),

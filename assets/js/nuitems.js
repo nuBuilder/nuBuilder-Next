@@ -9,7 +9,8 @@
 				fetch(sel.getAttribute('data-url') + encodeURIComponent(q), {credentials: 'same-origin'}).then(function (r) { return r.json(); }).then(cb, function () { cb(); });
 			},
 			render: {
-				option: function (d, esc) { return '<div><div>' + esc(d.text) + '</div>' + (d.label ? '<div class="small text-body-secondary">' + esc(d.label) + (d.type ? ' · ' + esc(d.type) : '') + '</div>' : '') + '</div>'; }
+				option: function (d,
+					esc) { return '<div><div>' + esc(d.text) + '</div>' + (d.label ? '<div class="small text-body-secondary">' + esc(d.label) + (d.type ? ' · ' + esc(d.type) : '') + '</div>' : '') + '</div>'; }
 			}
 		});
 	}

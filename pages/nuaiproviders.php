@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * AI providers (0.8.1099, core/nuaiprovider.php): list · ?id=new | ?id=<provider> edit (Save, Test, Fetch models, usage of the month,
+ * AI providers (core/nuaiprovider.php): list · ?id=new | ?id=<provider> edit (Save, Test, Fetch models, usage of the month,
  * the last requests). Admin right "aiproviders" (full access: API keys, and prompts leave the server). The key is never shown again.
  */
 NuAdmin::require('aiproviders');
@@ -15,56 +15,11 @@ $prov = $id !== '' && $id !== 'new' ? NuAiProvider::get($id) : null;
 if ($id !== '' && $id !== 'new' && !$prov) { nu_flash('warning', t('record_not_found')); nu_redirect(nu_url('aiproviders')); }
 $errors = [];
 
-if (nu_is_post()) {
-	$action = nu_post('action');
-	if ($action === 'settings') {
-		NuAiProvider::setSettings(nu_check('allow_private') === '1');
-		nu_flash('success', t('saved'));
-		nu_redirect(nu_url('aiproviders'));
-	}
-	if ($action === 'models') {                                      // JSON: the models of the service, with the posted (unsaved) values
-		header('Content-Type: application/json; charset=utf-8');
-		$kind = nu_post('kind');
-		$stored = $prov ? NuAiProvider::apiKey($prov) : '';             // null = encrypted with the password and still locked
-		$d = ['id' => $id, 'kind' => isset(NuAiProvider::KINDS[$kind]) ? $kind : 'openai', 'base_url' => trim(nu_post('base_url')),
-			'api_key' => 'plain:' . (trim(nu_post('api_key')) !== '' ? trim(nu_post('api_key')) : (string)$stored)];
-		$e = $d['base_url'] !== '' ? NuAiProvider::checkUrl($d['base_url'], false) : '';
-		if ($e === '' && $stored === null && trim(nu_post('api_key')) === '') $e = t('aip_err_locked');
-		[$models, $err] = $e !== '' ? [[], $e] : NuAiProvider::models($d);
-		echo json_encode(['ok' => $err === '', 'models' => $models, 'error' => $err], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
-		exit;
-	}
-	if ($action === 'save') {
-		$in = ['name' => nu_post('name'), 'kind' => nu_post('kind'), 'base_url' => nu_post('base_url'), 'api_key' => nu_post('api_key'), 'model' => nu_post('model'),
-			'temperature' => nu_post('temperature'), 'max_tokens' => nu_post('max_tokens'), 'timeout' => nu_post('timeout'), 'system' => nu_post('system'), 'params' => nu_post('params'),
-			'active' => nu_check('active') === '1', 'access' => nu_post('access'), 'levels' => (array)($_POST['levels'] ?? []), 'password' => (string)($_POST['password'] ?? ''),
-			'month_limit' => nu_post('month_limit')];
-		[$newId, $errors] = NuAiProvider::save($in, $prov ? $id : '');
-		if (!$errors) {
-			if (nu_post('do_test') === '1') {
-				$r = NuAiProvider::test((array)NuAiProvider::get($newId));
-				$_SESSION['nu_aip_test'] = ['id' => $newId] + $r;
-			} else {
-				nu_flash('success', t('saved'));
-			}
-			nu_redirect(nu_url('aiproviders', ['id' => $newId]));
-		}
-		nu_flash('danger', t('err_check_form'));
-	}
-	if ($prov && $action === 'unlock') {                              // the password of a protected configuration, for this session
-		$e = NuAiProvider::unlock($id, (string)($_POST['unlock_password'] ?? ''), true);
-		nu_flash($e === '' ? 'success' : 'danger', $e === '' ? t('aip_unlocked') : $e);
-		nu_redirect(nu_url('aiproviders', ['id' => $id]));
-	}
-	if ($prov && $action === 'delete') {
-		NuAiProvider::delete($id);
-		nu_flash('success', t('aip_deleted', $prov['name']));
-		nu_redirect(nu_url('aiproviders'));
-	}
-}
-$test = $_SESSION['nu_aip_test'] ?? null;
+['prov' => $prov, 'id' => $id, 'errors' => $errors]
+	= NuAiprovidersPage::post(get_defined_vars());   // the POST actions (code review R7, nuaiproviderspage.php)
+$test = $_SESSION[NuSess::AI_TEST] ?? null;
 if ($test && (string)$test['id'] !== $id) $test = null;
-unset($_SESSION['nu_aip_test']);
+unset($_SESSION[NuSess::AI_TEST]);
 $tip = static fn(string $text) => nu_info_tip($text);
 
 // ------------------------------------------------------------------ list
@@ -73,7 +28,8 @@ if ($id === '') {
 	nu_layout_start(t('aip_title'), 'home', ['head' => NuListView::head()]);
 	echo NuListView::crumbs([[t('aip_title')]]);
 	if (!function_exists('curl_init')) echo '<div class="alert alert-warning small">' . h(t('aip_err_curl')) . '</div>';
-	if ((string)nu_cfg('nuConfigSecretKey') === '') echo '<p class="small text-body-secondary nuKeyHint mb-2"><i class="bi bi-key me-1"></i>' . h(t('aip_no_key')) . ' <a href="' . h(nu_url('securitycheck')) . '">' . h(t('secchk_title')) . '</a></p>';
+	if ((string)nu_cfg('nuConfigSecretKey') === '') echo '<p class="small text-body-secondary nuKeyHint mb-2"><i class="bi bi-key me-1"></i>'
+		. h(t('aip_no_key')) . ' <a href="' . h(nu_url('securitycheck')) . '">' . h(t('secchk_title')) . '</a></p>';
 	echo NuListView::card($st, ['title_extra' => NuListView::infoTip(t('aip_hint')),
 		'buttons' => '<a class="btn nuAddBtn" href="' . h(nu_url('aiproviders', ['id' => 'new'])) . '" id="aipNew"><i class="bi bi-plus-lg me-1"></i>' . h(t('add')) . '</a>']);
 	$set = NuAiProvider::settings(); ?>
@@ -115,7 +71,8 @@ echo NuListView::crumbs([[t('aip_title'), nu_url('aiproviders')], [$title]]); ?>
 		<button class="btn nuBtnAct nuBtnSave" type="submit" form="aipForm" data-nu-save><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button>
 		<button class="btn nuBtnAct" type="submit" form="aipForm" name="do_test" value="1" id="aipTest" title="<?= h(t('aip_test_tip')) ?>"><i class="bi bi-send me-1"></i><?= h(t('aip_test')) ?></button>
 		<?php if ($prov): ?>
-			<form method="post" action="<?= h(nu_url('aiproviders', ['id' => $id])) ?>" data-confirm="<?= h(t('aip_delete_confirm', $prov['name'])) ?>" data-confirm-ok="<?= h(t('delete')) ?>" data-confirm-class="btn btn-danger">
+			<form method="post" action="<?= h(nu_url('aiproviders', ['id' => $id])) ?>" data-confirm="<?= h(t('aip_delete_confirm', $prov['name'])) ?>"
+				data-confirm-ok="<?= h(t('delete')) ?>" data-confirm-class="btn btn-danger">
 				<?= nu_csrf_field() ?><input type="hidden" name="action" value="delete">
 				<button class="btn nuBtnAct nuBtnDel" type="submit" id="aipDelete"><i class="bi bi-trash me-1"></i><?= h(t('delete')) ?></button></form>
 		<?php endif; ?>
@@ -128,10 +85,13 @@ echo NuListView::crumbs([[t('aip_title'), nu_url('aiproviders')], [$title]]); ?>
 	</div>
 <?php endif; ?>
 <?php if ($prov && $prov['access'] === 'password'): $isOpen = NuAiProvider::unlocked($prov); ?>
-	<form method="post" action="<?= h(nu_url('aiproviders', ['id' => $id])) ?>" class="alert <?= $isOpen ? 'alert-success' : 'alert-warning' ?> small d-flex flex-wrap align-items-center gap-2" id="aipLock" data-open="<?= $isOpen ? '1' : '0' ?>" autocomplete="off">
+	<form method="post" action="<?= h(nu_url('aiproviders', ['id' => $id])) ?>"
+		class="alert <?= $isOpen ? 'alert-success' : 'alert-warning' ?> small d-flex flex-wrap align-items-center gap-2" id="aipLock"
+		data-open="<?= $isOpen ? '1' : '0' ?>" autocomplete="off">
 		<?= nu_csrf_field() ?><input type="hidden" name="action" value="unlock">
 		<i class="bi <?= $isOpen ? 'bi-unlock' : 'bi-lock' ?>" aria-hidden="true"></i><span class="me-auto"><?= h(t($isOpen ? 'aip_unlocked' : 'aip_locked_note')) ?></span>
-		<?php if (!$isOpen): ?><div class="input-group input-group-sm nuAiAskPwBox"><input class="form-control" type="password" name="unlock_password" id="aipUnlockPw" autocomplete="off" aria-label="<?= h(t('aip_password')) ?>" placeholder="<?= h(t('aip_password')) ?>" required>
+		<?php if (!$isOpen): ?><div class="input-group input-group-sm nuAiAskPwBox"><input class="form-control" type="password" name="unlock_password"
+			id="aipUnlockPw" autocomplete="off" aria-label="<?= h(t('aip_password')) ?>" placeholder="<?= h(t('aip_password')) ?>" required>
 			<button class="btn btn-outline-primary" type="submit" id="aipUnlock"><i class="bi bi-unlock me-1"></i><?= h(t('aip_unlock')) ?></button></div><?php endif; ?>
 	</form>
 <?php endif; ?>
@@ -147,27 +107,36 @@ echo NuListView::crumbs([[t('aip_title'), nu_url('aiproviders')], [$title]]); ?>
 			<input class="form-check-input" type="checkbox" role="switch" id="aipActive" name="active" value="1"<?= $active ? ' checked' : '' ?>>
 			<label class="form-check-label" for="aipActive"><?= h(t('wh_on')) ?></label></div></div>
 		<div class="col-md-5"><label class="form-label" for="aipKind"><?= h(t('aip_kind')) ?></label><?= $tip(t('aip_kind_tip')) ?>
-			<select class="form-select<?= $inv('kind') ?>" id="aipKind" name="kind"><?php foreach (NuAiProvider::KINDS as $k => [$tk]): ?><option value="<?= $k ?>"<?= $k === $kind ? ' selected' : '' ?>><?= h(t($tk)) ?></option><?php endforeach; ?></select><?= $err('kind') ?></div>
+			<select class="form-select<?= $inv('kind') ?>" id="aipKind"
+				name="kind"><?php foreach (NuAiProvider::KINDS as $k => [$tk]): ?><option value="<?= $k ?>"<?= $k === $kind ? ' selected' : '' ?>><?= h(t($tk)) ?></option><?php endforeach; ?></select><?= $err('kind') ?></div>
 		<div class="col-md-7"><label class="form-label" for="aipUrl"><?= h(t('aip_url')) ?></label><?= $tip(t('aip_url_tip')) ?>
-			<input class="form-control font-monospace<?= $inv('base_url') ?>" id="aipUrl" name="base_url" type="url" maxlength="500" placeholder="<?= h(NuAiProvider::KINDS[$kind][1]) ?>" value="<?= h($v('base_url')) ?>"><?= $err('base_url') ?></div>
+			<input class="form-control font-monospace<?= $inv('base_url') ?>" id="aipUrl" name="base_url" type="url" maxlength="500"
+				placeholder="<?= h(NuAiProvider::KINDS[$kind][1]) ?>" value="<?= h($v('base_url')) ?>"><?= $err('base_url') ?></div>
 		<div class="col-12"><label class="form-label" for="aipKey"><?= h(t('aip_key')) ?></label><?= $tip(t('aip_key_tip')) ?>
-			<input class="form-control font-monospace" id="aipKey" name="api_key" type="password" autocomplete="new-password" maxlength="500" placeholder="<?= h($prov && NuAiProvider::hasKey($prov) ? t('aip_key_keep') : '') ?>" value=""><?= $err('api_key') ?></div>
+			<input class="form-control font-monospace" id="aipKey" name="api_key" type="password" autocomplete="new-password" maxlength="500"
+				placeholder="<?= h($prov && NuAiProvider::hasKey($prov) ? t('aip_key_keep') : '') ?>" value=""><?= $err('api_key') ?></div>
 		<div class="col-md-8"><label class="form-label" for="aipModel"><?= h(t('aip_model')) ?></label><?= $tip(t('aip_model_tip')) ?>
-			<div class="input-group"><input class="form-control font-monospace<?= $inv('model') ?>" id="aipModel" name="model" maxlength="200" list="aipModels" placeholder="<?= h(NuAiProvider::KINDS[$kind][2]) ?>" required value="<?= h($v('model')) ?>" spellcheck="false">
-				<button class="btn btn-outline-secondary" type="button" id="aipFetch" data-url="<?= h(nu_url('aiproviders', ['id' => $prov ? $id : 'new'])) ?>"><i class="bi bi-cloud-download me-1"></i><?= h(t('aip_models_fetch')) ?></button></div>
+			<div class="input-group"><input class="form-control font-monospace<?= $inv('model') ?>" id="aipModel" name="model" maxlength="200" list="aipModels"
+				placeholder="<?= h(NuAiProvider::KINDS[$kind][2]) ?>" required value="<?= h($v('model')) ?>" spellcheck="false">
+				<button class="btn btn-outline-secondary" type="button" id="aipFetch"
+					data-url="<?= h(nu_url('aiproviders', ['id' => $prov ? $id : 'new'])) ?>"><i class="bi bi-cloud-download me-1"></i><?= h(t('aip_models_fetch')) ?></button></div>
 			<datalist id="aipModels"></datalist><?= $err('model') ?><div class="form-text" id="aipFetchMsg" aria-live="polite"></div></div>
 		<div class="col-md-4"><label class="form-label" for="aipTemp"><?= h(t('aip_temperature')) ?></label><?= $tip(t('aip_temperature_tip')) ?>
-			<input class="form-control<?= $inv('temperature') ?>" id="aipTemp" name="temperature" inputmode="decimal" maxlength="5" placeholder="<?= h(t('aip_default')) ?>" value="<?= h($v('temperature')) ?>"><?= $err('temperature') ?></div>
+			<input class="form-control<?= $inv('temperature') ?>" id="aipTemp" name="temperature" inputmode="decimal" maxlength="5"
+				placeholder="<?= h(t('aip_default')) ?>" value="<?= h($v('temperature')) ?>"><?= $err('temperature') ?></div>
 		<div class="col-md-4"><label class="form-label" for="aipMax"><?= h(t('aip_max_tokens')) ?></label><?= $tip(t('aip_max_tokens_tip')) ?>
-			<input class="form-control<?= $inv('max_tokens') ?>" id="aipMax" name="max_tokens" type="number" min="0" step="1" placeholder="<?= h(t('aip_default')) ?>" value="<?= h((int)$v('max_tokens') > 0 ? $v('max_tokens') : '') ?>"><?= $err('max_tokens') ?></div>
+			<input class="form-control<?= $inv('max_tokens') ?>" id="aipMax" name="max_tokens" type="number" min="0" step="1"
+				placeholder="<?= h(t('aip_default')) ?>" value="<?= h((int)$v('max_tokens') > 0 ? $v('max_tokens') : '') ?>"><?= $err('max_tokens') ?></div>
 		<div class="col-md-4"><label class="form-label" for="aipTimeout"><?= h(t('aip_timeout')) ?></label><?= $tip(t('aip_timeout_tip')) ?>
 			<input class="form-control<?= $inv('timeout') ?>" id="aipTimeout" name="timeout" type="number" min="10" max="900" step="1" value="<?= h($v('timeout', '180')) ?>"><?= $err('timeout') ?></div>
 		<div class="col-md-4"><label class="form-label" for="aipLimit"><?= h(t('aip_month_limit')) ?></label><?= $tip(t('aip_month_limit_tip')) ?>
-			<input class="form-control" id="aipLimit" name="month_limit" type="number" min="0" step="1000" placeholder="<?= h(t('aip_no_limit')) ?>" value="<?= h((int)$v('month_limit') > 0 ? $v('month_limit') : '') ?>"></div>
+			<input class="form-control" id="aipLimit" name="month_limit" type="number" min="0" step="1000" placeholder="<?= h(t('aip_no_limit')) ?>"
+				value="<?= h((int)$v('month_limit') > 0 ? $v('month_limit') : '') ?>"></div>
 		<div class="col-12"><label class="form-label" for="aipSystem"><?= h(t('aip_system')) ?></label><?= $tip(t('aip_system_tip')) ?>
 			<textarea class="form-control" id="aipSystem" name="system" rows="2"><?= h($v('system')) ?></textarea></div>
 		<div class="col-12"><label class="form-label" for="aipParams"><?= h(t('aip_params')) ?></label><?= $tip(t('aip_params_tip')) ?>
-			<textarea class="form-control font-monospace small<?= $inv('params') ?>" id="aipParams" name="params" rows="3" spellcheck="false" placeholder='{"top_p": 0.9}'><?= h($v('params')) ?></textarea><?= $err('params') ?></div>
+			<textarea class="form-control font-monospace small<?= $inv('params') ?>" id="aipParams" name="params" rows="3" spellcheck="false"
+				placeholder='{"top_p": 0.9}'><?= h($v('params')) ?></textarea><?= $err('params') ?></div>
 		<div class="col-12"><hr class="my-1"></div>
 		<div class="col-12"><span class="form-label d-block"><?= h(t('aip_access')) ?><?= $tip(t('aip_access_tip')) ?></span><?= $err('access') ?>
 			<?php foreach (NuAiProvider::ACCESS as $a): ?><div class="form-check">
@@ -175,10 +144,14 @@ echo NuListView::crumbs([[t('aip_title'), nu_url('aiproviders')], [$title]]); ?>
 				<label class="form-check-label" for="aipAcc_<?= $a ?>"><?= h(t('aip_access_' . $a)) ?></label></div><?php endforeach; ?></div>
 		<div class="col-12" id="aipLevelsBox"<?= $access === 'levels' ? '' : ' hidden' ?>><label class="form-label" for="aipLevels"><?= h(t('nav_access')) ?></label>
 			<select class="form-select nuListTomSelect<?= $inv('levels') ?>" id="aipLevels" name="levels[]" multiple>
-				<?php foreach ($levels as $l): ?><option value="<?= h((string)$l['id']) ?>" data-sub="<?= h((string)$l['d']) ?>"<?= in_array((string)$l['id'], $selLevels, true) ? ' selected' : '' ?>><?= h((string)$l['code']) ?></option><?php endforeach; ?>
+				<?php foreach ($levels as $l): ?><option value="<?= h((string)$l['id']) ?>"
+					data-sub="<?= h((string)$l['d']) ?>"<?= in_array((string)$l['id'], $selLevels, true) ? ' selected' : '' ?>><?= h((string)$l['code']) ?></option><?php endforeach; ?>
 			</select><?= $err('levels') ?></div>
-		<div class="col-md-6" id="aipPwBox"<?= $access === 'password' ? '' : ' hidden' ?>><label class="form-label" for="aipPw"><?= h(t('aip_password')) ?></label><?= $tip(t('aip_password_tip', NuAiProvider::PW_MIN)) ?>
-			<input class="form-control<?= $inv('password') ?>" id="aipPw" name="password" type="password" autocomplete="new-password" maxlength="200" minlength="<?= NuAiProvider::PW_MIN ?>" placeholder="<?= h($prov && $prov['access'] === 'password' ? t('aip_key_keep') : '') ?>"><?= $err('password') ?></div>
+		<div class="col-md-6" id="aipPwBox"<?= $access === 'password' ? '' : ' hidden' ?>><label class="form-label"
+			for="aipPw"><?= h(t('aip_password')) ?></label><?= $tip(t('aip_password_tip', NuAiProvider::PW_MIN)) ?>
+			<input class="form-control<?= $inv('password') ?>" id="aipPw" name="password" type="password" autocomplete="new-password" maxlength="200"
+				minlength="<?= NuAiProvider::PW_MIN ?>"
+				placeholder="<?= h($prov && $prov['access'] === 'password' ? t('aip_key_keep') : '') ?>"><?= $err('password') ?></div>
 	</div></div>
 </form>
 </div>
@@ -187,7 +160,8 @@ echo NuListView::crumbs([[t('aip_title'), nu_url('aiproviders')], [$title]]); ?>
 	<div class="card shadow-sm mb-4" id="aipUsage"><div class="card-body small">
 		<h2 class="h6"><i class="bi bi-bar-chart me-1"></i><?= h(t('aip_usage_month')) ?></h2>
 		<dl class="row mb-0">
-			<dt class="col-7"><?= h(t('aip_calls')) ?></dt><dd class="col-5 text-end" id="aipUsageCalls"><?= $num($u['calls']) ?><?= $u['errors'] ? ' <span class="text-danger">(' . $num($u['errors']) . ' ✕)</span>' : '' ?></dd>
+			<dt class="col-7"><?= h(t('aip_calls')) ?></dt><dd class="col-5 text-end"
+				id="aipUsageCalls"><?= $num($u['calls']) ?><?= $u['errors'] ? ' <span class="text-danger">(' . $num($u['errors']) . ' ✕)</span>' : '' ?></dd>
 			<dt class="col-7"><?= h(t('aip_tokens_in')) ?></dt><dd class="col-5 text-end"><?= $num($u['tokens_in']) ?></dd>
 			<dt class="col-7"><?= h(t('aip_tokens_out')) ?></dt><dd class="col-5 text-end"><?= $num($u['tokens_out']) ?></dd>
 			<?php if ($prov['month_limit'] > 0): ?><dt class="col-7"><?= h(t('aip_month_limit')) ?></dt><dd class="col-5 text-end"><?= $num($prov['month_limit']) ?></dd><?php endif; ?>

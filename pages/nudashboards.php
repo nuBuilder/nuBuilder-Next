@@ -3,13 +3,13 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Dashboards (0.8.298) – globeadmin, Admin tools → Dashboards. Logic in core/nudashboard.php, editor behaviour in assets/js/nudashboards.js,
+ * Dashboards – globeadmin, Admin tools → Dashboards. Logic in core/nudashboard.php, editor behaviour in assets/js/nudashboards.js,
  * renderer in assets/js/nudashboard.js.
  *   list · ?id=new|<id> dashboard with its widgets · ?id=<id>&w=new|<widget id> widget editor (Test = run before saving)
  * POST action: save | copy | delete | wsave | wdelete | wmove (dir up / down)
  */
 
-// admin rights (0.8.323): the globeadmin, or a user whose admin role has the right (core/nuadmin.php)
+// admin rights: the globeadmin, or a user whose admin role has the right (core/nuadmin.php)
 NuAdmin::require('dashboards');
 NuSecurity::requireRecentAuth(nu_url('dashboards'));   // the widgets run SQL and procedures – password again after 15 minutes
 NuSchema::ensure();
@@ -25,37 +25,8 @@ if ($d && $wid !== '' && $wid !== 'new' && !$w) { http_response_code(404); nu_fa
 $errors = [];
 $tip = static fn(string $text) => nu_info_tip($text);
 
-if (nu_is_post()) {
-	$action = nu_post('action');
-	if ($action === 'save') {
-		[$newId, $errors] = NuDashboard::save(['code' => nu_post('code'), 'title' => nu_post('title'), 'description' => nu_post('dash_description'),
-			'on_home' => nu_check('on_home') === '1', 'access' => (array)($_POST['access'] ?? []), 'date_range' => nu_post('date_range'), 'sort_order' => nu_post('sort_order')], $d ? $id : '');
-		if (!$errors) { nu_flash('success', t('dash_saved')); nu_redirect(nu_url('dashboards', ['id' => $newId, 'tab' => nu_post('tab') === 'access' ? 'access' : null])); }
-	} elseif ($action === 'copy' && $d) {
-		$new = NuDashboard::copy($id);
-		nu_flash('success', t('dash_copied'));
-		nu_redirect(nu_url('dashboards', ['id' => $new]));
-	} elseif ($action === 'delete' && $d) {
-		NuDashboard::delete($id);
-		nu_flash('success', t('dash_deleted'));
-		nu_redirect(nu_url('dashboards'));
-	} elseif ($action === 'wsave' && $d) {
-		$in = ['type' => nu_post('type'), 'title' => nu_post('title'), 'source' => nu_post('source'), 'sql' => (string)($_POST['sql'] ?? ''),
-			'select_id' => nu_post('select_id'), 'php_id' => nu_post('php_id'), 'opt' => is_array($_POST['opt'] ?? null) ? $_POST['opt'] : []];
-		[$newW, $errors] = NuDashboard::saveWidget($id, $in, $w ? $wid : '');
-		if (!$errors) { nu_flash('success', t('dash_w_saved')); nu_redirect(nu_url('dashboards', ['id' => $id])); }
-	} elseif ($action === 'wdelete' && $d) {
-		NuDashboard::deleteWidget($id, nu_post('widget'));
-		nu_flash('success', t('dash_w_deleted'));
-		nu_redirect(nu_url('dashboards', ['id' => $id]));
-	} elseif ($action === 'wmove' && $d) {
-		$ids = array_map(static fn($x) => (string)$x['zzzzsys_nunext_widget_id'], NuDashboard::widgets($id));
-		$i = array_search(nu_post('widget'), $ids, true);
-		$j = $i === false ? false : (nu_post('dir') === 'up' ? $i - 1 : $i + 1);
-		if ($i !== false && $j >= 0 && $j < count($ids)) { [$ids[$i], $ids[$j]] = [$ids[$j], $ids[$i]]; NuDashboard::reorder($id, $ids); }
-		nu_redirect(nu_url('dashboards', ['id' => $id]) . '#dashWidgets');
-	}
-}
+['errors' => $errors, 'd' => $d, 'id' => $id, 'w' => $w, 'wid' => $wid, 'x' => $x]
+	= NuDashboardsPage::post(get_defined_vars());   // the POST actions (code review R7, nudashboardspage.php)
 
 // after the POST: arrow functions take $errors as it is when they are created
 $inv = static fn(string $k) => isset($errors[$k]) ? ' is-invalid' : '';
@@ -66,7 +37,7 @@ foreach ($accessLevels as $a) $accName[(string)$a['zzzzsys_access_id']] = (strin
 $foot = '';
 
 // ====================================================================== list
-if ($id === '') {                                          // a system list (0.8.690, core/nulistdefs.php 'dashboards'): search, views, export, filters
+if ($id === '') {                                          // a system list (core/nulistdefs.php 'dashboards'): search, views, export, filters
 	NuListView::page('dashboards', ['active' => 'home', 'title_extra' => $tip(t('dash_info')),
 		'buttons' => '<a class="btn nuAddBtn" id="dashAdd" href="' . h(nu_url('dashboards', ['id' => 'new'])) . '"><i class="bi bi-plus-lg me-1"></i>' . h(t('add')) . '</a>']);
 	return;
@@ -79,7 +50,8 @@ if ($d && $wid !== '') {
 	$forms = $db->all("SELECT zzzzsys_form_id, sfo_code, sfo_description FROM zzzzsys_form WHERE zzzzsys_form_id NOT LIKE 'nu%' ORDER BY sfo_code");
 	$reports = $db->tableExists('zzzzsys_report') ? $db->all('SELECT sre_code, sre_description FROM zzzzsys_report ORDER BY sre_code') : [];
 	if (nu_is_post()) {        // the posted values after an error
-		$cur = ['type' => nu_post('type'), 'title' => nu_post('title'), 'source' => nu_post('source'), 'query' => (string)($_POST[nu_post('source') === 'select' ? 'select_id' : (nu_post('source') === 'php' ? 'php_id' : 'sql')] ?? '')];
+		$cur = ['type' => nu_post('type'), 'title' => nu_post('title'), 'source' => nu_post('source'),
+			'query' => (string)($_POST[nu_post('source') === 'select' ? 'select_id' : (nu_post('source') === 'php' ? 'php_id' : 'sql')] ?? '')];
 		$opt = NuDashboard::options(is_array($_POST['opt'] ?? null) ? $_POST['opt'] : [], $cur['type']);
 	} else {
 		$cur = $w ?? ['type' => 'kpi', 'title' => '', 'source' => 'sql', 'query' => ''];
@@ -153,7 +125,8 @@ if ($d && $wid !== '') {
 						<input class="form-control" type="number" min="120" max="800" step="10" id="dHeight" name="opt[height]" value="<?= (int)$opt['height'] ?>">
 					</div>
 					<div class="col-md-3" data-dash-type="chart">
-						<div class="form-check form-switch mt-md-4 pt-md-2"><input type="hidden" name="opt[stacked]" value="0"><input class="form-check-input" type="checkbox" role="switch" id="dStacked" name="opt[stacked]" value="1"<?= $opt['stacked'] ? ' checked' : '' ?>>
+						<div class="form-check form-switch mt-md-4 pt-md-2"><input type="hidden" name="opt[stacked]" value="0"><input class="form-check-input"
+							type="checkbox" role="switch" id="dStacked" name="opt[stacked]" value="1"<?= $opt['stacked'] ? ' checked' : '' ?>>
 							<label class="form-check-label" for="dStacked"><?= h(t('dash_stacked')) ?></label></div>
 					</div>
 					<div class="col-md-2" data-dash-type="table">
@@ -183,9 +156,12 @@ if ($d && $wid !== '') {
 					<div class="col-12" data-dash-type="kpi">
 						<span class="form-label d-block mb-1"><?= h(t('dash_thresholds')) ?><?= $tip(t('dash_thresholds_tip')) ?></span>
 						<div class="d-flex flex-wrap align-items-center gap-2">
-							<input class="form-control w-auto" type="number" step="any" name="opt[low]" id="dLow" placeholder="<?= h(t('dash_low')) ?>" aria-label="<?= h(t('dash_low')) ?>" value="<?= h((string)$opt['low']) ?>">
-							<input class="form-control w-auto" type="number" step="any" name="opt[high]" id="dHigh" placeholder="<?= h(t('dash_high')) ?>" aria-label="<?= h(t('dash_high')) ?>" value="<?= h((string)$opt['high']) ?>">
-							<div class="form-check form-switch ms-2"><input type="hidden" name="opt[higher_better]" value="0"><input class="form-check-input" type="checkbox" role="switch" id="dHigher" name="opt[higher_better]" value="1"<?= $opt['higher_better'] ? ' checked' : '' ?>>
+							<input class="form-control w-auto" type="number" step="any" name="opt[low]" id="dLow" placeholder="<?= h(t('dash_low')) ?>"
+								aria-label="<?= h(t('dash_low')) ?>" value="<?= h((string)$opt['low']) ?>">
+							<input class="form-control w-auto" type="number" step="any" name="opt[high]" id="dHigh" placeholder="<?= h(t('dash_high')) ?>"
+								aria-label="<?= h(t('dash_high')) ?>" value="<?= h((string)$opt['high']) ?>">
+							<div class="form-check form-switch ms-2"><input type="hidden" name="opt[higher_better]" value="0"><input class="form-check-input"
+								type="checkbox" role="switch" id="dHigher" name="opt[higher_better]" value="1"<?= $opt['higher_better'] ? ' checked' : '' ?>>
 								<label class="form-check-label" for="dHigher"><?= h(t('dash_higher_better')) ?></label></div>
 						</div>
 					</div>
@@ -204,7 +180,8 @@ if ($d && $wid !== '') {
 						<?= $fb('link') ?>
 					</div>
 					<div class="col-md-3">
-						<div class="form-check form-switch mt-md-4 pt-md-2"><input type="hidden" name="opt[new_tab]" value="0"><input class="form-check-input" type="checkbox" role="switch" id="dNewTab" name="opt[new_tab]" value="1"<?= $opt['new_tab'] ? ' checked' : '' ?>>
+						<div class="form-check form-switch mt-md-4 pt-md-2"><input type="hidden" name="opt[new_tab]" value="0"><input class="form-check-input"
+							type="checkbox" role="switch" id="dNewTab" name="opt[new_tab]" value="1"<?= $opt['new_tab'] ? ' checked' : '' ?>>
 							<label class="form-check-label" for="dNewTab"><?= h(t('dash_new_tab')) ?></label><?= $tip(t('dash_new_tab_tip')) ?></div>
 					</div>
 					<div class="col-md-3">
@@ -236,9 +213,11 @@ if ($d && $wid !== '') {
 			<div class="alert alert-danger small mb-0 mt-2" id="dashTestError" hidden></div>
 		</div>
 	</div>
-	<span hidden id="dashShapes" data-kpi="<?= h(t('dash_shape_kpi')) ?>" data-chart="<?= h(t('dash_shape_chart')) ?>" data-table="<?= h(t('dash_shape_table')) ?>" data-calendar="<?= h(t('dash_shape_calendar')) ?>" data-forms-label="<?= h(t('dash_link_form')) ?>"></span>
+	<span hidden id="dashShapes" data-kpi="<?= h(t('dash_shape_kpi')) ?>" data-chart="<?= h(t('dash_shape_chart')) ?>"
+		data-table="<?= h(t('dash_shape_table')) ?>" data-calendar="<?= h(t('dash_shape_calendar')) ?>"
+		data-forms-label="<?= h(t('dash_link_form')) ?>"></span>
 	<?php
-	nu_layout_end(NuDashboard::scriptTag() . nu_ts_foot() . '<script src="' . nu_asset('assets/js/nudashboards.js') . '"></script>');   // SQL builder select / procedure: searchable (0.8.536)
+	nu_layout_end(NuDashboard::scriptTag() . nu_ts_foot() . '<script src="' . nu_asset('assets/js/nudashboards.js') . '"></script>');   // SQL builder select / procedure: searchable
 	return;
 }
 
@@ -253,7 +232,9 @@ nu_layout_start(t('dash_title'), 'home');
 ?>
 <?php if ($d): ?>
 <form method="post" action="<?= h(nu_url('dashboards', ['id' => $id])) ?>" id="dashCopy"><?= nu_csrf_field() ?><input type="hidden" name="action" value="copy"></form>
-<form method="post" action="<?= h(nu_url('dashboards', ['id' => $id])) ?>" id="dashDelete" data-confirm="<?= h(t('dash_delete_confirm')) ?>" data-confirm-ok="<?= h(t('delete')) ?>" data-confirm-class="btn btn-danger"><?= nu_csrf_field() ?><input type="hidden" name="action" value="delete"></form>
+<form method="post" action="<?= h(nu_url('dashboards', ['id' => $id])) ?>" id="dashDelete" data-confirm="<?= h(t('dash_delete_confirm')) ?>"
+	data-confirm-ok="<?= h(t('delete')) ?>" data-confirm-class="btn btn-danger"><?= nu_csrf_field() ?><input type="hidden" name="action"
+	value="delete"></form>
 <?php endif; ?>
 <?= nu_page_header($d ? (string)$d['code'] : t('dash_new'), ['icon' => 'bi-speedometer2', 'sub' => t('dash_title_one'), 'back' => nu_url('dashboards'), 'crumbs' => [[t('dash_title'), nu_url('dashboards')]],
 	'buttons' => '<button class="btn nuBtnAct nuBtnSave" type="submit" form="dashForm" data-nu-save id="dashSave"><i class="bi bi-floppy"></i>' . h(t('save')) . '</button>'
@@ -264,14 +245,19 @@ nu_layout_start(t('dash_title'), 'home');
 	<div class="card-body">
 		<form method="post" action="<?= h(nu_url('dashboards', ['id' => $d ? $id : 'new'])) ?>" id="dashForm" novalidate data-nu-guard>
 			<?= nu_csrf_field() ?><input type="hidden" name="action" value="save">
-			<?php // tabs General / Access levels (0.8.697)
+			<?php // tabs General / Access levels
 			$dTab = (string)($_GET['tab'] ?? nu_post('tab')) === 'access' ? 'access' : '';
 			$nAcc = count(array_intersect($acc, array_map(fn($a) => (string)$a['zzzzsys_access_id'], $accessLevels))); ?>
 			<input type="hidden" name="tab" id="dashTab" value="<?= h($dTab) ?>">
 			<ul class="nav nav-tabs mb-3" id="dashTabs" role="tablist" data-nu-tabfield="dashTab">
-				<li class="nav-item" role="presentation"><button class="nav-link<?= $dTab === '' ? ' active' : '' ?>" id="dashTabGeneralBtn" data-bs-toggle="tab" data-bs-target="#dashTabGeneral" data-nu-tab="" type="button" role="tab" aria-controls="dashTabGeneral" aria-selected="<?= $dTab === '' ? 'true' : 'false' ?>"><i class="bi bi-card-text me-1"></i><?= h(t('access_sec_general')) ?></button></li>
-				<li class="nav-item" role="presentation"><button class="nav-link<?= $dTab === 'access' ? ' active' : '' ?>" id="dashTabAccessBtn" data-bs-toggle="tab" data-bs-target="#dashTabAccess" data-nu-tab="access" type="button" role="tab" aria-controls="dashTabAccess" aria-selected="<?= $dTab === 'access' ? 'true' : 'false' ?>"><i class="bi bi-shield-lock me-1"></i><?= h(t('dash_access')) ?>
-					<span class="badge text-bg-secondary ms-1" id="dAccCount" data-total="<?= count($accessLevels) ?>" data-fmt="<?= h(t('dash_access_count')) ?>" title="<?= h(t('dash_access_count', $nAcc, count($accessLevels))) ?>"><?= $nAcc ?> / <?= count($accessLevels) ?></span></button></li>
+				<li class="nav-item" role="presentation"><button class="nav-link<?= $dTab === '' ? ' active' : '' ?>" id="dashTabGeneralBtn" data-bs-toggle="tab"
+					data-bs-target="#dashTabGeneral" data-nu-tab="" type="button" role="tab" aria-controls="dashTabGeneral"
+					aria-selected="<?= $dTab === '' ? 'true' : 'false' ?>"><i class="bi bi-card-text me-1"></i><?= h(t('access_sec_general')) ?></button></li>
+				<li class="nav-item" role="presentation"><button class="nav-link<?= $dTab === 'access' ? ' active' : '' ?>" id="dashTabAccessBtn"
+					data-bs-toggle="tab" data-bs-target="#dashTabAccess" data-nu-tab="access" type="button" role="tab" aria-controls="dashTabAccess"
+					aria-selected="<?= $dTab === 'access' ? 'true' : 'false' ?>"><i class="bi bi-shield-lock me-1"></i><?= h(t('dash_access')) ?>
+					<span class="badge text-bg-secondary ms-1" id="dAccCount" data-total="<?= count($accessLevels) ?>" data-fmt="<?= h(t('dash_access_count')) ?>"
+						title="<?= h(t('dash_access_count', $nAcc, count($accessLevels))) ?>"><?= $nAcc ?> / <?= count($accessLevels) ?></span></button></li>
 			</ul>
 			<div class="tab-content">
 			<div class="tab-pane fade<?= $dTab === '' ? ' show active' : '' ?>" id="dashTabGeneral" role="tabpanel" aria-labelledby="dashTabGeneralBtn" tabindex="0">
@@ -313,7 +299,7 @@ nu_layout_start(t('dash_title'), 'home');
 			<div class="tab-pane fade<?= $dTab === 'access' ? ' show active' : '' ?>" id="dashTabAccess" role="tabpanel" aria-labelledby="dashTabAccessBtn" tabindex="0">
 				<div class="d-flex flex-wrap align-items-center gap-2 mb-2"><span class="fw-semibold"><?= h(t('dash_access')) ?></span><?= $tip(t('dash_access_tip')) ?>
 					<?php $accGroups = array_values(array_unique(array_map(fn($a) => trim((string)($a['sal_group'] ?? '')), $accessLevels))); sort($accGroups, SORT_NATURAL | SORT_FLAG_CASE);
-					if (count($accGroups) > 1): // group filter (0.8.697): hides the other levels, their ticks stay and are saved ?>
+					if (count($accGroups) > 1): // group filter: hides the other levels, their ticks stay and are saved ?>
 					<select class="form-select form-select-sm ms-auto dashAccGroup" id="dAccGroup" aria-label="<?= h(t('fac_group')) ?>">
 						<option value="*"><?= h(t('fac_groups')) ?></option>
 						<?php foreach ($accGroups as $g): ?><option value="<?= h($g) ?>"><?= h($g === '' ? t('fac_nogroup') : $g) ?></option><?php endforeach; ?>
@@ -323,8 +309,10 @@ nu_layout_start(t('dash_title'), 'home');
 					<div class="border rounded p-2 dashAccessList">
 						<?php if (!$accessLevels): ?><span class="small text-body-secondary"><?= h(t('no_records')) ?></span><?php endif; ?>
 						<?php foreach ($accessLevels as $a): $aid = (string)$a['zzzzsys_access_id']; ?>
-							<div class="form-check" data-group="<?= h(trim((string)($a['sal_group'] ?? ''))) ?>"><input class="form-check-input" type="checkbox" name="access[]" id="dAcc_<?= h($aid) ?>" value="<?= h($aid) ?>"<?= in_array($aid, $acc, true) ? ' checked' : '' ?>>
-								<label class="form-check-label" for="dAcc_<?= h($aid) ?>"><span class="fw-semibold"><?= h($a['sal_code']) ?></span> <span class="text-body-secondary small"><?= h($a['sal_description']) ?></span></label></div>
+							<div class="form-check" data-group="<?= h(trim((string)($a['sal_group'] ?? ''))) ?>"><input class="form-check-input" type="checkbox"
+								name="access[]" id="dAcc_<?= h($aid) ?>" value="<?= h($aid) ?>"<?= in_array($aid, $acc, true) ? ' checked' : '' ?>>
+								<label class="form-check-label"
+									for="dAcc_<?= h($aid) ?>"><span class="fw-semibold"><?= h($a['sal_code']) ?></span> <span class="text-body-secondary small"><?= h($a['sal_description']) ?></span></label></div>
 						<?php endforeach; ?>
 					</div>
 			</div>
@@ -337,10 +325,11 @@ nu_layout_start(t('dash_title'), 'home');
 <div class="card shadow-sm mt-3" id="dashWidgets">
 	<div class="card-header nuTitleBar">
 		<span class="fw-semibold"><?= h(t('dash_widgets')) ?></span>
-		<div class="d-flex flex-wrap gap-2"><a class="btn nuAddBtn" id="dashAddWidget" href="<?= h(nu_url('dashboards', ['id' => $id, 'w' => 'new'])) ?>"><i class="bi bi-plus-lg me-1"></i><?= h(t('dash_w_add')) ?></a></div>
+		<div class="d-flex flex-wrap gap-2"><a class="btn nuAddBtn" id="dashAddWidget"
+			href="<?= h(nu_url('dashboards', ['id' => $id, 'w' => 'new'])) ?>"><i class="bi bi-plus-lg me-1"></i><?= h(t('dash_w_add')) ?></a></div>
 	</div>
 	<div class="table-responsive">
-		<table class="table align-middle mb-0 nu-table">
+		<table class="table align-middle mb-0 nu-table" data-nu-phcards><?php // phones: one card per widget (usability review) ?>
 			<thead><tr><th><?= h(t('dash_w_title_field')) ?></th><th><?= h(t('dash_type')) ?></th><th><?= h(t('dash_source')) ?></th><th><?= h(t('dash_width')) ?></th><th class="text-end"><span class="visually-hidden"><?= h(t('actions')) ?></span></th></tr></thead>
 			<tbody>
 			<?php if (!$widgets): ?><tr><td colspan="5" class="text-center text-body-secondary py-4"><?= h(t('dash_no_widgets')) ?></td></tr><?php endif; ?>
@@ -351,12 +340,16 @@ nu_layout_start(t('dash_title'), 'home');
 					<td class="small"><?= h(t('dash_src_' . $x['source'])) ?></td>
 					<td class="small"><?= h(t('dash_width_' . $x['opt']['width'])) ?></td>
 					<td class="text-end text-nowrap">
-						<form method="post" action="<?= h(nu_url('dashboards', ['id' => $id])) ?>" class="d-inline"><?= nu_csrf_field() ?><input type="hidden" name="action" value="wmove"><input type="hidden" name="widget" value="<?= h($wid2) ?>">
-							<button class="btn btn-sm btn-outline-secondary" name="dir" value="up" title="<?= h(t('home_move_up')) ?>" aria-label="<?= h(t('home_move_up')) ?>"<?= $i === 0 ? ' disabled' : '' ?>><i class="bi bi-arrow-up"></i></button>
-							<button class="btn btn-sm btn-outline-secondary" name="dir" value="down" title="<?= h(t('home_move_down')) ?>" aria-label="<?= h(t('home_move_down')) ?>"<?= $i === count($widgets) - 1 ? ' disabled' : '' ?>><i class="bi bi-arrow-down"></i></button>
+						<form method="post" action="<?= h(nu_url('dashboards', ['id' => $id])) ?>" class="d-inline"><?= nu_csrf_field() ?><input type="hidden"
+							name="action" value="wmove"><input type="hidden" name="widget" value="<?= h($wid2) ?>">
+							<button class="btn btn-sm btn-outline-secondary" name="dir" value="up" title="<?= h(t('home_move_up')) ?>"
+								aria-label="<?= h(t('home_move_up')) ?>"<?= $i === 0 ? ' disabled' : '' ?>><i class="bi bi-arrow-up"></i></button>
+							<button class="btn btn-sm btn-outline-secondary" name="dir" value="down" title="<?= h(t('home_move_down')) ?>"
+								aria-label="<?= h(t('home_move_down')) ?>"<?= $i === count($widgets) - 1 ? ' disabled' : '' ?>><i class="bi bi-arrow-down"></i></button>
 						</form>
 						<a class="btn btn-sm btn-outline-secondary" href="<?= h($edit) ?>" title="<?= h(t('edit')) ?>" aria-label="<?= h(t('edit')) ?>"><i class="bi bi-pencil"></i></a>
-						<form method="post" action="<?= h(nu_url('dashboards', ['id' => $id])) ?>" class="d-inline" data-confirm="<?= h(t('dash_w_delete_confirm')) ?>" data-confirm-ok="<?= h(t('delete')) ?>" data-confirm-class="btn btn-danger">
+						<form method="post" action="<?= h(nu_url('dashboards', ['id' => $id])) ?>" class="d-inline" data-confirm="<?= h(t('dash_w_delete_confirm')) ?>"
+							data-confirm-ok="<?= h(t('delete')) ?>" data-confirm-class="btn btn-danger">
 							<?= nu_csrf_field() ?><input type="hidden" name="action" value="wdelete"><input type="hidden" name="widget" value="<?= h($wid2) ?>">
 							<button class="btn btn-sm btn-outline-danger" title="<?= h(t('delete')) ?>" aria-label="<?= h(t('delete')) ?>"><i class="bi bi-trash"></i></button>
 						</form>

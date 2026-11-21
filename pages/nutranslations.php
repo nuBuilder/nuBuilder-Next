@@ -5,7 +5,7 @@ defined('NU_ROOT') || exit;
 /*
  * Translations (zzzzsys_translate) – nuBuilder's form "nutranslate". Rights of that form.
  *   list (?lang, ?q, ?src = own|nu|all) · ?view=missing&lang=… texts of the app's forms without a translation
- *   ?view=missing&f=<form> (0.8.754): one form and its sub-forms in every target language + translating with AI
+ *   ?view=missing&f=<form>: one form and its sub-forms in every target language + translating with AI
  *   (POST ai_prompt = JSON with the prompt, ai_check = preview of a pasted answer, ai_save = the picked rows; NuTranslate::ai*)
  *   ?id=<id> | ?id=new[&lang=…&en=…] edit. nuBuilder's own rows ("nu…") are read-only; "Override" creates an own row.
  */
@@ -27,68 +27,32 @@ if ($id !== '' && !$isNew) {
 $isNu = $row && str_starts_with((string)$row['zzzzsys_translate_id'], 'nu');
 $errors = [];
 
-if (nu_is_post()) {
-	$action = nu_post('action');
-	if ($action === 'save' && !$isNu) {
-		NuAcl::require(NuAcl::FORM_TRANSLATE, $row ? 'save' : 'create');
-		$in = ['trl_language' => nu_post('trl_language'), 'trl_english' => (string)($_POST['trl_english'] ?? ''), 'trl_translation' => (string)($_POST['trl_translation'] ?? '')];
-		$in = array_map(static fn($v) => str_replace("\r\n", "\n", (string)$v), $in);
-		[$newId, $errors] = NuTranslate::save($in, $row ? $id : '');
-		if (!$errors) {
-			NuLog::write($row ? 'translation_changed' : 'translation_created', $T, (string)$newId, ['language' => $in['trl_language'], 'english' => mb_substr($in['trl_english'], 0, 100)]);
-			nu_flash('success', t('saved'));
-			$back = nu_post('back');
-			$bf = nu_post('back_f');
-			nu_redirect($back === 'missing' ? nu_url('translations', ['view' => 'missing', 'lang' => $bf !== '' ? null : $in['trl_language'], 'f' => $bf ?: null]) : nu_url('translations', ['id' => $newId]));
-		}
-	}
-	if ($action === 'delete' && $row && !$isNu) {
-		NuAcl::require(NuAcl::FORM_TRANSLATE, 'delete');
-		$db->delete($T, 'zzzzsys_translate_id', $id);
-		NuLog::write('translation_deleted', $T, $id, ['language' => (string)$row['trl_language'], 'english' => mb_substr((string)$row['trl_english'], 0, 100)]);
-		nu_flash('success', t('trl_deleted'));
-		nu_redirect(nu_url('translations', ['lang' => (string)$row['trl_language']]));
-	}
-}
+['isNu' => $isNu, 'row' => $row, 'errors' => $errors, 'id' => $id, 'T' => $T, 'db' => $db]
+	= NuTranslationsPage::post1(get_defined_vars());   // the POST actions (code review R7, nutranslationspage.php)
 
-// ------------------------------------------------------------------ one form: translating with AI (0.8.754)
+// ------------------------------------------------------------------ one form: translating with AI
 $aiForm = (string)($_GET['f'] ?? '');
 if ($aiForm !== '' && !isset(NuTranslate::forms()[$aiForm])) $aiForm = '';
 $targets = NuTranslate::targetLanguages();
 $aiPick = static fn(): array => array_values(array_intersect($targets, array_map('strval', (array)($_POST['ai_lang'] ?? []))));
 $aiPreview = null;
-if (nu_is_post() && $id === '' && $aiForm !== '' && in_array(nu_post('action'), ['ai_prompt', 'ai_check', 'ai_save'], true)) {
-	if (!$rights['create'] && !$rights['save']) NuAcl::require(NuAcl::FORM_TRANSLATE, 'create');
-	$action = nu_post('action');
-	if ($action === 'ai_prompt') {                                // JSON: the prompt for the chosen languages (nothing stored)
-		header('Content-Type: application/json; charset=utf-8');
-		header('Cache-Control: no-store');
-		$pl = $aiPick();
-		if (!$pl) exit(json_encode(['ok' => false, 'message' => t('trl_ai_pick_lang')]));
-		$r = NuTranslate::aiPrompt($aiForm, $pl, nu_check('ai_only') === '1');
-		exit(json_encode(['ok' => $r['count'] > 0, 'prompt' => $r['prompt'], 'count' => $r['count'], 'message' => $r['count'] ? t('trl_ai_copied', $r['count']) : t('trl_ai_nothing')], JSON_UNESCAPED_UNICODE));
-	}
-	$answer = (string)($_POST['ai_answer'] ?? '');
-	$aiPreview = NuTranslate::aiCheck($answer, $aiForm, $targets);
-	if ($action === 'ai_save' && $aiPreview['error'] === '') {
-		$n = NuTranslate::aiSave($aiPreview['rows'], (array)($_POST['pick'] ?? []), (bool)$rights['create'], (bool)$rights['save']);
-		NuLog::write('translations_ai', $T, $aiForm, $n);
-		nu_flash('success', t('trl_ai_saved', $n['created'], $n['changed'], $n['skipped']));
-		nu_redirect(nu_url('translations', ['view' => 'missing', 'f' => $aiForm]));
-	}
-}
+['id' => $id, 'aiForm' => $aiForm, 'rights' => $rights, 'aiPreview' => $aiPreview, 'targets' => $targets, 'n' => $n, 'T' => $T]
+	= NuTranslationsPage::post2(get_defined_vars());   // the POST actions (code review R7, nutranslationspage.php)
 
 $view = $id === '' && ($_GET['view'] ?? '') === 'missing' ? 'missing' : 'list';
 // ------------------------------------------------------------------ list (also Print / CSV)
 if ($id === '' && $view === 'list') {
-	// list: columns, filters and sort of the chosen list view (0.8.334, core/nulistdefs.php → translations; the view is ?lv=, ?view= is the tab)
+	// list: columns, filters and sort of the chosen list view (core/nulistdefs.php → translations; the view is ?lv=, ?view= is the tab)
 	$lang = (string)($_GET['lang'] ?? '');
 	NuListView::page('translations', [
 		'before' => NuListView::crumbs([[t('nav_forms'), nu_url('forms')], [t('trl_title')]])
-			. '<ul class="nav nav-tabs mb-3"><li class="nav-item"><a class="nav-link active" aria-current="page" href="' . h(nu_url('translations')) . '"><i class="bi bi-translate me-1"></i>' . h(t('trl_tab_all')) . '</a></li>'
-			. '<li class="nav-item"><a class="nav-link" href="' . h(nu_url('translations', ['view' => 'missing', 'lang' => $lang ?: null])) . '"><i class="bi bi-exclamation-circle me-1"></i>' . h(t('trl_tab_missing')) . '</a></li></ul>',
+			. '<ul class="nav nav-tabs mb-3"><li class="nav-item"><a class="nav-link active" aria-current="page" href="' . h(nu_url('translations'))
+				. '"><i class="bi bi-translate me-1"></i>' . h(t('trl_tab_all')) . '</a></li>'
+			. '<li class="nav-item"><a class="nav-link" href="' . h(nu_url('translations', ['view' => 'missing', 'lang' => $lang ?: null]))
+				. '"><i class="bi bi-exclamation-circle me-1"></i>' . h(t('trl_tab_missing')) . '</a></li></ul>',
 		'active' => 'forms', 'title_extra' => NuListView::infoTip(t('trl_hint', NuTranslate::language() !== '' ? NuTranslate::language() : 'English')),
-		'buttons' => $rights['add'] ? '<a class="btn nuAddBtn" title="' . h(t('trl_new')) . '" href="' . h(nu_url('translations', ['id' => 'new', 'lang' => $lang ?: null])) . '"><i class="bi bi-plus-lg me-1"></i>' . h(t('add')) . '</a>' : '',
+		'buttons' => $rights['add'] ? '<a class="btn nuAddBtn" title="' . h(t('trl_new')) . '" href="'
+			. h(nu_url('translations', ['id' => 'new', 'lang' => $lang ?: null])) . '"><i class="bi bi-plus-lg me-1"></i>' . h(t('add')) . '</a>' : '',
 	]);
 	return;
 }
@@ -113,12 +77,15 @@ nu_layout_start(t('trl_title'), 'forms', ['head' => $view === 'missing' && $id =
 	<div class="nuTitleBar mb-3">
 		<h1 class="h3 mb-0"><?= h(t('trl_title')) ?></h1>
 		<div class="nuTitleSub text-body-secondary small"><?= h(t('trl_hint', NuTranslate::language() !== '' ? NuTranslate::language() : 'English')) ?></div>
-		<div class="d-flex flex-wrap gap-2"><?= nu_back_button() ?><?php if ($rights['add']): ?><a class="btn nuAddBtn" title="<?= h(t('trl_new')) ?>" href="<?= h(nu_url('translations', ['id' => 'new', 'lang' => $lang ?: null])) ?>"><i class="bi bi-plus-lg me-1"></i><?= h(t('add')) ?></a><?php endif; ?>
+		<div class="d-flex flex-wrap gap-2"><?= nu_back_button() ?><?php if ($rights['add']): ?><a class="btn nuAddBtn" title="<?= h(t('trl_new')) ?>"
+			href="<?= h(nu_url('translations', ['id' => 'new', 'lang' => $lang ?: null])) ?>"><i class="bi bi-plus-lg me-1"></i><?= h(t('add')) ?></a><?php endif; ?>
 		</div>
 	</div>
 	<ul class="nav nav-tabs mb-3">
-		<li class="nav-item"><a class="nav-link<?= $view === 'list' ? ' active' : '' ?>" href="<?= h(nu_url('translations', ['lang' => $lang ?: null])) ?>"><i class="bi bi-translate me-1"></i><?= h(t('trl_tab_all')) ?></a></li>
-		<li class="nav-item"><a class="nav-link<?= $view === 'missing' ? ' active' : '' ?>" href="<?= h(nu_url('translations', ['view' => 'missing', 'lang' => $lang ?: null])) ?>"><i class="bi bi-exclamation-circle me-1"></i><?= h(t('trl_tab_missing')) ?></a></li>
+		<li class="nav-item"><a class="nav-link<?= $view === 'list' ? ' active' : '' ?>"
+			href="<?= h(nu_url('translations', ['lang' => $lang ?: null])) ?>"><i class="bi bi-translate me-1"></i><?= h(t('trl_tab_all')) ?></a></li>
+		<li class="nav-item"><a class="nav-link<?= $view === 'missing' ? ' active' : '' ?>"
+			href="<?= h(nu_url('translations', ['view' => 'missing', 'lang' => $lang ?: null])) ?>"><i class="bi bi-exclamation-circle me-1"></i><?= h(t('trl_tab_missing')) ?></a></li>
 	</ul>
 
 	<?php if ($view === 'list'): ?>
@@ -136,7 +103,8 @@ nu_layout_start(t('trl_title'), 'forms', ['head' => $view === 'missing' && $id =
 					<?php foreach ($forms as $fid => $fl): ?><option value="<?= h($fid) ?>"<?= $fid === $aiForm ? ' selected' : '' ?>><?= h($fl) ?></option><?php endforeach; ?></select></div>
 				<?php if ($aiForm === ''): ?>
 				<div class="col-sm-6 col-md-3"><label class="form-label small mb-1" for="m_l"><?= h(t('trl_language')) ?></label>
-					<select class="form-select js-autosubmit" id="m_l" name="lang"><?php foreach ($langs as $l): ?><option<?= $l === $lang ? ' selected' : '' ?>><?= h($l) ?></option><?php endforeach; ?></select></div>
+					<select class="form-select js-autosubmit" id="m_l"
+						name="lang"><?php foreach ($langs as $l): ?><option<?= $l === $lang ? ' selected' : '' ?>><?= h($l) ?></option><?php endforeach; ?></select></div>
 				<div class="col-md-5 small text-body-secondary"><?= h(t('trl_missing_hint')) ?></div>
 				<?php endif; ?>
 			</div>
@@ -159,12 +127,16 @@ nu_layout_start(t('trl_title'), 'forms', ['head' => $view === 'missing' && $id =
 						<?= nu_csrf_field() ?><input type="hidden" name="action" value="ai_prompt">
 						<div class="mb-2"><span class="fw-semibold small me-2"><?= h(t('trl_ai_langs')) ?></span>
 						<?php foreach ($targets as $i => $l): $on = !empty($gaps[$l]) || !$gaps; ?>
-							<div class="form-check form-check-inline"><input class="form-check-input trlAiLang" type="checkbox" name="ai_lang[]" value="<?= h($l) ?>" id="trlAiL<?= $i ?>"<?= $on ? ' checked' : '' ?>><label class="form-check-label" for="trlAiL<?= $i ?>"><?= h($l) ?><?= !empty($gaps[$l]) ? ' <span class="badge text-bg-warning">' . (int)$gaps[$l] . '</span>' : '' ?></label></div>
+							<div class="form-check form-check-inline"><input class="form-check-input trlAiLang" type="checkbox" name="ai_lang[]" value="<?= h($l) ?>"
+								id="trlAiL<?= $i ?>"<?= $on ? ' checked' : '' ?>><label class="form-check-label"
+								for="trlAiL<?= $i ?>"><?= h($l) ?><?= !empty($gaps[$l]) ? ' <span class="badge text-bg-warning">' . (int)$gaps[$l] . '</span>' : '' ?></label></div>
 						<?php endforeach; ?></div>
-						<div class="form-check form-switch mb-3"><input class="form-check-input" type="checkbox" role="switch" name="ai_only" value="1" id="trlAiOnly" checked><label class="form-check-label" for="trlAiOnly"><?= h(t('trl_ai_only_missing')) ?></label></div>
+						<div class="form-check form-switch mb-3"><input class="form-check-input" type="checkbox" role="switch" name="ai_only" value="1" id="trlAiOnly"
+							checked><label class="form-check-label" for="trlAiOnly"><?= h(t('trl_ai_only_missing')) ?></label></div>
 						<button class="btn btn-outline-primary" type="submit" id="trlAiCopy"><i class="bi bi-clipboard me-1"></i><?= h(t('trl_ai_copy')) ?></button>
 						<span class="small ms-2" id="trlAiMsg" role="status" aria-live="polite"></span>
-						<textarea class="form-control font-monospace small mt-2 d-none" id="trlAiPromptOut" rows="6" readonly data-fail="<?= h(t('trl_ai_copy_fail')) ?>" aria-label="<?= h(t('trl_ai_copy')) ?>"></textarea>
+						<textarea class="form-control font-monospace small mt-2 d-none" id="trlAiPromptOut" rows="6" readonly
+							data-fail="<?= h(t('trl_ai_copy_fail')) ?>" aria-label="<?= h(t('trl_ai_copy')) ?>"></textarea>
 						<?= NuAiProvider::host('translate', 'trlAiAsk') ?>
 					</form>
 					<hr>
@@ -183,7 +155,8 @@ nu_layout_start(t('trl_title'), 'forms', ['head' => $view === 'missing' && $id =
 							<textarea class="d-none" name="ai_answer" aria-hidden="true"><?= h((string)($_POST['ai_answer'] ?? '')) ?></textarea>
 							<div class="small text-body-secondary mb-2"><?= h(t('trl_ai_preview', count($aiPreview['rows']))) ?></div>
 							<div class="table-responsive"><table class="table table-sm align-middle nu-table" id="trlAiPreview">
-								<thead><tr><th><input class="form-check-input" type="checkbox" id="trlAiAll" aria-label="<?= h(t('trl_ai_save')) ?>" checked></th><th><?= h(t('trl_language')) ?></th><th><?= h(t('trl_english')) ?></th><th><?= h(t('trl_translation')) ?></th><th><?= h(t('trl_ai_current')) ?></th><th><span class="visually-hidden"><?= h(t('actions')) ?></span></th></tr></thead>
+								<thead><tr><th><input class="form-check-input" type="checkbox" id="trlAiAll" aria-label="<?= h(t('trl_ai_save')) ?>"
+									checked></th><th><?= h(t('trl_language')) ?></th><th><?= h(t('trl_english')) ?></th><th><?= h(t('trl_translation')) ?></th><th><?= h(t('trl_ai_current')) ?></th><th><span class="visually-hidden"><?= h(t('actions')) ?></span></th></tr></thead>
 								<tbody>
 								<?php foreach ($aiPreview['rows'] as $r): $ok = in_array($r['status'], ['new', 'change'], true); ?>
 									<tr data-status="<?= h($r['status']) ?>">
@@ -205,7 +178,8 @@ nu_layout_start(t('trl_title'), 'forms', ['head' => $view === 'missing' && $id =
 			</div>
 			<?php endif; ?>
 			<div class="card shadow-sm mb-3">
-				<div class="card-header small text-body-secondary" id="trlMatrixHead"><?= h(t('trl_matrix_count', count($mx['rows']), $gaps ? implode(', ', array_map(static fn($l, $n) => $l . ' ' . $n, array_keys($gaps), $gaps)) : '0')) ?></div>
+				<div class="card-header small text-body-secondary"
+					id="trlMatrixHead"><?= h(t('trl_matrix_count', count($mx['rows']), $gaps ? implode(', ', array_map(static fn($l, $n) => $l . ' ' . $n, array_keys($gaps), $gaps)) : '0')) ?></div>
 				<div class="table-responsive">
 					<table class="table align-middle mb-0 nu-table" id="trlMatrix">
 						<thead><tr><th><?= h(t('trl_english')) ?></th><th><?= h(t('trl_used_in')) ?></th><?php foreach ($targets as $l): ?><th data-lang="<?= h($l) ?>"><?= h($l) ?></th><?php endforeach; ?></tr></thead>
@@ -216,7 +190,11 @@ nu_layout_start(t('trl_title'), 'forms', ['head' => $view === 'missing' && $id =
 								<td class="text-break"><?= h($text) ?><div><?php foreach ($r['kinds'] as $k): ?><span class="badge text-bg-light border me-1 fw-normal"><?= h($kindT($k)) ?></span><?php endforeach; ?></div></td>
 								<td class="small text-body-secondary"><?= h(implode(', ', $r['where'])) ?></td>
 								<?php foreach ($targets as $l): $v = $r['tr'][$l]; ?>
-									<td class="small<?= $v === null ? ' trlGap' : '' ?>" data-lang="<?= h($l) ?>"><?php if ($v !== null): ?><?= h(mb_strimwidth($v, 0, 80, '…')) ?><?php elseif ($rights['create']): ?><a class="btn btn-sm btn-outline-warning py-0 px-1 trlGapBtn" href="<?= h(nu_url('translations', ['id' => 'new', 'lang' => $l, 'en' => $text, 'back' => 'missing', 'f' => $aiForm])) ?>" title="<?= h(t('trl_translate') . ' · ' . $l) ?>" aria-label="<?= h(t('trl_translate') . ' · ' . $l) ?>"><i class="bi bi-plus-lg"></i></a><?php else: ?><span class="badge text-bg-warning"><?= h(t('trl_missing_cell')) ?></span><?php endif; ?></td>
+									<td class="small<?= $v === null ? ' trlGap' : '' ?>"
+										data-lang="<?= h($l) ?>"><?php if ($v !== null): ?><?= h(mb_strimwidth($v, 0, 80, '…')) ?><?php elseif ($rights['create']): ?><a class="btn btn-sm btn-outline-warning py-0 px-1 trlGapBtn"
+										href="<?= h(nu_url('translations', ['id' => 'new', 'lang' => $l, 'en' => $text, 'back' => 'missing', 'f' => $aiForm])) ?>"
+										title="<?= h(t('trl_translate') . ' · ' . $l) ?>"
+										aria-label="<?= h(t('trl_translate') . ' · ' . $l) ?>"><i class="bi bi-plus-lg"></i></a><?php else: ?><span class="badge text-bg-warning"><?= h(t('trl_missing_cell')) ?></span><?php endif; ?></td>
 								<?php endforeach; ?>
 							</tr>
 						<?php endforeach; ?>
@@ -239,7 +217,8 @@ nu_layout_start(t('trl_title'), 'forms', ['head' => $view === 'missing' && $id =
 							<tr>
 								<td class="text-break"><?= h($text) ?></td>
 								<td class="small text-body-secondary"><?= h(implode(', ', $where)) ?></td>
-								<td class="text-end"><?php if ($rights['create']): ?><a class="btn btn-sm btn-outline-primary text-nowrap" href="<?= h(nu_url('translations', ['id' => 'new', 'lang' => $lang, 'en' => $text, 'back' => 'missing'])) ?>"><i class="bi bi-translate me-1"></i><?= h(t('trl_translate')) ?></a><?php endif; ?></td>
+								<td class="text-end"><?php if ($rights['create']): ?><a class="btn btn-sm btn-outline-primary text-nowrap"
+									href="<?= h(nu_url('translations', ['id' => 'new', 'lang' => $lang, 'en' => $text, 'back' => 'missing'])) ?>"><i class="bi bi-translate me-1"></i><?= h(t('trl_translate')) ?></a><?php endif; ?></td>
 							</tr>
 						<?php endforeach; ?>
 						</tbody>
@@ -266,20 +245,23 @@ nu_layout_start(t('trl_title'), 'forms', ['head' => $view === 'missing' && $id =
 		<div class="nuTitleBar nuRecHead mb-3">
 			<h1 class="h4 mb-0"><?= h($row ? t('trl_edit') : t('trl_new')) ?>
 				<?php if ($isNu): ?><span class="badge bg-info-subtle text-info-emphasis fs-6 align-middle">nuBuilder Forte</span><?php endif; ?></h1>
-			<div class="d-flex flex-wrap gap-2 align-items-center">   <!-- buttons in their own row (0.8.474) -->
-			<a class="btn nuBtnAct" href="<?= h(($back === 'missing' ? nu_url('translations', ['view' => 'missing', 'lang' => $backF !== '' ? null : $curLang, 'f' => $backF ?: null]) : nu_url('translations'))) ?>"><i class="bi bi-arrow-left me-1"></i><?= h(t('back')) ?></a>
+			<div class="d-flex flex-wrap gap-2 align-items-center">   <!-- buttons in their own row -->
+			<a class="btn nuBtnAct"
+				href="<?= h(($back === 'missing' ? nu_url('translations', ['view' => 'missing', 'lang' => $backF !== '' ? null : $curLang, 'f' => $backF ?: null]) : nu_url('translations'))) ?>"><i class="bi bi-arrow-left me-1"></i><?= h(t('back')) ?></a>
 			<?php if (!$locked): ?><button data-nu-save class="btn nuBtnAct nuBtnSave" type="submit" id="trlSave"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button><?php endif; ?>
 			<?php if ($isNu && $rights['create']): ?>
 				<?php if ($override): ?>
 					<a class="btn btn-outline-primary" href="<?= h(nu_url('translations', ['id' => (string)$override])) ?>"><i class="bi bi-pencil me-1"></i><?= h(t('trl_open_override')) ?></a>
 				<?php else: ?>
-					<a class="btn btn-outline-primary" href="<?= h(nu_url('translations', ['id' => 'new', 'lang' => (string)$row['trl_language'], 'en' => (string)$row['trl_english'], 'tr' => (string)$row['trl_translation']])) ?>"><i class="bi bi-pencil-square me-1"></i><?= h(t('trl_override')) ?></a>
+					<a class="btn btn-outline-primary"
+						href="<?= h(nu_url('translations', ['id' => 'new', 'lang' => (string)$row['trl_language'], 'en' => (string)$row['trl_english'], 'tr' => (string)$row['trl_translation']])) ?>"><i class="bi bi-pencil-square me-1"></i><?= h(t('trl_override')) ?></a>
 				<?php endif; ?>
 			<?php endif; ?>
 			<?php if ($row && !$isNu && $rights['delete']): ?>
-				<button class="btn nuBtnAct nuBtnDel" type="submit" name="action" value="delete" formnovalidate data-confirm-submit="<?= h(t('trl_delete_confirm')) ?>"><i class="bi bi-trash me-1"></i><?= h(t('delete')) ?></button>
+				<button class="btn nuBtnAct nuBtnDel" type="submit" name="action" value="delete" formnovalidate
+					data-confirm-submit="<?= h(t('trl_delete_confirm')) ?>"><i class="bi bi-trash me-1"></i><?= h(t('delete')) ?></button>
 			<?php endif; ?>
-			<?php if ($row): ?><?= NuFormInfo::record($T, (string)$id) /* (i) record info (0.8.501) */ ?><?php endif; ?>
+			<?php if ($row): ?><?= NuFormInfo::record($T, (string)$id) /* (i) record info */ ?><?php endif; ?>
 			</div>
 		</div>
 		<?php if ($isNu): ?><div class="alert alert-info py-2 small"><?= h(t('trl_nu_locked')) ?></div><?php endif; ?>
@@ -294,14 +276,16 @@ nu_layout_start(t('trl_title'), 'forms', ['head' => $view === 'missing' && $id =
 			<div class="row g-2 mb-3">
 				<label class="col-sm-3 col-form-label text-sm-end" for="trl_english"><?= h(t('trl_english')) ?> <span class="text-danger">*</span></label>
 				<div class="col-sm-9">
-					<textarea class="form-control font-monospace<?= $err('trl_english') ?>" id="trl_english" name="trl_english" rows="2" maxlength="500" required<?= $row ? '' : ' autofocus' ?>><?= h($v('trl_english', 'en')) ?></textarea><?= $fb('trl_english') ?>
+					<textarea class="form-control font-monospace<?= $err('trl_english') ?>" id="trl_english" name="trl_english" rows="2" maxlength="500"
+						required<?= $row ? '' : ' autofocus' ?>><?= h($v('trl_english', 'en')) ?></textarea><?= $fb('trl_english') ?>
 					<div class="form-text"><?= h(t('trl_english_hint')) ?></div>
 				</div>
 			</div>
 			<div class="row g-2">
 				<label class="col-sm-3 col-form-label text-sm-end" for="trl_translation"><?= h(t('trl_translation')) ?> <span class="text-danger">*</span></label>
 				<div class="col-sm-9">
-					<textarea class="form-control<?= $err('trl_translation') ?>" id="trl_translation" name="trl_translation" rows="2" maxlength="500" required<?= $row || $v('trl_english', 'en') === '' ? '' : ' autofocus' ?>><?= h($v('trl_translation', 'tr')) ?></textarea><?= $fb('trl_translation') ?>
+					<textarea class="form-control<?= $err('trl_translation') ?>" id="trl_translation" name="trl_translation" rows="2" maxlength="500"
+						required<?= $row || $v('trl_english', 'en') === '' ? '' : ' autofocus' ?>><?= h($v('trl_translation', 'tr')) ?></textarea><?= $fb('trl_translation') ?>
 				</div>
 			</div>
 		</fieldset>

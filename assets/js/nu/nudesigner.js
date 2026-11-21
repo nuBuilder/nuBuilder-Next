@@ -1,7 +1,7 @@
 /*
  * Form designer inside the builder preview (index.php?p=form&builder=1).
  *   absolute layout: drag objects to move them, drag the corner handle to resize (5 px grid, Alt = 1 px)
- *     several objects (0.8.606, as nuBuilder Forte's arrange mode): Ctrl / ⌘ + click adds or removes an object, dragging on an empty
+ *     several objects (as nuBuilder Forte's arrange mode): Ctrl / ⌘ + click adds or removes an object, dragging on an empty
  *     place selects the objects in the box (Ctrl / ⌘ keeps the earlier ones), Ctrl / ⌘ + A selects all objects of the tab, Esc none;
  *     the selection moves together; arrow keys move it, Shift + arrow keys change width / height; the Arrange panel aligns
  *     (top, bottom, left, right), spaces evenly (vertical, horizontal), makes them the same size (shortest, tallest, thinnest,
@@ -9,7 +9,7 @@
  *   auto / grid layout: drag an object onto another to place it before/after it or into a new row below,
  *                       drag the right handle to change its width (1–12 columns)
  * Changes are sent to the builder window with postMessage; the builder saves them (several objects in one step: nuDesignerBatch; the Delete key:
- * nuDesignerDelete with the selected ids – the builder asks first, 0.8.661).
+ * nuDesignerDelete with the selected ids – the builder asks first).
  */
 (function () {
 	'use strict';
@@ -35,7 +35,7 @@
 	document.documentElement.classList.add('nuDesigning');
 
 	// every object gets an overlay that catches the mouse (inputs stay inert while designing); a content box only on its frame and
-	// title (0.8.665), so the objects inside it stay selectable
+	// title, so the objects inside it stay selectable
 	var wraps = [];
 	function scan() {
 		wraps = [];
@@ -59,7 +59,7 @@
 		});
 	}
 	scan();
-	// design mode (0.8.665): the form's body was drawn again without a reload – new overlays, the selection by object ids
+	// design mode: the form's body was drawn again without a reload – new overlays, the selection by object ids
 	window.nuDesignerRescan = function (ids) {
 		scan();
 		sel = (ids || []).map(function (id) { return document.getElementById('nuw_' + id); }).filter(function (w) { return w && wraps.indexOf(w) >= 0; });
@@ -68,7 +68,7 @@
 		if (document.documentElement.classList.contains('nuShowTabOrder')) showTabOrder(true);
 	};
 
-	// the objects of a content box (0.8.1302, absolute layout): those of the same canvas whose centre lies inside the box – they move with
+	// the objects of a content box (absolute layout): those of the same canvas whose centre lies inside the box – they move with
 	// it and are tinted while it is selected
 	function isBox(w) { return w.classList.contains('nuWrap_contentbox'); }
 	function contentsOf(box) {
@@ -94,7 +94,7 @@
 			w.classList.toggle('nuDesignInBox', inBox.indexOf(w) >= 0 && sel.indexOf(w) < 0);
 		});
 		panelState();
-		send({nuDesignerSel: sel.map(idOf)});   // the builder page's Delete key deletes the whole selection (0.8.661)
+		send({nuDesignerSel: sel.map(idOf)});   // the builder page's Delete key deletes the whole selection
 	}
 	function select(w, notify) {
 		selected = w;
@@ -112,7 +112,7 @@
 	function visible(w) { return !!(w.offsetParent || w.getClientRects().length); }
 	function activePane() { return document.querySelector('#nuEditForm .tab-pane.active') || document.getElementById('nuEditForm'); }
 
-	// tab order (0.8.521, button in the builder's preview bar): a red number on every object the Tab key stops at, in that order –
+	// tab order (button in the builder's preview bar): a red number on every object the Tab key stops at, in that order –
 	// over all tabs, like nuBuilder's arrange mode; a sub-form counts once
 	var FOCUSABLE = 'input:not([type=hidden]):not([tabindex="-1"]):not([disabled]), select:not([disabled]), textarea:not([tabindex="-1"]):not([disabled]), button:not([disabled]):not([tabindex="-1"]), a[href]:not([tabindex="-1"]), [contenteditable="true"]';
 	function showTabOrder(on) {
@@ -133,7 +133,7 @@
 		});
 	}
 
-	// new object order from the builder (Arrange panel Up / Down, 0.8.608): the objects change places in the page, each parent keeps
+	// new object order from the builder (Arrange panel Up / Down): the objects change places in the page, each parent keeps
 	// its slots – absolute objects do not move on screen, but Tab and the tab order numbers follow the new order
 	function reorder(ids) {
 		var rank = {};
@@ -153,11 +153,11 @@
 
 	// the builder selects objects from its list
 	window.addEventListener('message', function (e) {
-		if (!e.data || typeof e.data !== 'object') return;   // text messages of browser extensions (0.8.1143)
+		if (!e.data || typeof e.data !== 'object') return;   // text messages of browser extensions
 		if (e.origin === origin && 'nuBuilderTabOrder' in e.data) { showTabOrder(e.data.nuBuilderTabOrder); return; }
 		if (e.origin === origin && e.data && Array.isArray(e.data.nuBuilderOrder)) { reorder(e.data.nuBuilderOrder); return; }
-		if (e.origin === origin && e.data && e.data.nuBuilderSelectNone) { select(null, false); return; }   // design mode: Form settings (0.8.663)
-		// design mode (0.8.664): spacing with a fixed gap from the properties panel; the size typed in the panel, shown at once
+		if (e.origin === origin && e.data && e.data.nuBuilderSelectNone) { select(null, false); return; }   // design mode: Form settings
+		// design mode: spacing with a fixed gap from the properties panel; the size typed in the panel, shown at once
 		if (e.origin === origin && e.data && e.data.nuBuilderArrange) { arrange(String(e.data.nuBuilderArrange.what || ''), e.data.nuBuilderArrange.gap); return; }
 		if (e.origin === origin && e.data && e.data.nuBuilderSize) {
 			var ws = document.getElementById('nuw_' + e.data.nuBuilderSize.id), sz = e.data.nuBuilderSize;
@@ -200,15 +200,15 @@
 		if (e.button !== 0) return;
 		e.preventDefault();
 		window.focus();                                               // preventDefault keeps the focus outside: arrow keys need it here
-		// a field of the form that has the focus (the form focuses its first field on load) would swallow the arrow keys (0.8.1302)
+		// a field of the form that has the focus (the form focuses its first field on load) would swallow the arrow keys
 		var ae = document.activeElement;
 		if (ae && ae !== document.body && ae.closest && ae.closest('#nuEditForm') && ae.blur) ae.blur();
-		if (mod(e)) { toggle(w); return; }                            // Ctrl / ⌘ + click: add / remove (0.8.606; auto / grid layouts too, 0.8.959)
+		if (mod(e)) { toggle(w); return; }                            // Ctrl / ⌘ + click: add / remove (auto / grid layouts too)
 		if (!absolute || sel.indexOf(w) < 0) select(w, true);
 		else { selected = w; paint(); send({nuBuilderPick: idOf(w)}); }
 		var sx = e.clientX, sy = e.clientY, moved = false;
 		if (absolute) {
-			var group = withContents(sel), start = group.map(function (x) { return [x.offsetTop, x.offsetLeft]; });   // a box takes its objects along (0.8.1302)
+			var group = withContents(sel), start = group.map(function (x) { return [x.offsetTop, x.offsetLeft]; });   // a box takes its objects along
 			drag(function (ev) {
 				var dx = ev.clientX - sx, dy = ev.clientY - sy;
 				if (!moved && Math.abs(dx) + Math.abs(dy) < 3) return;
@@ -264,7 +264,7 @@
 		});
 	}
 
-	// ----------------------------------------------------------------- box selection on an empty place (absolute layout, 0.8.606)
+	// ----------------------------------------------------------------- box selection on an empty place (absolute layout)
 	if (absolute) {
 		document.addEventListener('pointerdown', function (e) {
 			if (e.button !== 0 || e.target.closest('.nuDesignOverlay, .nuDesignHandle, .nuArrange, .nav, a, button, input, select, textarea')) return;
@@ -332,7 +332,7 @@
 	}
 
 	// new size of an object (absolute layout): the wrapper and the control inside it change together, so the preview shows the new size at
-	// once – controls with a fixed height / width in px (run buttons, text areas, editors, HTML, charts, lookups) take the same difference (0.8.609)
+	// once – controls with a fixed height / width in px (run buttons, text areas, editors, HTML, charts, lookups) take the same difference
 	function setSize(w, width, height) {
 		var dw = width === null ? 0 : width - w.offsetWidth, dh = height === null ? 0 : height - w.offsetHeight;
 		if (width !== null) w.style.width = width + 'px';
@@ -359,14 +359,14 @@
 	function onKey(e) {
 		var tag = e.target && e.target.tagName;
 		if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (e.target && e.target.isContentEditable)) return;
-		// Delete (Backspace on a Mac) with objects selected (0.8.661, every layout): the builder asks first and deletes them (nuDesignerDelete)
+		// Delete (Backspace on a Mac) with objects selected (every layout): the builder asks first and deletes them (nuDesignerDelete)
 		if ((e.key === 'Delete' || e.key === 'Backspace') && !mod(e) && sel.length) {
 			e.preventDefault();
 			send({nuDesignerDelete: sel.map(idOf)});
 			return;
 		}
 		if (!absolute) return;
-		if (mod(e) && (e.key === 'a' || e.key === 'A')) {               // all objects of the tab (0.8.606)
+		if (mod(e) && (e.key === 'a' || e.key === 'A')) {               // all objects of the tab
 			e.preventDefault();
 			var pane = activePane();
 			sel = wraps.filter(function (w) { return visible(w) && pane.contains(w); });
@@ -377,12 +377,12 @@
 		if (e.key === 'Escape' && sel.length) { select(null, false); return; }
 		if (!sel.length || ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].indexOf(e.key) < 0) return;
 		e.preventDefault();
-		var step = e.altKey ? 1 : (mod(e) ? 4 * GRID : GRID);       // Ctrl / ⌘: 20 px (0.8.671), Alt: 1 px
+		var step = e.altKey ? 1 : (mod(e) ? 4 * GRID : GRID);       // Ctrl / ⌘: 20 px, Alt: 1 px
 		var dx = e.key === 'ArrowRight' ? step : e.key === 'ArrowLeft' ? -step : 0;
 		var dy = e.key === 'ArrowDown' ? step : e.key === 'ArrowUp' ? -step : 0;
-		var moving = e.shiftKey ? sel : withContents(sel);             // arrows move a content box with its objects (0.8.1302)
+		var moving = e.shiftKey ? sel : withContents(sel);             // arrows move a content box with its objects
 		moving.forEach(function (w) {
-			if (e.shiftKey) {                                             // Shift: size, as nuBuilder Forte (0.8.606)
+			if (e.shiftKey) {                                             // Shift: size, as nuBuilder Forte
 				setSize(w, dx ? Math.max(10, w.offsetWidth + dx) : null, dy && w.style.height ? Math.max(10, w.offsetHeight + dy) : null);
 			} else {
 				w.style.top = Math.max(0, w.offsetTop + dy) + 'px';
@@ -393,7 +393,7 @@
 	}
 	document.addEventListener('keydown', onKey, true);   // capture: before the form runtime's own keys (Esc …)
 
-	// ----------------------------------------------------------------- Arrange panel (absolute layout, 0.8.606)
+	// ----------------------------------------------------------------- Arrange panel (absolute layout)
 	var panel = null, btns = {};
 	var ACTIONS = [
 		['up', 'bi-arrow-up', 1], ['top', 'bi-align-top', 2],
@@ -443,7 +443,7 @@
 			grid.appendChild(b);
 		});
 		panel.appendChild(grid);
-		// fixed gap (0.8.664): the first object stays, each next one follows the previous one at exactly this distance
+		// fixed gap: the first object stays, each next one follows the previous one at exactly this distance
 		var gaps = savedGaps();
 		var gapRows = document.createElement('div');
 		gapRows.className = 'nuArrangeGaps';
@@ -499,7 +499,7 @@
 		var a = w.getBoundingClientRect(), b = l.getBoundingClientRect();
 		return Math.max(0, Math.round(horizontal ? a.left - b.left : a.top - b.top));
 	}
-	// the panel can be dragged by its title row (0.8.607); the place is kept per browser, double-click = back to the corner
+	// the panel can be dragged by its title row; the place is kept per browser, double-click = back to the corner
 	var POS_KEY = 'nunext-arrange-pos';
 	function placePanel(pos) {
 		if (!pos) { panel.style.left = ''; panel.style.top = ''; panel.style.right = ''; return; }
@@ -560,7 +560,7 @@
 				hs.forEach(function (x) { setSize(x.w, null, ht); });
 			}
 		}
-		if (what === 'hgap' || what === 'vgap') {                // fixed gap (0.8.664): from the previous object's edge to the next one's label
+		if (what === 'hgap' || what === 'vgap') {                // fixed gap: from the previous object's edge to the next one's label
 			var hz = what === 'hgap', gp = Math.max(0, Math.min(500, Math.round(+gap || 0)));
 			saveGap(hz ? 'h' : 'v', gp);
 			g.sort(function (a, b) { return hz ? a.l - b.l || a.t - b.t : a.t - b.t || a.l - b.l; });

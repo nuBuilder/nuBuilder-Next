@@ -1,4 +1,4 @@
-/* Setup wizard (pages/nusetupwizard.php, 0.8.543): picking a language switches the wizard to it at once – the step is sent with
+/* Setup wizard (pages/nusetupwizard.php): picking a language switches the wizard to it at once – the step is sent with
    action=lang (the answers of the step stay in the session), the server sets the session language and shows the step again. */
 (function () {
 	'use strict';

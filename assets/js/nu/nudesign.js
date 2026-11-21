@@ -1,13 +1,13 @@
 /* global nuBs */
 /*
- * Design mode on the form page (0.8.662, index.php?p=form&f=…&r=…&design=1 – core/form/nudesign.php); since 0.8.670 the only way to
+ * Design mode on the form page (index.php?p=form&f=…&r=…&design=1 – core/form/nudesign.php); the only way to
  * change a form (the former form builder's links lead here); on the list page (no r) it designs the list's columns.
  * The form runs as usual; nudesigner.js (the builder preview's designer) lays its overlays over the objects – select, Ctrl+click, box,
  * move, resize, arrow keys, Arrange panel, Delete – and reports through postMessage to this window. This file adds
  *   - the bar (draft status, Undo, Discard, Publish, Done),
- *   - the icon bar on the left (0.8.663): Structure (tabs → objects, search, drag to reorder / to another tab) and Add (the table's
+ *   - the icon bar on the left: Structure (tabs → objects, search, drag to reorder / to another tab) and Add (the table's
  *     columns not on the form yet, every object type – click, or drag onto the form), Ctrl+D duplicates,
- *   - tabs on the form (0.8.663): double-click renames, "+" adds, drag reorders, right-click: rename / hide / move / delete,
+ *   - tabs on the form: double-click renames, "+" adds, drag reorders, right-click: rename / hide / move / delete,
  *   - the properties panel: Content · Behaviour (events dialog) · Layout · Style, the form's settings with nothing selected, the common
  *     settings of several objects (with the Arrange actions); on phones a bottom sheet with the sections as tabs.
  * Every change is saved through the builder API (index.php?p=builderapi): in the open draft, or in a new one started by the first change
@@ -20,14 +20,15 @@
 	if (!N || !N.design || (N.mode !== 'edit' && N.mode !== 'browse')) return;
 	var D = N.design, L = D.texts || {}, origin = window.location.origin;
 	var BROWSE = N.mode === 'browse';
-	var HASLIST = ['browse', 'browseedit'].indexOf(N.form.type) >= 0 && !(N.design && N.design.userhome);   // List flyout (0.8.820)  // the list (0.8.669): its columns are designed on the list page itself
+	var HASLIST = ['browse', 'browseedit'].indexOf(N.form.type) >= 0 && !(N.design && N.design.userhome);   // List flyout  // the list: its columns are designed on the list page itself
 	var selCol = '';                  // list: the selected column (zzzzsys_browse_id)
 	if (window.NuFormatDesigner && D.format_designer) window.NuFormatDesigner.init(D.format_designer);
 	var DR = D.draft;                 // open draft (NuFormDraft::info) or null
 	var S = null;                     // builder state: form, tabs, objects, events
 	var selIds = [];                  // selected objects (sob_all_id), from nudesigner.js
 	var KEY = 'nunext-design:' + N.form.id;
-	var INPUT_TYPES = ['text', 'nuDate', 'nuNumber', 'number', 'checkbox', 'button', 'date', 'datetime-local', 'time', 'email', 'tel', 'url', 'password', 'month', 'week', 'color', 'range', 'file', 'nuAutoNumber', 'nuScroll'];
+	var INPUT_TYPES = ['text', 'nuDate', 'nuNumber', 'number', 'checkbox', 'button', 'date', 'datetime-local', 'time', 'email', 'tel', 'url', 'password',
+		'month', 'week', 'color', 'range', 'file', 'nuAutoNumber', 'nuScroll'];
 	var TYPES = ['input', 'select', 'textarea', 'editor', 'lookup', 'calc', 'display', 'subform', 'html', 'word', 'run', 'image', 'chart', 'contentbox'];
 	var VALUE_TYPES = ['input', 'select', 'textarea', 'editor', 'lookup', 'calc', 'display'];
 	var EVENTS = ['onchange', 'onclick', 'onblur', 'onfocus', 'oninput', 'onkeydown', 'onkeyup', 'ondblclick', 'beforeinsertrow', 'afterinsertrow', 'clickdelete'];
@@ -39,7 +40,7 @@
 	var adv = {};
 	var missing = {};                 // object id → column proposal of the last save (the panel offers to add it)
 	var phoneSec = 'content';         // phones: the section shown in the bottom sheet
-	var phone = window.matchMedia ? window.matchMedia('(max-width: 767.98px)') : {matches: false};
+	var phone = window.matchMedia ? window.matchMedia('(max-width: 991.98px)') : {matches: false};
 
 	function t(k) { return L[k] || k; }
 	function fmt(s) { var a = arguments, i = 1; return String(s).replace(/%(\d\$)?[sd]/g, function (m, pos) { return pos ? a[+pos[0]] : a[i++]; }); }
@@ -88,7 +89,8 @@
 	function chain(steps, after) {
 		busy(true);
 		var p = ensureDraft();
-		steps.forEach(function (st) { p = p.then(function () { return api(st[0], st[1]).then(function (j) { if (!j.ok) throw new Error(j.error || 'Error'); if (j.form) S = j; if (j.object_id && j.missing_column) missing[j.object_id] = j.missing_column; return j; }); }); });
+		steps.forEach(function (st) { p = p.then(function () { return api(st[0],
+			st[1]).then(function (j) { if (!j.ok) throw new Error(j.error || 'Error'); if (j.form) S = j; if (j.object_id && j.missing_column) missing[j.object_id] = j.missing_column; return j; }); }); });
 		return p.then(function (j) { if (after) after(j); refreshKeep(); }).catch(function (e) { busy(false); say(e.message, true); renderBar(); });
 	}
 
@@ -104,7 +106,7 @@
 		window.location.replace(D.self);
 	}
 	/**
-	 * Draws the form's body again without reloading the page (0.8.665): the page is fetched, its #nuEditForm and client objects
+	 * Draws the form's body again without reloading the page: the page is fetched, its #nuEditForm and client objects
 	 * replace the current ones, the designer lays new overlays over them; the selection, tab and scroll position stay. The form's own
 	 * nuOnLoad does not run again (objects it hid stay faded) – "Reload the form" in the bar draws everything anew. A changed layout or
 	 * any problem falls back to a full reload.
@@ -165,12 +167,18 @@
 	var bar = el('div', {'class': 'nuDsBar', id: 'nuDsBar', role: 'region', 'aria-label': t('ds_mode')});
 	var status = el('span', {'class': 'nuDsStatus', id: 'nuDsStatus'});
 	var msg = el('span', {'class': 'nuDsMsg', id: 'nuDsMsg', role: 'status', 'aria-live': 'polite'});
-	var bUndo = el('button', {type: 'button', 'class': 'btn btn-outline-secondary', id: 'nuDsUndo', title: t('builder_draft_undo') + ' (Ctrl+Z)', 'aria-label': t('builder_draft_undo'), onclick: undo}, [icon('bi-arrow-counterclockwise')]);
-	var bRedo = el('button', {type: 'button', 'class': 'btn btn-outline-secondary', id: 'nuDsRedo', title: t('ds_redo') + ' (Ctrl+Y)', 'aria-label': t('ds_redo'), onclick: redo}, [icon('bi-arrow-clockwise')]);   // review H2
+	var bUndo = el('button',
+		{type: 'button', 'class': 'btn btn-outline-secondary', id: 'nuDsUndo', title: t('builder_draft_undo') + ' (Ctrl+Z)', 'aria-label': t('builder_draft_undo'), onclick: undo},
+		[icon('bi-arrow-counterclockwise')]);
+	var bRedo = el('button',
+		{type: 'button', 'class': 'btn btn-outline-secondary', id: 'nuDsRedo', title: t('ds_redo') + ' (Ctrl+Y)', 'aria-label': t('ds_redo'), onclick: redo},
+		[icon('bi-arrow-clockwise')]);   // review H2
 	var bDiscard = el('button', {type: 'button', 'class': 'btn btn-outline-secondary', id: 'nuDsDiscard', text: t('builder_draft_discard'), onclick: discard});
-	var bChanges = el('button', {type: 'button', 'class': 'btn btn-outline-secondary', id: 'nuDsChangesBtn', title: t('ds_changes'), 'aria-label': t('ds_changes'), onclick: function () { openWork('changes'); }}, [icon('bi-file-diff')]);
+	var bChanges = el('button',
+		{type: 'button', 'class': 'btn btn-outline-secondary', id: 'nuDsChangesBtn', title: t('ds_changes'), 'aria-label': t('ds_changes'), onclick: function () { openWork('changes'); }},
+		[icon('bi-file-diff')]);
 	var bPublish = el('button', {type: 'button', 'class': 'btn btn-primary', id: 'nuDsPublish', text: t('builder_draft_publish_btn'), title: t('ds_publish_tip'), onclick: function () { publish(); }});
-	// Publish options (0.8.797): ask for a note or publish with one click (per browser), "Publish with a note…" always asks
+	// Publish options: ask for a note or publish with one click (per browser), "Publish with a note…" always asks
 	var PUB_ASK = 'nunext-design-pubask';
 	var pubAsk = function () { try { return localStorage.getItem(PUB_ASK) !== '0'; } catch (e) { return true; } };
 	var bPubAsk = el('input', {'class': 'form-check-input', type: 'checkbox', role: 'switch', id: 'nuDsPubAsk'});
@@ -181,7 +189,8 @@
 			el('label', {'class': 'form-check-label', 'for': 'nuDsPubAsk', text: t('ds_pub_ask')})]),
 			el('div', {'class': 'small text-body-secondary mt-1', text: t('ds_pub_ask_tip')})])]),
 		el('li', {}, [el('hr', {'class': 'dropdown-divider'})]),
-		el('li', {}, [el('button', {type: 'button', 'class': 'dropdown-item', id: 'nuDsPubWithNote', onclick: function () { publish({ask: true}); }}, [icon('bi-chat-left-text me-2'), t('ds_pub_with_note')])])]);
+		el('li', {},
+			[el('button', {type: 'button', 'class': 'dropdown-item', id: 'nuDsPubWithNote', onclick: function () { publish({ask: true}); }}, [icon('bi-chat-left-text me-2'), t('ds_pub_with_note')])])]);
 	var bPubMore = el('button', {type: 'button', 'class': 'btn btn-primary dropdown-toggle dropdown-toggle-split', id: 'nuDsPublishMore', 'data-bs-toggle': 'dropdown',
 		'data-bs-auto-close': 'outside', 'aria-expanded': 'false', 'aria-label': t('ds_pub_more')});   // no tooltip: it would cover the open menu
 	var bPubGrp = el('div', {'class': 'btn-group nuDsPubGrp', id: 'nuDsPublishGrp', role: 'group'}, [bPublish, bPubMore, bPubMenu]);
@@ -192,10 +201,12 @@
 	bar.appendChild(status);
 	bar.appendChild(msg);
 	// messages of the form's own code (review H1): collected by nuruntime.js (N.formMsgs) instead of covering the panel
-	var bMsgs = el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary nuDsFormMsgs', id: 'nuDsFormMsgs', hidden: 'hidden', title: t('ds_form_msgs_tip'), 'aria-label': t('ds_form_msgs'),
+	var bMsgs = el('button',
+		{type: 'button', 'class': 'btn btn-sm btn-outline-secondary nuDsFormMsgs', id: 'nuDsFormMsgs', hidden: 'hidden', title: t('ds_form_msgs_tip'), 'aria-label': t('ds_form_msgs'),
 		onclick: function () {
 			var list = (N.formMsgs || []).map(function (m) { return (m.kind === 'toast' ? '• ' : '! ') + m.text; });
-			if (typeof window.nuConfirmAsk === 'function') window.nuConfirmAsk(t('ds_form_msgs_tip'), function () { N.formMsgs = []; syncMsgs(); }, t('ds_form_msgs_clear'), 'btn btn-outline-secondary', {title: t('ds_form_msgs'), details: list});
+			if (typeof window.nuConfirmAsk === 'function') window.nuConfirmAsk(t('ds_form_msgs_tip'), function () { N.formMsgs = []; syncMsgs(); },
+				t('ds_form_msgs_clear'), 'btn btn-outline-secondary', {title: t('ds_form_msgs'), details: list});
 		}}, [icon('bi-chat-left-text me-1'), el('span', {'class': 'nuDsFormMsgsN'})]);
 	function syncMsgs() {
 		var n = (N.formMsgs || []).length;
@@ -207,30 +218,46 @@
 	setTimeout(syncMsgs, 0);
 	bar.appendChild(el('span', {'class': 'nuDsSpacer'}));
 	// phones: Structure and Add sit in the bar (no icon bar there)
-	if (!BROWSE) bar.appendChild(el('button', {type: 'button', 'class': 'btn btn-outline-secondary nuDsBarTool', 'data-fly': 'structure', title: t('ds_structure'), 'aria-label': t('ds_structure'), onclick: function () { toggleFly('structure'); }}, [icon('bi-layers')]));
-	if (!BROWSE) bar.appendChild(el('button', {type: 'button', 'class': 'btn btn-outline-secondary nuDsBarTool', 'data-fly': 'add', title: t('ds_add'), 'aria-label': t('ds_add'), onclick: function () { toggleFly('add'); }}, [icon('bi-plus-circle')]));
-	if (!BROWSE && D.rules && !D.userhome) bar.appendChild(el('button', {type: 'button', 'class': 'btn btn-outline-secondary nuDsBarTool', 'data-fly': 'rules', title: t('vr_title'), 'aria-label': t('vr_title'), onclick: function () { toggleFly('rules'); }}, [icon('bi-check2-square')]));
-	if (HASLIST) bar.appendChild(el('button', {type: 'button', 'class': 'btn btn-outline-secondary nuDsBarTool', 'data-work': 'list', title: t('ds_list_title'), 'aria-label': t('ds_list_title'), onclick: function () { openWork('list'); }}, [icon('bi-table')]));
-	// safe mode (0.8.667): the form without its own code – to fix a form whose JavaScript or Before Edit PHP breaks it
+	if (!BROWSE) bar.appendChild(el('button',
+		{type: 'button', 'class': 'btn btn-outline-secondary nuDsBarTool', 'data-fly': 'structure', title: t('ds_structure'),
+			'aria-label': t('ds_structure'), onclick: function () { toggleFly('structure'); }},
+		[icon('bi-layers')]));
+	if (!BROWSE) bar.appendChild(el('button',
+		{type: 'button', 'class': 'btn btn-outline-secondary nuDsBarTool', 'data-fly': 'add', title: t('ds_add'), 'aria-label': t('ds_add'), onclick: function () { toggleFly('add'); }},
+		[icon('bi-plus-circle')]));
+	if (!BROWSE && D.rules
+		&& !D.userhome) bar.appendChild(el('button',
+			{type: 'button', 'class': 'btn btn-outline-secondary nuDsBarTool', 'data-fly': 'rules', title: t('vr_title'), 'aria-label': t('vr_title'), onclick: function () { toggleFly('rules'); }},
+			[icon('bi-check2-square')]));
+	if (HASLIST) bar.appendChild(el('button',
+		{type: 'button', 'class': 'btn btn-outline-secondary nuDsBarTool', 'data-work': 'list', title: t('ds_list_title'), 'aria-label': t('ds_list_title'), onclick: function () { openWork('list'); }},
+		[icon('bi-table')]));
+	// safe mode: the form without its own code – to fix a form whose JavaScript or Before Edit PHP breaks it
 	bar.appendChild(el('a', {'class': 'btn btn-outline-secondary' + (D.safe ? ' active' : ''), id: 'nuDsSafe', href: D.safe_url, role: 'button', 'aria-pressed': D.safe ? 'true' : 'false',
 		title: D.safe ? t('ds_safe_off') : t('ds_safe') + ' – ' + t('ds_safe_tip'), 'aria-label': D.safe ? t('ds_safe_off') : t('ds_safe')}, [icon('bi-shield-check')]));
-	// maintenance (0.8.808): users cannot open the form while it is on – the dialog of nuformmaint.js
+	// maintenance: users cannot open the form while it is on – the dialog of nuformmaint.js
 	if (D.maint_ok && window.nuFormMaintOpen) bar.appendChild(el('button', {type: 'button', 'class': 'btn ' + (D.maint ? 'btn-danger active' : 'btn-outline-secondary'), id: 'nuDsMaint',
 		'aria-pressed': D.maint ? 'true' : 'false', title: t(D.maint ? 'fms_ds_on' : 'fms_ds_tip'), 'aria-label': t('fms_title'),
 		onclick: function () {
 			window.nuFormMaintOpen({forms: [{id: D.form_id, label: D.form_label}], on: !!D.maint, text: D.maint ? D.maint.text : '', until: D.maint ? D.maint.until : '',
 				onDone: function () { location.reload(); }});
 		}}, [icon('bi-cone-striped')]));
-	bar.appendChild(el('button', {type: 'button', 'class': 'btn btn-outline-secondary', id: 'nuDsReload', title: t('ds_reload'), 'aria-label': t('ds_reload'), onclick: function () { reloadKeep(); }}, [icon('bi-arrow-repeat')]));
-	bar.appendChild(el('button', {type: 'button', 'class': 'btn btn-outline-secondary nuDsBarTool', 'data-work': 'code', title: t('ds_code'), 'aria-label': t('ds_code'), onclick: function () { openWork('code'); }}, [icon('bi-code-square')]));
-	bar.appendChild(el('button', {type: 'button', 'class': 'btn btn-outline-secondary nuDsBarTool', 'data-work': 'history', title: t('ds_history'), 'aria-label': t('ds_history'), onclick: function () { openWork('history'); }}, [icon('bi-clock-history')]));
+	bar.appendChild(el('button',
+		{type: 'button', 'class': 'btn btn-outline-secondary', id: 'nuDsReload', title: t('ds_reload'), 'aria-label': t('ds_reload'), onclick: function () { reloadKeep(); }},
+		[icon('bi-arrow-repeat')]));
+	bar.appendChild(el('button',
+		{type: 'button', 'class': 'btn btn-outline-secondary nuDsBarTool', 'data-work': 'code', title: t('ds_code'), 'aria-label': t('ds_code'), onclick: function () { openWork('code'); }},
+		[icon('bi-code-square')]));
+	bar.appendChild(el('button',
+		{type: 'button', 'class': 'btn btn-outline-secondary nuDsBarTool', 'data-work': 'history', title: t('ds_history'), 'aria-label': t('ds_history'), onclick: function () { openWork('history'); }},
+		[icon('bi-clock-history')]));
 	bar.appendChild(bUndo);
 	bar.appendChild(bRedo);
 	bar.appendChild(bChanges);
 	bar.appendChild(bDiscard);
 	bar.appendChild(bPubGrp);
 	bar.appendChild(bDone);
-	// phones (0.8.831): one line – the bar's other buttons sit in a ⋯ menu (built when it opens, from the buttons that are shown),
+	// phones: one line – the bar's other buttons sit in a ⋯ menu (built when it opens, from the buttons that are shown),
 	// the status is a dot, and the bar slides away while scrolling down
 	var dot = el('span', {'class': 'nuDsDot', id: 'nuDsDot', role: 'img'});
 	bar.insertBefore(dot, status);
@@ -251,7 +278,8 @@
 		push(bUndo, t('builder_draft_undo'), 'bi-arrow-counterclockwise');
 		push(bRedo, t('ds_redo'), 'bi-arrow-clockwise');
 		push(bChanges, t('ds_changes'), 'bi-file-diff');
-		bar.querySelectorAll('.nuDsBarTool[data-fly="rules"], .nuDsBarTool[data-work]').forEach(function (b) { push(b, b.getAttribute('aria-label'), b.querySelector('i') ? b.querySelector('i').className.replace(/\s*me-\d/, '') : ''); });
+		bar.querySelectorAll('.nuDsBarTool[data-fly="rules"], .nuDsBarTool[data-work]').forEach(function (b) { push(b, b.getAttribute('aria-label'),
+			b.querySelector('i') ? b.querySelector('i').className.replace(/\s*me-\d/, '') : ''); });
 		push(document.getElementById('nuDsReload'), t('ds_reload'), 'bi-arrow-repeat');
 		push(document.getElementById('nuDsSafe'), D.safe ? t('ds_safe_off') : t('ds_safe'), 'bi-shield-check');
 		push(document.getElementById('nuDsMaint'), t('fms_title'), 'bi-cone-striped');
@@ -262,7 +290,8 @@
 		return list;
 	}
 	phMore.addEventListener('show.bs.dropdown', function () { phMenu.textContent = ''; phItems().forEach(function (li) { phMenu.appendChild(li); }); });
-	phMore.addEventListener('click', function () { if (!(window.nuBs && nuBs.ready())) { phMenu.textContent = ''; phItems().forEach(function (li) { phMenu.appendChild(li); }); phMenu.classList.toggle('show'); } });
+	phMore.addEventListener('click',
+		function () { if (!(window.nuBs && nuBs.ready())) { phMenu.textContent = ''; phItems().forEach(function (li) { phMenu.appendChild(li); }); phMenu.classList.toggle('show'); } });
 	var lastY = window.scrollY, barAway = false;
 	window.addEventListener('scroll', function () {
 		var y = window.scrollY;
@@ -285,7 +314,7 @@
 		bUndo.disabled = D.unpublished ? false : !(DR && DR.undo_count > 0);
 		bRedo.disabled = !(DR && DR.redo_count > 0);
 		bRedo.hidden = !DR;
-		// Discard (0.8.1303): shown while a draft exists, enabled only while it differs from the live form (the bar's "n changes") or holds
+		// Discard: shown while a draft exists, enabled only while it differs from the live form (the bar's "n changes") or holds
 		// table changes; the number in the tooltip
 		bDiscard.hidden = !DR;
 		bDiscard.disabled = !!DR && draftEmpty();
@@ -335,10 +364,10 @@
 		}, t('builder_draft_discard'), 'btn btn-danger');
 	}
 
-	// Done (0.8.797): with unpublished changes ask Publish now / Leave as draft / Cancel
+	// Done: with unpublished changes ask Publish now / Leave as draft / Cancel
 	var doneDlg = null;
 	function done(e) {
-		// an empty draft of your own (no change left, no table changes) is removed on the way out – nothing to lose (0.8.1303)
+		// an empty draft of your own (no change left, no table changes) is removed on the way out – nothing to lose
 		if (!D.unpublished && DR && DR.mine !== false && draftEmpty()) {
 			e.preventDefault();
 			api('draft.discard', {}).then(function () { window.location.href = D.exit; }, function () { window.location.href = D.exit; });
@@ -376,7 +405,8 @@
 				el('div', {'class': 'modal-header py-2'}, [el('h2', {'class': 'modal-title fs-6', id: id + 'T', text: title}),
 					el('button', {type: 'button', 'class': 'btn-close', 'data-bs-dismiss': 'modal', 'aria-label': t('cancel')})]),
 				el('div', {'class': 'modal-body'}, body),
-				el('div', {'class': 'modal-footer py-2'}, [el('button', {type: 'button', 'class': 'btn btn-outline-secondary', 'data-bs-dismiss': 'modal', text: t(buttons.length ? 'cancel' : 'close')})].concat(buttons))
+				el('div', {'class': 'modal-footer py-2'},
+					[el('button', {type: 'button', 'class': 'btn btn-outline-secondary', 'data-bs-dismiss': 'modal', text: t(buttons.length ? 'cancel' : 'close')})].concat(buttons))
 			])])
 		]);
 		document.body.appendChild(root);
@@ -385,7 +415,7 @@
 	function show(root) { if (window.nuBs && window.nuBs.ready()) window.nuBs.modal(root).show(); }
 	function hide(root) { if (window.nuBs && window.nuBs.ready()) window.nuBs.modal(root).hide(); }
 
-	// Ask AI (0.8.810): copy a prompt with the current form (the open draft), paste the AI's answer, check it, apply it to the draft –
+	// Ask AI: copy a prompt with the current form (the open draft), paste the AI's answer, check it, apply it to the draft –
 	// step by step; the requests go to Form with AI (pages/nuformai.php, D.ai), which writes into the open draft
 	var aiDlg = null;
 	function aiPost(data) {
@@ -456,14 +486,16 @@
 					function () { msg.textContent = t('fai_copy_failed'); msg.className = 'small mt-1 text-warning'; });
 			});
 		});
-		// context file (0.8.961, NuAiContext): main button = one .md file, menu = .md / zip + full function reference
+		// context file (NuAiContext): main button = one .md file, menu = .md / zip + full function reference
 		var ctxFull = el('input', {type: 'checkbox', 'class': 'form-check-input', role: 'switch', id: 'nuDsAiCtxFull'});
 		var ctxItem = function (fmt, ic, label) { return el('li', {}, [el('button', {type: 'button', 'class': 'dropdown-item', 'data-nu-ctx': fmt}, [icon(ic + ' me-2'), label])]); };
 		var ctxBox = el('div', {'class': 'btn-group btn-group-sm', id: 'nuDsAiCtx'}, [
 			el('button', {type: 'button', 'class': 'btn btn-outline-primary', 'data-nu-ctx': 'md', id: 'nuDsAiCtxMd', title: t('fai_ctx_tip')}, [icon('bi-file-earmark-arrow-down me-1'), t('fai_ctx')]),
 			el('button', {type: 'button', 'class': 'btn btn-outline-primary dropdown-toggle dropdown-toggle-split', 'data-bs-toggle': 'dropdown', 'aria-expanded': 'false', 'aria-label': t('fai_ctx_more')}),
 			el('ul', {'class': 'dropdown-menu'}, [ctxItem('md', 'bi-filetype-md', t('fai_ctx_md')), ctxItem('zip', 'bi-file-zip', t('fai_ctx_zip')), el('li', {}, [el('hr', {'class': 'dropdown-divider'})]),
-				el('li', {}, [el('div', {'class': 'dropdown-item-text'}, [el('div', {'class': 'form-check form-switch mb-0'}, [ctxFull, el('label', {'class': 'form-check-label', 'for': 'nuDsAiCtxFull', text: t('fai_ctx_full')})])])])])
+				el('li', {},
+					[el('div', {'class': 'dropdown-item-text'},
+						[el('div', {'class': 'form-check form-switch mb-0'}, [ctxFull, el('label', {'class': 'form-check-label', 'for': 'nuDsAiCtxFull', text: t('fai_ctx_full')})])])])])
 		]);
 		ctxBox.addEventListener('click', function (e) {
 			var b = e.target.closest('[data-nu-ctx]');
@@ -499,7 +531,7 @@
 				plan.appendChild(el('div', {'class': 'alert alert-danger py-2'}, [li(d.errors || ['?'])]));
 			}, function (e) { apply.disabled = false; plan.textContent = e.message; });
 		});
-		// "Ask AI" with a configured AI service (0.8.1099, assets/js/nuaiask.js)
+		// "Ask AI" with a configured AI service (assets/js/nuaiask.js)
 		var askHost = el('div', {'class': 'nuAiAskHost', id: 'nuDsAiAsk'});
 		if (D.aiask && window.NuAiAsk) window.NuAiAsk.mount(askHost, {data: D.aiask,
 			prompt: function () {
@@ -541,7 +573,7 @@
 			pubDlg = {note: el('textarea', {'class': 'form-control', id: 'nuDsPubNote', rows: '3'}), info: el('div', {'class': 'nuDsPubInfo small mt-2', id: 'nuDsPubInfo'}),
 				sum: el('div', {'class': 'nuDsPubSum', id: 'nuDsPubSum'})};
 			pubDlg.ok = el('button', {type: 'button', 'class': 'btn btn-primary', id: 'nuDsPubOk', onclick: doPublish});
-			// the answer (warnings, errors, conflict) on top (0.8.1286): below a long summary it was out of sight and Publish seemed to do nothing
+			// the answer (warnings, errors, conflict) on top: below a long summary it was out of sight and Publish seemed to do nothing
 			pubDlg.info.className = 'nuDsPubInfo small mb-3';
 			pubDlg.root = modal('nuDsPublishDlg', t('ds_publish_title'), [pubDlg.info, el('label', {'class': 'form-label', 'for': 'nuDsPubNote', text: t('ds_publish_note_opt')}), pubDlg.note,
 				el('h3', {'class': 'h6 mt-3', text: t('builder_draft_summary')}), pubDlg.sum], [pubDlg.ok], true);
@@ -602,7 +634,7 @@
 		}
 	}
 
-	// The code window (0.8.665): SQL, JavaScript, HTML of a panel field in CodeMirror with the code editors' toolbar (NuCodeTools:
+	// The code window: SQL, JavaScript, HTML of a panel field in CodeMirror with the code editors' toolbar (NuCodeTools:
 	// undo, search, format, full screen …) and – for SQL and HTML – the # menu of hash variables. OK = Ctrl+Enter / Ctrl+S.
 	var cmLoad = null;
 	function loadCM() {
@@ -659,7 +691,8 @@
 		var rows = el('div', {'class': 'nuDsEvRows', id: 'nuDsEvRows'});
 		var addRow = function (ev) {
 			var sel = el('select', {'class': 'form-select form-select-sm', 'aria-label': t('builder_event')});
-			EVENTS.concat(ev.event && EVENTS.indexOf(ev.event) < 0 ? [ev.event] : []).forEach(function (x) { sel.appendChild(el('option', {value: x, text: x, selected: x === (ev.event || 'onchange') ? true : null})); });
+			EVENTS.concat(ev.event
+				&& EVENTS.indexOf(ev.event) < 0 ? [ev.event] : []).forEach(function (x) { sel.appendChild(el('option', {value: x, text: x, selected: x === (ev.event || 'onchange') ? true : null})); });
 			var js = el('textarea', {'class': 'form-control form-control-sm nuDsMono', rows: '3', spellcheck: 'false', 'aria-label': 'JavaScript'});
 			js.value = ev.js || '';
 			var r = el('div', {'class': 'nuDsEvRow'}, [sel, js, el('div', {'class': 'd-flex flex-column gap-1'}, [
@@ -675,28 +708,47 @@
 			change('object.save', {object_id: o.zzzzsys_object_id, fields: {}, events: events}, true).catch(function () { /* said */ });
 		}});
 		evDlg = {root: modal('nuDsEventsDlg', t('builder_sec_events') + ' · ' + o.sob_all_id, [rows,
-			el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-primary mt-2', id: 'nuDsEvAdd', onclick: function () { addRow({}); }}, [icon('bi-plus-lg me-1'), t('builder_add_event')])], [ok], true)};
+			el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-primary mt-2', id: 'nuDsEvAdd', onclick: function () { addRow({}); }}, [icon('bi-plus-lg me-1'), t('builder_add_event')])],
+				[ok], true)};
 		show(evDlg.root);
 	}
 
 	// ------------------------------------------------------------------ icon bar + Structure / Add (stage 2)
 	var rail = el('nav', {'class': 'nuDsRail', id: 'nuDsRail', 'aria-label': t('ds_tools')}, [
-		el('button', {type: 'button', 'class': 'nuDsRailBtn', id: 'nuDsRailForm', title: t('ds_form'), 'aria-label': t('ds_form'), onclick: function () { if (!work.hidden) { closeWork(); if (!work.hidden) return; } closeFly(); post({nuBuilderSelectNone: true}); selIds = []; selCol = ''; markCols(); renderPanel(); }}, [icon('bi-window')]),
-		BROWSE ? null : el('button', {type: 'button', 'class': 'nuDsRailBtn', id: 'nuDsRailStructure', 'data-fly': 'structure', title: t('ds_structure') + ' (Ctrl+K)', 'aria-label': t('ds_structure'), onclick: function () { toggleFly('structure'); }}, [icon('bi-layers')]),
-		BROWSE ? null : el('button', {type: 'button', 'class': 'nuDsRailBtn', id: 'nuDsRailAdd', 'data-fly': 'add', title: t('ds_add'), 'aria-label': t('ds_add'), onclick: function () { toggleFly('add'); }}, [icon('bi-plus-circle')]),
-		el('button', {type: 'button', 'class': 'nuDsRailBtn', id: 'nuDsRailCode', 'data-work': 'code', title: t('ds_code'), 'aria-label': t('ds_code'), onclick: function () { openWork('code'); }}, [icon('bi-code-square')]),
-		!BROWSE && D.rules && !D.userhome ? el('button', {type: 'button', 'class': 'nuDsRailBtn', id: 'nuDsRailRules', 'data-fly': 'rules', title: t('vr_title'), 'aria-label': t('vr_title'), onclick: function () { toggleFly('rules'); }},
+		el('button',
+			{type: 'button', 'class': 'nuDsRailBtn', id: 'nuDsRailForm', title: t('ds_form'), 'aria-label': t('ds_form'),
+				onclick: function () { if (!work.hidden) { closeWork(); if (!work.hidden) return; } closeFly(); post({nuBuilderSelectNone: true}); selIds = []; selCol = ''; markCols(); renderPanel(); }},
+			[icon('bi-window')]),
+		BROWSE ? null : el('button',
+			{type: 'button', 'class': 'nuDsRailBtn', id: 'nuDsRailStructure', 'data-fly': 'structure', title: t('ds_structure') + ' (Ctrl+K)',
+				'aria-label': t('ds_structure'), onclick: function () { toggleFly('structure'); }},
+			[icon('bi-layers')]),
+		BROWSE ? null : el('button',
+			{type: 'button', 'class': 'nuDsRailBtn', id: 'nuDsRailAdd', 'data-fly': 'add', title: t('ds_add'), 'aria-label': t('ds_add'), onclick: function () { toggleFly('add'); }},
+			[icon('bi-plus-circle')]),
+		el('button',
+			{type: 'button', 'class': 'nuDsRailBtn', id: 'nuDsRailCode', 'data-work': 'code', title: t('ds_code'), 'aria-label': t('ds_code'), onclick: function () { openWork('code'); }},
+			[icon('bi-code-square')]),
+		!BROWSE && D.rules
+			&& !D.userhome ? el('button',
+				{type: 'button', 'class': 'nuDsRailBtn', id: 'nuDsRailRules', 'data-fly': 'rules', title: t('vr_title'), 'aria-label': t('vr_title'), onclick: function () { toggleFly('rules'); }},
 			[icon('bi-check2-square'), el('span', {'class': 'nuDsRailCount', id: 'nuDsRailRulesN', hidden: (D.rules.list || []).length ? null : true, text: String((D.rules.list || []).length)})]) : null,
-		el('button', {type: 'button', 'class': 'nuDsRailBtn', id: 'nuDsRailHistory', 'data-work': 'history', title: t('ds_history'), 'aria-label': t('ds_history'), onclick: function () { openWork('history'); }}, [icon('bi-clock-history')]),
-		HASLIST ? el('button', {type: 'button', 'class': 'nuDsRailBtn', id: 'nuDsRailList', 'data-work': 'list', title: t('ds_list_title'), 'aria-label': t('ds_list_title'), onclick: function () { openWork('list'); }}, [icon('bi-table')]) : null,
-		el('button', {type: 'button', 'class': 'nuDsRailBtn nuDsRailKeys', id: 'nuDsRailKeys', title: t('ds_keys_title') + ' (?)', 'aria-label': t('ds_keys_title'), onclick: function () { shortcutsDialog(); }}, [icon('bi-keyboard')])
+		el('button',
+			{type: 'button', 'class': 'nuDsRailBtn', id: 'nuDsRailHistory', 'data-work': 'history', title: t('ds_history'), 'aria-label': t('ds_history'), onclick: function () { openWork('history'); }},
+			[icon('bi-clock-history')]),
+		HASLIST ? el('button',
+			{type: 'button', 'class': 'nuDsRailBtn', id: 'nuDsRailList', 'data-work': 'list', title: t('ds_list_title'), 'aria-label': t('ds_list_title'), onclick: function () { openWork('list'); }},
+			[icon('bi-table')]) : null,
+		el('button',
+			{type: 'button', 'class': 'nuDsRailBtn nuDsRailKeys', id: 'nuDsRailKeys', title: t('ds_keys_title') + ' (?)', 'aria-label': t('ds_keys_title'), onclick: function () { shortcutsDialog(); }},
+			[icon('bi-keyboard')])
 	]);
 	var fly = el('div', {'class': 'nuDsFly', id: 'nuDsFly', role: 'dialog', 'aria-modal': 'false', hidden: true});
 	var flyKind = '', flyQ = '', tableCols = null;
-	var flyTab = '', flyType = '', collapsedTabs = {};   // Structure (0.8.671): filters by tab and object type, folded tab sections
+	var flyTab = '', flyType = '', collapsedTabs = {};   // Structure: filters by tab and object type, folded tab sections
 	function toggleFly(kind) { if (flyKind === kind) closeFly(); else openFly(kind); }
 	function openFly(kind) {
-		if (!work.hidden) { closeWork(); if (!work.hidden) return; }      // the workspace (Code / History) covers the flyout: close it first (0.8.817)
+		if (!work.hidden) { closeWork(); if (!work.hidden) return; }      // the workspace (Code / History) covers the flyout: close it first
 		flyKind = kind;
 		fly.hidden = false;
 		document.documentElement.classList.add('nuDsFlyOpen');
@@ -721,7 +773,7 @@
 		fly.textContent = '';
 		var flyTitle = flyKind === 'rules' ? t('vr_title') : (flyKind === 'add' ? fmt(t('ds_add_to'), tabTitle(activeTabId())) : t('ds_structure'));
 		fly.setAttribute('aria-label', flyKind === 'rules' ? t('vr_title') : t(flyKind === 'add' ? 'ds_add' : 'ds_structure'));
-		if (flyKind === 'add' && addPage === 'input') {   // 0.8.846: second page – the kind of input
+		if (flyKind === 'add' && addPage === 'input') {   // second page – the kind of input
 			fly.appendChild(el('div', {'class': 'nuDsFlyHead nuDsFlyHeadSub'}, [
 				el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary nuDsFlyBack', id: 'nuDsAddBack', title: t('ds_add_input_back'), 'aria-label': t('ds_add_input_back'),
 					onclick: function () { addPage = ''; renderFly(); var b = document.querySelector('#nuDsElGrid [data-type="input"]'); if (b) b.focus(); }}, [icon('bi-arrow-left')]),
@@ -734,7 +786,7 @@
 			el('button', {type: 'button', 'class': 'btn-close', 'aria-label': t('cancel'), onclick: closeFly})]));
 		if (flyKind === 'structure') renderStructure(); else if (flyKind === 'rules') fly.appendChild(el('div', {'class': 'nuDsFlyRules'}, [rulesBox()])); else renderAdd();
 	}
-	// ------------------------------------------------------------------ List flyout (0.8.820): every setting of the form's list in one place
+	// ------------------------------------------------------------------ List flyout: every setting of the form's list in one place
 	function listFormSave(key, reload) {
 		return function (v) { var x = {}; x[key] = v; change('form.save', {fields: x}, !!reload).catch(function () { /* said */ }); };
 	}
@@ -758,9 +810,11 @@
 			listFormSave('sfo_browse_target', BROWSE), {key: 'sfo_browse_target', options: ['0', '1', '2', '3'].map(function (x) { return [x, t('ds_list_target_' + x)]; })}));
 		box.appendChild(field(t('builder_redirect'), 'select', f.sfo_browse_redirect_form_id || '', listFormSave('sfo_browse_redirect_form_id'),
 			{key: 'sfo_browse_redirect_form_id', search: true, options: options(D.forms, ['edit', 'browseedit'])}));
-		box.appendChild(field(t('ds_list_multi'), 'check', String(f.sfo_browse_title_multiline || '0') === '1' ? '1' : '0', listFormSave('sfo_browse_title_multiline', BROWSE), {key: 'sfo_browse_title_multiline'}));
-		box.appendChild(field(t('ds_list_autofit'), 'check', String(f.sfo_browse_autoresize_columns || '0') === '1' ? '1' : '0', listFormSave('sfo_browse_autoresize_columns', BROWSE), {key: 'sfo_browse_autoresize_columns'}));
-		// row details (0.8.1027 / 0.8.1316, core/form/nurowdetails.php): sfo_json nunext.details {cols, subs: [sub-form ids | t:<table>.<column>], form, mode}
+		box.appendChild(field(t('ds_list_multi'), 'check', String(f.sfo_browse_title_multiline || '0') === '1' ? '1' : '0',
+			listFormSave('sfo_browse_title_multiline', BROWSE), {key: 'sfo_browse_title_multiline'}));
+		box.appendChild(field(t('ds_list_autofit'), 'check', String(f.sfo_browse_autoresize_columns || '0') === '1' ? '1' : '0',
+			listFormSave('sfo_browse_autoresize_columns', BROWSE), {key: 'sfo_browse_autoresize_columns'}));
+		// row details (core/form/nurowdetails.php): sfo_json nunext.details {cols, subs: [sub-form ids | t:<table>.<column>], form, mode}
 		var det = {};
 		try { det = ((JSON.parse(f.sfo_json || '{}') || {}).nunext || {}).details || {}; } catch (x) { det = {}; }
 		var detSubs = (det.subs || []).slice();
@@ -789,7 +843,7 @@
 			options: [['', t('ds_rd_none')]].concat(options(D.forms, ['edit', 'browseedit']).filter(function (o) { return o[0] !== ''; }))}));
 		box.appendChild(field(t('ds_rd_mode'), 'select', det.mode === 'one' ? 'one' : 'many', detSave('mode'), {key: 'details_mode',
 			options: [['many', t('ds_rd_mode_many')], ['one', t('ds_rd_mode_one')]]}));
-		// calendar view (0.8.1165, core/form/nucalendar.php): sfo_json nunext.calendar {start, end, title, color, group: column ids, view, allday, edit, drag, min, max}
+		// calendar view (core/form/nucalendar.php): sfo_json nunext.calendar {start, end, title, color, group: column ids, view, allday, edit, drag, min, max}
 		var cal = {};
 		try { cal = ((JSON.parse(f.sfo_json || '{}') || {}).nunext || {}).calendar || {}; } catch (x) { cal = {}; }
 		var calCols = [['', t('ds_cal_none')]].concat((S.browse || []).map(function (c, i) { return [c.zzzzsys_browse_id, (i + 1) + ' · ' + (plain(c.sbr_title) || c.sbr_display)]; }));
@@ -841,15 +895,21 @@
 			var id = c.zzzzsys_browse_id, hidden = +c.sbr_width === 0;
 			var part = function (p) { var e = {}; e[id] = p; saveCols(colRows(e), id); };
 			var title = el('input', {type: 'text', 'class': 'form-control form-control-sm', value: plain(c.sbr_title), 'aria-label': t('builder_col_title'), 'data-lc': 'title'});
-			var disp = el('input', {type: 'text', 'class': 'form-control form-control-sm nuDsMono', value: c.sbr_display || '', list: 'nuDsColNames', 'aria-label': t('builder_col_display'), 'data-lc': 'display'});
-			var width = el('input', {type: 'number', min: '0', 'class': 'form-control form-control-sm', value: hidden ? '' : String(c.sbr_width === null || c.sbr_width === '' ? 100 : c.sbr_width), 'aria-label': t('builder_col_width'), 'data-lc': 'width', disabled: hidden ? true : null});
+			var disp = el('input',
+				{type: 'text', 'class': 'form-control form-control-sm nuDsMono', value: c.sbr_display || '', list: 'nuDsColNames', 'aria-label': t('builder_col_display'), 'data-lc': 'display'});
+			var width = el('input',
+				{type: 'number', min: '0', 'class': 'form-control form-control-sm',
+					value: hidden ? '' : String(c.sbr_width === null || c.sbr_width === '' ? 100 : c.sbr_width), 'aria-label': t('builder_col_width'), 'data-lc': 'width',
+					disabled: hidden ? true : null});
 			var align = el('select', {'class': 'form-select form-select-sm', 'aria-label': t('builder_col_align'), 'data-lc': 'align'},
 				['l', 'c', 'r'].map(function (a) { return el('option', {value: a, text: t({l: 'om_left', c: 'om_center', r: 'om_right'}[a]), selected: (c.sbr_align || 'l') === a ? true : null}); }));
 			title.addEventListener('change', function () { part({title: title.value}); });
 			disp.addEventListener('change', function () { if (disp.value.trim() !== '') part({display: disp.value.trim()}); });
 			width.addEventListener('change', function () { var w = Math.max(1, parseInt(width.value, 10) || 100); part({width: w}); });
 			align.addEventListener('change', function () { part({align: align.value}); });
-			var btn = function (ic, tip, dc, fn, dis) { return el('button', {type: 'button', 'class': 'btn btn-sm btn-link p-0 ' + (dc || 'text-body-secondary'), title: tip, 'aria-label': tip, disabled: dis ? true : null, onclick: fn}, [icon(ic)]); };
+			var btn = function (ic, tip, dc, fn,
+				dis) { return el('button',
+					{type: 'button', 'class': 'btn btn-sm btn-link p-0 ' + (dc || 'text-body-secondary'), title: tip, 'aria-label': tip, disabled: dis ? true : null, onclick: fn}, [icon(ic)]); };
 			tbody.appendChild(el('tr', {'class': 'nuDsListCol' + (hidden ? ' nuDsListColOff' : ''), 'data-col': id}, [
 				el('td', {'class': 'nuDsListColNo'}, [el('span', {'class': 'nuDsListGrip', draggable: 'true', 'data-grip': id, title: t('ds_col_drag'), 'aria-hidden': 'true'},
 					[icon('bi-grip-vertical'), el('span', {text: String(i + 1)})])]),
@@ -861,7 +921,7 @@
 					btn('bi-trash', t('delete'), 'text-danger', function () { colDelete(c); })])]));
 		});
 		if (!cols.length) tbody.appendChild(el('tr', {}, [el('td', {colspan: '6', 'class': 'nuDsHint', text: t('ds_list_nocols')})]));
-		// drag and drop of the rows by their number (0.8.823): drop above / below the row under the pointer, then one browse.save
+		// drag and drop of the rows by their number: drop above / below the row under the pointer, then one browse.save
 		var dragId = '';
 		tbody.addEventListener('dragstart', function (e) {
 			var g = e.target.closest && e.target.closest('[data-grip]');
@@ -922,9 +982,13 @@
 		S.objects.forEach(function (o) { used[o.sob_all_type] = 1; });
 		if (flyType && !used[flyType]) flyType = '';
 		var fTab = el('select', {'class': 'form-select form-select-sm', id: 'nuDsStructTab', 'aria-label': t('ds_filter_tab')},
-			[el('option', {value: '', text: t('ds_filter_all_tabs')})].concat(allTabs.length > 1 ? allTabs.map(function (x) { return el('option', {value: x.zzzzsys_tab_id, text: plain(x.syt_title) || '–', selected: x.zzzzsys_tab_id === flyTab ? true : null}); }) : []));
+			[el('option',
+				{value: '',
+					text: t('ds_filter_all_tabs')})].concat(allTabs.length > 1 ? allTabs.map(function (x) { return el('option', {value: x.zzzzsys_tab_id, text: plain(x.syt_title) || '–', selected: x.zzzzsys_tab_id === flyTab ? true : null}); }) : []));
 		var fType = el('select', {'class': 'form-select form-select-sm', id: 'nuDsStructType', 'aria-label': t('ds_filter_type')},
-			[el('option', {value: '', text: t('ds_filter_all_types')})].concat(TYPES.filter(function (x) { return used[x]; }).map(function (x) { return el('option', {value: x, text: t('bf_type_' + x), selected: x === flyType ? true : null}); })));
+			[el('option',
+				{value: '',
+					text: t('ds_filter_all_types')})].concat(TYPES.filter(function (x) { return used[x]; }).map(function (x) { return el('option', {value: x, text: t('bf_type_' + x), selected: x === flyType ? true : null}); })));
 		fTab.addEventListener('change', function () { flyTab = fTab.value; renderFly(); });
 		fType.addEventListener('change', function () { flyType = fType.value; renderFly(); });
 		if (allTabs.length < 2) fTab.disabled = true;
@@ -961,7 +1025,8 @@
 					acc === '2' || acc === '3' ? el('span', {title: t('bf_access_' + acc)}, [icon('bi-eye-slash')]) : null,
 					el('span', {'class': 'nuDsTreeType', text: t('bf_type_' + o.sob_all_type)})
 				]);
-				row.addEventListener('dragstart', function (e) { drag = o; e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', o.sob_all_id); } catch (x) { /* ignore */ } row.classList.add('nuDsDragging'); });
+				row.addEventListener('dragstart',
+					function (e) { drag = o; e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', o.sob_all_id); } catch (x) { /* ignore */ } row.classList.add('nuDsDragging'); });
 				row.addEventListener('dragend', function () { drag = null; row.classList.remove('nuDsDragging'); });
 				row.addEventListener('dragover', function (e) { if (drag && drag !== o) { e.preventDefault(); row.classList.add('nuDsDropBefore'); } });
 				row.addEventListener('dragleave', function () { row.classList.remove('nuDsDropBefore'); });
@@ -1007,7 +1072,9 @@
 		if (S.form.sfo_table) {
 			fly.appendChild(el('div', {'class': 'nuDsFlySub', text: fmt(t('ds_add_columns'), S.form.sfo_table)}));
 			var box = el('div', {'class': 'nuDsColList', id: 'nuDsColList'});
-			if (tableCols === null || (tableCols.length === 0 && cols.length === 0 && tableCols !== null && !tableCols.length)) box.appendChild(el('p', {'class': 'nuDsFlyFoot', text: tableCols === null ? '…' : t('ds_add_all_used')}));
+			if (tableCols === null
+				|| (tableCols.length === 0 && cols.length === 0 && tableCols !== null && !tableCols.length)) box.appendChild(el('p',
+					{'class': 'nuDsFlyFoot', text: tableCols === null ? '…' : t('ds_add_all_used')}));
 			else if (!cols.length) box.appendChild(el('p', {'class': 'nuDsFlyFoot', text: t('ds_add_all_used')}));
 			cols.forEach(function (c) {
 				var f = colToObject(c);
@@ -1027,7 +1094,7 @@
 			dragSource(b, {type: ty});
 			grid.appendChild(b);
 		});
-		// calendar (0.8.1165): an HTML object with sob_all_json nunext.calendar – nuBuilder Forte shows it as an empty HTML object
+		// calendar: an HTML object with sob_all_json nunext.calendar – nuBuilder Forte shows it as an empty HTML object
 		var calB = el('button', {type: 'button', 'class': 'nuDsEl', id: 'nuDsAddCalendar', draggable: 'true', 'data-type': 'calendar',
 			onclick: function () { addObject('html', {calendar: true}); }}, [icon('bi-calendar3'), el('span', {text: t('ds_cal_obj')})]);
 		dragSource(calB, {type: 'html', calendar: true});
@@ -1035,7 +1102,7 @@
 		fly.appendChild(grid);
 		fly.appendChild(el('p', {'class': 'nuDsFlyFoot', text: t('ds_add_hint')}));
 	}
-	// 0.8.846: Add → Input = a second page with the frequent kinds as tiles and the others below "All input types"
+	// Add → Input = a second page with the frequent kinds as tiles and the others below "All input types"
 	var addPage = '', addMore = false, addDone = '';
 	var INPUT_FREQUENT = [['text', 'bi-fonts'], ['nuNumber', 'bi-123'], ['nuDate', 'bi-calendar3'], ['checkbox', 'bi-check2-square'], ['email', 'bi-envelope'],
 		['tel', 'bi-telephone'], ['button', 'bi-hand-index'], ['file', 'bi-file-earmark-arrow-up'], ['time', 'bi-clock']];
@@ -1049,7 +1116,8 @@
 		body.appendChild(el('div', {'class': 'nuDsFlySub', text: t('ds_add_input_frequent')}));
 		var grid = el('div', {'class': 'nuDsElGrid', id: 'nuDsKindGrid'});
 		INPUT_FREQUENT.forEach(function (k) {
-			var b = el('button', {type: 'button', 'class': 'nuDsEl nuDsKind', draggable: 'true', 'data-input': k[0], onclick: function () { addInput(k[0]); }}, [icon(k[1]), el('span', {text: inputLabel(k[0])})]);
+			var b = el('button', {type: 'button', 'class': 'nuDsEl nuDsKind', draggable: 'true', 'data-input': k[0], onclick: function () { addInput(k[0]); }},
+				[icon(k[1]), el('span', {text: inputLabel(k[0])})]);
 			dragSource(b, {type: 'input', input: k[0], label: inputLabel(k[0])});
 			grid.appendChild(b);
 		});
@@ -1074,7 +1142,8 @@
 	}
 	var dragNew = null;
 	function dragSource(b, spec) {
-		b.addEventListener('dragstart', function (e) { dragNew = spec; e.dataTransfer.effectAllowed = 'copy'; try { e.dataTransfer.setData('text/plain', spec.id || spec.type); } catch (x) { /* ignore */ } });
+		b.addEventListener('dragstart',
+			function (e) { dragNew = spec; e.dataTransfer.effectAllowed = 'copy'; try { e.dataTransfer.setData('text/plain', spec.id || spec.type); } catch (x) { /* ignore */ } });
 		b.addEventListener('dragend', function () { dragNew = null; document.documentElement.classList.remove('nuDsDropping'); });
 	}
 	function uniqueId(base) {
@@ -1092,11 +1161,14 @@
 		var tab = activeTabId() || ((S.tabs || [])[0] || {}).zzzzsys_tab_id || '';
 		var size = SIZES[type] || [250, 22];
 		var maxOrder = sorted(tab).reduce(function (m, x) { return Math.max(m, +x.sob_all_order || 0); }, 0);
-		var fid = spec.id ? uniqueId(spec.id) : uniqueId(spec.calendar ? 'calendar' : type === 'contentbox' ? 'box' : 'new_' + (type === 'input' && spec.input ? spec.input.toLowerCase().replace(/[^a-z0-9]/g, '') : type));
+		var fid = spec.id ? uniqueId(spec.id) : uniqueId(spec.calendar ? 'calendar' : type === 'contentbox' ? 'box' : 'new_' + (type === 'input'
+			&& spec.input ? spec.input.toLowerCase().replace(/[^a-z0-9]/g, '') : type));
 		var input = spec.input || (type === 'input' ? 'text' : '');
 		var fields = {sob_all_type: type, sob_all_id: fid, sob_all_label: spec.id ? labelOf(spec.id) : (spec.label || t('bf_type_' + type)),
 			sob_all_zzzzsys_tab_id: tab, sob_all_order: maxOrder + 10, sob_all_top: pos ? pos.top : bottomOf(tab) + 12, sob_all_left: pos ? pos.left : 170,
-			sob_all_width: input === 'checkbox' || input === 'color' ? 30 : (['nuDate', 'date', 'time', 'button', 'nuNumber', 'number', 'month', 'week', 'nuAutoNumber'].indexOf(input) >= 0 ? 120 : size[0]), sob_all_height: input === 'button' ? 30 : size[1], sob_all_align: 'left', sob_input_type: input,
+			sob_all_width: input === 'checkbox'
+				|| input === 'color' ? 30 : (['nuDate', 'date', 'time', 'button', 'nuNumber', 'number', 'month', 'week', 'nuAutoNumber'].indexOf(input) >= 0 ? 120 : size[0]),
+				sob_all_height: input === 'button' ? 30 : size[1], sob_all_align: 'left', sob_input_type: input,
 			sob_subform_add: type === 'subform' ? '1' : '', sob_subform_delete: type === 'subform' ? '1' : '', sob_subform_type: type === 'subform' ? 'g' : '',
 			sob_run_method: type === 'run' ? 'b' : '', sob_run_type: type === 'run' ? 'F' : '', sob_run_target: type === 'run' ? '0' : '', sob_lookup_description_width: type === 'lookup' ? '200' : ''};
 		if (spec.calendar) {
@@ -1148,7 +1220,7 @@
 
 	// ------------------------------------------------------------------ tabs on the form (stage 3)
 	function tabRows() { return (S.tabs || []).map(function (x) { return {id: x.zzzzsys_tab_id, title: x.syt_title, access: String(x.syt_access || '0')}; }); }
-	// unique tab names (0.8.1198): compared without HTML, spaces and case – as the builder API (nb_tab_dupe)
+	// unique tab names: compared without HTML, spaces and case – as the builder API (nb_tab_dupe)
 	function tabKey(v) { return plain(v).replace(/\s+/g, ' ').trim().toLowerCase(); }
 	function tabTaken(v, exceptId) { var k = tabKey(v); return (S.tabs || []).some(function (x) { return x.zzzzsys_tab_id !== exceptId && tabKey(x.syt_title) === k; }); }
 	function tabFreeName(base) { var n = base, i = 2; while (tabTaken(n, null)) n = base + ' ' + (i++); return n; }
@@ -1173,7 +1245,8 @@
 			li.draggable = true;
 			b.addEventListener('dblclick', function (e) { e.preventDefault(); renameTab(b, row); });
 			b.addEventListener('contextmenu', function (e) { e.preventDefault(); tabMenu(e, b, row); });
-			li.addEventListener('dragstart', function (e) { drag = id; e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', id); } catch (x) { /* ignore */ } li.classList.add('nuDsDragging'); });
+			li.addEventListener('dragstart',
+				function (e) { drag = id; e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', id); } catch (x) { /* ignore */ } li.classList.add('nuDsDragging'); });
 			li.addEventListener('dragend', function () { drag = null; li.classList.remove('nuDsDragging'); });
 			li.addEventListener('dragover', function (e) { if (drag && drag !== id) { e.preventDefault(); li.classList.add('nuDsDropBefore'); } });
 			li.addEventListener('dragleave', function () { li.classList.remove('nuDsDropBefore'); });
@@ -1190,7 +1263,7 @@
 		// "+" next to the tabs, outside the tab list (a tablist holds tabs only)
 		var add = el('button', {type: 'button', 'class': 'btn btn-sm nuDsTabAdd', id: 'nuDsTabAdd', title: t('ds_tab_add'), 'aria-label': t('ds_tab_add'), onclick: function () {
 			var rows = tabRows();
-			rows.push({id: '', title: tabFreeName(t('ds_tab_new')), access: '0'});   // New tab, New tab 2 … (0.8.1198)
+			rows.push({id: '', title: tabFreeName(t('ds_tab_new')), access: '0'});   // New tab, New tab 2 …
 			keepTab = '__last';
 			change('tabs.save', {tabs: rows}, true).catch(function () { /* said */ });
 		}}, [icon('bi-plus-lg')]);
@@ -1200,7 +1273,7 @@
 		wrap.appendChild(add);
 	}
 	function renameTab(b, row) {
-		if (!D.ga) { say(t('ds_tabs_ga'), true); return; }      // only the globeadmin renames or deletes tabs (builder API, 0.8.247)
+		if (!D.ga) { say(t('ds_tabs_ga'), true); return; }      // only the globeadmin renames or deletes tabs (builder API)
 		if (b.querySelector('input')) return;
 		var old = plain(row.syt_title);
 		var inp = el('input', {type: 'text', 'class': 'form-control form-control-sm nuDsTabInput', value: old, 'aria-label': t('ds_tab_rename'), maxlength: '200'});
@@ -1234,7 +1307,8 @@
 		closeMenu();
 		var rows = tabRows(), i = rows.map(function (x) { return x.id; }).indexOf(row.zzzzsys_tab_id), acc = String(row.syt_access || '0');
 		var item = function (ic, text, fn, cls, disabled) {
-			return el('li', {}, [el('button', {type: 'button', 'class': 'dropdown-item' + (cls ? ' ' + cls : ''), disabled: disabled ? true : null, onclick: function () { closeMenu(); fn(); }}, [icon(ic + ' me-2'), text])]);
+			return el('li', {},
+				[el('button', {type: 'button', 'class': 'dropdown-item' + (cls ? ' ' + cls : ''), disabled: disabled ? true : null, onclick: function () { closeMenu(); fn(); }}, [icon(ic + ' me-2'), text])]);
 		};
 		var move = function (d) { var r = tabRows(), x = r.splice(i, 1)[0]; r.splice(i + d, 0, x); saveTabs(r, row.zzzzsys_tab_id); };
 		menuEl = el('ul', {'class': 'dropdown-menu show nuDsMenu', id: 'nuDsTabMenu', role: 'menu'}, [
@@ -1286,7 +1360,7 @@
 				if (adv[s.key]) s.adv.forEach(function (r) { body.appendChild(r); });
 			}
 		}
-		// a folded section shows its values in one line (0.8.1305, option A of the canvas "Design mode properties panel")
+		// a folded section shows its values in one line (option A of the canvas "Design mode properties panel")
 		if (!isOpen && head) { var sm = secSummary(s); if (sm) head.insertBefore(el('span', {'class': 'nuDsSecSum', text: sm, title: sm}), head.lastChild); }
 		return el('section', {'class': 'nuDsSec' + (tabbed ? ' nuDsSecTabbed' : ''), 'data-sec-key': s.key}, [head, isOpen ? body : null]);
 	}
@@ -1306,7 +1380,7 @@
 		});
 		return out.join(' · ');
 	}
-	// chips above the sections (0.8.1305): stay at the top of the panel, a click opens the section and scrolls to it, the chip of the
+	// chips above the sections: stay at the top of the panel, a click opens the section and scrolls to it, the chip of the
 	// section in view is marked while scrolling; the last button folds / unfolds all sections
 	var chipBar = null;
 	function drawChips() {
@@ -1314,7 +1388,8 @@
 		var anyOpen = sections.some(function (s) { return open[s.key] !== false; });
 		chipBar = el('nav', {'class': 'nuDsChips', id: 'nuDsChips', 'aria-label': t('ds_sections')}, sections.map(function (s) {
 			return el('button', {type: 'button', 'class': 'nuDsChip', 'data-chip': s.key, text: s.title, onclick: function () { jumpTo(s.key); }});
-		}).concat([el('button', {type: 'button', 'class': 'nuDsChipAll', id: 'nuDsFoldAll', title: anyOpen ? t('ds_fold_all') : t('ds_unfold_all'), 'aria-label': anyOpen ? t('ds_fold_all') : t('ds_unfold_all'),
+		}).concat([el('button',
+			{type: 'button', 'class': 'nuDsChipAll', id: 'nuDsFoldAll', title: anyOpen ? t('ds_fold_all') : t('ds_unfold_all'), 'aria-label': anyOpen ? t('ds_fold_all') : t('ds_unfold_all'),
 			onclick: function () { sections.forEach(function (x) { open[x.key] = !anyOpen; }); renderPanel(); }}, [icon(anyOpen ? 'bi-arrows-collapse' : 'bi-arrows-expand')])]));
 		return chipBar;
 	}
@@ -1338,20 +1413,23 @@
 			var lim = chipBar.getBoundingClientRect().bottom + 6;
 			panel.querySelectorAll('section[data-sec-key]').forEach(function (sec) { if (sec.getBoundingClientRect().top <= lim) key = sec.getAttribute('data-sec-key'); });
 			if (!key && sections[0]) key = sections[0].key;
-			if (panel.scrollHeight > panel.clientHeight + 2 && panel.scrollTop > 0 && panel.scrollTop + panel.clientHeight >= panel.scrollHeight - 2) { var all = panel.querySelectorAll('section[data-sec-key]'); if (all.length) key = all[all.length - 1].getAttribute('data-sec-key'); }
+			if (panel.scrollHeight > panel.clientHeight + 2 && panel.scrollTop > 0
+				&& panel.scrollTop + panel.clientHeight >= panel.scrollHeight - 2) { var all = panel.querySelectorAll('section[data-sec-key]'); if (all.length) key = all[all.length - 1].getAttribute('data-sec-key'); }
 		}
-		chipBar.querySelectorAll('.nuDsChip').forEach(function (c) { var on = c.getAttribute('data-chip') === key; c.classList.toggle('active', on); if (on) c.setAttribute('aria-current', 'true'); else c.removeAttribute('aria-current'); });
+		chipBar.querySelectorAll('.nuDsChip').forEach(function (c) { var on = c.getAttribute('data-chip') === key; c.classList.toggle('active',
+			on); if (on) c.setAttribute('aria-current', 'true'); else c.removeAttribute('aria-current'); });
 	}
 	panel.addEventListener('scroll', function () { if (!phone.matches) spy(); }, {passive: true});
 	var fieldNo = 0;
 	/** A field of the panel: kind text | number | textarea | select | check | ro; save(value) is called on change. */
-	// department / team of the form (0.8.1020) and the datalist of the values already used on other forms
+	// department / team of the form and the datalist of the values already used on other forms
 	function formTag(f, k) {
 		try { var n = (JSON.parse(f.sfo_json || '{}') || {}).nunext || {}; return n[k] ? String(n[k]) : ''; } catch (x) { return ''; }
 	}
-	// user help pages (0.8.1023, core/nuuserhelp.php): page of the form (sfo_json nunext.help), of each tab (nunext.help_tabs), of a field (sob_all_json nunext.help)
+	// user help pages (core/nuuserhelp.php): page of the form (sfo_json nunext.help), of each tab (nunext.help_tabs), of a field (sob_all_json nunext.help)
 	function formHelp(f) {
-		try { var n = (JSON.parse(f.sfo_json || '{}') || {}).nunext || {}; return {help: n.help ? String(n.help) : '', tabs: n.help_tabs && typeof n.help_tabs === 'object' ? n.help_tabs : {}}; } catch (x) { return {help: '', tabs: {}}; }
+		try { var n = (JSON.parse(f.sfo_json || '{}') || {}).nunext
+			|| {}; return {help: n.help ? String(n.help) : '', tabs: n.help_tabs && typeof n.help_tabs === 'object' ? n.help_tabs : {}}; } catch (x) { return {help: '', tabs: {}}; }
 	}
 	function helpList() {
 		var dl = document.getElementById('nuDsHelpList');
@@ -1368,7 +1446,8 @@
 		return el('div', {'class': 'nuDsTools'}, [
 			el('a', {'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsHelpManage', href: D.help_admin, target: '_blank', rel: 'noopener'}, [icon('bi-journal-bookmark me-1'), t('uh_admin_title')]),
 			code && D.help_edit ? el('a', {'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsHelpOpen', target: '_blank', rel: 'noopener',
-				href: known ? 'index.php?p=userhelp&c=' + encodeURIComponent(code) : 'index.php?p=helppages&id=new&code=' + encodeURIComponent(code)}, [icon(known ? 'bi-eye me-1' : 'bi-plus-lg me-1'), t(known ? 'ds_help_view' : 'ds_help_create')]) : null
+				href: known ? 'index.php?p=userhelp&c=' + encodeURIComponent(code) : 'index.php?p=helppages&id=new&code=' + encodeURIComponent(code)},
+					[icon(known ? 'bi-eye me-1' : 'bi-plus-lg me-1'), t(known ? 'ds_help_view' : 'ds_help_create')]) : null
 		]);
 	}
 	function tagList(k) {
@@ -1384,7 +1463,7 @@
 		opt = opt || {};
 		var id = 'nuDsF' + (++fieldNo), input;
 		value = value === null || value === undefined ? '' : String(value);
-		if (kind === 'format') {           // saved + built-in formats, "+" new, pencil edits (format designer, 0.8.669)
+		if (kind === 'format') {           // saved + built-in formats, "+" new, pencil edits (format designer)
 			kind = 'select';
 			opt.options = formatOptions(opt.letters || 'DNT', value);
 			opt.after = formatButtons(opt.letters || 'DNT', function () { return input.value; }, function (v) { input.value = v; save(v); });
@@ -1395,13 +1474,17 @@
 			if (!opts.some(function (o) { return String(o[0]) === value; })) opts = [[value, value === '' ? (opt.empty || t('ds_mixed')) : value]].concat(opts);
 			opts.forEach(function (o) { input.appendChild(el('option', {value: o[0], text: o[1], selected: String(o[0]) === value ? true : null})); });
 		} else if (kind === 'textarea') {
-			input = el('textarea', {'class': 'form-control form-control-sm' + (opt.mono ? ' nuDsMono' : ''), id: id, rows: opt.rows || '3', spellcheck: opt.mono ? 'false' : null, 'data-key': opt.key || null, placeholder: opt.ph || null});
+			input = el('textarea',
+				{'class': 'form-control form-control-sm' + (opt.mono ? ' nuDsMono' : ''), id: id, rows: opt.rows || '3', spellcheck: opt.mono ? 'false' : null,
+					'data-key': opt.key || null, placeholder: opt.ph || null});
 			input.value = value;
 		} else if (kind === 'check') {
 			input = el('input', {type: 'checkbox', 'class': 'form-check-input', id: id, role: 'switch', checked: value === '1' ? true : null, 'data-key': opt.key || null});
 			var wrapC = el('div', {'class': 'form-check form-switch nuDsField'}, [input, el('label', {'class': 'form-check-label', 'for': id, text: label})]);
-			if (opt.tip) {                                          // (i) after the label, outside it (0.8.1027)
-				var tipC = el('span', {'class': 'nuInfoTip ms-1', tabindex: '0', role: 'img', 'data-bs-toggle': 'tooltip', 'data-bs-custom-class': 'nuTipWide', 'aria-label': opt.tip, title: opt.tip}, [icon('bi-info-circle')]);
+			if (opt.tip) {                                          // (i) after the label, outside it
+				var tipC = el('span',
+					{'class': 'nuInfoTip ms-1', tabindex: '0', role: 'img', 'data-bs-toggle': 'tooltip', 'data-bs-custom-class': 'nuTipWide', 'aria-label': opt.tip, title: opt.tip},
+					[icon('bi-info-circle')]);
 				wrapC.appendChild(tipC);
 				if (window.nuBs && window.nuBs.tooltip) setTimeout(function () { if (tipC.isConnected) window.nuBs.tooltip(tipC); }, 0);
 			}
@@ -1411,7 +1494,7 @@
 			input = el('input', {type: kind === 'number' ? 'number' : 'text', 'class': 'form-control form-control-sm' + (opt.mono ? ' nuDsMono' : ''), id: id, value: value,
 				readonly: kind === 'ro' ? true : null, 'data-key': opt.key || null, placeholder: opt.ph || null, list: opt.list || null});
 		}
-		// live (0.8.664): the form shows the value while typing; Esc puts the saved value back (nothing saved)
+		// live: the form shows the value while typing; Esc puts the saved value back (nothing saved)
 		if (opt.live && kind !== 'ro' && kind !== 'select') {
 			input.addEventListener('input', function () { opt.live(input.value); });
 			input.addEventListener('keydown', function (e) {
@@ -1419,7 +1502,7 @@
 				if (e.key === 'Enter' && input.tagName === 'INPUT') { e.preventDefault(); input.blur(); }
 			});
 		}
-		var fld = input;   // input becomes a wrapper below (attribute editor) – the handler keeps the field (0.8.1143)
+		var fld = input;   // input becomes a wrapper below (attribute editor) – the handler keeps the field
 		if (kind !== 'ro') fld.addEventListener('change', function () {
 			var v = fld.value;
 			if (opt.check && !opt.check(v)) { fld.classList.add('is-invalid'); say(opt.err || 'Error', true); return; }
@@ -1431,17 +1514,18 @@
 			'aria-label': opt.tip, title: opt.tip}, [icon('bi-info-circle')])]);
 		if (opt.attr && window.nuAttributeEditor) {     // HTML attributes: the attribute editor (assets/js/nuattreditor.js)
 			var inA = input;
-			input = el('div', {'class': 'input-group input-group-sm'}, [inA, el('button', {type: 'button', 'class': 'btn btn-outline-secondary', id: 'nuDsAttrBtn', title: t('builder_attr_title'), 'aria-label': t('builder_attr_title'),
+			input = el('div', {'class': 'input-group input-group-sm'},
+				[inA, el('button', {type: 'button', 'class': 'btn btn-outline-secondary', id: 'nuDsAttrBtn', title: t('builder_attr_title'), 'aria-label': t('builder_attr_title'),
 				onclick: function () { window.nuAttributeEditor.open(inA.value, function (v) { inA.value = v; inA.dispatchEvent(new Event('change')); }, L); }}, [icon('bi-sliders')])]);
 		}
-		// code fields (0.8.665): a button next to the label opens the code window
+		// code fields: a button next to the label opens the code window
 		if (opt.code) lab = el('div', {'class': 'nuDsLabelRow'}, [lab, codeButton(label, opt.code, function () { return fld.value; },
 			function (v) { fld.value = v; fld.dispatchEvent(new Event('change')); })]);
 		var row = el('div', {'class': 'nuDsField' + (opt.half ? ' nuDsHalf' : '')}, [lab, input]);
 		if (opt.tip && window.nuBs && window.nuBs.tooltip) setTimeout(function () { var tip = row.querySelector('.nuInfoTip'); if (tip && tip.isConnected) window.nuBs.tooltip(tip); }, 0);
 		if (opt.after) row.appendChild(opt.after);
 		if (opt.search && window.TomSelect && kind === 'select') {
-			// searchable list of forms / procedures / reports (as the builder, 0.8.536); after the field is in the panel
+			// searchable list of forms / procedures / reports (as the builder); after the field is in the panel
 			setTimeout(function () { if (!input.tomselect && input.isConnected) new window.TomSelect(input, {create: false, maxOptions: null, searchField: ['text'], dropdownParent: 'body'}); }, 0);
 		}
 		return row;
@@ -1451,7 +1535,7 @@
 		return (none === false ? [] : [['', t('please_select')]]).concat((list || []).filter(function (f) { return !filter || filter.indexOf(f[2]) >= 0; }).map(function (f) { return [f[0], f[1]]; }));
 	}
 
-	// formats (0.8.669, as the builder's format picker): saved ones first, then the built-ins; "+" creates one, the pencil edits it
+	// formats (as the builder's format picker): saved ones first, then the built-ins; "+" creates one, the pencil edits it
 	var FMT_TYPES = {D: 'Date', N: 'Number', T: 'Text'};
 	function formatOptions(letters, value) {
 		var list = (D.formats_all || []).filter(function (f) { return letters.indexOf(String(f.value).charAt(0)) >= 0; });
@@ -1468,7 +1552,8 @@
 		var types = letters.split('').map(function (l) { return FMT_TYPES[l]; });
 		var done = function (key) { return function (f, all) { if (all) D.formats_all = all; set(f && f.key !== undefined ? f.key : key); renderPanel(); }; };
 		return el('div', {'class': 'nuDsFmtBtns'}, [
-			el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', 'data-ds-fmt': 'new', title: t('builder_fmt_new'), 'aria-label': t('builder_fmt_new'), disabled: !FD || !rights.create ? true : null,
+			el('button',
+				{type: 'button', 'class': 'btn btn-sm btn-outline-secondary', 'data-ds-fmt': 'new', title: t('builder_fmt_new'), 'aria-label': t('builder_fmt_new'), disabled: !FD || !rights.create ? true : null,
 				onclick: function () { FD.open({types: types, type: FMT_TYPES[(get() || letters).charAt(0)], onSaved: done('')}); }}, [icon('bi-plus-lg')]),
 			el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', 'data-ds-fmt': 'edit', title: t('builder_fmt_edit'), 'aria-label': t('builder_fmt_edit'), disabled: !FD ? true : null,
 				onclick: function () {
@@ -1510,7 +1595,7 @@
 		placeQuick();
 	}
 
-	// phones (0.8.831): the panel is a bottom sheet with three heights – peek (name of the selection), half, full
+	// phones: the panel is a bottom sheet with three heights – peek (name of the selection), half, full
 	var sheet = 'peek', SHEETS = ['peek', 'half', 'full'];
 	var sheetHandle = el('button', {type: 'button', 'class': 'nuDsSheetHandle', id: 'nuDsSheetHandle', title: t('ds_ph_sheet'), 'aria-label': t('ds_ph_sheet')}, [el('span', {'class': 'nuDsSheetGrip'})]);
 	function setSheet(st) {
@@ -1521,7 +1606,8 @@
 		if (phone.matches && sheet === 'peek') panel.scrollTop = 0;
 	}
 	function stepSheet(d) { setSheet(SHEETS[Math.max(0, Math.min(2, SHEETS.indexOf(sheet) + d))]); setTimeout(keepVisible, 260); }
-	sheetHandle.addEventListener('click', function () { if (sheetHandle.nuSwiped) { sheetHandle.nuSwiped = false; return; } setSheet(sheet === 'full' ? 'peek' : SHEETS[SHEETS.indexOf(sheet) + 1]); setTimeout(keepVisible, 260); });
+	sheetHandle.addEventListener('click',
+		function () { if (sheetHandle.nuSwiped) { sheetHandle.nuSwiped = false; return; } setSheet(sheet === 'full' ? 'peek' : SHEETS[SHEETS.indexOf(sheet) + 1]); setTimeout(keepVisible, 260); });
 	var swY = null;
 	panel.addEventListener('touchstart', function (e) { swY = (e.target.closest && e.target.closest('.nuDsSheetHandle, .nuDsHead')) && e.touches[0] ? e.touches[0].clientY : null; }, {passive: true});
 	panel.addEventListener('touchend', function (e) {
@@ -1546,7 +1632,8 @@
 	}
 	// quick actions above the selected object (phones): label, up, down, duplicate, delete, all settings
 	var quick = el('div', {'class': 'nuDsQuick', id: 'nuDsQuick', role: 'toolbar', 'aria-label': t('ds_ph_quick'), hidden: 'hidden'});
-	function qBtn(id, ic, label, fn) { return el('button', {type: 'button', 'class': 'btn btn-sm', id: id, title: label, 'aria-label': label, onclick: function () { var o = objByFid(selIds[0]); if (o) fn(o); }}, [icon(ic)]); }
+	function qBtn(id, ic, label,
+		fn) { return el('button', {type: 'button', 'class': 'btn btn-sm', id: id, title: label, 'aria-label': label, onclick: function () { var o = objByFid(selIds[0]); if (o) fn(o); }}, [icon(ic)]); }
 	[qBtn('nuDsQLabel', 'bi-input-cursor-text', t('ds_ph_label'), function (o) { renameDialog(o); }),
 		qBtn('nuDsQUp', 'bi-arrow-up', t('ds_ph_up'), function (o) { order({ids: [o.sob_all_id], dir: -1}); }),
 		qBtn('nuDsQDown', 'bi-arrow-down', t('ds_ph_down'), function (o) { order({ids: [o.sob_all_id], dir: 1}); }),
@@ -1582,19 +1669,21 @@
 	function renderForm() {
 		var f = S.form;
 		panel.appendChild(head(t('ds_form'), f.sfo_description || f.sfo_code || '', 'bi-window', ''));
-		var fsave = function (key, reload) { return function (v) { var x = {}; x[key] = v; change('form.save', {fields: x}, false).then(function () { if (reload) reloadKeep(); }).catch(function () { /* said */ }); }; };
+		var fsave = function (key,
+			reload) { return function (v) { var x = {}; x[key] = v; change('form.save', {fields: x}, false).then(function () { if (reload) reloadKeep(); }).catch(function () { /* said */ }); }; };
 		if (!D.userhome) {      // nuBuilder Forte's User Home: its form row belongs to Forte (only tabs, objects and Before Edit are edited)
 			section('content', t('ds_sec_content'), [
 				field(t('builder_description'), 'text', f.sfo_description, function (v) { change('form.save', {fields: {sfo_description: v}}, true).catch(function () { /* said */ }); }, {key: 'sfo_description'}),
 				el('div', {'class': 'nuDsGrid2'}, [
 					field(t('builder_code'), 'text', f.sfo_code, fsave('sfo_code'), {key: 'sfo_code', mono: true}),
 					field(t('builder_group'), 'text', f.sfo_group, fsave('sfo_group'), {key: 'sfo_group'})]),
-				// department / team (0.8.1020): sfo_json nunext – only for grouping and filtering the forms list; suggestions = values in use
+				// department / team: sfo_json nunext – only for grouping and filtering the forms list; suggestions = values in use
 				el('div', {'class': 'nuDsGrid2'}, ['department', 'team'].map(function (k) {
 					return field(t('builder_' + k), 'text', formTag(f, k), fsave(k), {key: 'nunext_' + k, list: tagList(k), tip: t('builder_tags_tip')});
 				})),
 				el('div', {'class': 'nuDsGrid2'}, [
-					field(t('builder_type'), 'select', f.sfo_type, fsave('sfo_type', true), {key: 'sfo_type', options: ['browseedit', 'browse', 'edit', 'launch', 'subform'].map(function (x) { return [x, t('form_type_' + x)]; })}),
+					field(t('builder_type'), 'select', f.sfo_type, fsave('sfo_type', true),
+						{key: 'sfo_type', options: ['browseedit', 'browse', 'edit', 'launch', 'subform'].map(function (x) { return [x, t('form_type_' + x)]; })}),
 					field(t('builder_status'), 'select', String(f.sfo_status === null || f.sfo_status === undefined || f.sfo_status === '' ? '1' : f.sfo_status), fsave('sfo_status', true),
 						{key: 'sfo_status', options: [['1', t('builder_status_1')], ['0', t('builder_status_0')], ['2', t('builder_status_2')], ['3', t('builder_status_3')]]})])
 			], [
@@ -1605,26 +1694,30 @@
 					field(t('builder_table'), 'text', f.sfo_table, fsave('sfo_table', true), {key: 'sfo_table', mono: true, list: 'nuDsTables'}),
 					field(t('builder_primary_key'), 'text', f.sfo_primary_key, fsave('sfo_primary_key', true), {key: 'sfo_primary_key', mono: true})]),
 				tablesList(),
-				// "Records only through the form's list" not for this form (0.8.1234): sfo_json nunext.record_check = false
+				// "Records only through the form's list" not for this form: sfo_json nunext.record_check = false
 				field(t('ds_rc_any'), 'check', (function () { try { return ((JSON.parse(f.sfo_json || '{}') || {}).nunext || {}).record_check === false ? '1' : '0'; } catch (x) { return '0'; } })(),
 					function (v) { change('form.save', {fields: {record_check: v === '1' ? '0' : '1'}}, false).catch(function () { /* said */ }); },
 					{key: 'record_check', tip: D.record_check ? t('ds_rc_any_tip') : t('ds_rc_any_tip_off')}),
-				// recycle bin (0.8.1325): days the form keeps its deleted records – 0 / empty = off (sfo_json nunext.recycle)
-				field(t('ds_recycle_days'), 'number', (function () { try { var r = ((JSON.parse(f.sfo_json || '{}') || {}).nunext || {}).recycle; return r && r.days ? String(r.days) : ''; } catch (x) { return ''; } })(),
+				// recycle bin: days the form keeps its deleted records – 0 / empty = off (sfo_json nunext.recycle)
+				field(t('ds_recycle_days'), 'number',
+					(function () { try { var r = ((JSON.parse(f.sfo_json || '{}') || {}).nunext || {}).recycle; return r && r.days ? String(r.days) : ''; } catch (x) { return ''; } })(),
 					function (v) { change('form.save', {fields: {recycle_days: String(Math.max(0, parseInt(v, 10) || 0))}}, false).catch(function () { /* said */ }); },
 					{key: 'recycle_days', ph: t('ds_recycle_off'), tip: t('ds_recycle_tip')})
 			]);
 		}
 		if (HASLIST && !D.userhome) section('list', t('ds_sec_list'), [el('div', {'class': 'nuDsField'}, [el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsOpenListFly',
 			onclick: function () { openWork('list'); }}, [icon('bi-table me-1'), t('ds_list_open')])]),
-			BROWSE && D.edit_url ? el('div', {'class': 'nuDsField'}, [el('a', {'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsDesignEdit', href: D.edit_url}, [icon('bi-window me-1'), t('ds_design_edit')])]) : null]);
+			BROWSE
+				&& D.edit_url ? el('div', {'class': 'nuDsField'},
+					[el('a', {'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsDesignEdit', href: D.edit_url}, [icon('bi-window me-1'), t('ds_design_edit')])]) : null]);
 		if (!BROWSE) section('layout', t('ds_sec_layout'), [
 			D.userhome ? null : field(t('form_layout'), 'select', layout(), function (v) {
 				if (v === 'grid') confirmAsk(t('builder_designer_convert'), function () { change('layout.convert', {}, true).catch(function () { /* said */ }); }, t('form_layout_grid'), 'btn btn-primary');
 				else change('form.save', {fields: {layout: v}}, true).catch(function () { /* said */ });
 			}, {key: 'layout', options: [['absolute', t('form_layout_absolute')], ['auto', t('form_layout_auto')], ['grid', t('form_layout_grid')]]}),
 			el('div', {'class': 'form-check form-switch nuDsField'}, [el('input', {type: 'checkbox', 'class': 'form-check-input', role: 'switch', id: 'nuDsTabOrder', checked: tabOrderOn ? true : null,
-				onchange: function (e) { tabOrderOn = e.target.checked; post({nuBuilderTabOrder: tabOrderOn}); orderFloat(); }}), el('label', {'class': 'form-check-label', 'for': 'nuDsTabOrder', text: t('builder_taborder')})]),
+				onchange: function (e) { tabOrderOn = e.target.checked; post({nuBuilderTabOrder: tabOrderOn}); orderFloat(); }}),
+					el('label', {'class': 'form-check-label', 'for': 'nuDsTabOrder', text: t('builder_taborder')})]),
 			orderByPosButton('nuDsOrderPos')
 		]);
 		var tools = [];
@@ -1632,14 +1725,17 @@
 		if (D.formaccess && typeof window.nuFormAccessOpen === 'function') tools.push(el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsFormAccess',
 			onclick: function () { window.nuFormAccessOpen(N.form.id); }}, [icon('bi-people me-1'), t('ds_form_access')]));
 		if (D.dataaccess) tools.push(el('a', {'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsDataAccess', href: D.dataaccess}, [icon('bi-shield-lock me-1'), t('da_title')]));
-		if (D.translations) {                                    // missing translations of this form and its sub-forms (0.8.754)
+		if (D.translations) {                                    // missing translations of this form and its sub-forms
 			var trm = D.translations.missing || {}, trk = Object.keys(trm);
 			tools.push(el('a', {'class': 'btn btn-sm ' + (trk.length ? 'btn-outline-warning' : 'btn-outline-secondary'), id: 'nuDsTranslations', href: D.translations.url, target: '_blank', rel: 'noopener',
 				title: trk.length ? trk.map(function (l) { return l + ': ' + trm[l]; }).join(', ') : t('ds_trl_done')},
-				[icon('bi-translate me-1'), t('ds_trl'), trk.length ? el('span', {'class': 'badge text-bg-warning ms-1', text: t('ds_trl_missing').replace('%s', trk.map(function (l) { return trm[l]; }).reduce(function (a, b) { return a + b; }, 0))}) : null]));
+				[icon('bi-translate me-1'), t('ds_trl'),
+					trk.length ? el('span',
+						{'class': 'badge text-bg-warning ms-1', text: t('ds_trl_missing').replace('%s', trk.map(function (l) { return trm[l]; }).reduce(function (a, b) { return a + b; }, 0))}) : null]));
 		}
-		if (D.can_delete_form && !DR) tools.push(el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-danger', id: 'nuDsDeleteForm', onclick: deleteForm}, [icon('bi-trash me-1'), t('builder_delete_form')]));
-		if (!D.userhome) {                                       // user help pages (0.8.1023): ? button of the form and its tabs
+		if (D.can_delete_form
+			&& !DR) tools.push(el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-danger', id: 'nuDsDeleteForm', onclick: deleteForm}, [icon('bi-trash me-1'), t('builder_delete_form')]));
+		if (!D.userhome) {                                       // user help pages: ? button of the form and its tabs
 			var fh = formHelp(f);
 			var tabRows = !BROWSE && S.tabs && S.tabs.length > 1 ? S.tabs.map(function (tb) {
 				return field(t('ds_help_tab').replace('%s', plain(tb.syt_title) || tb.zzzzsys_tab_id), 'text', fh.tabs[tb.zzzzsys_tab_id] || '', function (v) {
@@ -1655,7 +1751,7 @@
 		if (tools.length) section('tools', t('ds_sec_tools'), [el('div', {'class': 'nuDsTools'}, tools)]);
 		foot([el('p', {'class': 'nuDsHint', text: t(BROWSE ? 'ds_hint_list' : 'ds_hint')})]);
 	}
-	// ------------------------------------------------------------------ validation rules (0.8.812, core/form/nurules.php): list + editor
+	// ------------------------------------------------------------------ validation rules (core/form/nurules.php): list + editor
 	var VR_NOVAL = ['empty', 'nempty'];
 	function vrFields(scope) {
 		var R = D.rules, out;
@@ -1673,7 +1769,8 @@
 		v = String(v == null ? '' : v);
 		return /^-?\d+(\.\d+)?$/.test(v) ? v : "'" + v.replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'";
 	}
-	var VR_SYM = {eq: '=', ne: '!=', lt: '<', gt: '>', le: '<=', ge: '>=', contains: 'CONTAINS', ncontains: 'NOT CONTAINS', starts: 'STARTS WITH', ends: 'ENDS WITH', regex: 'MATCHES', before: 'BEFORE', after: 'AFTER'};
+	var VR_SYM = {eq: '=', ne: '!=', lt: '<', gt: '>', le: '<=', ge: '>=', contains: 'CONTAINS', ncontains: 'NOT CONTAINS', starts: 'STARTS WITH',
+		ends: 'ENDS WITH', regex: 'MATCHES', before: 'BEFORE', after: 'AFTER'};
 	/** A cond tree as text – as NuFormRules::text(). */
 	function vrText(c) {
 		if (!c) return '';
@@ -1719,13 +1816,16 @@
 					el('span', {'class': 'nuDsRuleName', text: r.name || r.msg}),
 					el('code', {'class': 'nuDsRuleCond', text: (r.when ? t('vr_when_short') + ' ' + vrText(r.when) + ' → ' : '') + vrText(r.check)})]),
 				el('button', {type: 'button', 'class': 'btn btn-sm btn-link text-danger p-0', 'data-vr-del': r.id, title: t('delete'), 'aria-label': t('delete'),
-					onclick: function () { confirmAsk(fmt(t('vr_del_confirm'), r.name || r.msg), function () { vrSave(list.filter(function (x, j) { return j !== i; })); }, t('delete'), 'btn btn-danger'); }}, [icon('bi-trash')])]);
+					onclick: function () { confirmAsk(fmt(t('vr_del_confirm'), r.name || r.msg), function () { vrSave(list.filter(function (x, j) { return j !== i; })); }, t('delete'), 'btn btn-danger'); }},
+						[icon('bi-trash')])]);
 		});
 		return el('div', {id: 'nuDsRules'}, [
 			rows.length ? el('div', {'class': 'nuDsRuleList'}, rows) : el('p', {'class': 'nuDsHint mb-2', text: t('vr_none')}),
 			el('div', {'class': 'd-flex flex-wrap gap-2'}, [
 				el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-primary', id: 'nuDsRuleAdd', onclick: function () { ruleDialog(-1); }}, [icon('bi-plus-lg me-1'), t('vr_add')]),
-				list.length ? el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsRuleTestAll', onclick: function () { vrTestAll(); }}, [icon('bi-check2-circle me-1'), t('vr_test_all')]) : null]),
+				list.length ? el('button',
+					{type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsRuleTestAll', onclick: function () { vrTestAll(); }},
+					[icon('bi-check2-circle me-1'), t('vr_test_all')]) : null]),
 			el('div', {'class': 'small mt-2', id: 'nuDsRuleTestOut', 'aria-live': 'polite'})]);
 	}
 	function vrRefresh() {
@@ -1766,9 +1866,13 @@
 			el('option', {value: 'and', text: t('vr_join_all')}), el('option', {value: 'or', text: t('vr_join_any')})]);
 		join.value = cond && cond.op === 'or' ? 'or' : 'and';
 		var rowBox = el('div', {'class': 'nuDsCondRows', id: idp + 'Rows'});
-		var addRow = el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: idp + 'AddRow', onclick: function () { rows.push(row(null)); draw(); }}, [icon('bi-plus me-1'), t('vr_add_cond')]);
+		var addRow = el('button',
+			{type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: idp + 'AddRow', onclick: function () { rows.push(row(null)); draw(); }},
+			[icon('bi-plus me-1'), t('vr_add_cond')]);
 		var builder = el('div', {'class': 'nuDsCondBuilder'}, [el('div', {'class': 'mb-2'}, [join]), rowBox, addRow]);
-		var expr = el('textarea', {'class': 'form-control form-control-sm font-monospace', rows: '3', id: idp + 'Expr', spellcheck: 'false', 'aria-label': t('vr_mode_expr'), placeholder: "status = 'shipped' AND ship_date IS NOT EMPTY"});
+		var expr = el('textarea',
+			{'class': 'form-control form-control-sm font-monospace', rows: '3', id: idp + 'Expr', spellcheck: 'false', 'aria-label': t('vr_mode_expr'),
+				placeholder: "status = 'shipped' AND ship_date IS NOT EMPTY"});
 		var exprHelp = el('div', {'class': 'form-text', text: t('vr_expr_help') + ' ' + t('vr_hash_help')});
 		var exprBox = el('div', {'class': 'nuDsCondExpr'}, [expr, exprHelp]);
 		var err = el('div', {'class': 'small text-danger mt-1', id: idp + 'Err'});
@@ -1794,7 +1898,7 @@
 			var vk = el('select', {'class': 'form-select form-select-sm', 'data-vr': 'vk', 'aria-label': t('vr_value_kind')}, [
 				el('option', {value: 'value', text: t('vr_vk_value')}), el('option', {value: 'field', text: t('vr_vk_field')}), el('option', {value: 'today', text: t('vr_vk_today')})]);
 			vk.value = kind;
-			// one value (0.8.814): free text or a hash variable #NAME# – a searchable field that takes any text (Tom Select, create)
+			// one value: free text or a hash variable #NAME# – a searchable field that takes any text (Tom Select, create)
 			var one = el('input', {type: 'text', 'class': 'form-control form-control-sm', 'data-vr': 'one', 'aria-label': t('vr_value'), placeholder: t('vr_value_ph')});
 			var a = el('input', {type: 'text', 'class': 'form-control form-control-sm', 'data-vr': 'a', 'aria-label': t('vr_value')});
 			var b = el('input', {type: 'text', 'class': 'form-control form-control-sm', 'data-vr': 'b', 'aria-label': t('vr_value')});
@@ -1802,9 +1906,10 @@
 			if (leaf.o === 'between' && Array.isArray(v)) { a.value = vrRaw(v[0]); b.value = vrRaw(v[1]); }
 			else if ((leaf.o === 'in' || leaf.o === 'nin') && Array.isArray(v)) a.value = v.map(vrRaw).join(', ');
 			else if (kind === 'value' && v !== undefined && v !== null) one.value = vrRaw(v);
-			var del = el('button', {type: 'button', 'class': 'btn btn-sm btn-link text-danger p-0', title: t('remove'), 'aria-label': t('remove'), onclick: function () { api2.destroy(); rows = rows.filter(function (x) { return x !== api2; }); draw(); }}, [icon('bi-x-lg')]);
+			var del = el('button',
+				{type: 'button', 'class': 'btn btn-sm btn-link text-danger p-0', title: t('remove'), 'aria-label': t('remove'), onclick: function () { api2.destroy(); rows = rows.filter(function (x) { return x !== api2; }); draw(); }}, [icon('bi-x-lg')]);
 			[f, o, vk, vf, one, a, b, del].forEach(function (x) { r.appendChild(x); });
-			if (window.TomSelect) {             // the left side (0.8.815): a field or a hash variable #NAME# (hash cookies, #USER_ID# …)
+			if (window.TomSelect) {             // the left side: a field or a hash variable #NAME# (hash cookies, #USER_ID# …)
 				var lcur = f.value, lopts = Array.prototype.map.call(f.options, function (op) { return {value: op.value, text: op.textContent}; }).concat(vrHashOptions());
 				new window.TomSelect(f, {items: lcur ? [lcur] : [], create: function (input) { input = input.trim(); return VR_HASH.test(input) ? {value: input, text: input} : false; },
 					createFilter: function (input) { return VR_HASH.test(String(input).trim()); }, addPrecedence: true, persist: false, maxItems: 1, options: lopts, valueField: 'value', labelField: 'text',
@@ -1816,7 +1921,8 @@
 				if (cur !== '' && !opts.some(function (x) { return x.value === cur; })) opts.unshift({value: cur, text: cur});
 				new window.TomSelect(one, {create: true, createOnBlur: true, addPrecedence: true, persist: false, maxItems: 1, options: opts, items: cur !== '' ? [cur] : [], valueField: 'value',
 					labelField: 'text', searchField: ['value', 'text'], score: vrScore, refreshThrottle: 0, dropdownParent: 'body', dropdownClass: 'ts-dropdown nuTsDropdown nuTsSmall', maxOptions: 300,
-					render: {option: function (d, e) { return '<div><code>' + e(d.value) + '</code>' + (d.text && d.text !== d.value ? ' <span class="small text-body-secondary">' + e(d.text) + '</span>' : '') + '</div>'; },
+					render: {option: function (d,
+						e) { return '<div><code>' + e(d.value) + '</code>' + (d.text && d.text !== d.value ? ' <span class="small text-body-secondary">' + e(d.text) + '</span>' : '') + '</div>'; },
 						item: function (d, e) { return '<div>' + e(d.value) + '</div>'; },
 						option_create: function (d, e) { return '<div class="create">' + e(t('vr_value_use')).replace('%s', '<strong>' + e(d.input) + '</strong>') + '</div>'; }}});
 			}
@@ -1871,17 +1977,20 @@
 				return rows.length ? builderCond() : null;
 			},
 			error: function (m) { err.textContent = m || ''; },
-			setScope: function (s) { var cur = this.get(); scope = s; if (mode === 'builder') fromCond(cur && !cur.expr ? {op: cur.op, items: cur.items.filter(function (it) { return String(it.f).charAt(0) === '#' || vrFields(s).some(function (f) { return f[0] === it.f; }); })} : null); }};
+			setScope: function (s) { var cur = this.get(); scope = s; if (mode === 'builder') fromCond(cur
+				&& !cur.expr ? {op: cur.op, items: cur.items.filter(function (it) { return String(it.f).charAt(0) === '#' || vrFields(s).some(function (f) { return f[0] === it.f; }); })} : null); }};
 	}
 
 	var vrDlg = null;
 	function ruleDialog(index) {
 		if (vrDlg) { vrDlg.root.querySelectorAll('select, input').forEach(function (x) { if (x.tomselect) x.tomselect.destroy(); }); vrDlg.root.remove(); vrDlg = null; }
-		var R = D.rules, r = index >= 0 ? JSON.parse(JSON.stringify(R.list[index])) : {id: '', on: true, kind: 'error', scope: '', msg: '', name: '', field: '', levels: [], perm: '', check: null, when: null};
+		var R = D.rules,
+			r = index >= 0 ? JSON.parse(JSON.stringify(R.list[index])) : {id: '', on: true, kind: 'error', scope: '', msg: '', name: '', field: '', levels: [], perm: '', check: null, when: null};
 		var name = el('input', {type: 'text', 'class': 'form-control form-control-sm', id: 'nuDsRuleName', maxlength: '100', value: r.name || ''});
 		var msgF = el('textarea', {'class': 'form-control form-control-sm', id: 'nuDsRuleMsg', rows: '2', maxlength: '500', placeholder: t('vr_msg_ph')});
 		msgF.value = r.msg || '';
-		var kind = el('select', {'class': 'form-select form-select-sm', id: 'nuDsRuleKind'}, [el('option', {value: 'error', text: t('vr_kind_error_long')}), el('option', {value: 'warn', text: t('vr_kind_warn_long')})]);
+		var kind = el('select', {'class': 'form-select form-select-sm', id: 'nuDsRuleKind'},
+			[el('option', {value: 'error', text: t('vr_kind_error_long')}), el('option', {value: 'warn', text: t('vr_kind_warn_long')})]);
 		kind.value = r.kind === 'warn' ? 'warn' : 'error';
 		var scope = el('select', {'class': 'form-select form-select-sm', id: 'nuDsRuleScope'}, [el('option', {value: '', text: t('vr_scope_record')})]);
 		Object.keys(R.subs || {}).forEach(function (sf) { scope.appendChild(el('option', {value: sf, text: fmt(t('vr_scope_rows'), R.subs[sf].label || sf)})); });
@@ -1914,7 +2023,7 @@
 		var on = el('input', {type: 'checkbox', 'class': 'form-check-input', role: 'switch', id: 'nuDsRuleOn', checked: r.on ? true : null});
 		var testRid = el('input', {type: 'text', 'class': 'form-control form-control-sm', id: 'nuDsRuleTestId', placeholder: t('vr_test_id_ph'), value: vrTestRid(), 'aria-label': t('vr_test_id')});
 		var testOut = el('div', {'class': 'small mt-2', id: 'nuDsRuleTestRes', 'aria-live': 'polite'});
-		// errors on top of the dialogue, always in sight (0.8.816): sticky, the dialogue scrolls up, the field gets the focus
+		// errors on top of the dialogue, always in sight: sticky, the dialogue scrolls up, the field gets the focus
 		var errAll = el('div', {'class': 'alert alert-danger py-2 px-3 small nuDsRuleErr', id: 'nuDsRuleErr', role: 'alert', hidden: true});
 		function showErr(text, target) {
 			errAll.textContent = '';
@@ -1936,7 +2045,8 @@
 		msgF.addEventListener('input', function () { msgF.classList.remove('is-invalid'); });
 		['input', 'change'].forEach(function (ev) { check.root.addEventListener(ev, function () { check.root.classList.remove('nuDsCondBad'); }); });
 		function lbl(forId, text, tip) {
-			return el('label', {'class': 'form-label small mb-1', 'for': forId}, [text, tip ? el('span', {'class': 'nuInfoTip ms-1', tabindex: '0', role: 'img', 'data-bs-toggle': 'tooltip', 'aria-label': tip, title: tip}, [icon('bi-info-circle')]) : null]);
+			return el('label', {'class': 'form-label small mb-1', 'for': forId},
+				[text, tip ? el('span', {'class': 'nuInfoTip ms-1', tabindex: '0', role: 'img', 'data-bs-toggle': 'tooltip', 'aria-label': tip, title: tip}, [icon('bi-info-circle')]) : null]);
 		}
 		function collect() {
 			var c = check.get(), w = whenOn.checked ? when.get() : null;
@@ -1967,7 +2077,8 @@
 		var body = [errAll,
 			el('div', {'class': 'nuDsGrid2'}, [el('div', {}, [lbl('nuDsRuleName', t('vr_name')), name]), el('div', {}, [lbl('nuDsRuleKind', t('vr_kind')), kind])]),
 			el('div', {'class': 'mt-2'}, [lbl('nuDsRuleMsg', t('vr_msg'), t('vr_msg_tip') + ' ' + t('vr_hash_help')), msgF]),
-			el('div', {'class': 'nuDsGrid2 mt-2'}, [el('div', {}, [lbl('nuDsRuleScope', t('vr_scope'), t('vr_scope_tip')), scope]), el('div', {}, [lbl('nuDsRuleField', t('vr_mark'), t('vr_mark_tip')), mark])]),
+			el('div', {'class': 'nuDsGrid2 mt-2'},
+				[el('div', {}, [lbl('nuDsRuleScope', t('vr_scope'), t('vr_scope_tip')), scope]), el('div', {}, [lbl('nuDsRuleField', t('vr_mark'), t('vr_mark_tip')), mark])]),
 			el('h3', {'class': 'fs-6 mt-3 mb-1', text: t('vr_check')}), el('div', {'class': 'form-text mt-0 mb-2', text: t('vr_check_hint')}), check.root,
 			el('div', {'class': 'form-check mt-3'}, [whenOn, el('label', {'class': 'form-check-label', 'for': 'nuDsRuleWhenOn', text: t('vr_when')})]), when.root,
 			el('details', {'class': 'mt-3', id: 'nuDsRuleWho', open: (r.levels || []).length || r.perm ? true : null}, [el('summary', {'class': 'small', text: t('vr_who')}),
@@ -1993,12 +2104,14 @@
 		COLTYPES.forEach(function (x) { type.appendChild(el('option', {value: x, text: t('builder_coltype_' + x)})); });
 		var len = el('input', {type: 'text', 'class': 'form-control form-control-sm', id: 'nuDsColLen', maxlength: '8', 'aria-label': t('builder_col_length'), placeholder: t('builder_col_length')});
 		var free = el('textarea', {'class': 'form-control form-control-sm font-monospace', rows: '3', id: 'nuDsColSql', spellcheck: 'false', 'aria-label': t('builder_colchg_free')});
-		var freeBox = el('details', {'class': 'mt-3 d-none', id: 'nuDsColFree'}, [el('summary', {'class': 'small', text: t('builder_colchg_free')}), el('div', {'class': 'form-text mb-1', text: t('builder_colchg_free_hint')}), free]);
+		var freeBox = el('details', {'class': 'mt-3 d-none', id: 'nuDsColFree'},
+			[el('summary', {'class': 'small', text: t('builder_colchg_free')}), el('div', {'class': 'form-text mb-1', text: t('builder_colchg_free_hint')}), free]);
 		var sqlBox = el('pre', {'class': 'small bg-body-tertiary border rounded p-2 mb-2 text-wrap', id: 'nuDsColPlan'});
 		var res = el('div', {id: 'nuDsColChecks'});
 		var accept = el('input', {type: 'checkbox', 'class': 'form-check-input', id: 'nuDsColAccept'});
 		var acceptBox = el('div', {'class': 'form-check mt-2 d-none'}, [accept, el('label', {'class': 'form-check-label', 'for': 'nuDsColAccept', text: t('builder_colchg_accept')})]);
-		var reauth = el('div', {'class': 'alert alert-warning py-2 d-none', id: 'nuDsColReauth'}, [icon('bi-shield-lock me-1'), t('builder_colchg_reauth') + ' ', el('a', {href: 'index.php?p=reauth', id: 'nuDsColReauthLink', text: t('builder_colchg_reauth_link')})]);
+		var reauth = el('div', {'class': 'alert alert-warning py-2 d-none', id: 'nuDsColReauth'},
+			[icon('bi-shield-lock me-1'), t('builder_colchg_reauth') + ' ', el('a', {href: 'index.php?p=reauth', id: 'nuDsColReauthLink', text: t('builder_colchg_reauth_link')})]);
 		var err = el('div', {'class': 'alert alert-danger py-2 d-none', role: 'alert'});
 		var run = el('button', {type: 'button', 'class': 'btn btn-warning', id: 'nuDsColRun', disabled: true}, [icon('bi-database-gear me-1'), t('builder_colchg_run')]);
 		var root = modal('nuDsColDlg', fmt(t('builder_colchg_title'), column), [err, reauth, cur,
@@ -2009,7 +2122,8 @@
 		root.addEventListener('hidden.bs.modal', function () { root.remove(); });
 		var back = D.self + '&dscolchg=' + encodeURIComponent(column);
 		function showErr(m) { err.textContent = m || ''; err.classList.toggle('d-none', !m); }
-		function syncLen() { var uses = type.value === 'text' || type.value === 'decimal'; len.disabled = !uses; if (!uses) len.value = ''; else if (!len.value) len.value = type.value === 'text' ? '255' : '15,2'; }
+		function syncLen() { var uses = type.value === 'text'
+			|| type.value === 'decimal'; len.disabled = !uses; if (!uses) len.value = ''; else if (!len.value) len.value = type.value === 'text' ? '255' : '15,2'; }
 		function n(x) { return Number(x).toLocaleString(); }
 		function syncRun() { run.disabled = running || !info || info.reauth || !plan || plan.same || (plan.checks.length > 0 && !accept.checked); }
 		function data() {
@@ -2085,7 +2199,8 @@
 		var lbl = el('label', {'class': 'form-check-label', 'for': 'nuDsDelTable'});
 		var typed = el('input', {type: 'text', 'class': 'form-control form-control-sm mt-2', id: 'nuDsDelTyped', autocomplete: 'off', spellcheck: 'false'});
 		var typedLbl = el('label', {'class': 'form-label small mt-2 mb-0', 'for': 'nuDsDelTyped'});
-		var reauth = el('div', {'class': 'alert alert-warning small mt-2 d-none'}, [t('builder_drop_reauth') + ' ', el('a', {id: 'nuDsDelReauth', href: 'index.php?p=reauth', text: t('builder_drop_reauth_link')})]);
+		var reauth = el('div', {'class': 'alert alert-warning small mt-2 d-none'},
+			[t('builder_drop_reauth') + ' ', el('a', {id: 'nuDsDelReauth', href: 'index.php?p=reauth', text: t('builder_drop_reauth_link')})]);
 		var box = el('div', {'class': 'd-none mt-2', id: 'nuDsDelBox'}, [el('div', {'class': 'form-check'}, [chk, lbl]), el('div', {'class': 'd-none', id: 'nuDsDelConfirm'}, [typedLbl, typed,
 			el('div', {'class': 'small text-danger mt-1', text: t('builder_drop_warning')})]), reauth]);
 		var ok = el('button', {type: 'button', 'class': 'btn btn-danger', id: 'nuDsDelOk', disabled: true, text: t('builder_delete_form')});
@@ -2165,8 +2280,10 @@
 	function renderObject(o) {
 		var type = o.sob_all_type, isAbs = layout() === 'absolute', it = o.sob_input_type || 'text';
 		var btns = [
-			el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsDuplicate', title: t('ds_duplicate') + ' (Ctrl+D)', 'aria-label': t('ds_duplicate'), onclick: function () { duplicate([o]); }}, [icon('bi-copy')]),
-			el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-danger nuDsDel', id: 'nuDsDelete', title: t('builder_delete_object'), 'aria-label': t('builder_delete_object'), onclick: function () { deleteObjs([o]); }}, [icon('bi-trash')])
+			el('button',
+				{type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsDuplicate', title: t('ds_duplicate') + ' (Ctrl+D)', 'aria-label': t('ds_duplicate'), onclick: function () { duplicate([o]); }}, [icon('bi-copy')]),
+			el('button',
+				{type: 'button', 'class': 'btn btn-sm btn-outline-danger nuDsDel', id: 'nuDsDelete', title: t('builder_delete_object'), 'aria-label': t('builder_delete_object'), onclick: function () { deleteObjs([o]); }}, [icon('bi-trash')])
 		];
 		panel.appendChild(head(t('bf_type_' + type), o.sob_all_id, ICONS[type] || 'bi-square', '', btns));
 		var mb = missingBox(o);
@@ -2178,7 +2295,9 @@
 			var c = {}; Object.keys(sg).forEach(function (k) { c[k] = sg[k]; }); Object.keys(patch).forEach(function (k) { c[k] = patch[k]; });
 			return saveObj(o, {nunext_suggest: JSON.stringify(c)});
 		};
-		var runType = nunext(o).pivot ? 'V' : nunext(o).url ? 'U' : String(o.sob_run_type || '').toUpperCase() || ((D.procedures || []).some(function (p) { return p[0] === o.sob_run_zzzzsys_form_id; }) ? 'P' : ((D.reports || []).some(function (p) { return p[0] === o.sob_run_zzzzsys_form_id; }) ? 'R' : 'F'));
+		var runType = nunext(o).pivot ? 'V' : nunext(o).url ? 'U' : String(o.sob_run_type || '').toUpperCase()
+			|| ((D.procedures
+				|| []).some(function (p) { return p[0] === o.sob_run_zzzzsys_form_id; }) ? 'P' : ((D.reports || []).some(function (p) { return p[0] === o.sob_run_zzzzsys_form_id; }) ? 'R' : 'F'));
 		var fmtField = function (key, letters) {
 			return field(t('builder_input_format'), 'format', o[key] || '', save(key), {key: key, letters: letters, empty: '—',
 				tip: letters === 'T' ? t('builder_input_mask_help') : null});
@@ -2196,61 +2315,87 @@
 			type === 'input' ? field(t('builder_input_type'), 'select', it, save('sob_input_type'), {key: 'sob_input_type', options: INPUT_TYPES.map(function (x) { return [x, x]; })}) : null,
 			type === 'input' && (it === 'nuDate' || it === 'nuNumber') ? fmtField('sob_input_format', it === 'nuDate' ? 'D' : 'N') : null,
 			type === 'input' && ['text', 'tel', 'search'].indexOf(it) >= 0 ? fmtField('sob_input_format', 'T') : null,
-			type === 'input' && it === 'nuScroll' ? field(t('builder_input_scroll'), 'textarea', o.sob_input_javascript, save('sob_input_javascript'), {key: 'sob_input_javascript', code: 'JS', mono: true, rows: '2'}) : null,
-			type === 'input' && it === 'nuAutoNumber' ? field(t('builder_input_count'), 'number', o.sob_input_count, save('sob_input_count', false), {key: 'sob_input_count', tip: t('builder_input_count_help')}) : null,
+			type === 'input'
+				&& it === 'nuScroll' ? field(t('builder_input_scroll'), 'textarea', o.sob_input_javascript, save('sob_input_javascript'), {key: 'sob_input_javascript', code: 'JS', mono: true, rows: '2'}) : null,
+			type === 'input'
+				&& it === 'nuAutoNumber' ? field(t('builder_input_count'), 'number', o.sob_input_count, save('sob_input_count', false), {key: 'sob_input_count', tip: t('builder_input_count_help')}) : null,
 			type === 'input' && it === 'file' ? field(t('builder_file_target'), 'select', fileTarget, function (v) {
 				var f = {sob_input_file_target: v};
 				if (v === '1' && !String(o.sob_html_code || '').trim() && D.uppy_template) f.sob_html_code = D.uppy_template;   // the Uppy template (nuBuilder Forte: nu_upload_file_load_uppy_code)
 				saveObj(o, f, true);
 			}, {key: 'sob_input_file_target', tip: t('builder_file_target_help'), options: [['0', t('builder_file_target_0')], ['1', t('builder_file_target_1')]]}) : null,
-			type === 'input' && it === 'file' && fileTarget === '1' ? field(t('builder_html'), 'textarea', o.sob_html_code, save('sob_html_code'), {key: 'sob_html_code', code: 'HTML', mono: true, rows: '5', tip: t('builder_file_uppy_help')}) : null,
+			type === 'input' && it === 'file'
+				&& fileTarget === '1' ? field(t('builder_html'), 'textarea', o.sob_html_code, save('sob_html_code'),
+					{key: 'sob_html_code', code: 'HTML', mono: true, rows: '5', tip: t('builder_file_uppy_help')}) : null,
 			type === 'display' ? field(t('builder_display_proc'), 'select', dispProc, save('sob_display_procedure'), {key: 'sob_display_procedure', search: true, tip: t('builder_display_proc_help'),
 				options: [['', t('builder_display_proc_none')]].concat(D.procedures || [])}) : null,
 			type === 'calc' ? fmtField('sob_calc_format', 'N') : null,
 			type === 'calc' ? field(t('builder_calc_formula'), 'textarea', o.sob_calc_formula, save('sob_calc_formula'), {key: 'sob_calc_formula', code: 'JS', mono: true, rows: '2'}) : null,
-			type === 'select' ? field(t('builder_select_sql'), 'textarea', o.sob_select_sql, save('sob_select_sql'), {key: 'sob_select_sql', code: 'SQL', mono: true, rows: '4', tip: t('builder_select_sql_help')}) : null,
+			type === 'select' ? field(t('builder_select_sql'), 'textarea', o.sob_select_sql, save('sob_select_sql'),
+				{key: 'sob_select_sql', code: 'SQL', mono: true, rows: '4', tip: t('builder_select_sql_help')}) : null,
 			type === 'display' ? field(t('builder_display_sql'), 'textarea', o.sob_display_sql, save('sob_display_sql'), {key: 'sob_display_sql', code: 'SQL', mono: true, rows: '3'}) : null,
 			type === 'html' && !nunext(o).calendar ? field(t('builder_html'), 'textarea', o.sob_html_code, save('sob_html_code'), {key: 'sob_html_code', code: 'HTML', mono: true, rows: '6'}) : null,
-			type === 'lookup' ? field(t('builder_lookup_form'), 'select', o.sob_lookup_zzzzsys_form_id, save('sob_lookup_zzzzsys_form_id'), {key: 'sob_lookup_zzzzsys_form_id', search: true, options: options(D.forms, ['browse', 'browseedit'])}) : null,
+			type === 'lookup' ? field(t('builder_lookup_form'), 'select', o.sob_lookup_zzzzsys_form_id, save('sob_lookup_zzzzsys_form_id'),
+				{key: 'sob_lookup_zzzzsys_form_id', search: true, options: options(D.forms, ['browse', 'browseedit'])}) : null,
 			type === 'lookup' ? el('div', {'class': 'nuDsGrid2'}, [
 				field(t('builder_lookup_code'), 'text', o.sob_lookup_code, save('sob_lookup_code'), {key: 'sob_lookup_code', mono: true}),
 				field(t('builder_lookup_description'), 'text', o.sob_lookup_description, save('sob_lookup_description'), {key: 'sob_lookup_description', mono: true})]) : null,
-			type === 'subform' ? field(t('builder_subform_form'), 'select', o.sob_subform_zzzzsys_form_id, save('sob_subform_zzzzsys_form_id'), {key: 'sob_subform_zzzzsys_form_id', search: true, options: options(D.forms, ['subform'])}) : null,
+			type === 'subform' ? field(t('builder_subform_form'), 'select', o.sob_subform_zzzzsys_form_id, save('sob_subform_zzzzsys_form_id'),
+				{key: 'sob_subform_zzzzsys_form_id', search: true, options: options(D.forms, ['subform'])}) : null,
 			type === 'subform' ? field(t('builder_subform_fk'), 'text', o.sob_subform_foreign_key, save('sob_subform_foreign_key'), {key: 'sob_subform_foreign_key', mono: true}) : null,
 			type === 'subform' && o.sob_subform_zzzzsys_form_id ? el('div', {'class': 'nuDsField'}, [el('a', {'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsDesignSub',
-				href: 'index.php?p=form&f=' + encodeURIComponent(o.sob_subform_zzzzsys_form_id) + '&r=-1&design=1', target: '_blank', rel: 'noopener'}, [icon('bi-pencil-square me-1'), t('ds_design_subform')])]) : null,
+				href: 'index.php?p=form&f=' + encodeURIComponent(o.sob_subform_zzzzsys_form_id) + '&r=-1&design=1', target: '_blank', rel: 'noopener'},
+					[icon('bi-pencil-square me-1'), t('ds_design_subform')])]) : null,
 			type === 'chart' ? field(t('builder_chart_type'), 'select', o.sob_html_chart_type || '', save('sob_html_chart_type'), {key: 'sob_html_chart_type',
-				options: [['', t('please_select')], ['p', t('builder_chart_p')], ['l', t('builder_chart_l')], ['b', t('builder_chart_b')], ['bs', t('builder_chart_bs')], ['bh', t('builder_chart_bh')], ['bhs', t('builder_chart_bhs')]]}) : null,
-			type === 'chart' ? field(t('builder_chart_data'), 'textarea', o.sob_html_javascript, save('sob_html_javascript'), {key: 'sob_html_javascript', code: 'JS', mono: true, rows: '4', tip: t('builder_chart_data_help')}) : null,
+				options: [['', t('please_select')], ['p', t('builder_chart_p')], ['l', t('builder_chart_l')], ['b', t('builder_chart_b')],
+					['bs', t('builder_chart_bs')], ['bh', t('builder_chart_bh')], ['bhs', t('builder_chart_bhs')]]}) : null,
+			type === 'chart' ? field(t('builder_chart_data'), 'textarea', o.sob_html_javascript, save('sob_html_javascript'),
+				{key: 'sob_html_javascript', code: 'JS', mono: true, rows: '4', tip: t('builder_chart_data_help')}) : null,
 			type === 'chart' ? field(t('builder_chart_title'), 'text', o.sob_html_title, save('sob_html_title'), {key: 'sob_html_title'}) : null,
 			type === 'chart' ? el('div', {'class': 'nuDsGrid2'}, [
 				field(t('builder_chart_vlabel'), 'text', o.sob_html_vertical_label, save('sob_html_vertical_label'), {key: 'sob_html_vertical_label'}),
 				field(t('builder_chart_hlabel'), 'text', o.sob_html_horizontal_label, save('sob_html_horizontal_label'), {key: 'sob_html_horizontal_label'})]) : null,
-			type === 'image' ? field(t('builder_image_file'), 'select', o.sob_image_zzzzsys_file_id || '', save('sob_image_zzzzsys_file_id'), {key: 'sob_image_zzzzsys_file_id', search: true, tip: t('builder_image_help'),
+			type === 'image' ? field(t('builder_image_file'), 'select', o.sob_image_zzzzsys_file_id || '', save('sob_image_zzzzsys_file_id'),
+				{key: 'sob_image_zzzzsys_file_id', search: true, tip: t('builder_image_help'),
 				options: [['', t('please_select')]].concat(D.files || [])}) : null,
-			type === 'run' ? field(t('builder_run_type'), 'select', runType, function (v) {   // URL (0.8.830): kept in sob_all_json nunext.url
+			type === 'run' ? field(t('builder_run_type'), 'select', runType, function (v) {   // URL: kept in sob_all_json nunext.url
 				if (v === 'U') saveObj(o, {nunext_run_url: 'https://', nunext_run_pivot: runType === 'V' ? null : undefined, sob_run_type: null, sob_run_target: '2'});
 				else if (v === 'V') saveObj(o, {nunext_run_pivot: ((D.pivots || [])[0] || [''])[0] || null, nunext_run_url: runType === 'U' ? null : undefined, sob_run_type: null, sob_run_target: '2'});
 				else saveObj(o, {sob_run_type: v, nunext_run_url: runType === 'U' ? null : undefined, nunext_run_pivot: runType === 'V' ? null : undefined});
-			}, {key: 'sob_run_type', options: [['F', t('builder_run_type_F')], ['P', t('builder_run_type_P')], ['R', t('builder_run_type_R')], ['U', t('builder_run_type_U')], ['V', t('builder_run_type_V')]]}) : null,
+			},
+				{key: 'sob_run_type',
+					options: [['F', t('builder_run_type_F')], ['P', t('builder_run_type_P')], ['R', t('builder_run_type_R')], ['U', t('builder_run_type_U')], ['V', t('builder_run_type_V')]]}) : null,
 			type === 'run' && runType === 'V' ? field(t('builder_run_pivot'), 'select', nunext(o).pivot ? nunext(o).pivot.f + '|' + nunext(o).pivot.id : '', save('nunext_run_pivot'),
 				{key: 'nunext_run_pivot', search: true, tip: t('builder_run_pivot_tip'), options: [['', t('please_select')]].concat(D.pivots || [])}) : null,
-			type === 'run' && runType === 'U' ? field(t('builder_run_url'), 'text', nunext(o).url || '', save('nunext_run_url'), {key: 'nunext_run_url', mono: true, ph: 'https://example.com/item?id=#RECORD_ID#', tip: t('builder_run_url_help')}) : null,
-			type === 'run' && runType === 'F' ? field(t('builder_run_form'), 'select', o.sob_run_zzzzsys_form_id, save('sob_run_zzzzsys_form_id'), {key: 'sob_run_zzzzsys_form_id', search: true, options: options(D.forms)}) : null,
-			type === 'run' && runType === 'P' ? field(t('builder_run_procedure'), 'select', o.sob_run_zzzzsys_form_id, save('sob_run_zzzzsys_form_id'), {key: 'sob_run_zzzzsys_form_id', search: true, options: options(D.procedures)}) : null,
-			type === 'run' && runType === 'R' ? field(t('builder_run_report'), 'select', o.sob_run_zzzzsys_form_id, save('sob_run_zzzzsys_form_id'), {key: 'sob_run_zzzzsys_form_id', search: true, options: options(D.reports)}) : null,
+			type === 'run'
+				&& runType === 'U' ? field(t('builder_run_url'), 'text', nunext(o).url || '', save('nunext_run_url'),
+					{key: 'nunext_run_url', mono: true, ph: 'https://example.com/item?id=#RECORD_ID#', tip: t('builder_run_url_help')}) : null,
+			type === 'run'
+				&& runType === 'F' ? field(t('builder_run_form'), 'select', o.sob_run_zzzzsys_form_id, save('sob_run_zzzzsys_form_id'),
+					{key: 'sob_run_zzzzsys_form_id', search: true, options: options(D.forms)}) : null,
+			type === 'run'
+				&& runType === 'P' ? field(t('builder_run_procedure'), 'select', o.sob_run_zzzzsys_form_id, save('sob_run_zzzzsys_form_id'),
+					{key: 'sob_run_zzzzsys_form_id', search: true, options: options(D.procedures)}) : null,
+			type === 'run'
+				&& runType === 'R' ? field(t('builder_run_report'), 'select', o.sob_run_zzzzsys_form_id, save('sob_run_zzzzsys_form_id'),
+					{key: 'sob_run_zzzzsys_form_id', search: true, options: options(D.reports)}) : null,
 			type === 'run' && runType === 'F' ? el('div', {'class': 'nuDsGrid2'}, [
 				field(t('builder_run_record'), 'text', o.sob_run_id, save('sob_run_id', false), {key: 'sob_run_id', mono: true, tip: t('builder_run_record_help')}),
 				field(t('builder_run_filter'), 'text', o.sob_run_filter, save('sob_run_filter', false), {key: 'sob_run_filter', mono: true, tip: t('builder_run_filter_help')})]) : null
 ,
-			// suggestions while typing (0.8.1212, NuSuggest): a fixed list or the rows of a query – sob_all_json nunext.suggest
+			// suggestions while typing (NuSuggest): a fixed list or the rows of a query – sob_all_json nunext.suggest
 			sgOn ? field(t('sg_source'), 'select', sg.src || '', function (v) {
 				if (v === '') return sgSave(null);
-				sgSave(v === 'sql' ? {src: 'sql', sql: sg.sql || "SELECT DISTINCT " + o.sob_all_id + " FROM " + ((S.form && S.form.sfo_table) || 'my_table') + "\nWHERE " + o.sob_all_id + " LIKE CONCAT(#term#, '%')\nORDER BY 1"}
+				sgSave(v === 'sql' ? {src: 'sql', sql: sg.sql
+					|| "SELECT DISTINCT " + o.sob_all_id + " FROM " + ((S.form && S.form.sfo_table) || 'my_table') + "\nWHERE " + o.sob_all_id + " LIKE CONCAT(#term#, '%')\nORDER BY 1"}
 					: {src: 'list', list: sg.list && sg.list.length ? sg.list : ['Example 1', 'Example 2']});
 			}, {key: 'nunext_suggest_src', tip: t('sg_source_tip'), options: [['', t('sg_src_none')], ['list', t('sg_src_list')], ['sql', t('sg_src_sql')]]}) : null,
-			sgOn && sg.src === 'list' ? field(t('sg_list'), 'textarea', (sg.list || []).join('\n'), function (v) { sgSave({list: v.split(/\r\n|\r|\n/)}); }, {key: 'nunext_suggest_list', rows: '4', tip: t('sg_list_tip')}) : null,
-			sgOn && sg.src === 'sql' ? field(t('sg_sql'), 'textarea', sg.sql || '', function (v) { sgSave({sql: v}); }, {key: 'nunext_suggest_sql', code: 'SQL', mono: true, rows: '4', tip: t('sg_sql_tip')}) : null,
+			sgOn
+				&& sg.src === 'list' ? field(t('sg_list'), 'textarea', (sg.list || []).join('\n'), function (v) { sgSave({list: v.split(/\r\n|\r|\n/)}); },
+					{key: 'nunext_suggest_list', rows: '4', tip: t('sg_list_tip')}) : null,
+			sgOn
+				&& sg.src === 'sql' ? field(t('sg_sql'), 'textarea', sg.sql || '', function (v) { sgSave({sql: v}); },
+					{key: 'nunext_suggest_sql', code: 'SQL', mono: true, rows: '4', tip: t('sg_sql_tip')}) : null,
 			sgOn && sg.src === 'sql' ? field(t('sg_fill'), 'text', Object.keys(sg.fill || {}).map(function (c) { return c + ' = ' + sg.fill[c]; }).join(', '), function (v) { sgSave({fill: v}); },
 				{key: 'nunext_suggest_fill', mono: true, ph: 'zip = adr_zip, city = adr_city', tip: t('sg_fill_tip')}) : null,
 			sgOn && sg.src ? el('div', {'class': 'nuDsGrid2'}, [
@@ -2269,15 +2414,22 @@
 			type === 'subform' ? field(t('builder_subform_add'), 'check', String(o.sob_subform_add) === '0' ? '0' : '1', save('sob_subform_add'), {key: 'sob_subform_add'}) : null,
 			type === 'subform' ? field(t('builder_subform_delete'), 'check', String(o.sob_subform_delete) === '0' ? '0' : '1', save('sob_subform_delete'), {key: 'sob_subform_delete'}) : null,
 			type === 'lookup' ? field(t('builder_lookup_desc_width'), 'number', o.sob_lookup_description_width, save('sob_lookup_description_width'), {key: 'sob_lookup_description_width'}) : null,
-			type === 'subform' ? field(t('builder_subform_type'), 'select', o.sob_subform_type || 'g', save('sob_subform_type'), {key: 'sob_subform_type', options: [['g', t('builder_subform_grid')], ['f', t('builder_subform_formlayout')]]}) : null,
+			type === 'subform' ? field(t('builder_subform_type'), 'select', o.sob_subform_type || 'g', save('sob_subform_type'),
+				{key: 'sob_subform_type', options: [['g', t('builder_subform_grid')], ['f', t('builder_subform_formlayout')]]}) : null,
 			type === 'subform' && (o.sob_subform_type || 'g') !== 'f' ? field(t('ds_sf_fit'), 'check', nunext(o).fit ? '1' : '0', save('nunext_fit'), {key: 'nunext_fit', tip: t('ds_sf_fit_tip')}) : null,
-			type === 'subform' && (o.sob_subform_type || 'g') !== 'f' ? field(t('ds_sf_phone_table'), 'check', nunext(o).phone === 'table' ? '1' : '0', save('nunext_phone_table'), {key: 'nunext_phone_table', tip: t('ds_sf_phone_table_tip')}) : null,
+			type === 'subform'
+				&& (o.sob_subform_type || 'g') !== 'f' ? field(t('ds_sf_phone_table'), 'check', nunext(o).phone === 'table' ? '1' : '0',
+					save('nunext_phone_table'), {key: 'nunext_phone_table', tip: t('ds_sf_phone_table_tip')}) : null,
 			type === 'select' ? field(t('builder_select_multiple'), 'check', String(o.sob_select_multiple || '0'), save('sob_select_multiple'), {key: 'sob_select_multiple'}) : null,
 			type === 'select' ? field(t('builder_select_search'), 'check', String(o.sob_select_2 || '0'), save('sob_select_2'), {key: 'sob_select_2'}) : null,
-			type === 'run' ? field(t('builder_run_method'), 'select', o.sob_run_method === 'i' ? 'i' : 'b', save('sob_run_method'), {key: 'sob_run_method', options: [['b', t('builder_run_b')], ['i', t('builder_run_i')]]}) : null,
+			type === 'run' ? field(t('builder_run_method'), 'select', o.sob_run_method === 'i' ? 'i' : 'b', save('sob_run_method'),
+				{key: 'sob_run_method', options: [['b', t('builder_run_b')], ['i', t('builder_run_i')]]}) : null,
 			type === 'run' && runType === 'F' && o.sob_run_method !== 'i' ? field(t('builder_run_target'), 'select', String(o.sob_run_target || '0'), save('sob_run_target'), {key: 'sob_run_target',
 				options: [0, 1, 2, 3].map(function (i) { return [String(i), t('builder_run_target_' + i)]; })}) : null,
-			type === 'run' && (runType === 'U' || runType === 'V') && o.sob_run_method !== 'i' ? field(t('builder_run_target'), 'select', ['0', '1'].indexOf(String(o.sob_run_target)) >= 0 ? '0' : (String(o.sob_run_target) === '3' ? '3' : '2'), save('sob_run_target'), {key: 'sob_run_target',
+			type === 'run' && (runType === 'U' || runType === 'V')
+				&& o.sob_run_method !== 'i' ? field(t('builder_run_target'), 'select',
+					['0', '1'].indexOf(String(o.sob_run_target)) >= 0 ? '0' : (String(o.sob_run_target) === '3' ? '3' : '2'), save('sob_run_target'),
+					{key: 'sob_run_target',
 				options: [['2', t('builder_run_target_2')], ['3', t('builder_run_url_popup')], ['0', t('builder_run_url_same')]]}) : null,
 			VALUE_TYPES.indexOf(type) >= 0 ? field(t('builder_obj_cloneable'), 'check', String(o.sob_all_cloneable) === '0' ? '0' : '1', save('sob_all_cloneable', false), {key: 'sob_all_cloneable'}) : null
 		]);
@@ -2286,7 +2438,8 @@
 		var acc = String(o.sob_all_access === null || o.sob_all_access === undefined || o.sob_all_access === '' ? '0' : o.sob_all_access);
 		section('behaviour', t('ds_sec_behaviour'), [
 			field(t('builder_obj_access'), 'select', acc, save('sob_all_access'), {key: 'sob_all_access', options: [0, 1, 2, 3, 4, 9].map(function (i) { return [String(i), t('bf_access_' + i)]; })}),
-			acc === '9' ? field(t('builder_obj_access_cond'), 'textarea', o.sob_all_access_condition, save('sob_all_access_condition', false), {key: 'sob_all_access_condition', code: 'SQL', mono: true}) : null,
+			acc === '9' ? field(t('builder_obj_access_cond'), 'textarea', o.sob_all_access_condition, save('sob_all_access_condition', false),
+				{key: 'sob_all_access_condition', code: 'SQL', mono: true}) : null,
 			VALUE_TYPES.indexOf(type) >= 0 ? field(t('builder_obj_validate'), 'select', String(o.sob_all_validate || '0'), save('sob_all_validate', false),
 				{key: 'sob_all_validate', options: [0, 1, 2, 3].map(function (i) { return [String(i), t('bf_validate_' + i)]; })}) : null,
 			el('div', {'class': 'nuDsField'}, [el('div', {'class': 'form-label nuDsLabel', text: t('ds_events')}),
@@ -2306,7 +2459,9 @@
 			// order on the tab (Tab key): the designer's Up / Down (its floating panel is hidden in design mode)
 			layRows.push(el('div', {'class': 'nuDsField'}, [el('div', {'class': 'form-label nuDsLabel', text: t('ds_order')}), el('div', {'class': 'd-flex gap-2'}, ['up', 'down'].map(function (k) {
 				var src = document.querySelector('.nuArrange [data-arrange="' + k + '"]');
-				return el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', 'data-ds-arrange': k, onclick: function () { var b = document.querySelector('.nuArrange [data-arrange="' + k + '"]'); if (b) b.click(); }},
+				return el('button',
+					{type: 'button', 'class': 'btn btn-sm btn-outline-secondary', 'data-ds-arrange': k,
+						onclick: function () { var b = document.querySelector('.nuArrange [data-arrange="' + k + '"]'); if (b) b.click(); }},
 					[icon(k === 'up' ? 'bi-arrow-up me-1' : 'bi-arrow-down me-1'), src ? src.textContent.trim() : k]);
 			}))]));
 		} else {
@@ -2323,19 +2478,22 @@
 			respFields(o, g).forEach(function (x) { if (x) layRows.push(x); });
 		}
 		layRows.push(hideField(o));
-		if (tabs.length > 1) layRows.push(field(t('builder_obj_tab'), 'select', o.sob_all_zzzzsys_tab_id, function (v) { keepTab = v; save('sob_all_zzzzsys_tab_id')(v); }, {key: 'sob_all_zzzzsys_tab_id', options: tabs}));
+		if (tabs.length > 1) layRows.push(field(t('builder_obj_tab'), 'select', o.sob_all_zzzzsys_tab_id,
+			function (v) { keepTab = v; save('sob_all_zzzzsys_tab_id')(v); }, {key: 'sob_all_zzzzsys_tab_id', options: tabs}));
 		section('layout', t('ds_sec_layout'), layRows);
 
 		section('style', t('builder_sec_style'), [
-			field(t('builder_obj_align'), 'select', o.sob_all_align || 'left', save('sob_all_align'), {key: 'sob_all_align', options: [['left', t('ds_align_left')], ['center', t('ds_align_center')], ['right', t('ds_align_right')]]}),
-			type === 'run' || type === 'word' || (type === 'input' && it === 'button') ? field(t('builder_obj_icon'), 'text', o.sob_input_icon, save('sob_input_icon'), {key: 'sob_input_icon', mono: true, ph: 'fa fa-table'}) : null,
+			field(t('builder_obj_align'), 'select', o.sob_all_align || 'left', save('sob_all_align'),
+				{key: 'sob_all_align', options: [['left', t('ds_align_left')], ['center', t('ds_align_center')], ['right', t('ds_align_right')]]}),
+			type === 'run' || type === 'word'
+				|| (type === 'input' && it === 'button') ? field(t('builder_obj_icon'), 'text', o.sob_input_icon, save('sob_input_icon'), {key: 'sob_input_icon', mono: true, ph: 'fa fa-table'}) : null,
 			el('div', {'class': 'nuDsGrid2 nuDsGridStyle'}, [
 				field(t('builder_style_type'), 'select', o.sob_all_style_type || '', save('sob_all_style_type'), {key: 'sob_all_style_type', empty: '—', options: [['', '—'], ['CSS', 'CSS'], ['Class', 'Class']]}),
 				field(t('builder_style'), 'text', o.sob_all_style, save('sob_all_style'), {key: 'sob_all_style', mono: true})])
 		], [
 			field(t('builder_attributes'), 'text', o.sob_input_attribute, save('sob_input_attribute'), {key: 'sob_input_attribute', mono: true, ph: t('builder_attributes_help'), attr: true})
 		]);
-		if (type === 'html' && nunext(o).calendar) {                   // calendar object (0.8.1165): sob_all_json nunext.calendar
+		if (type === 'html' && nunext(o).calendar) {                   // calendar object: sob_all_json nunext.calendar
 			var cc = nunext(o).calendar || {};
 			var ccSave = function (k) {
 				return function (v) {
@@ -2351,7 +2509,8 @@
 				!isSql ? field(t('ds_cal_form'), 'select', cc.form || '', ccSave('form'), {key: 'cal_form', search: true, tip: t('ds_cal_form_tip'), options: cals}) : null,
 				!isSql ? field(t('ds_cal_filter'), 'text', cc.filter || '', ccSave('filter'), {key: 'cal_filter', mono: true, tip: t('ds_cal_filter_tip'), ph: '#RECORD_ID#'}) : null,
 				isSql ? field('SQL', 'textarea', cc.sql || '', ccSave('sql'), {key: 'cal_sql', code: 'SQL', mono: true, rows: '6', tip: t('ds_cal_sql_tip')}) : null,
-				isSql ? field(t('ds_cal_edit_form'), 'select', cc.edit_form || '', ccSave('edit_form'), {key: 'cal_edit_form', search: true, tip: t('ds_cal_edit_form_tip'), options: options(D.forms, ['edit', 'browseedit'])}) : null,
+				isSql ? field(t('ds_cal_edit_form'), 'select', cc.edit_form || '', ccSave('edit_form'),
+					{key: 'cal_edit_form', search: true, tip: t('ds_cal_edit_form_tip'), options: options(D.forms, ['edit', 'browseedit'])}) : null,
 				isSql ? el('div', {'class': 'nuDsGrid2'}, [field(t('ds_cal_sfield'), 'text', cc.start_field || '', ccSave('start_field'), {key: 'cal_sfield', mono: true}),
 					field(t('ds_cal_efield'), 'text', cc.end_field || '', ccSave('end_field'), {key: 'cal_efield', mono: true})]) : null,
 				el('div', {'class': 'nuDsGrid2'}, [
@@ -2362,15 +2521,18 @@
 			]);
 		}
 		var otools = [];
-		if (VALUE_TYPES.indexOf(type) >= 0 && type !== 'display' && type !== 'calc' && S.form.sfo_table) otools.push(el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsColChange',
+		if (VALUE_TYPES.indexOf(type) >= 0 && type !== 'display' && type !== 'calc'
+			&& S.form.sfo_table) otools.push(el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsColChange',
 			onclick: function () { openColumnChange(o.sob_all_id); }}, [icon('bi-database-gear me-1'), t('builder_colchg_btn')]));
-		if (D.dataaccess && VALUE_TYPES.indexOf(type) >= 0) otools.push(el('a', {'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsObjAccess', href: D.dataaccess}, [icon('bi-shield-lock me-1'), t('da_title')]));
+		if (D.dataaccess
+			&& VALUE_TYPES.indexOf(type) >= 0) otools.push(el('a', {'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsObjAccess', href: D.dataaccess}, [icon('bi-shield-lock me-1'), t('da_title')]));
 		if (otools.length) section('tools', t('ds_sec_tools'), [el('div', {'class': 'nuDsTools'}, otools)]);
-		if (['contentbox', 'html'].indexOf(type) < 0) section('help', t('ds_sec_help'), [   // user help page of the field (0.8.1023): (?) after its label
-			field(t('ds_help_field'), 'text', nunext(o).help || '', save('nunext_help', true), {key: 'nunext_help', mono: true, list: helpList(), tip: t('ds_help_field_tip')}), helpLinks(nunext(o).help || '')]);
+		if (['contentbox', 'html'].indexOf(type) < 0) section('help', t('ds_sec_help'), [   // user help page of the field: (?) after its label
+			field(t('ds_help_field'), 'text', nunext(o).help || '', save('nunext_help', true), {key: 'nunext_help', mono: true, list: helpList(), tip: t('ds_help_field_tip')}),
+				helpLinks(nunext(o).help || '')]);
 	}
 
-	// live view while typing (0.8.664) – the label (as the form draws it: the text as HTML, then the required / unique marks), the position
+	// live view while typing – the label (as the form draws it: the text as HTML, then the required / unique marks), the position
 	// and the size; returns false when the object has no label element to change (then the save reloads the page)
 	function liveLabel(o, v) {
 		var lab = document.getElementById('label_' + o.sob_all_id);
@@ -2399,7 +2561,7 @@
 		if (w && f.sob_all_left !== undefined) w.style.left = Math.max(0, parseInt(f.sob_all_left, 10) || 0) + 'px';
 		saveObj(o, f, false);
 	}
-	// responsive containers (0.8.959, core/form/nuresponsive.php): a content box's direction, an object's width in a box, hide per screen
+	// responsive containers (core/form/nuresponsive.php): a content box's direction, an object's width in a box, hide per screen
 	function respSave(o, part) {
 		var cur = objByFid(o.sob_all_id) || o;
 		return change('object.save', {object_id: cur.zzzzsys_object_id, grid: part, fields: {}}, true).catch(function () { /* said */ });
@@ -2413,7 +2575,8 @@
 			if (st) {
 				var stSave = function (k) { return function (v) { var n = Object.assign({}, st); n[k] = v === '' ? null : v; if (k === 'wrap' || k === 'phone_v') n[k] = v === '1'; respSave(o, {stack: n}); }; };
 				var row1 = [field(t('ds_stack_gap'), 'number', st.gap === undefined ? '' : st.gap, stSave('gap'), {key: 'stack_gap', ph: '12'}),
-					field(t('ds_stack_align'), 'select', st.align || '', stSave('align'), {key: 'stack_align', options: [['', '—'], ['start', t('ds_al_start')], ['center', t('ds_al_center')], ['end', t('ds_al_end')], ['stretch', t('ds_al_stretch')]]})];
+					field(t('ds_stack_align'), 'select', st.align || '', stSave('align'),
+						{key: 'stack_align', options: [['', '—'], ['start', t('ds_al_start')], ['center', t('ds_al_center')], ['end', t('ds_al_end')], ['stretch', t('ds_al_stretch')]]})];
 				out.push(el('div', {'class': 'nuDsGrid2'}, row1));
 				if (st.dir !== 'g') out.push(field(t('ds_stack_justify'), 'select', st.justify || '', stSave('justify'), {key: 'stack_justify',
 					options: [['', '—'], ['start', t('ds_al_start')], ['center', t('ds_al_center')], ['end', t('ds_al_end')], ['between', t('ds_al_between')]]}));
@@ -2443,14 +2606,15 @@
 		out.push(el('div', {'class': 'nuDsGrid2'}, more));
 		return out;
 	}
-	/** "Put in a new box" (0.8.959): a content box with a vertical direction around the selected objects, at the place of the first one. */
+	/** "Put in a new box": a content box with a vertical direction around the selected objects, at the place of the first one. */
 	function wrapInBox(objs) {
 		ensureGrid().then(function () {
 			var list = objs.map(function (o) { return objByFid(o.sob_all_id) || o; });
 			var first = list.slice().sort(function (a, b) { var x = nunext(a), y = nunext(b); return ((+x.row || 0) - (+y.row || 0)) || ((+x.col || 0) - (+y.col || 0)); })[0];
 			var g0 = nunext(first), fid = uniqueId('box');
 			var top = Math.min.apply(null, list.map(function (o) { return +o.sob_all_top || 0; })), left = Math.min.apply(null, list.map(function (o) { return +o.sob_all_left || 0; }));
-			var right = Math.max.apply(null, list.map(function (o) { return (+o.sob_all_left || 0) + (+o.sob_all_width || 0); })), bottom = Math.max.apply(null, list.map(function (o) { return (+o.sob_all_top || 0) + (+o.sob_all_height || 0); }));
+			var right = Math.max.apply(null, list.map(function (o) { return (+o.sob_all_left || 0) + (+o.sob_all_width || 0); })),
+				bottom = Math.max.apply(null, list.map(function (o) { return (+o.sob_all_top || 0) + (+o.sob_all_height || 0); }));
 			var fields = {sob_all_type: 'contentbox', sob_all_id: fid, sob_all_label: '', sob_all_zzzzsys_tab_id: first.sob_all_zzzzsys_tab_id, sob_all_order: +first.sob_all_order || 0,
 				sob_all_top: Math.max(0, top - 30), sob_all_left: Math.max(0, left - 10), sob_all_width: right - left + 20, sob_all_height: bottom - top + 40, sob_all_align: 'left'};
 			var steps = [['object.save', {object_id: '', fields: fields, grid: {row: g0.row || '', col: g0.col || '', span: '12', box: g0.box || '', stack: {dir: 'v'}}}]];
@@ -2471,7 +2635,9 @@
 			return el('div', {'class': 'form-check form-check-inline'}, [inp, el('label', {'class': 'form-check-label', 'for': id, text: t('ds_hide_' + k)})]);
 		});
 		return el('div', {'class': 'nuDsField', id: 'nuDsHideOn'}, [el('div', {'class': 'nuDsLabelRow'}, [el('span', {'class': 'form-label nuDsLabel', text: t('ds_hide_on')}),
-			el('span', {'class': 'nuInfoTip ms-1', tabindex: '0', role: 'img', 'data-bs-toggle': 'tooltip', 'data-bs-custom-class': 'nuTipWide', 'aria-label': t('ds_hide_tip'), title: t('ds_hide_tip')}, [icon('bi-info-circle')])]),
+			el('span',
+				{'class': 'nuInfoTip ms-1', tabindex: '0', role: 'img', 'data-bs-toggle': 'tooltip', 'data-bs-custom-class': 'nuTipWide', 'aria-label': t('ds_hide_tip'), title: t('ds_hide_tip')},
+				[icon('bi-info-circle')])]),
 			el('div', {}, boxes)]);
 	}
 	function ensureGrid() {
@@ -2490,13 +2656,17 @@
 
 	function renderMany(objs) {
 		var btns = [
-			el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsDuplicate', title: t('ds_duplicate') + ' (Ctrl+D)', 'aria-label': t('ds_duplicate'), onclick: function () { duplicate(objs); }}, [icon('bi-copy')]),
-			el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-danger nuDsDel', id: 'nuDsDelete', title: t('builder_delete_objects'), 'aria-label': t('builder_delete_objects'), onclick: function () { deleteObjs(objs); }}, [icon('bi-trash')])
+			el('button',
+				{type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsDuplicate', title: t('ds_duplicate') + ' (Ctrl+D)', 'aria-label': t('ds_duplicate'), onclick: function () { duplicate(objs); }}, [icon('bi-copy')]),
+			el('button',
+				{type: 'button', 'class': 'btn btn-sm btn-outline-danger nuDsDel', id: 'nuDsDelete', title: t('builder_delete_objects'), 'aria-label': t('builder_delete_objects'), onclick: function () { deleteObjs(objs); }}, [icon('bi-trash')])
 		];
-		if (layout() !== 'absolute' && objs.every(function (o) { return o.sob_all_type !== 'contentbox'; })) btns.unshift(el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsWrapBox',
+		if (layout() !== 'absolute'
+			&& objs.every(function (o) { return o.sob_all_type !== 'contentbox'; })) btns.unshift(el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsWrapBox',
 			title: t('ds_wrap_box'), 'aria-label': t('ds_wrap_box'), onclick: function () { wrapInBox(objs); }}, [icon('bi-bounding-box')]));
 		panel.appendChild(head(t('ds_selection'), fmt(t('ds_n_objects'), objs.length), 'bi-collection', objs.map(function (o) { return o.sob_all_id; }).join(', '), btns));
-		var same = function (k, def) { var v = objs.map(function (o) { var x = o[k]; return x === null || x === undefined || x === '' ? def : String(x); }); return v.every(function (x) { return x === v[0]; }) ? v[0] : ''; };
+		var same = function (k,
+			def) { var v = objs.map(function (o) { var x = o[k]; return x === null || x === undefined || x === '' ? def : String(x); }); return v.every(function (x) { return x === v[0]; }) ? v[0] : ''; };
 		var all = function (key) {
 			return function (v) {
 				if (v === '') return;
@@ -2505,11 +2675,13 @@
 		};
 		// Arrange (absolute layout): the actions of the designer's floating panel (hidden in design mode – the panel has them)
 		if (layout() === 'absolute') {
-			var ACT = [['up', 'bi-arrow-up'], ['down', 'bi-arrow-down'], ['top', 'bi-align-top'], ['bottom', 'bi-align-bottom'], ['left', 'bi-align-start'], ['right', 'bi-align-end'], ['vertical', 'bi-distribute-vertical'],
-				['horizontal', 'bi-distribute-horizontal'], ['thinnest', 'bi-arrows-collapse-vertical'], ['widest', 'bi-arrows-expand-vertical'], ['shortest', 'bi-arrows-collapse'], ['tallest', 'bi-arrows-expand']];
+			var ACT = [['up', 'bi-arrow-up'], ['down', 'bi-arrow-down'], ['top', 'bi-align-top'], ['bottom', 'bi-align-bottom'], ['left', 'bi-align-start'],
+				['right', 'bi-align-end'], ['vertical', 'bi-distribute-vertical'],
+				['horizontal', 'bi-distribute-horizontal'], ['thinnest', 'bi-arrows-collapse-vertical'], ['widest', 'bi-arrows-expand-vertical'],
+					['shortest', 'bi-arrows-collapse'], ['tallest', 'bi-arrows-expand']];
 			var gaps = {h: 10, v: 10};
 			try { var gv = JSON.parse(window.localStorage.getItem('nunext-arrange-gap') || 'null'); if (gv && isFinite(gv.h) && isFinite(gv.v)) gaps = gv; } catch (e) { /* no storage */ }
-			// fixed gap (0.8.664): the first object stays, each next one follows at exactly this distance – horizontally to the next label
+			// fixed gap: the first object stays, each next one follows at exactly this distance – horizontally to the next label
 			var gapRow = function (what, key, ic, labelKey) {
 				var id = 'nuDsGap' + key.toUpperCase();
 				var inp = el('input', {type: 'number', min: '0', max: '500', 'class': 'form-control form-control-sm', id: id, value: String(gaps[key])});
@@ -2528,11 +2700,14 @@
 		}
 		var values = objs.every(function (o) { return VALUE_TYPES.indexOf(o.sob_all_type) >= 0; });
 		section('behaviour', t('ds_sec_behaviour'), [
-			field(t('builder_obj_access'), 'select', same('sob_all_access', '0'), all('sob_all_access'), {key: 'sob_all_access', options: [0, 1, 2, 3, 4].map(function (i) { return [String(i), t('bf_access_' + i)]; })}),
-			values ? field(t('builder_obj_validate'), 'select', same('sob_all_validate', '0'), all('sob_all_validate'), {key: 'sob_all_validate', options: [0, 1, 2, 3].map(function (i) { return [String(i), t('bf_validate_' + i)]; })}) : null
+			field(t('builder_obj_access'), 'select', same('sob_all_access', '0'), all('sob_all_access'),
+				{key: 'sob_all_access', options: [0, 1, 2, 3, 4].map(function (i) { return [String(i), t('bf_access_' + i)]; })}),
+			values ? field(t('builder_obj_validate'), 'select', same('sob_all_validate', '0'), all('sob_all_validate'),
+				{key: 'sob_all_validate', options: [0, 1, 2, 3].map(function (i) { return [String(i), t('bf_validate_' + i)]; })}) : null
 		]);
 		var tabs = (S.tabs || []).map(function (x) { return [x.zzzzsys_tab_id, plain(x.syt_title)]; });
-		if (tabs.length > 1) section('layout', t('ds_sec_layout'), [field(t('builder_obj_tab'), 'select', same('sob_all_zzzzsys_tab_id', ''), function (v) { keepTab = v; all('sob_all_zzzzsys_tab_id')(v); }, {key: 'sob_all_zzzzsys_tab_id', options: tabs})]);
+		if (tabs.length > 1) section('layout', t('ds_sec_layout'),
+			[field(t('builder_obj_tab'), 'select', same('sob_all_zzzzsys_tab_id', ''), function (v) { keepTab = v; all('sob_all_zzzzsys_tab_id')(v); }, {key: 'sob_all_zzzzsys_tab_id', options: tabs})]);
 	}
 
 	// ------------------------------------------------------------------ messages of nudesigner.js
@@ -2583,7 +2758,7 @@
 		if (o.sob_all_type !== 'lookup') return 0;
 		return (o.sob_lookup_description_width === '' || o.sob_lookup_description_width === null || o.sob_lookup_description_width === undefined ? 150 : +o.sob_lookup_description_width || 0) + 34;
 	}
-	// Set the tab order by position (0.8.1301, absolute layout only – in auto / grid layouts the order IS the position): every tab sorted
+	// Set the tab order by position (absolute layout only – in auto / grid layouts the order IS the position): every tab sorted
 	// on its own, row by row (tops within 10 px = one row, then left) or column by column (lefts within 10 px = one column, then top);
 	// a content box keeps its objects together (sorted inside it, placed by its own position); words, HTML, images sorted like the rest.
 	// One object.order call = one Undo step. The way (rows / columns) is remembered (localStorage nunext-ds-order-mode).
@@ -2647,7 +2822,8 @@
 		return el('div', {'class': 'btn-group nuDsField nuDsOrderPos' + (id === 'nuDsOrderPosFloat' ? ' dropup' : ''), id: id + 'Grp'}, [
 			el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: id, title: t('ds_ord_tip'), onclick: function () { orderByPos(orderMode()); }},
 				[icon('bi-sort-numeric-down me-1'), t('ds_ord_pos')]),
-			el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary dropdown-toggle dropdown-toggle-split', 'data-bs-toggle': 'dropdown', 'aria-expanded': 'false', 'aria-label': t('ds_ord_how')}),
+			el('button',
+				{type: 'button', 'class': 'btn btn-sm btn-outline-secondary dropdown-toggle dropdown-toggle-split', 'data-bs-toggle': 'dropdown', 'aria-expanded': 'false', 'aria-label': t('ds_ord_how')}),
 			el('ul', {'class': 'dropdown-menu'}, [item('rows', t('ds_ord_rows')), item('cols', t('ds_ord_cols'))])]);
 	}
 	// the same button floating over the form while the tab order numbers are shown
@@ -2658,7 +2834,7 @@
 		orderFloatEl = el('div', {'class': 'nuDsOrderFloat', id: 'nuDsOrderFloat'}, [orderByPosButton('nuDsOrderPosFloat')]);
 		document.body.appendChild(orderFloatEl);
 	}
-	// Arrange panel Up / Down: the selected objects move one place in the order of their tab (as the builder, 0.8.606)
+	// Arrange panel Up / Down: the selected objects move one place in the order of their tab (as the builder)
 	function order(m) {
 		var want = (m.ids || []).map(objByFid).filter(Boolean);
 		if (!want.length) return;
@@ -2693,7 +2869,7 @@
 		}).catch(function () { /* said */ });
 	}
 
-	// ------------------------------------------------------------------ workspace (0.8.668): the form's code, History and the draft's changes
+	// ------------------------------------------------------------------ workspace: the form's code, History and the draft's changes
 	// A full-width view over the form (below the navbar): Code = form JavaScript (all / edit / browse), CSS, the PHP hooks and the browse
 	// SQL in one editor with the code editors' toolbar; History = the builder's snapshots (compare with now, restore); Changes = what the
 	// draft changes compared with the published form, with a warning when the published form was changed meanwhile.
@@ -2745,7 +2921,8 @@
 			if (x[0] === 'changes' && !DR) return;
 			if (x[0] === 'list' && !HASLIST) return;
 			tabs.appendChild(el('button', {type: 'button', role: 'tab', 'class': 'nav-link' + (W.kind === x[0] ? ' active' : ''), id: 'nuDsWorkTab_' + x[0], 'aria-selected': W.kind === x[0] ? 'true' : 'false',
-				onclick: function () { if (W.kind === x[0]) return; if (W.kind === 'code' && codeDirty().length && !window.confirm(t('ds_code_unsaved'))) return; W.kind = x[0]; renderWork(); }}, [icon(x[1] + ' me-1'), t(x[2])]));
+				onclick: function () { if (W.kind === x[0]) return; if (W.kind === 'code' && codeDirty().length && !window.confirm(t('ds_code_unsaved'))) return; W.kind = x[0]; renderWork(); }},
+					[icon(x[1] + ' me-1'), t(x[2])]));
 		});
 		var body = el('div', {'class': 'nuDsWorkBody'});
 		var tools = el('div', {'class': 'nuDsWorkTools'});
@@ -2796,22 +2973,25 @@
 			W.cm.swapDoc(W.docs[k]);
 			name.textContent = t(it[1]);
 			lang.textContent = it[2];
-			list.querySelectorAll('.nuDsCodeItem').forEach(function (b) { var on = b.getAttribute('data-code') === k; b.classList.toggle('active', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
+			list.querySelectorAll('.nuDsCodeItem').forEach(function (b) { var on = b.getAttribute('data-code') === k; b.classList.toggle('active',
+				on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
 			hash.innerHTML = '';
 			if (window.NuHashVars && N.hashCatalog && (it[2] === 'SQL' || it[2] === 'PHP')) window.NuHashVars.attach(W.cm, hash, {catalog: N.hashCatalog, globals: N.globals});
 			cmTools.innerHTML = '';
-			if (window.NuCodeTools) window.NuCodeTools.attach(W.cm, cmTools, {lang: it[2], db: N.db_type, codeKey: k});   // codeKey: a code search link jumps to its line (0.8.1172)
+			if (window.NuCodeTools) window.NuCodeTools.attach(W.cm, cmTools, {lang: it[2], db: N.db_type, codeKey: k});   // codeKey: a code search link jumps to its line
 			W.cm.refresh();
 			W.cm.focus();
 		}
 		function saveCode(force) {
 			var dirty = codeDirty();
 			if (!dirty.length) return;
-			// syntax check first (0.8.781, NuCodeTools): errors ask "Save anyway"; Cancel opens the first part with an error at its line
+			// syntax check first (NuCodeTools): errors ask "Save anyway"; Cancel opens the first part with an error at its line
 			if (force !== true && window.NuCodeTools && window.NuCodeTools.check) {
 				Promise.all(dirty.map(function (k) {
 					var it = itemOf(k);
-					return window.NuCodeTools.check(W.docs[k].getValue(), it ? it[2] : '').then(function (p) { return {k: k, label: it ? t(it[1]) : k, problems: p || []}; }, function () { return {k: k, label: k, problems: []}; });
+					return window.NuCodeTools.check(W.docs[k].getValue(),
+						it ? it[2] : '').then(function (p) { return {k: k, label: it ? t(it[1]) : k, problems: p || []}; },
+						function () { return {k: k, label: k, problems: []}; });
 				})).then(function (res) {
 					window.NuCodeTools.confirmProblems(res, function () { saveCode(true); }, function (first) {
 						pick(first.k);
@@ -2885,7 +3065,9 @@
 		}).catch(function (e) { box.textContent = e.message; });
 	}
 	function workChanges(body, tools) {
-		if (D.can_publish) tools.appendChild(el('button', {type: 'button', 'class': 'btn btn-primary', id: 'nuDsWorkPublish', onclick: function () { closeWork(false); publish(); }}, [icon('bi-rocket-takeoff me-1'), t('builder_draft_publish_btn')]));
+		if (D.can_publish) tools.appendChild(el('button',
+			{type: 'button', 'class': 'btn btn-primary', id: 'nuDsWorkPublish', onclick: function () { closeWork(false); publish(); }},
+			[icon('bi-rocket-takeoff me-1'), t('builder_draft_publish_btn')]));
 		var head = el('div', {}), box = el('div', {id: 'nuDsChanges'}, [el('div', {'class': 'text-body-secondary small', text: '…'})]);
 		body.appendChild(head);
 		body.appendChild(box);
@@ -2898,10 +3080,16 @@
 			if (!r.ok) throw new Error(r.error || 'Error');
 			box.appendChild(el('p', {'class': 'small text-body-secondary', text: fmt(t('builder_draft_changes_n'), r.diff.counts.total)}));
 			box.appendChild(diffView(r.diff));
-			if (r.ddl && r.ddl.length) box.appendChild(el('p', {'class': 'small mt-2'}, [t('builder_draft_ddl') + ' ', r.ddl.map(function (x) { return x.table + '.' + x.column + (x.change ? ' (' + x.change + ')' : ''); }).join(', ')]));
+			if (r.ddl
+				&& r.ddl.length) box.appendChild(el('p', {'class': 'small mt-2'},
+					[t('builder_draft_ddl') + ' ', r.ddl.map(function (x) { return x.table + '.' + x.column + (x.change ? ' (' + x.change + ')' : ''); }).join(', ')]));
 			var v = r.validation || {};
-			if (v.errors && v.errors.length) box.appendChild(el('div', {'class': 'alert alert-danger small mt-2'}, [t('builder_draft_errors'), el('ul', {'class': 'mb-0'}, v.errors.map(function (x) { return el('li', {text: String(x)}); }))]));
-			if (v.warnings && v.warnings.length) box.appendChild(el('div', {'class': 'alert alert-warning small mt-2'}, [t('builder_draft_warnings'), el('ul', {'class': 'mb-0'}, v.warnings.map(function (x) { return el('li', {text: String(x)}); }))]));
+			if (v.errors
+				&& v.errors.length) box.appendChild(el('div', {'class': 'alert alert-danger small mt-2'},
+					[t('builder_draft_errors'), el('ul', {'class': 'mb-0'}, v.errors.map(function (x) { return el('li', {text: String(x)}); }))]));
+			if (v.warnings
+				&& v.warnings.length) box.appendChild(el('div', {'class': 'alert alert-warning small mt-2'},
+					[t('builder_draft_warnings'), el('ul', {'class': 'mb-0'}, v.warnings.map(function (x) { return el('li', {text: String(x)}); }))]));
 		}).catch(function (e) { box.textContent = e.message; });
 	}
 	// the differences (NuFormSnapshot::diff) – as in the builder's compare panel
@@ -2977,14 +3165,14 @@
 	});
 	window.addEventListener('beforeunload', function (e) { if (W.kind === 'code' && codeDirty().length) { e.preventDefault(); e.returnValue = ''; } });
 
-	// ------------------------------------------------------------------ the list (0.8.669): columns designed where the list runs
+	// ------------------------------------------------------------------ the list: columns designed where the list runs
 	// Click a column title to select it (the panel shows its properties), drag titles to reorder, "+" adds a column; every change is
 	// saved with browse.save (the whole list of columns, in the draft like every other change) and the list is drawn again.
 	function colById(id) { return id && S && S.browse ? S.browse.filter(function (c) { return c.zzzzsys_browse_id === id; })[0] : null; }
 	function colFilter(c) { try { return !!((JSON.parse(c.sbr_json || '{}').nunext || {}).filter); } catch (e) { return false; } }
-	// badge of a column (0.8.688): null = none, true = the default look, [rules] = rules of nuBrowseStyleBadge (sbr_json nunext.badge)
+	// badge of a column: null = none, true = the default look, [rules] = rules of nuBrowseStyleBadge (sbr_json nunext.badge)
 	function colBadge(c) { try { var b = (JSON.parse(c.sbr_json || '{}').nunext || {}).badge; return b ? (Array.isArray(b) ? b : true) : null; } catch (e) { return null; } }
-	// click action of a column (0.8.872): sbr_json nunext.action {t form|list|proc|report|js, id, rec, open, pass, look, icon, label}
+	// click action of a column: sbr_json nunext.action {t form|list|proc|report|js, id, rec, open, pass, look, icon, label}
 	function colAction(c) { try { var a = (JSON.parse(c.sbr_json || '{}').nunext || {}).action; return a && a.t ? a : null; } catch (e) { return null; } }
 	// total of a column: sum | avg | min | max | count (sbr_json nunext.total) – the row below the list
 	function colTotal(c) { try { return (JSON.parse(c.sbr_json || '{}').nunext || {}).total || ''; } catch (e) { return ''; } }
@@ -3030,14 +3218,18 @@
 			list.innerHTML = '';
 			var f = q.value.trim().toLowerCase(), cols = (listCols || []).filter(function (c) { return shown.indexOf(c.name) < 0 && (!f || c.name.toLowerCase().indexOf(f) >= 0); });
 			cols.forEach(function (c) {
-				list.appendChild(el('button', {type: 'button', 'class': 'dropdown-item d-flex gap-2 align-items-center', role: 'menuitem', 'data-col-name': c.name, onclick: function () { closePick(); colAdd(c.name); }},
+				list.appendChild(el('button',
+					{type: 'button', 'class': 'dropdown-item d-flex gap-2 align-items-center', role: 'menuitem', 'data-col-name': c.name, onclick: function () { closePick(); colAdd(c.name); }},
 					[icon('bi-layout-three-columns'), el('span', {text: c.name}), c.type ? el('small', {'class': 'text-body-secondary ms-auto', text: c.type}) : null]));
 			});
 			if (!cols.length && listCols && listCols.length) list.appendChild(el('div', {'class': 'small text-body-secondary px-2 py-1', text: t('ds_col_pick_none')}));
-			list.appendChild(el('button', {type: 'button', 'class': 'dropdown-item d-flex gap-2 align-items-center border-top mt-1 pt-2', role: 'menuitem', id: 'nuDsColPickExpr', onclick: function () { closePick(); colAdd(''); }}, [icon('bi-braces'), el('span', {text: t('ds_col_pick_expr')})]));
+			list.appendChild(el('button',
+				{type: 'button', 'class': 'dropdown-item d-flex gap-2 align-items-center border-top mt-1 pt-2', role: 'menuitem', id: 'nuDsColPickExpr', onclick: function () { closePick(); colAdd(''); }},
+				[icon('bi-braces'), el('span', {text: t('ds_col_pick_expr')})]));
 		};
 		q.addEventListener('input', fill);
-		q.addEventListener('keydown', function (e) { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closePick(); btn.focus(); } if (e.key === 'Enter') { var b = list.querySelector('[data-col-name]'); if (b) { e.preventDefault(); b.click(); } } });
+		q.addEventListener('keydown',
+			function (e) { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closePick(); btn.focus(); } if (e.key === 'Enter') { var b = list.querySelector('[data-col-name]'); if (b) { e.preventDefault(); b.click(); } } });
 		pickEl = el('div', {'class': 'nuObjMenu nuDsColPick', id: 'nuDsColPick'}, [el('div', {'class': 'small fw-semibold px-1 mb-1', text: t('builder_add_column')}), q, list]);
 		document.body.appendChild(pickEl);
 		var r = btn.getBoundingClientRect();
@@ -3058,7 +3250,8 @@
 	function columnsList() {
 		if (listCols === null && S.form.sfo_table) {
 			listCols = [];
-			api('columns', {table: S.form.sfo_table}, true).then(function (j) { listCols = j.ok ? j.columns : []; var dl = document.getElementById('nuDsColNames'); if (dl) fillCols(dl); }).catch(function () { listCols = []; });
+			api('columns', {table: S.form.sfo_table},
+				true).then(function (j) { listCols = j.ok ? j.columns : []; var dl = document.getElementById('nuDsColNames'); if (dl) fillCols(dl); }).catch(function () { listCols = []; });
 		}
 		var dl = el('datalist', {id: 'nuDsColNames'});
 		fillCols(dl);
@@ -3068,7 +3261,7 @@
 	function columnsSection() {
 		var rows = (S.browse || []).map(function (c) {
 			var hidden = +c.sbr_width === 0;
-			// a div with the role of a button (0.8.946): Chrome starts no drag on a <button>
+			// a div with the role of a button: Chrome starts no drag on a <button>
 			var pick = function () { selCol = c.zzzzsys_browse_id; markCols(); renderPanel(); };
 			return el('div', {role: 'button', tabindex: '0', 'class': 'nuDsTreeRow', 'data-col': c.zzzzsys_browse_id, draggable: 'true', title: t('ds_col_drag'), onclick: pick,
 				onkeydown: function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } }}, [
@@ -3077,7 +3270,7 @@
 				el('span', {'class': 'nuDsTreeType', text: c.sbr_display})]);
 		});
 		var tree = el('div', {'class': 'nuDsTree', id: 'nuDsColTree'}, rows);
-		// drag a row to another place (0.8.946), as the number cells of the Browse list tab
+		// drag a row to another place, as the number cells of the Browse list tab
 		var dragId = '', mark = function (row, after) {
 			tree.querySelectorAll('.nuDsDropBefore, .nuDsDropAfter').forEach(function (x) { x.classList.remove('nuDsDropBefore', 'nuDsDropAfter'); });
 			if (row) row.classList.add(after ? 'nuDsDropAfter' : 'nuDsDropBefore');
@@ -3114,18 +3307,25 @@
 			saveCols(list);                                                    // the panel keeps showing this list
 		});
 		section('columns', t('builder_sec_columns'), [tree,
-			el('div', {'class': 'nuDsField'}, [el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-primary', id: 'nuDsColAdd', onclick: function () { colPick(this); }}, [icon('bi-plus-lg me-1'), t('builder_add_column')])])]);
+			el('div', {'class': 'nuDsField'},
+				[el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-primary', id: 'nuDsColAdd', onclick: function () { colPick(this); }}, [icon('bi-plus-lg me-1'), t('builder_add_column')])])]);
 	}
 	function renderColumn(c) {
 		var btns = [
-			el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', 'data-ds-col': 'left', title: t('ds_col_left'), 'aria-label': t('ds_col_left'), onclick: function () { colMove(c, -1); }}, [icon('bi-arrow-left')]),
-			el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', 'data-ds-col': 'right', title: t('ds_col_right'), 'aria-label': t('ds_col_right'), onclick: function () { colMove(c, 1); }}, [icon('bi-arrow-right')]),
-			el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-danger nuDsDel', id: 'nuDsColDelete', title: t('delete'), 'aria-label': t('delete'), onclick: function () { colDelete(c); }}, [icon('bi-trash')])
+			el('button',
+				{type: 'button', 'class': 'btn btn-sm btn-outline-secondary', 'data-ds-col': 'left', title: t('ds_col_left'), 'aria-label': t('ds_col_left'), onclick: function () { colMove(c, -1); }},
+				[icon('bi-arrow-left')]),
+			el('button',
+				{type: 'button', 'class': 'btn btn-sm btn-outline-secondary', 'data-ds-col': 'right', title: t('ds_col_right'), 'aria-label': t('ds_col_right'), onclick: function () { colMove(c, 1); }},
+				[icon('bi-arrow-right')]),
+			el('button',
+				{type: 'button', 'class': 'btn btn-sm btn-outline-danger nuDsDel', id: 'nuDsColDelete', title: t('delete'), 'aria-label': t('delete'), onclick: function () { colDelete(c); }}, [icon('bi-trash')])
 		];
 		panel.appendChild(head(t('ds_column'), plain(c.sbr_title) || c.sbr_display, 'bi-layout-three-columns', '', btns));
 		var th = document.querySelector('#nuBrowseTable th[data-nu-browse-id="' + c.zzzzsys_browse_id + '"]');
 		section('content', t('ds_sec_content'), [
-			field(t('builder_col_title'), 'text', c.sbr_title, function (v) { colSave(c, {title: v}); }, {key: 'sbr_title', live: function (v) { if (th) { var lbl = th.querySelector('a, span') || th; lbl.textContent = v; } }}),
+			field(t('builder_col_title'), 'text', c.sbr_title, function (v) { colSave(c, {title: v}); },
+				{key: 'sbr_title', live: function (v) { if (th) { var lbl = th.querySelector('a, span') || th; lbl.textContent = v; } }}),
 			field(t('builder_col_display'), 'text', c.sbr_display, function (v) { colSave(c, {display: v}); }, {key: 'sbr_display', mono: true, list: 'nuDsColNames', tip: t('ds_col_display_tip')}),
 			columnsList(),
 			field(t('builder_col_format'), 'format', c.sbr_format || '', function (v) { colSave(c, {format: v}); }, {key: 'sbr_format', letters: 'DNT', empty: '—'})
@@ -3134,7 +3334,8 @@
 			el('div', {'class': 'nuDsGrid2'}, [
 				field(t('builder_col_width'), 'number', c.sbr_width === null || c.sbr_width === undefined ? 100 : c.sbr_width, function (v) { colSave(c, {width: v}); },
 					{key: 'sbr_width', tip: t('ds_col_width_tip'), live: function (v) { var n2 = parseInt(v, 10); if (th && n2 > 0) th.style.width = n2 + 'px'; }}),
-				field(t('builder_col_align'), 'select', c.sbr_align || 'l', function (v) { colSave(c, {align: v}); }, {key: 'sbr_align', options: [['l', t('ds_align_left')], ['c', t('ds_align_center')], ['r', t('ds_align_right')]]})])
+				field(t('builder_col_align'), 'select', c.sbr_align || 'l', function (v) { colSave(c, {align: v}); },
+					{key: 'sbr_align', options: [['l', t('ds_align_left')], ['c', t('ds_align_center')], ['r', t('ds_align_right')]]})])
 		]);
 		section('behaviour', t('ds_sec_behaviour'), [
 			field(t('builder_col_filter'), 'check', colFilter(c) ? '1' : '0', function (v) { colSave(c, {filter: v === '1'}); }, {key: 'filter'}),
@@ -3151,7 +3352,7 @@
 		].concat(actionEditor(c)));
 		foot([el('p', {'class': 'nuDsHint', text: t('ds_hint_list')})]);
 	}
-	// On click of a column (0.8.872): what a click on the cell does instead of opening the row's edit form
+	// On click of a column: what a click on the cell does instead of opening the row's edit form
 	function actionEditor(c) {
 		var a = colAction(c) || {t: ''};
 		var put = function (part) {
@@ -3162,8 +3363,10 @@
 		var out = [field(t('ds_col_action'), 'select', a.t || '', function (v) { put({t: v}); }, {key: 'action_t', tip: t('ds_col_action_tip'),
 			options: [['', t('ds_act_none')], ['form', t('ds_act_form')], ['list', t('ds_act_list')], ['proc', t('ds_act_proc')], ['report', t('ds_act_report')], ['js', t('ds_act_js')]]})];
 		if (!a.t) return out;
-		if (a.t === 'form') out.push(field(t('ds_act_target_form'), 'select', a.id || '', function (v) { put({id: v}); }, {key: 'action_id', search: true, options: options(D.forms, ['edit', 'browseedit'])}));
-		if (a.t === 'list') out.push(field(t('ds_act_target_list'), 'select', a.id || '', function (v) { put({id: v}); }, {key: 'action_id', search: true, options: options(D.forms, ['browse', 'browseedit'])}));
+		if (a.t === 'form') out.push(field(t('ds_act_target_form'), 'select', a.id || '', function (v) { put({id: v}); },
+			{key: 'action_id', search: true, options: options(D.forms, ['edit', 'browseedit'])}));
+		if (a.t === 'list') out.push(field(t('ds_act_target_list'), 'select', a.id || '', function (v) { put({id: v}); },
+			{key: 'action_id', search: true, options: options(D.forms, ['browse', 'browseedit'])}));
 		if (a.t === 'proc') out.push(field(t('builder_run_procedure'), 'select', a.id || '', function (v) { put({id: v}); }, {key: 'action_id', search: true, options: options(D.procedures)}));
 		if (a.t === 'report') out.push(field(t('builder_run_report'), 'select', a.id || '', function (v) { put({id: v}); }, {key: 'action_id', search: true, options: options(D.reports)}));
 		if (a.t === 'js') out.push(field(t('ds_act_fn'), 'text', a.id || '', function (v) { put({id: v.trim()}); }, {key: 'action_id', mono: true, ph: 'openReadings', tip: t('ds_act_fn_tip')}));
@@ -3203,7 +3406,8 @@
 					onchange: function () { r[kindOf(r)] = txt.value; save(); }});
 				var bg = el('input', {type: 'color', 'class': 'form-control form-control-sm form-control-color nuDsBrColor', value: /^#[0-9a-f]{6}$/i.test(r.bg || '') ? r.bg : '#6c757d',
 					'aria-label': t('ds_badge_colour'), title: t('ds_badge_colour'), onchange: function () { r.bg = bg.value; save(); }});
-				var del = el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-danger nuDsBrDel', title: t('delete'), 'aria-label': t('delete'), onclick: function () { rules.splice(i, 1); save(); }}, [icon('bi-x-lg')]);
+				var del = el('button',
+					{type: 'button', 'class': 'btn btn-sm btn-outline-danger nuDsBrDel', title: t('delete'), 'aria-label': t('delete'), onclick: function () { rules.splice(i, 1); save(); }}, [icon('bi-x-lg')]);
 				box.appendChild(el('div', {'class': 'nuDsBadgeRule'}, [sel, txt, bg, del]));
 			});
 			box.appendChild(el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-primary', id: 'nuDsBadgeAdd', onclick: function () { rules.push({equals: '', bg: '#0d6efd'}); save(); }},
@@ -3212,7 +3416,7 @@
 		draw();
 		return box;
 	}
-	// right-click on a column title (0.8.672, as nuBuilder Forte's menu of a browse title): Object, Properties, Rename…, Align, Width,
+	// right-click on a column title (as nuBuilder Forte's menu of a browse title): Object, Properties, Rename…, Align, Width,
 	// Filter, Move left / right, Hide / Show, Delete – the same look and keys as the form's object menu (nuform.css .nuObjMenu)
 	var colMenu = null;
 	function closeColMenu() { if (colMenu) { colMenu.remove(); colMenu = null; } }
@@ -3234,7 +3438,8 @@
 				b.setAttribute('aria-expanded', 'false');
 				li.classList.add('nuOmSubWrap');
 				li.appendChild(el('ul', {'class': 'dropdown-menu nuOmSub'}, opt.sub));
-				b.addEventListener('click', function (e) { e.stopPropagation(); var on = !li.classList.contains('nuOmOpen'); li.classList.toggle('nuOmOpen', on); b.setAttribute('aria-expanded', on ? 'true' : 'false');
+				b.addEventListener('click',
+					function (e) { e.stopPropagation(); var on = !li.classList.contains('nuOmOpen'); li.classList.toggle('nuOmOpen', on); b.setAttribute('aria-expanded', on ? 'true' : 'false');
 					if (on) { var f = li.querySelector('.nuOmSub button'); if (f) f.focus(); } });
 			} else b.addEventListener('click', function (e) { e.stopPropagation(); closeColMenu(); fn(); });
 			return li;
@@ -3253,7 +3458,8 @@
 			e.stopPropagation(); closeColMenu();
 			if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(oid).then(function () { say(fmt(t('om_copied'), oid)); }, function () { window.prompt(t('om_object'), oid); });
 			else window.prompt(t('om_object'), oid);
-		}}, [el('span', {'class': 'fw-semibold me-1', text: plain(c.sbr_title) || c.sbr_display}), el('small', {'class': 'text-body-secondary', text: oid})])]);   // the title first (review H3), the id to copy
+		}},
+			[el('span', {'class': 'fw-semibold me-1', text: plain(c.sbr_title) || c.sbr_display}), el('small', {'class': 'text-body-secondary', text: oid})])]);   // the title first (review H3), the id to copy
 		colMenu = el('ul', {'class': 'dropdown-menu show nuObjMenu shadow', id: 'nuDsColMenu', role: 'menu'}, [
 			head, div(),
 			item('bi-sliders', t('om_properties'), function () { var f = panel.querySelector('[data-key="sbr_title"]'); if (f) f.focus(); }),
@@ -3266,7 +3472,8 @@
 			item('bi-text-left', t('om_align'), null, {sub: [['l', 'om_left', 'bi-text-left'], ['r', 'om_right', 'bi-text-right'], ['c', 'om_center', 'bi-text-center']].map(function (a) {
 				return item(a[2], t(a[1]), function () { if (al !== a[0]) colSave(c, {align: a[0]}); }, {current: al === a[0]});
 			})}),
-			el('li', {'class': 'nuOmWidthRow'}, [el('label', {'class': 'dropdown-item d-flex align-items-center gap-2', 'for': 'nuDsColMenuWidth'}, [icon('bi-arrows'), el('span', {'class': 'me-auto', text: t('builder_col_width')}), width])]),
+			el('li', {'class': 'nuOmWidthRow'},
+				[el('label', {'class': 'dropdown-item d-flex align-items-center gap-2', 'for': 'nuDsColMenuWidth'}, [icon('bi-arrows'), el('span', {'class': 'me-auto', text: t('builder_col_width')}), width])]),
 			item('bi-funnel', t('builder_col_filter'), function () { colSave(c, {filter: !colFilter(c)}); }, {current: colFilter(c)}),
 			div(),
 			item('bi-arrow-left', t('ds_col_left'), function () { colMove(c, -1); }, {disabled: at <= 0}),
@@ -3315,7 +3522,8 @@
 			var id = th.getAttribute('data-nu-browse-id');
 			th.setAttribute('draggable', 'true');
 			th.title = t('ds_col_hint');
-			th.addEventListener('dragstart', function (e) { drag = id; e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', id); } catch (x) { /* ignore */ } th.classList.add('nuDsDragging'); });
+			th.addEventListener('dragstart',
+				function (e) { drag = id; e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', id); } catch (x) { /* ignore */ } th.classList.add('nuDsDragging'); });
 			th.addEventListener('dragend', function () { drag = null; th.classList.remove('nuDsDragging'); });
 			th.addEventListener('dragover', function (e) { if (drag && drag !== id) { e.preventDefault(); th.classList.add('nuDsDropBefore'); } });
 			th.addEventListener('dragleave', function () { th.classList.remove('nuDsDropBefore'); });
@@ -3348,13 +3556,14 @@
 			renderPanel();
 		}, true);
 		var headRow = table.querySelector('thead tr');
-		if (headRow) headRow.appendChild(el('th', {scope: 'col', 'class': 'nuDsColAddTh'}, [el('button', {type: 'button', 'class': 'btn btn-sm nuDsTabAdd', id: 'nuDsColAddTh', title: t('builder_add_column'),
+		if (headRow) headRow.appendChild(el('th', {scope: 'col', 'class': 'nuDsColAddTh'},
+			[el('button', {type: 'button', 'class': 'btn btn-sm nuDsTabAdd', id: 'nuDsColAddTh', title: t('builder_add_column'),
 			'aria-label': t('builder_add_column'), onclick: function (e) { e.stopPropagation(); colPick(this); }}, [icon('bi-plus-lg')])]));
 		if (selCol === '__last' && S.browse && S.browse.length) selCol = S.browse[S.browse.length - 1].zzzzsys_browse_id;
 		markCols();
 	}
 
-	// ------------------------------------------------------------------ shortcuts (0.8.671): rename, copy / paste, next object, the list
+	// ------------------------------------------------------------------ shortcuts: rename, copy / paste, next object, the list
 	function renameDialog(o) {
 		var lab = el('input', {type: 'text', 'class': 'form-control', id: 'nuDsRenLabel', value: o.sob_all_label || ''});
 		var fid = el('input', {type: 'text', 'class': 'form-control font-monospace', id: 'nuDsRenId', value: o.sob_all_id, spellcheck: 'false', autocomplete: 'off'});
@@ -3455,13 +3664,14 @@
 		}
 		if (mod && (e.key === 'k' || e.key === 'K') && !BROWSE) { e.preventDefault(); e.stopPropagation(); openFly('structure'); return; }
 		if (W.kind) return;                                     // the Code / History view has its own keys
-		// 0.8.671: F2 rename, Ctrl+Z undo, Ctrl+S (saved anyway), Ctrl+C / X / V copy, cut and paste objects, Tab / Shift+Tab next / previous
+		// F2 rename, Ctrl+Z undo, Ctrl+S (saved anyway), Ctrl+C / X / V copy, cut and paste objects, Tab / Shift+Tab next / previous
 		// object, ? the list of shortcuts
 		var objs2 = selIds.map(objByFid).filter(Boolean);
 		if (e.key === 'F2' && !mod && !BROWSE && objs2.length) { e.preventDefault(); e.stopPropagation(); renameDialog(objs2[objs2.length - 1]); return; }
 		if (e.key === 'F2' && !mod && BROWSE && colById(selCol)) { e.preventDefault(); var ti = panel.querySelector('[data-key="sbr_title"]'); if (ti) { ti.focus(); ti.select(); } return; }
 		if (mod && !e.altKey && !e.shiftKey && (e.key === 'z' || e.key === 'Z')) { e.preventDefault(); e.stopPropagation(); if (!bUndo.disabled) undo(); return; }
-		if (mod && !e.altKey && ((e.key === 'y' || e.key === 'Y') || (e.shiftKey && (e.key === 'z' || e.key === 'Z')))) { e.preventDefault(); e.stopPropagation(); if (!bRedo.disabled && !bRedo.hidden) redo(); return; }
+		if (mod && !e.altKey
+			&& ((e.key === 'y' || e.key === 'Y') || (e.shiftKey && (e.key === 'z' || e.key === 'Z')))) { e.preventDefault(); e.stopPropagation(); if (!bRedo.disabled && !bRedo.hidden) redo(); return; }
 		if (mod && !e.altKey && (e.key === 's' || e.key === 'S')) { e.preventDefault(); e.stopPropagation(); say(t('ds_autosaved')); return; }
 		if (mod && !e.altKey && !e.shiftKey && !BROWSE && (e.key === 'c' || e.key === 'C' || e.key === 'x' || e.key === 'X') && objs2.length) {
 			if (window.getSelection && String(window.getSelection()).length) return;   // copying selected text of the page
@@ -3477,7 +3687,7 @@
 		else if (e.key === 'Escape' && BROWSE && selCol) { selCol = ''; markCols(); renderPanel(); }
 	}, true);
 
-	// ------------------------------------------------------------------ the object menu (right-click, as on the form – 0.8.664)
+	// ------------------------------------------------------------------ the object menu (right-click, as on the form)
 	// the designer's overlay lies over the object: its right-click opens the form's object menu (nuruntime.js); the menu's changes go
 	// through design mode (draft, panel, reload with the selection)
 	N.objMenuHook = function (kind, o, fields) {
@@ -3486,7 +3696,7 @@
 		if (kind === 'save') { if (fields.sob_all_zzzzsys_tab_id) keepTab = fields.sob_all_zzzzsys_tab_id; selIds = [obj.sob_all_id]; saveObj(obj, fields, true); }
 		else if (kind === 'delete') deleteObjs([obj]);
 		else if (kind === 'properties') post({nuBuilderSelect: obj.sob_all_id});
-		else if (kind === 'clone') duplicate([obj]);                   // object menu → Actions → Clone (0.8.927)
+		else if (kind === 'clone') duplicate([obj]);                   // object menu → Actions → Clone
 	};
 	// double-click on an object (review H2): it is selected and its label field in the panel gets the focus (F2 = rename dialogue)
 	document.addEventListener('dblclick', function (e) {
@@ -3552,7 +3762,7 @@
 	}
 	place();
 	renderBar();
-	var v0 = new URLSearchParams(D.start || window.location.search);   // 0.8.1194: from the server – form code may rewrite the address     // back from the password confirmation: the dialog again
+	var v0 = new URLSearchParams(D.start || window.location.search);   // from the server – form code may rewrite the address     // back from the password confirmation: the dialog again
 	api('state', {}).then(function (j) {
 		if (!j.ok) throw new Error(j.error || 'Error');
 		S = j;
@@ -3562,7 +3772,7 @@
 			setupBrowse();
 			renderPanel();
 			if (v0.get('dsdelete') === '1') deleteForm();
-			if (v0.get('dsitem')) W.item = v0.get('dsitem');      // a code part to open first (0.8.676: form info → Edit the SQL)
+			if (v0.get('dsitem')) W.item = v0.get('dsitem');      // a code part to open first (form info → Edit the SQL)
 			if (['code', 'history'].indexOf(v0.get('dswork')) >= 0 || (v0.get('dswork') === 'list' && HASLIST)) openWork(v0.get('dswork'));
 			return;
 		}
@@ -3571,15 +3781,15 @@
 		dropTargets();
 		if (v0.get('dscolchg')) openColumnChange(v0.get('dscolchg'));
 		if (v0.get('dsdelete') === '1') deleteForm();
-		// old builder links (0.8.670, NuDesign::fromBuilder): an object, Code / History / Changes, Structure / Add
-		// an object to select (old builder links, the object menu's Properties…): by object id, else by field id (0.8.1193); tried again
-		// until the panel shows it (0.8.1192) – a slow page, the form's own code or tab restore came after one fixed try
+		// old builder links (NuDesign::fromBuilder): an object, Code / History / Changes, Structure / Add
+		// an object to select (old builder links, the object menu's Properties…): by object id, else by field id; tried again
+		// until the panel shows it – a slow page, the form's own code or tab restore came after one fixed try
 		var o0 = (v0.get('dsobj') ? objById(v0.get('dsobj')) : null) || (v0.get('dsfid') ? objByFid(v0.get('dsfid')) : null);
 		var fid0 = o0 ? o0.sob_all_id : (v0.get('dsfid') || '');
 		if (fid0) (function () {
 			var tries = 0;
 			var go = function () {
-				if (selIds.indexOf(fid0) >= 0) { if (v0.get('dsev') === '1' && o0) editEvents(o0); return; }   // 0.8.1331: links to an event open its dialog
+				if (selIds.indexOf(fid0) >= 0) { if (v0.get('dsev') === '1' && o0) editEvents(o0); return; }   // links to an event open its dialog
 				var w = document.getElementById('nuw_' + fid0);
 				if (++tries > 40) {
 					say(fmt(t('ds_obj_not_shown'), fid0), true);

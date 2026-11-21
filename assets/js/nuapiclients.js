@@ -1,7 +1,7 @@
 /* REST API clients (pages/nuapiclients.php): new service user fields, copy buttons. */
 (function () {
 	'use strict';
-	// service user (0.8.530): New service user (login name, display name, access level) or Existing user (searchable list + its access level)
+	// service user: New service user (login name, display name, access level) or Existing user (searchable list + its access level)
 	var sel = document.getElementById('user_id'), boxNew = document.querySelector('.nuApiNewUser'), boxOld = document.querySelector('.nuApiExistUser');
 	var info = document.getElementById('apiUserAccess');
 	if (sel && boxNew && boxOld) {

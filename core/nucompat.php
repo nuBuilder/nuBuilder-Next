@@ -18,7 +18,7 @@ final class NuCompat
 	{
 		$out = [];
 		// every script of our own a form page loads (pages/nuform.php), so functions outside the runtime count too –
-		// e.g. nuNextDashboard / nuNextDashboardRefresh in assets/js/nudashboard.js (0.8.347)
+		// e.g. nuNextDashboard / nuNextDashboardRefresh in assets/js/nudashboard.js
 		$files = ['assets/js/nu/nuruntime.js', 'assets/js/nu/nucompat.js', 'assets/js/nu/nuformat.js', 'assets/js/nu/nuinfobar.js', 'assets/js/nu/nutooltip.js',
 			'assets/js/nuapp.js', 'assets/js/nudashboard.js'];                  // every page / forms with a dashboard (core/nudashboard.php)
 		if (preg_match_all("~assets/js/(?:nu/)?[\\w-]+\\.js~", (string)@file_get_contents(NU_ROOT . '/pages/nuform.php'), $fm)) $files = array_values(array_unique(array_merge($files, $fm[0])));
@@ -69,9 +69,10 @@ final class NuCompat
 		$db = nu_db();
 		$sys = static fn(string $id) => !$withSystem && str_starts_with($id, 'nu');
 		$out = [];
-		// url (0.8.1331): where the code is opened – design mode of the form (code part / object / its events), the procedure, Global code
+		// url: where the code is opened – design mode of the form (code part / object / its events), the procedure, Global code
 		$add = static function (string $lang, string $where, string $form, ?string $code, string $proc = '', string $url = '') use (&$out) {
-			if ($code !== null && trim($code) !== '') $out[] = ['lang' => $lang, 'where' => $where, 'form' => $form, 'code' => $code] + ($proc !== '' ? ['proc' => $proc] : []) + ($url !== '' ? ['url' => $url] : []);
+			if ($code !== null && trim($code) !== '') $out[] = ['lang' => $lang, 'where' => $where, 'form' => $form,
+				'code' => $code] + ($proc !== '' ? ['proc' => $proc] : []) + ($url !== '' ? ['url' => $url] : []);
 		};
 		$design = static fn(string $fid, array $x = []): string => $fid === '' ? '' : nu_url('builder', ['f' => $fid] + $x);
 		$cols = static fn(string $t) => $db->tableExists($t) ? $db->columns($t) : [];
@@ -106,7 +107,7 @@ final class NuCompat
 		if ($db->tableExists('zzzzsys_event')) {
 			foreach ($db->all('SELECT sev_zzzzsys_object_id, sev_event, sev_javascript FROM zzzzsys_event') as $e) {
 				$o = $byId[strtolower(trim((string)$e['sev_zzzzsys_object_id']))] ?? null;
-				// 0.8.1331: events of an object that no longer exists never run (not in nuBuilder Forte either) – left out
+				// events of an object that no longer exists never run (not in nuBuilder Forte either) – left out
 				if (!$o || $sys((string)$o['sob_all_zzzzsys_form_id'])) continue;
 				$fid = (string)$o['sob_all_zzzzsys_form_id'];
 				$add('js', ($o['sfo_code'] ?? '?') . ' · ' . $o['sob_all_id'] . ' · ' . $e['sev_event'], $fid, $e['sev_javascript'], '', $design($fid, ['obj' => (string)$o['zzzzsys_object_id'], 'ev' => '1']));
@@ -117,7 +118,7 @@ final class NuCompat
 			$pc = $cols('zzzzsys_php');
 			foreach ($db->all('SELECT * FROM zzzzsys_php') as $p) {
 				if ($sys((string)$p['zzzzsys_php_id'])) continue;
-				// a procedure (not a form's hook) can be opened from the report (0.8.693)
+				// a procedure (not a form's hook) can be opened from the report
 				$id = (string)$p['zzzzsys_php_id'];
 				$pid = in_array(substr($id, -3), NuProcedure::HOOKS, true) ? '' : $id;
 				// a form's hook (<form id>_BB …): its code part in design mode; the After Browse PHP of an object (<object id>_AB): the object
@@ -135,7 +136,7 @@ final class NuCompat
 	}
 
 	/**
-	 * Hash variables outside quotes in PHP and SQL (0.8.207): #field# is escaped for a quoted string only, so `WHERE id = #field#`
+	 * Hash variables outside quotes in PHP and SQL: #field# is escaped for a quoted string only, so `WHERE id = #field#`
 	 * or `$x = #field#;` lets a user put code into a field value. Variables the server sets (USER_ID, FORM_ID, TABLE_ID …) are fine;
 	 * RECORD_ID, ID, CODE and SUBFORM_ID come from the browser and are listed too.
 	 * @return array<int, array{lang: string, where: string, form: string, vars: array<int, string>}>
@@ -246,7 +247,7 @@ final class NuCompat
 				foreach (array_filter(array_merge($m[1], $m[2])) as $n) $custom[$s['lang']][$s['lang'] === 'php' ? strtolower($n) : $n] = true;
 			}
 		}
-		// functions of the include files and the other page-wide code (0.8.578): $nuConfigIncludePHP / $nuConfigIncludeJS (found like the
+		// functions of the include files and the other page-wide code: $nuConfigIncludePHP / $nuConfigIncludeJS (found like the
 		// form page finds them – nuBuilder Next's folder, then nuBuilder's), the scripts of Setup → Include and Global JS
 		foreach (self::definedOutside() as $lang => $names) foreach ($names as $n) $custom[$lang][$lang === 'php' ? strtolower($n) : $n] = true;
 
@@ -269,8 +270,8 @@ final class NuCompat
 				$r = $res[$lang][$name] ?? ['status' => $status, 'count' => 0, 'where' => [], 'forms' => [], 'procs' => [], 'urls' => []];
 				$r['count']++;
 				if (!in_array($s['where'], $r['where'], true)) $r['where'][] = $s['where'];
-				if (!empty($s['proc'])) $r['procs'][$s['where']] = $s['proc'];   // where → procedure id (link on the report, 0.8.693)
-				if (!empty($s['url'])) $r['urls'][$s['where']] = $s['url'];      // where → the page that opens the code (0.8.1331)
+				if (!empty($s['proc'])) $r['procs'][$s['where']] = $s['proc'];   // where → procedure id (link on the report)
+				if (!empty($s['url'])) $r['urls'][$s['where']] = $s['url'];      // where → the page that opens the code
 				if ($s['form'] !== '' && !in_array($s['form'], $r['forms'], true)) $r['forms'][] = $s['form'];
 				$res[$lang][$name] = $r;
 			}
@@ -284,7 +285,7 @@ final class NuCompat
 	}
 
 	/**
-	 * G6 (0.8.580): does the Content Security Policy of form pages (pages/nuform.php) block this element's address? Images from https
+	 * G6: does the Content Security Policy of form pages (pages/nuform.php) block this element's address? Images from https
 	 * are allowed, scripts / stylesheets from sites named in $nuConfigIncludeJS / CSS or Setup → Include (NuIncludes::cspSources),
 	 * everything from this server; frames and other hosts are blocked. A protocol-relative address (//host) takes the scheme of this server.
 	 */
@@ -323,35 +324,36 @@ final class NuCompat
 			if ($el['url'] !== '') $scan('js', $read(NuIncludes::localFile($el['url'])));
 			else $scan('js', (string)preg_replace('~^<script\b[^>]*>|</script\s*>$~i', '', $el['html']));
 		}
-		try { $scan('js', NuCustomCode::get()['js']); } catch (Throwable) { /* no settings table */ }
+		try { $scan('js', NuCustomCode::get()['js']); } catch (Throwable $ig) { nu_ignored($ig, 'no settings table'); }
 		$out['js'] = array_values(array_unique($out['js']));
 		$out['php'] = array_values(array_unique($out['php']));
 		return $out;
 	}
 
 	/**
-	 * nuBuilder 4.9 features of the compatibility report (0.8.382, ids C/M/N as there): where the application uses them, and since
+	 * nuBuilder 4.9 features of the compatibility report (ids C/M/N as there): where the application uses them, and since
 	 * which version nuBuilder Next supports them (null = not yet – see the Help). SINCE is kept up to date with each fix.
 	 */
 	public const SINCE = ['C1' => '0.8.382', 'C2' => '0.8.382', 'C3' => '0.8.382', 'C4' => '0.8.382', 'C5' => '0.8.382', 'C6' => '0.8.382',
 		'M1' => '0.8.383', 'M2' => '0.8.382', 'M3' => '0.8.382', 'M4' => null, 'M5' => '0.8.459', 'M6' => '0.8.443', 'M7' => '0.8.383', 'M8' => '0.8.383',
 		'M9' => null, 'M10' => '0.8.863', 'N1' => '0.8.383', 'N2' => '0.8.383', 'N3' => '0.8.383', 'I3' => null,
-		// gap and migration analysis nuBuilder 4.9 / nuBuilder Next (0.8.462): G1 access data mode / form type (B3), G2 global hook
+		// gap and migration analysis nuBuilder 4.9 / nuBuilder Next: G1 access data mode / form type (B3), G2 global hook
 		// procedures (B5), G3 calc in sub-forms (B6), G4 events onnuload / onenter (B7), G5 nuFORMdata, G6 external scripts / frames
 		// (the Content Security Policy blocks them), G7 hash variables nuBuilder Next does not set, G8 #RECORD_ID# / #FORM_ID# in hidden procedures
-		'G1' => '0.8.461', 'G2' => '0.8.462', 'G3' => '0.8.462', 'G4' => '0.8.462', 'G5' => '0.8.462', 'G6' => null, 'G7' => null, 'G8' => '0.8.576',   // G8: set, with other values than nuBuilder's – listed to check comparisons
-		// G9 (0.8.523): Global JS of Custom code defines nuBuilder hook functions (nuOnLoad …) – a form's own function replaces them
+		'G1' => '0.8.461', 'G2' => '0.8.462', 'G3' => '0.8.462', 'G4' => '0.8.462', 'G5' => '0.8.462', 'G6' => null, 'G7' => null, 'G8' => '0.8.576',
+			// G8: set, with other values than nuBuilder's – listed to check comparisons
+		// G9: Global JS of Custom code defines nuBuilder hook functions (nuOnLoad …) – a form's own function replaces them
 		'G9' => null,
-		// G10 (0.8.585): users with additional access levels – nuBuilder 4.x gives them only the rights of the main level
+		// G10: users with additional access levels – nuBuilder 4.x gives them only the rights of the main level
 		'G10' => '0.8.585',
-		// G11 (0.8.983): form code that waits for the page to load (DOMContentLoaded, window load, readystatechange) – never runs in
+		// G11: form code that waits for the page to load (DOMContentLoaded, window load, readystatechange) – never runs in
 		// nuBuilder Forte (form code runs after the page has loaded); nuBuilder Next drops such handlers too (nuNextLoadGuard). Places listed
 		'G11' => '0.8.983',
-		// FE (0.8.784): forms for everyone (NuFormEveryone) that access levels created in nuBuilder Forte do not have yet
+		// FE: forms for everyone (NuFormEveryone) that access levels created in nuBuilder Forte do not have yet
 		'FE' => '0.8.784',
-		// BS6 (0.8.740, developer mode only): Bootstrap 5 markup that Bootstrap 6 changes (NuBs6) – nothing to do while nuBuilder Next stays on 5.3
+		// BS6 (developer mode only): Bootstrap 5 markup that Bootstrap 6 changes (NuBs6) – nothing to do while nuBuilder Next stays on 5.3
 		'BS6' => null,
-		// J4 (0.8.741): jQuery functions jQuery 4 removed / Migrate warns about in the application's code (NuJquery::scan) – a preparation
+		// J4: jQuery functions jQuery 4 removed / Migrate warns about in the application's code (NuJquery::scan) – a preparation
 		'J4' => null];
 
 	/** Findings that are a preparation, not a missing feature (grey, not counted as open) – BS6. */
@@ -365,7 +367,7 @@ final class NuCompat
 		'nu_after_update', 'nu_debug_result_added'];
 
 	/** Hash variables of nuBuilder 4.9 that nuBuilder Next does not set – G7. */
-	public const MISSING_HASH = ['browse_sql'];   // form_id / record_id / hash_record_id: set since 0.8.576, USER_GROUP_ID since 0.8.581, USER_A11Y / subforms … since 0.8.984
+	public const MISSING_HASH = ['browse_sql'];   // form_id / record_id / hash_record_id: set, USER_GROUP_ID, USER_A11Y / subforms …
 
 	/** @return array<string, list<array{where: string, form: string, detail: string}>> finding id => places (only ids with places) */
 	public static function findings(bool $withSystem = false): array
@@ -486,7 +488,7 @@ final class NuCompat
 			if (preg_match(self::LOAD_WAIT, self::stripComments($src['code']), $m)) $hit('G11', $src['where'], $src['form'], $m[0]);
 		}
 		// G9: Global JS (Custom code → All pages) that defines nuBuilder's hook names
-		try { foreach (NuCustomCode::hookClashes() as $n) $hit('G9', 'Custom code · Global JS', '', $n); } catch (Throwable) { /* no settings table */ }
+		try { foreach (NuCustomCode::hookClashes() as $n) $hit('G9', 'Custom code · Global JS', '', $n); } catch (Throwable $ig) { nu_ignored($ig, 'no settings table'); }
 		// G10: users with additional access levels (NuUserAccess)
 		if (NuUserAccess::ready()) {
 			foreach ($db->all('SELECT x.user_id, u.sus_login_name, a.sal_code FROM ' . NuUserAccess::TABLE . ' x LEFT JOIN zzzzsys_user u ON ' . $db->sameText('u.zzzzsys_user_id', 'x.user_id')
@@ -501,7 +503,7 @@ final class NuCompat
 				$codes = NuAcl::levelCodes();
 				foreach ($miss as $fid => $lv) $hit('FE', 'Form · ' . ($forms[$fid]['sfo_code'] ?? $fid), $fid, implode(', ', array_map(static fn($a) => (string)($codes[$a] ?? $a), $lv)));
 			}
-		} catch (Throwable) { /* no settings table */ }
+		} catch (Throwable $ig) { nu_ignored($ig, 'no settings table'); }
 		// J4: jQuery 4 – removed functions and Migrate warnings in the application's JavaScript (always shown, grey)
 		foreach (self::sources($withSystem) as $src) {
 			if ($src['lang'] !== 'js') continue;
@@ -516,14 +518,15 @@ final class NuCompat
 					foreach ($b['hits'] as $rule => $list) $d[] = $rule . ': ' . implode(' ', array_slice($list, 0, 8)) . (count($list) > 8 ? ' …' : '');
 					$hit('BS6', $b['where'], $b['form'], implode(' · ', $d));
 				}
-			} catch (Throwable) { /* tables missing */ }
+			} catch (Throwable $ig) { nu_ignored($ig, 'tables missing'); }
 		}
 		// nuconfig.php: M6 own JavaScript / CSS files, M10 SSO
 		foreach (['nuConfigIncludeJS', 'nuConfigIncludeCSS'] as $v) if (!empty(nu_cfg($v))) $hit('M6', 'nuconfig.php · $' . $v, '', implode(', ', (array)nu_cfg($v)));
 		if (in_array(strtolower((string)nu_cfg('nuConfigLogonMode')), ['sso', 'both'], true)) $hit('M10', 'nuconfig.php · $nuConfigLogonMode', '', (string)nu_cfg('nuConfigLogonMode'));
 		// I3: MyISAM tables (no transactions)
 		if ($db->type === 'mysql') {
-			foreach ($db->all("SELECT TABLE_NAME AS t FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = 'BASE TABLE' AND ENGINE = 'MyISAM'") as $r) $hit('I3', (string)$r['t'], '');
+			foreach ($db->all("SELECT TABLE_NAME AS t FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = 'BASE TABLE' AND ENGINE = 'MyISAM'") as $r) $hit('I3',
+				(string)$r['t'], '');
 		}
 		uksort($out, static fn($a, $b) => array_search($a, array_keys(self::SINCE), true) <=> array_search($b, array_keys(self::SINCE), true));
 		return $out;
@@ -531,7 +534,7 @@ final class NuCompat
 
 	/** Removes // and /* *\/ comments (roughly; strings containing // are rare in nu… calls). */
 	/**
-	 * MySQL-only SQL (0.8.791) – shown on the Compatibility check while nuBuilder Next runs on SQL Server: browse SQL, select / display
+	 * MySQL-only SQL – shown on the Compatibility check while nuBuilder Next runs on SQL Server: browse SQL, select / display
 	 * SQL of objects, the SQL builder and SQL in the strings of procedures and PHP events. id => [what MySQL wrote, regex, what T-SQL uses].
 	 * The regexes run on the SQL with its comments and string contents taken out (except the rules on quotes themselves).
 	 */
@@ -583,7 +586,8 @@ final class NuCompat
 			$sources = self::sqlSources($withSystem);
 			foreach (self::sources($withSystem) as $src) {          // PHP: the strings that hold SQL (nuRunQuery("SELECT …"))
 				if ($src['lang'] !== 'php') continue;
-				foreach (self::phpSqlStrings((string)$src['code']) as $sql) $sources[] = ['lang' => 'sql', 'where' => $src['where'], 'form' => $src['form'], 'code' => $sql] + (isset($src['proc']) ? ['proc' => $src['proc']] : []);
+				foreach (self::phpSqlStrings((string)$src['code']) as $sql) $sources[] = ['lang' => 'sql', 'where' => $src['where'], 'form' => $src['form'],
+					'code' => $sql] + (isset($src['proc']) ? ['proc' => $src['proc']] : []);
 			}
 		}
 		$out = [];

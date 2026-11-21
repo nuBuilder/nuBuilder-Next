@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * A small Markdown → HTML converter (0.8.874) for report fields with the content type Markdown – no library. The text is escaped
+ * A small Markdown → HTML converter for report fields with the content type Markdown – no library. The text is escaped
  * first, so HTML in the Markdown is shown as text, never run. Supported: headings (# … ######), paragraphs, line breaks (a single
  * newline), **bold** / __bold__, *italic* / _italic_, ~~strike~~, `code`, [links](https://…) (http, https, mailto only), lists with
  * - * + and 1. (one level of nesting by indentation), > quotes, --- rules, tables (| a | b | with a |---| line), fenced ``` code.
@@ -11,7 +11,7 @@ defined('NU_ROOT') || exit;
  */
 final class NuMarkdown
 {
-	/** Web flavour (0.8.1038): <code> and <strong> / <em>, tables without TCPDF's border / cellpadding – for the help page editor. */
+	/** Web flavour: <code> and <strong> / <em>, tables without TCPDF's border / cellpadding – for the help page editor. */
 	private static bool $web = false;
 
 	public static function toWeb(string $md): string
@@ -118,7 +118,8 @@ final class NuMarkdown
 	{
 		$t = h($t);
 		$codes = [];
-		$t = (string)preg_replace_callback('/`([^`]+)`/', static function ($m) use (&$codes) { $codes[] = self::$web ? '<code>' . $m[1] . '</code>' : '<font face="courier">' . $m[1] . '</font>'; return "\x01" . (count($codes) - 1) . "\x01"; }, $t);
+		$t = (string)preg_replace_callback('/`([^`]+)`/',
+			static function ($m) use (&$codes) { $codes[] = self::$web ? '<code>' . $m[1] . '</code>' : '<font face="courier">' . $m[1] . '</font>'; return "\x01" . (count($codes) - 1) . "\x01"; }, $t);
 		$t = (string)preg_replace_callback('/\[([^\]]+)\]\(([^)\s]+)\)/', static function ($m) {
 			$url = html_entity_decode($m[2], ENT_QUOTES);
 			return preg_match('~^(https?://|mailto:)~i', $url) ? '<a href="' . h($url) . '">' . $m[1] . '</a>' : $m[1];

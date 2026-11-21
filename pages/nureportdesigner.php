@@ -15,60 +15,16 @@ $rights = NuAcl::rights(NuAcl::FORM_REPORT);
 $id     = (string)($_GET['id'] ?? '');
 $report = NuReport::load($id);
 if (!$report || (string)$report['zzzzsys_report_id'] !== $id) { http_response_code(404); nu_fatal(t('record_not_found'), '', true); }
-if ($_SERVER['REQUEST_METHOD'] === 'GET') NuOpened::touch('report', $id);   // "Last opened" (0.8.1117)
+if ($_SERVER['REQUEST_METHOD'] === 'GET') NuOpened::touch('report', $id);   // "Last opened"
 $canSave = $rights['save'];
 
 // ------------------------------------------------------------------ preview (form post into the preview frame)
-if (nu_is_post() && nu_post('action') === 'preview') {
-	try {
-		$layout = NuReport::layoutJson((string)($_POST['layout'] ?? ''));
-		$hash = NuHash::plain();
-		$launch = trim((string)$report['sre_zzzzsys_form_id']);
-		if ($launch !== '') foreach ($db->all('SELECT sob_all_id FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id = ?', [$launch]) as $o) $hash[(string)$o['sob_all_id']] ??= '';
-		$crit = json_decode((string)($_POST['criteria'] ?? '{}'), true);
-		if (is_array($crit)) foreach ($crit as $k => $v) if (is_string($k) && preg_match('/^\w{1,100}$/', $k) && is_scalar($v)) $hash[$k] = (string)$v;
-		if (nu_post('fmt') === 'xlsx') {                     // Excel of this layout (0.8.1324)
-			$xlsx = NuReportXlsx::build($report, $hash, $layout);
-			NuReportXlsx::send($xlsx, (string)($report['sre_code'] ?: 'report'));
-		}
-		$pdf = NuReport::pdf($report, $hash, $layout);
-	} catch (Throwable $e) {
-		error_log('nuBuilder Next report preview ' . $report['sre_code'] . ': ' . $e->getMessage());
-		$u = NuAuth::user();                                 // details (SQL, file paths) only for the globeadmin or with $nuConfigDebug
-		NuReport::fail(t('rpt_err_run', (string)$report['sre_code']) . (($u['globeadmin'] && empty($u['demo'])) || nu_debug() ? ' ' . $e->getMessage() : ''));
-	}
-	NuReport::send($pdf, (string)$report['sre_code']);
-}
-
-// ------------------------------------------------------------------ background actions (form data: action, layout)
-if (nu_is_post() && in_array(nu_post('action'), ['save', 'fields'], true)) {
-	$json = ['action' => nu_post('action'), 'layout' => (string)($_POST['layout'] ?? '')];
-	header('Content-Type: application/json; charset=utf-8');
-	$out = static function (array $d, int $status = 200): never { http_response_code($status); echo json_encode($d, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE); exit; };
-	try {
-		switch ((string)($json['action'] ?? '')) {
-			case 'save':
-				if (!$canSave) $out(['ok' => false, 'message' => t('err_forbidden')], 403);
-				$layout = NuReport::keepTypes(NuReport::layoutJson($json['layout'] ?? null), (string)$report['sre_layout']);
-				if ($layout !== (string)$report['sre_layout']) {
-					$db->update(NuReport::TABLE, ['sre_layout' => $layout], 'zzzzsys_report_id', $id);
-					NuLog::write('report_changed', NuReport::TABLE, $id, ['code' => (string)$report['sre_code'], 'fields' => ['sre_layout' => ['…', '…']]]);
-				}
-				$out(['ok' => true, 'layout' => json_decode($layout)]);
-			case 'fields':
-				$out(['ok' => true] + NuReport::fields((string)$report['sre_zzzzsys_php_id'], trim((string)$report['sre_zzzzsys_form_id'])));
-		}
-		$out(['ok' => false, 'message' => 'Unknown action'], 400);
-	} catch (Throwable $e) {
-		error_log('nuBuilder Next report designer ' . $report['sre_code'] . ': ' . $e->getMessage());
-		$u = NuAuth::user();
-		$out(['ok' => false, 'message' => ($u['globeadmin'] && empty($u['demo'])) || nu_debug() ? $e->getMessage() : t('err_unexpected')], 200);
-	}
-}
+['report' => $report, 'canSave' => $canSave, 'id' => $id]
+	= NuReportdesignerPage::post(get_defined_vars());   // the POST actions (code review R7, nureportdesignerpage.php)
 
 // ------------------------------------------------------------------ page
 $images = array_map(static fn($i) => ['code' => $i[0], 'description' => $i[1], 'url' => NuAcl::can(NuAcl::FORM_FILE) ? nu_url('files', ['raw' => $i[2]]) : ''], NuReport::images());
-$keys = ['save', 'saved', 'unsaved', 'undo', 'redo', 'zoom', 'grid', 'snap', 'preview', 'back', 'report', 'fields', 'insert', 'search', 'no_fields', 'fields_error',
+$keys = ['save', 'saved', 'unsaved', 'undo', 'redo', 'zoom', 'grid', 'snap', 'preview', 'back', 'report', 'fields', 'insert', 'search', 'no_fields', 'fields_error', 'canvas',
 	'add_field', 'add_label', 'add_box', 'add_line', 'add_image', 'align_left', 'align_center', 'align_right', 'align_top', 'align_middle', 'align_bottom',
 	'same_width', 'same_height', 'dist_h', 'dist_v', 'delete', 'duplicate', 'bring_front', 'send_back', 'props', 'nothing', 'selected_n',
 	'type', 'type_field', 'type_label', 'type_image', 'content_field', 'content_label', 'content_image', 'summary', 'sum_none', 'sum_sum', 'sum_avg',
@@ -101,7 +57,8 @@ nu_layout_start(t('rd_title') . ' · ' . $report['sre_code'], 'forms', ['head' =
 	<div class="rdLoading text-body-secondary small p-3"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span><?= h(t('loading')) ?></div>
 </div>
 <form method="post" action="<?= h(nu_url('reportdesigner', ['id' => $id])) ?>" target="rdPreviewFrame" id="rdPreviewForm" class="d-none">
-	<?= nu_csrf_field() ?><input type="hidden" name="action" value="preview"><input type="hidden" name="layout" value=""><input type="hidden" name="criteria" value="{}"><input type="hidden" name="fmt" value="">
+	<?= nu_csrf_field() ?><input type="hidden" name="action" value="preview"><input type="hidden" name="layout" value=""><input type="hidden"
+		name="criteria" value="{}"><input type="hidden" name="fmt" value="">
 </form>
 <div class="modal fade" id="rdPreviewModal" tabindex="-1" aria-hidden="true" aria-labelledby="rdPreviewTitle">
 	<div class="modal-dialog modal-xl modal-dialog-scrollable">

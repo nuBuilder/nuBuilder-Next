@@ -16,14 +16,14 @@ final class NuSchema
 			'pk' => 'zzzzsys_nunext_log_id',
 			'cols' => [['log_time', 'datetime'], ['user_id', 'text', '25'], ['login', 'text', '50'], ['ip', 'text', '45'],
 				['event', 'text', '40'], ['object', 'text', '100'], ['record_id', 'text', '100'], ['details', 'longtext']],
-			'index' => ['log_time', 'event', 'login', 'object'],   // + composite (object, record_id): ensureIndexes() (0.8.761)
+			'index' => ['log_time', 'event', 'login', 'object'],   // + composite (object, record_id): ensureIndexes()
 		],
 		'zzzzsys_nunext_form_history' => [
 			'pk' => 'zzzzsys_nunext_form_history_id',
 			'cols' => [['form_id', 'text', '25'], ['created_at', 'datetime'], ['login', 'text', '50'], ['action', 'text', '60'], ['snapshot', 'longtext']],
 			'index' => ['form_id'],
 		],
-		'zzzzsys_nunext_form_draft' => [                          // form drafts (0.8.386, core/form/nuformdraft.php)
+		'zzzzsys_nunext_form_draft' => [                          // form drafts (core/form/nuformdraft.php)
 			'pk' => 'zzzzsys_nunext_form_draft_id',
 			'cols' => [['form_id', 'text', '25'], ['changeset_id', 'text', '25'], ['status', 'text', '12'], ['note', 'text', '1000'],
 				['base_hash', 'text', '64'], ['base_snapshot', 'longtext'], ['snapshot', 'longtext'], ['undo_list', 'longtext'], ['redo_list', 'longtext'], ['rev', 'int'],
@@ -33,7 +33,7 @@ final class NuSchema
 				['published_at', 'datetime'], ['published_by', 'text', '50'], ['version', 'int'], ['history_id', 'text', '25']],
 			'index' => ['form_id', 'status'],
 		],
-		'zzzzsys_nunext_page' => [                                // form type "page" (0.8.387, core/nupage.php)
+		'zzzzsys_nunext_page' => [                                // form type "page" (core/nupage.php)
 			'pk' => 'zzzzsys_nunext_page_id',                  // = zzzzsys_form_id of the page form (one row per form)
 			'cols' => [['open_mode', 'text', '10'], ['iframe_height', 'text', '10'], ['settings', 'longtext'], ['tables_json', 'longtext'],
 				['csp', 'text', '2000'], ['note', 'longtext'], ['updated_at', 'datetime'], ['updated_by', 'text', '50']],
@@ -48,7 +48,7 @@ final class NuSchema
 			'pk' => 'zzzzsys_nunext_session_id',               // sha256 of the PHP session id
 			'cols' => [['user_id', 'text', '25'], ['login', 'text', '50'], ['display', 'text', '100'], ['via', 'text', '20'], ['ip', 'text', '45'],
 				['user_agent', 'text', '255'], ['login_at', 'datetime'], ['last_seen', 'datetime'],
-				['seen_ts', 'int']],                               // 0.8.1273: last_seen as Unix time – read by nuexternal.php (no time zone needed)
+				['seen_ts', 'int']],                               // last_seen as Unix time – read by nuexternal.php (no time zone needed)
 			'index' => ['last_seen', 'user_id'],                 // user_id: "online" of the users list (review B1)
 		],
 		'zzzzsys_nunext_token' => [
@@ -80,7 +80,7 @@ final class NuSchema
 			'cols' => [['setting_value', 'longtext'], ['updated_at', 'datetime'], ['updated_by', 'text', '50']],
 			'index' => [],
 		],
-		'zzzzsys_nunext_dashboard' => [                           // dashboards (0.8.298): start page per access level and HTML objects of forms
+		'zzzzsys_nunext_dashboard' => [                           // dashboards: start page per access level and HTML objects of forms
 			'pk' => 'zzzzsys_nunext_dashboard_id',
 			'cols' => [['code', 'text', '50'], ['title', 'text', '200'], ['description', 'text', '1000'], ['on_home', 'text', '1'], ['access', 'text', '4000'],
 				['date_range', 'text', '20'], ['sort_order', 'int'], ['updated_at', 'datetime'], ['updated_by', 'text', '50']],
@@ -92,7 +92,7 @@ final class NuSchema
 				['query', 'longtext'], ['options', 'longtext']],
 			'index' => ['dashboard_id'],
 		],
-		'zzzzsys_nunext_admin_role' => [                          // admin roles (0.8.323): a part of the globeadmin's rights (core/nuadmin.php)
+		'zzzzsys_nunext_admin_role' => [                          // admin roles: a part of the globeadmin's rights (core/nuadmin.php)
 			'pk' => 'zzzzsys_nunext_admin_role_id',
 			'cols' => [['code', 'text', '50'], ['name', 'text', '100'], ['description', 'text', '1000'], ['rights', 'text', '4000'], ['sort_order', 'int'],
 				['updated_at', 'datetime'], ['updated_by', 'text', '50']],
@@ -103,13 +103,13 @@ final class NuSchema
 			'cols' => [['role_id', 'text', '25'], ['updated_at', 'datetime'], ['updated_by', 'text', '50']],
 			'index' => ['role_id'],
 		],
-		'zzzzsys_nunext_list_view' => [                           // list views (0.8.329): layouts of nuBuilder Next's own lists (core/nulistview.php)
+		'zzzzsys_nunext_list_view' => [                           // list views: layouts of nuBuilder Next's own lists (core/nulistview.php)
 			'pk' => 'zzzzsys_nunext_list_view_id',
 			'cols' => [['list_key', 'text', '100'], ['scope', 'text', '10'], ['owner', 'text', '50'], ['name', 'text', '100'], ['access_ids', 'text', '4000'],
 				['definition', 'longtext'], ['sort_order', 'int'], ['updated_at', 'datetime'], ['updated_by', 'text', '50']],
 			'index' => ['list_key'],
 		],
-		'zzzzsys_nunext_audit' => [                               // audit trail (0.8.350, core/nuaudit.php): one row per changed column
+		'zzzzsys_nunext_audit' => [                               // audit trail (core/nuaudit.php): one row per changed column
 			'pk' => 'zzzzsys_nunext_audit_id',
 			'cols' => [['change_id', 'text', '25'], ['changed_at', 'datetime'], ['user_id', 'text', '25'], ['login', 'text', '50'], ['ip', 'text', '45'],
 				['action', 'text', '10'], ['source', 'text', '10'], ['table_name', 'text', '100'], ['record_id', 'text', '100'], ['form_id', 'text', '25'],
@@ -117,26 +117,26 @@ final class NuSchema
 				['old_value', 'text', '4000'], ['new_value', 'text', '4000']],
 			'index' => ['change_id', 'changed_at', 'table_name', 'record_id', 'parent_id', 'user_id', 'login'],
 		],
-		'zzzzsys_nunext_notification' => [                        // notification centre (0.8.357, core/nunotify.php)
+		'zzzzsys_nunext_notification' => [                        // notification centre (core/nunotify.php)
 			'pk' => 'zzzzsys_nunext_notification_id',
 			'cols' => [['title', 'text', '200'], ['body', 'text', '4000'], ['format', 'text', '10'], ['level', 'text', '10'], ['link', 'text', '1000'], ['audience', 'text', '4000'],
 				['mode', 'text', '10'], ['publish_at', 'datetime'], ['expires_at', 'datetime'], ['pinned', 'text', '1'], ['must_confirm', 'text', '1'], ['email', 'text', '1'],
 				['sent_mail_at', 'datetime'], ['status', 'text', '10'], ['created_at', 'datetime'], ['created_by', 'text', '50'], ['created_by_id', 'text', '25'], ['updated_at', 'datetime']],
 			'index' => ['status', 'publish_at', 'created_by_id'],
 		],
-		'zzzzsys_nunext_user_field' => [                          // custom user fields (0.8.454, core/nuuserfields.php); values: zzzzsys_nunext_user_ext
+		'zzzzsys_nunext_user_field' => [                          // custom user fields (core/nuuserfields.php); values: zzzzsys_nunext_user_ext
 			'pk' => 'zzzzsys_nunext_user_field_id',
 			'cols' => [['code', 'text', '64'], ['label', 'text', '200'], ['type', 'text', '20'], ['options', 'longtext'], ['required', 'text', '1'],
 				['is_unique', 'text', '1'], ['default_value', 'text', '1000'], ['hint', 'text', '1000'], ['edit_by', 'text', '20'], ['in_list', 'text', '1'],
 				['sort', 'int'], ['created_at', 'datetime'], ['created_by', 'text', '50'], ['updated_at', 'datetime'], ['updated_by', 'text', '50']],
 			'index' => ['code'],
 		],
-		'zzzzsys_nunext_recent' => [                              // side bar (0.8.460, core/nusidebar.php): pages / forms a user used last
+		'zzzzsys_nunext_recent' => [                              // side bar (core/nusidebar.php): pages / forms a user used last
 			'pk' => 'zzzzsys_nunext_recent_id',
 			'cols' => [['user_id', 'text', '25'], ['item', 'text', '100'], ['used_at', 'datetime'], ['stamp', 'text', '20']],   // stamp: YmdHis + microseconds (order)
 			'index' => ['user_id'],
 		],
-		'zzzzsys_nunext_webhook' => [                             // webhooks (0.8.715, core/nuwebhook.php): definitions
+		'zzzzsys_nunext_webhook' => [                             // webhooks (core/nuwebhook.php): definitions
 			'pk' => 'zzzzsys_nunext_webhook_id',
 			'cols' => [['name', 'text', '100'], ['active', 'text', '1'], ['forms', 'text', '4000'], ['events', 'text', '100'], ['url', 'text', '2000'],
 				['secret', 'text', '255'], ['fields', 'text', '2000'], ['template', 'longtext'], ['updated_at', 'datetime'], ['updated_by', 'text', '50']],
@@ -153,18 +153,18 @@ final class NuSchema
 			'cols' => [['call_id', 'text', '25'], ['tried_at', 'datetime'], ['attempt', 'int'], ['http_code', 'int'], ['ms', 'int'], ['error', 'text', '255'], ['response', 'text', '1000']],
 			'index' => ['call_id'],
 		],
-		'zzzzsys_nunext_passkey' => [                             // passkeys (0.8.877, core/nupasskey.php): pk = sha256 of the raw credential id
+		'zzzzsys_nunext_passkey' => [                             // passkeys (core/nupasskey.php): pk = sha256 of the raw credential id
 			'pk' => 'zzzzsys_nunext_passkey_id',
 			'cols' => [['user_id', 'text', '25'], ['cred_id', 'text', '1400'], ['public_key', 'longtext'], ['alg', 'int'], ['sign_count', 'bigint'],
 				['user_handle', 'text', '100'], ['name', 'text', '100'], ['aaguid', 'text', '36'], ['transports', 'text', '100'], ['backed_up', 'text', '1'],
 				['created_at', 'datetime'], ['last_used_at', 'datetime']],
 			'index' => ['user_id'],
 		],
-		'zzzzsys_nunext_permission_type' => [                     // types of permission items (0.8.773, core/nupermtype.php): pk = zzzzsys_permission_item_id
+		'zzzzsys_nunext_permission_type' => [                     // types of permission items (core/nupermtype.php): pk = zzzzsys_permission_item_id
 			'pk' => 'zzzzsys_nunext_permission_type_id',
 			'cols' => [['type', 'text', '30'], ['settings', 'longtext'], ['updated_at', 'datetime'], ['updated_by', 'text', '50']],
 		],
-		'zzzzsys_nunext_project' => [                             // projects (0.8.1035, core/nuproject.php)
+		'zzzzsys_nunext_project' => [                             // projects (core/nuproject.php)
 			'pk' => 'zzzzsys_nunext_project_id',
 			'cols' => [['code', 'text', '60'], ['name', 'text', '200'], ['description', 'text', '2000'], ['status', 'text', '20'], ['created_at', 'datetime'],
 				['created_by', 'text', '50'], ['updated_at', 'datetime'], ['updated_by', 'text', '50']],
@@ -188,26 +188,26 @@ final class NuSchema
 				['done_at', 'datetime'], ['done_by', 'text', '50'], ['notified_at', 'datetime']],
 			'index' => ['project_id', 'assignee'],
 		],
-		'zzzzsys_nunext_ai_provider' => [                         // AI providers (0.8.1099, core/nuaiprovider.php): configurations of AI services
+		'zzzzsys_nunext_ai_provider' => [                         // AI providers (core/nuaiprovider.php): configurations of AI services
 			'pk' => 'zzzzsys_nunext_ai_provider_id',
 			'cols' => [['name', 'text', '100'], ['kind', 'text', '20'], ['base_url', 'text', '500'], ['api_key', 'longtext'], ['model', 'text', '200'], ['temperature', 'text', '10'],
 				['max_tokens', 'int'], ['timeout', 'int'], ['system_text', 'longtext'], ['params', 'longtext'], ['active', 'text', '1'], ['access', 'text', '10'], ['levels', 'longtext'],
 				['password', 'text', '255'], ['pw_salt', 'text', '64'], ['month_limit', 'int'], ['updated_at', 'datetime'], ['updated_by', 'text', '100']],
 			'index' => [],
 		],
-		'zzzzsys_nunext_code_replace' => [                        // search and replace of the code search (0.8.1174, core/nucodesearch.php): one row per run, undo data
+		'zzzzsys_nunext_code_replace' => [                        // search and replace of the code search (core/nucodesearch.php): one row per run, undo data
 			'pk' => 'zzzzsys_nunext_code_replace_id',
 			'cols' => [['created_at', 'datetime'], ['login', 'text', '50'], ['search', 'text', '1000'], ['replace_with', 'text', '1000'], ['part_count', 'int'], ['line_count', 'int'],
 				['changes', 'longtext'], ['undone_at', 'datetime'], ['undone_by', 'text', '50']],
 			'index' => ['created_at'],
 		],
-		'zzzzsys_nunext_recycle' => [                             // recycle bin (0.8.1325, core/nurecycle.php): deleted records of forms that keep them
+		'zzzzsys_nunext_recycle' => [                             // recycle bin (core/nurecycle.php): deleted records of forms that keep them
 			'pk' => 'zzzzsys_nunext_recycle_id',
 			'cols' => [['form_id', 'text', '25'], ['form_code', 'text', '100'], ['table_name', 'text', '100'], ['record_id', 'text', '100'], ['title', 'text', '300'],
 				['data', 'longtext'], ['sub_rows', 'int'], ['deleted_by', 'text', '25'], ['deleted_by_name', 'text', '100'], ['deleted_at', 'datetime'], ['expires_at', 'datetime']],
 			'index' => ['form_id', 'expires_at'],
 		],
-		'zzzzsys_nunext_opened' => [                              // "Last opened" of the code lists (0.8.1117, core/nuopened.php): one row per person and object
+		'zzzzsys_nunext_opened' => [                              // "Last opened" of the code lists (core/nuopened.php): one row per person and object
 			'pk' => 'zzzzsys_nunext_opened_id',
 			'cols' => [['user_id', 'text', '50'], ['kind', 'text', '20'], ['ref', 'text', '60'], ['opened_at', 'datetime']],
 			'index' => ['user_id', 'opened_at'],
@@ -218,43 +218,43 @@ final class NuSchema
 				['ms', 'int'], ['status', 'text', '10'], ['error', 'text', '300'], ['created_at', 'datetime']],
 			'index' => ['provider_id', 'created_at'],
 		],
-		'zzzzsys_nunext_report_version' => [                      // earlier layouts of a report (0.8.1097, NuReportSpec: kept before an AI change / a restore)
+		'zzzzsys_nunext_report_version' => [                      // earlier layouts of a report (NuReportSpec: kept before an AI change / a restore)
 			'pk' => 'zzzzsys_nunext_report_version_id',
 			'cols' => [['report_id', 'text', '25'], ['saved_at', 'datetime'], ['saved_by', 'text', '50'], ['reason', 'text', '20'], ['note', 'text', '200'],
 				['source', 'text', '60'], ['layout', 'longtext']],
 			'index' => ['report_id'],
 		],
-		'zzzzsys_nunext_help' => [                                // user help pages (0.8.1023, core/nuuserhelp.php): lang '' = the page, else a translation
+		'zzzzsys_nunext_help' => [                                // user help pages (core/nuuserhelp.php): lang '' = the page, else a translation
 			'pk' => 'zzzzsys_nunext_help_id',
 			'cols' => [['code', 'text', '60'], ['lang', 'text', '10'], ['title', 'text', '200'], ['body', 'longtext'], ['format', 'text', '10'], ['parent', 'text', '60'],
 				['sort_order', 'int'], ['access', 'text', '2000'], ['keywords', 'text', '500'], ['active', 'text', '1'], ['created_at', 'datetime'],
 				['updated_at', 'datetime'], ['updated_by', 'text', '50']],
 			'index' => ['code'],
 		],
-		'zzzzsys_nunext_export' => [                              // data export (0.8.758, core/nudataexport.php): saved exports
+		'zzzzsys_nunext_export' => [                              // data export (core/nudataexport.php): saved exports
 			'pk' => 'zzzzsys_nunext_export_id',
 			'cols' => [['code', 'text', '50'], ['name', 'text', '100'], ['description', 'text', '1000'], ['format', 'text', '10'], ['filename', 'text', '100'],
 				['options', 'longtext'], ['datasets', 'longtext'], ['created_by', 'text', '50'], ['created_at', 'datetime'], ['updated_by', 'text', '50'],
 				['updated_at', 'datetime'], ['last_run_at', 'datetime'], ['runs', 'int']],
 			'index' => ['code'],
 		],
-		'zzzzsys_nunext_theme' => [                               // themes (0.8.632, core/nutheme.php): own themes; the five built-in ones are in the code
+		'zzzzsys_nunext_theme' => [                               // themes (core/nutheme.php): own themes; the five built-in ones are in the code
 			'pk' => 'zzzzsys_nunext_theme_id',
 			'cols' => [['name', 'text', '100'], ['base', 'text', '25'], ['vals', 'longtext'], ['updated_at', 'datetime'], ['updated_by', 'text', '50']],
 		],
-		'zzzzsys_nunext_user_access' => [                         // additional access levels per user (0.8.585, core/nuuseraccess.php)
+		'zzzzsys_nunext_user_access' => [                         // additional access levels per user (core/nuuseraccess.php)
 			'pk' => 'zzzzsys_nunext_user_access_id',
 			'cols' => [['user_id', 'text', '25'], ['access_id', 'text', '25'], ['valid_until', 'text', '10'], ['updated_at', 'datetime'], ['updated_by', 'text', '50']],
 			'index' => ['user_id', 'access_id'],
 		],
-		'zzzzsys_nunext_object_access' => [                       // field data access (0.8.480, core/nufieldaccess.php): default mode + rules per object
+		'zzzzsys_nunext_object_access' => [                       // field data access (core/nufieldaccess.php): default mode + rules per object
 			'pk' => 'zzzzsys_nunext_object_access_id',
 			'cols' => [['noa_object_id', 'text', '25'], ['noa_form_id', 'text', '25'], ['noa_subject_type', 'text', '10'], ['noa_subject', 'text', '100'],
 				['noa_mode', 'text', '4'], ['noa_mask', 'text', '50'], ['noa_condition', 'text', '1000'], ['noa_note', 'text', '500'],
 				['updated_at', 'datetime'], ['updated_by', 'text', '50']],
 			'index' => ['noa_object_id', 'noa_form_id'],
 		],
-		'zzzzsys_nunext_presence' => [                            // concurrent edits (0.8.401, core/form/nuconflict.php): who has which record open
+		'zzzzsys_nunext_presence' => [                            // concurrent edits (core/form/nuconflict.php): who has which record open
 			'pk' => 'zzzzsys_nunext_presence_id',
 			'cols' => [['form_id', 'text', '25'], ['record_id', 'text', '100'], ['user_id', 'text', '25'], ['login', 'text', '50'], ['name', 'text', '100'],
 				['edited', 'text', '1'], ['opened_at', 'datetime'], ['seen_at', 'datetime']],
@@ -274,7 +274,7 @@ final class NuSchema
 		],
 	];
 
-	/** Set by the globeadmin's sign-in and the installer: this request may create the own tables (0.8.462, gap analysis B2). */
+	/** Set by the globeadmin's sign-in and the installer: this request may create the own tables (gap analysis B2). */
 	private static bool $allowed = false;
 	private static ?bool $present = null;
 
@@ -295,7 +295,7 @@ final class NuSchema
 	}
 
 	/**
-	 * May this request change the database structure? (0.8.462, B2) Copying nuBuilder Next next to a live nuBuilder must not change
+	 * May this request change the database structure? (B2) Copying nuBuilder Next next to a live nuBuilder must not change
 	 * its database: the own tables are created by the installer, nucron.php or the globeadmin's first sign-in – never by an anonymous
 	 * request (login page, failed login, public links). Once
 	 * they exist, signed-in requests apply the database steps of an update, as before.
@@ -304,14 +304,14 @@ final class NuSchema
 	{
 		if (self::$allowed || PHP_SAPI === 'cli') return true;
 		if (!self::present()) return false;
-		return !empty($_SESSION['nu_auth']['id']);
+		return !empty($_SESSION[NuSess::AUTH]['id']);
 	}
 
 	public static function ensure(): void
 	{
 		static $done = false;
 		if ($done) return;
-		if (($_SESSION['nu_schema'] ?? 0) === self::VERSION . '/' . NU_VERSION) { $done = true; return; }
+		if (($_SESSION[NuSess::SCHEMA] ?? 0) === self::VERSION . '/' . NU_VERSION) { $done = true; return; }
 		if (!self::mayChange()) return;                   // asked again later in this request (e.g. after the globeadmin's sign-in)
 		$done = true;
 
@@ -321,10 +321,10 @@ final class NuSchema
 		} catch (Throwable $e) {
 			error_log('nuBuilder Next migration: ' . $e->getMessage());
 		}
-		$_SESSION['nu_schema'] = self::VERSION . '/' . NU_VERSION;
+		$_SESSION[NuSess::SCHEMA] = self::VERSION . '/' . NU_VERSION;
 	}
 
-	/** Definitions of nuBuilder Next's own tables (install/db_changes.json of a package, 0.8.346). */
+	/** Definitions of nuBuilder Next's own tables (install/db_changes.json of a package). */
 	public static function definitions(): array
 	{
 		return self::TABLES;
@@ -333,7 +333,7 @@ final class NuSchema
 	private const HASH_PK = ['zzzzsys_nunext_token', 'zzzzsys_nunext_session', 'zzzzsys_nunext_api_token', 'zzzzsys_nunext_api_rate', 'zzzzsys_nunext_passkey'];
 
 	/**
-	 * Indexes added after a table existed (0.8.761, step 0031 and every create()): single columns of TABLES 'index' that are missing, and the
+	 * Indexes added after a table existed (step 0031 and every create()): single columns of TABLES 'index' that are missing, and the
 	 * composite (object, record_id) of the log – the record info (Created / Last changed) and the log's filters read it.
 	 */
 	public static function ensureIndexes(): void
@@ -380,7 +380,7 @@ final class NuSchema
 	{
 		$t = NuDDL::sqlType((string)$c[1], (string)($c[2] ?? ''));
 		$col = NuDB::ident((string)$c[0]);
-		return nu_db()->type === 'sqlsrv' ? 'ALTER TABLE ' . NuDB::ident($table) . " ADD $col $t NULL" : 'ALTER TABLE ' . NuDB::ident($table) . " ADD COLUMN $col $t NULL";
+		return nu_db()->addColumnSql(NuDB::ident($table), $col, "$t NULL");
 	}
 
 	/** Columns of $def that $table does not have yet. @return list<array> */
@@ -390,7 +390,7 @@ final class NuSchema
 		return array_values(array_filter((array)$def['cols'], static fn($c) => !isset($have[strtolower((string)$c[0])])));
 	}
 
-	/** Creates missing tables and, since 0.8.346, adds missing columns to existing ones. Safe to repeat. */
+	/** Creates missing tables and,, adds missing columns to existing ones. Safe to repeat. */
 	public static function create(): void
 	{
 		$db = nu_db();
@@ -409,7 +409,7 @@ final class NuSchema
 				if (!$db->tableExists($table)) throw $e;   // created concurrently by another request
 			}
 		}
-		self::ensureIndexes();                                     // indexes added later to existing tables (0.8.761)
+		self::ensureIndexes();                                     // indexes added later to existing tables
 	}
 }
 
@@ -440,7 +440,7 @@ final class NuLog
 
 	/**
 	 * Field changes between two rows: ['field' => [old, new]] (values shortened). Passwords, keys, tokens and password hashes
-	 * are written as ••• (0.8.207) – the log keeps that they changed, not the values.
+	 * are written as ••• – the log keeps that they changed, not the values.
 	 */
 	public static function diff(array $old, array $new): array
 	{
@@ -556,7 +556,7 @@ final class NuBuilderLib
 
 	/**
 	 * Folder with css/all.min.css: $nuConfigFontAwesomePath, else <nuBuilder>/third_party/fontawesome (the same icons as nuBuilder), else
-	 * the copy bundled with nuBuilder Next (vendor/bundled/fontawesome-<version>, 0.8.409).
+	 * the copy bundled with nuBuilder Next (vendor/bundled/fontawesome-<version>).
 	 */
 	public static function fontAwesomeDir(): ?string
 	{
@@ -582,7 +582,7 @@ final class NuBuilderLib
 
 /**
  * Client IP: REMOTE_ADDR; with $nuConfigTrustProxy the *last* X-Forwarded-For entry – the one the proxy added. The first entries
- * come from the client and can be anything (before 0.8.207 the first one was used).
+ * come from the client and can be anything.
  */
 function nu_client_ip(): string
 {

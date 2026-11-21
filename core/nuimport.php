@@ -13,11 +13,11 @@ defined('NU_ROOT') || exit;
  */
 final class NuImport
 {
-	public const SESSION = 'nu_import';
+	public const SESSION = NuSess::IMPORT;
 	public const MAX_ROWS = 200000;
 	public const MAX_ERRORS = 300;
 	public const DELIMITERS = [',' => 'comma', ';' => 'semicolon', "\t" => 'tab', '|' => 'pipe'];
-	/** Users (0.8.327): a target of its own – the same checks as the user form, never a plain write into zzzzsys_user. */
+	/** Users: a target of its own – the same checks as the user form, never a plain write into zzzzsys_user. */
 	public const USERS = 'zzzzsys_user';
 
 	// ------------------------------------------------------------------ file
@@ -46,7 +46,7 @@ final class NuImport
 	{
 		$s = $_SESSION[self::SESSION] ?? null;
 		if (is_array($s) && is_file((string)($s['file'] ?? ''))) @unlink((string)$s['file']);
-		if (is_array($s) && is_file((string)($s['src'] ?? ''))) @unlink((string)$s['src']);       // the spreadsheet itself (0.8.755)
+		if (is_array($s) && is_file((string)($s['src'] ?? ''))) @unlink((string)$s['src']);       // the spreadsheet itself
 		unset($_SESSION[self::SESSION]);
 	}
 
@@ -58,7 +58,7 @@ final class NuImport
 		}
 		if ((int)$f['size'] > self::maxBytes()) throw new RuntimeException(t('imp_err_size', self::maxBytes() >> 20));
 		$ext = strtolower(pathinfo((string)$f['name'], PATHINFO_EXTENSION));
-		if (in_array($ext, NuSpreadsheet::EXTS, true)) return self::uploadSheet($f, $ext);   // Excel / OpenDocument (0.8.755)
+		if (in_array($ext, NuSpreadsheet::EXTS, true)) return self::uploadSheet($f, $ext);   // Excel / OpenDocument
 		if (!in_array($ext, ['csv', 'txt', 'tsv', 'tab'], true)) throw new RuntimeException(t(NuSpreadsheet::available() ? 'imp_err_type_xlsx' : 'imp_err_type'));
 		$raw = (string)file_get_contents((string)$f['tmp_name']);
 		if (str_contains(substr($raw, 0, 4096), "\0") && !preg_match('/^(\xFF\xFE|\xFE\xFF)/', $raw)) throw new RuntimeException(t('imp_err_type'));
@@ -77,11 +77,11 @@ final class NuImport
 		return $info;
 	}
 
-	/** An Excel / OpenDocument file (0.8.755): kept as it is, its first sheet written as CSV – the rest of the import reads that CSV. */
+	/** An Excel / OpenDocument file: kept as it is, its first sheet written as CSV – the rest of the import reads that CSV. */
 	private static function uploadSheet(array $f, string $ext): array
 	{
 		if (!NuSpreadsheet::available()) throw new RuntimeException(NuSpreadsheet::problem());
-		$max = min(self::maxBytes(), NuSpreadsheet::maxBytes($ext));   // the sheet itself is checked against the memory when it is read (0.8.1094)
+		$max = min(self::maxBytes(), NuSpreadsheet::maxBytes($ext));   // the sheet itself is checked against the memory when it is read
 		if ((int)$f['size'] > $max) throw new RuntimeException(t($max < self::maxBytes() ? 'pss_err_xls_size' : 'imp_err_size', max(1, $max >> 20)));
 		self::discard();
 		$src = self::dir() . '/' . bin2hex(random_bytes(16)) . '.' . $ext;
@@ -228,7 +228,7 @@ final class NuImport
 	}
 
 	/**
-	 * Tables of the user's active permission items of type "Data import" (0.8.773): table => ['add' => bool, 'update' => bool, 'items' => [idents]]
+	 * Tables of the user's active permission items of type "Data import": table => ['add' => bool, 'update' => bool, 'items' => [idents]]
 	 * – the union of all items. Not while acting as another user (the import page is refused then anyway).
 	 */
 	public static function itemRules(): array
@@ -506,7 +506,7 @@ final class NuImport
 			return self::runUsers($read, $mapIn, $opt, $dryRun);
 		}
 		$cols = self::columns($table);
-		if (!in_array($opt['mode'], self::modesFor($table), true)) throw new RuntimeException(t('imp_err_mode'));   // permission items: add / update (0.8.773)
+		if (!in_array($opt['mode'], self::modesFor($table), true)) throw new RuntimeException(t('imp_err_mode'));   // permission items: add / update
 		$prev = self::preview($read);
 		$map = self::mapping($mapIn, $cols, count($prev['headers']));
 		if (!$map) throw new RuntimeException(t('imp_err_nomap'));
@@ -529,7 +529,7 @@ final class NuImport
 			return $row;
 		};
 
-		// nuBuilder's <table>_nulog (0.8.349): added on insert, edited after a changing update; a mapped value for it is ignored
+		// nuBuilder's <table>_nulog: added on insert, edited after a changing update; a mapped value for it is ignored
 		$nlCol = isset($cols[$table . '_nulog']) ? $table . '_nulog' : null;
 		$nulog = static function (array $row, ?string $key) use ($nlCol, $db, $table, $opt): array {
 			if ($nlCol === null) return $row;
@@ -543,7 +543,7 @@ final class NuImport
 		};
 		$keys = [];                                                  // keys already seen in this file (update / upsert)
 
-		// audit trail (0.8.350): one change for the whole import, rows of a dry run or a rolled back import go with the transaction
+		// audit trail: one change for the whole import, rows of a dry run or a rolled back import go with the transaction
 		$pkCol = null;
 		foreach ($cols as $c) if ($c['pk']) { $pkCol = $c['name']; break; }
 		$auditOn = !$dryRun && NuAudit::on() && NuAudit::audited($table);
@@ -553,7 +553,7 @@ final class NuImport
 			NuAudit::record('insert', $table, (string)($row[$pkCol] ?? ($cols[$pkCol]['auto'] ? $db->lastInsertId() : '')), [], $row, $actx);
 		};
 		if ($auditOn) NuAudit::begin();
-		// webhooks (0.8.715): forms on this table with a webhook – one call per imported / changed row, queued with the row's savepoint
+		// webhooks: forms on this table with a webhook – one call per imported / changed row, queued with the row's savepoint
 		$whForms = !$dryRun ? NuWebhook::formsOfTable($table) : [];
 		$whKey = $pkCol ?? $opt['key'];
 		$webhook = static function (string $event, string $k, array $before = []) use ($whForms, $db, $table, $whKey): void {
@@ -573,7 +573,7 @@ final class NuImport
 				$res['rows']++;
 				$row = []; $bad = false;
 				foreach ($map as $col => $m) {
-					if ($m['src'] === 'nuid') { $row[$col] = nu_new_key($cols[$col] ?? null); continue; }   // UUID for a 36-character key (0.8.622)
+					if ($m['src'] === 'nuid') { $row[$col] = nu_new_key($cols[$col] ?? null); continue; }   // UUID for a 36-character key
 					$raw = $m['src'] === 'csv' ? ($r[$m['idx']] ?? '') : $m['value'];
 					[$v, $e] = self::convert($raw, $cols[$col], $opt, $m['fmt'] ?? '');
 					if ($e !== null) { $addError($line, $col, $raw, $e); $bad = true; continue; }
@@ -591,7 +591,7 @@ final class NuImport
 					continue;
 				}
 				try {
-					$pdo->exec($db->type === 'sqlsrv' ? 'SAVE TRANSACTION nu_row' : 'SAVEPOINT nu_row');   // one failed row does not spoil the others
+					$pdo->exec($db->savepointSql('nu_row'));   // one failed row does not spoil the others
 					if ($opt['mode'] === 'insert') {
 						$db->insert($table, $ins = $nulog($audit($row, true), null));
 						$insId = $insKey($ins);
@@ -625,7 +625,7 @@ final class NuImport
 					}
 					if ($db->type !== 'sqlsrv') $pdo->exec('RELEASE SAVEPOINT nu_row');
 				} catch (PDOException $e) {
-					$pdo->exec($db->type === 'sqlsrv' ? 'ROLLBACK TRANSACTION nu_row' : 'ROLLBACK TO SAVEPOINT nu_row');
+					$pdo->exec($db->rollbackToSql('nu_row'));
 					$addError($line, '', '', self::dbMessage($e));
 					$res['failed']++;
 					if ($opt['on_error'] === 'stop' && !$dryRun) break;
@@ -648,7 +648,7 @@ final class NuImport
 		return $res;
 	}
 
-	// ------------------------------------------------------------------ users (0.8.327)
+	// ------------------------------------------------------------------ users
 
 	/** Access levels a user may be given here: code => id (restricted: no admin-equivalent levels, as in the user form). */
 	public static function userLevels(): array
@@ -674,13 +674,13 @@ final class NuImport
 		foreach (['sus_first_name' => [30, 'user_first_name'], 'sus_last_name' => [30, 'user_last_name'], 'sus_email' => [255, 'user_email'],
 			'sus_code' => [50, 'user_code'], 'sus_position' => [50, 'user_position'], 'sus_department' => [50, 'user_department'], 'sus_team' => [50, 'user_team'],
 			'sus_additional1' => [100, 'user_additional1'], 'sus_additional2' => [100, 'user_additional2']] as $n => [$len, $label])
-			// a renamed field (0.8.798, nu_user_label) still maps files with the built-in title
+			// a renamed field (nu_user_label) still maps files with the built-in title
 			$out[$n] = $col($n, t($label), $len, false, 'text', nu_user_label($label) !== '' ? ['alias' => nu_text($label)] : []);
 		$out['access_level']   = $col('access_level', t('imp_u_access'), 0, true, 'text', ['choices' => array_keys(self::userLevels())]);
 		$out['sus_language']   = $col('sus_language', t('user_language') . ' · ' . t('imp_u_lang_hint'), 0);
 		$out['sus_expires_on'] = $col('sus_expires_on', t('user_expires'), 0, false, 'date');
 		$out['password']       = $col('password', t('imp_u_password'), 72, false, 'text', ['secret' => true]);
-		foreach (NuUserFields::editable('import') as $code => $f) {    // custom user fields (0.8.454): uf_<code>
+		foreach (NuUserFields::editable('import') as $code => $f) {    // custom user fields: uf_<code>
 			$max = NuUserFields::TYPES[(string)$f['type']][2];
 			$out['uf_' . $code] = $col('uf_' . $code, NuUserFields::label($f), $max, (string)$f['required'] === '1', (string)$f['type'] === 'date' ? 'date' : 'text');
 		}
@@ -694,7 +694,7 @@ final class NuImport
 			'sus_last_name' => t('user_last_name'), 'sus_email' => t('user_email'), 'access_level' => t('access_level'), 'sus_code' => t('user_code'),
 			'sus_position' => t('user_position'), 'sus_department' => t('user_department'), 'sus_team' => t('user_team'), 'sus_additional1' => t('user_additional1'),
 			'sus_additional2' => t('user_additional2'), 'sus_language' => t('user_language'), 'sus_expires_on' => t('user_expires'), 'password' => t('login_password')]
-			+ array_combine(array_map(static fn($c) => 'uf_' . $c, array_keys(NuUserFields::editable('import'))), array_map([NuUserFields::class, 'label'], NuUserFields::editable('import')));   // 0.8.454
+			+ array_combine(array_map(static fn($c) => 'uf_' . $c, array_keys(NuUserFields::editable('import'))), array_map([NuUserFields::class, 'label'], NuUserFields::editable('import')));
 	}
 
 	/** CSV template of the user import: header row only, separator $nuConfigCSVSeparator (default ;), UTF-8 with BOM for Excel. */
@@ -706,7 +706,7 @@ final class NuImport
 		return "\xEF\xBB\xBF" . implode($sep, array_map($q, array_values(self::userLabels()))) . "\r\n";
 	}
 
-	/** Text of readme.txt in the template ZIP of the user import (0.8.752): every column – required or not, what to enter – in the UI language. */
+	/** Text of readme.txt in the template ZIP of the user import: every column – required or not, what to enter – in the UI language. */
 	public static function userReadme(string $csvName): string
 	{
 		$sep = (string)(nu_cfg('nuConfigCSVSeparator') ?: ';');
@@ -761,7 +761,7 @@ final class NuImport
 		return "\xEF\xBB\xBF" . implode("\r\n", $out) . "\r\n";
 	}
 
-	/** The template download (0.8.752): a ZIP with the CSV and readme.txt; null without ZipArchive (then the CSV alone). */
+	/** The template download: a ZIP with the CSV and readme.txt; null without ZipArchive (then the CSV alone). */
 	public static function userTemplateZip(): ?string
 	{
 		if (!class_exists('ZipArchive')) return null;
@@ -796,6 +796,9 @@ final class NuImport
 	/**
 	 * User import: only new logins (existing ones are skipped and listed), the checks of the user form, passwords hashed with "change at
 	 * next login"; rows without password get a random one and – option "welcome" – the welcome e-mail with the link to set one.
+	 * Steps (code review L4): the mapping, the context (levels, existing logins …), every row checked (checkUserRow – nothing written yet:
+	 * zzzzsys_user is often MyISAM, where a transaction cannot be rolled back), the rows written (writeUsers), then per new user its
+	 * language variant, custom fields, log and welcome e-mail (afterUsers).
 	 */
 	private static function runUsers(array $read, array $mapIn, array $opt, bool $dryRun): array
 	{
@@ -803,131 +806,154 @@ final class NuImport
 		$map = self::mapping($mapIn, $cols, count(self::preview($read)['headers']));
 		if (!$map) throw new RuntimeException(t('imp_err_nomap'));
 		foreach (['sus_login_name', 'access_level'] as $c) if (!isset($map[$c])) throw new RuntimeException(t('imp_err_unmapped', $c));
-		if (!isset($map['sus_name']) && !isset($map['sus_first_name']) && !isset($map['sus_last_name'])) throw new RuntimeException(t('imp_err_unmapped', 'sus_name'));
-		$welcome = $opt['welcome'] && NuMail::configured();
-
-		$db = nu_db();
-		$levels = array_change_key_case(self::userLevels(), CASE_LOWER);
-		$allLevels = [];
-		foreach (NuAcl::levels() as $a) {
-			$allLevels[strtolower((string)$a['sal_code'])] = $allLevels[strtolower((string)$a['zzzzsys_access_id'])] = (string)$a['zzzzsys_access_id'];
+		if (!isset($map['sus_name']) && !isset($map['sus_first_name']) && !isset($map['sus_last_name'])) {
+			throw new RuntimeException(t('imp_err_unmapped', 'sus_name'));
 		}
-		$existing = [];
-		foreach ($db->all('SELECT sus_login_name FROM zzzzsys_user') as $u) $existing[mb_strtolower((string)$u['sus_login_name'])] = true;
-		$ga = mb_strtolower((string)nu_cfg('nuConfigDBGlobeadminUsername'));
-		$min = NuPwPolicy::minLength();
 		$opt['empty'] = 'null';
-
+		$ctx = self::userContext($opt);
 		$res = ['inserted' => 0, 'updated' => 0, 'unchanged' => 0, 'failed' => 0, 'rows' => 0, 'errors' => [], 'rolled_back' => false,
 			'skipped' => 0, 'skipped_logins' => [], 'welcome' => 0, 'welcome_failed' => 0, 'random' => 0];
-		$addError = static function (int $line, string $col, string $value, string $msg) use (&$res): void {
-			if (count($res['errors']) < self::MAX_ERRORS) $res['errors'][] = ['line' => $line, 'column' => $col, 'value' => mb_strimwidth($value, 0, 80, '…'), 'message' => $msg];
-		};
-		$seen = []; $ufSeen = []; $codeSeen = [];                   // logins / unique custom field values / user codes of this file
-		$created = [];                                               // [id, login, row, password given, welcome]
 
-		// 1. check every row (nothing is written: zzzzsys_user is often MyISAM, where a transaction cannot be rolled back)
+		// 1. check every row
+		$file = ['logins' => [], 'codes' => [], 'unique' => []];      // logins / user codes / unique custom field values of this file
 		$rows = [];
 		$first = true;
 		foreach (self::rows($read) as [$line, $r]) {
 			if ($first && $read['header']) { $first = false; continue; }
 			$first = false;
 			$res['rows']++;
-			$v = []; $bad = false; $code = ''; $pw = ''; $lang = ['', '']; $ufv = [];
-			foreach ($map as $col => $m) {
-				$raw = $m['src'] === 'csv' ? ($r[$m['idx']] ?? '') : $m['value'];
-				if ($col === 'password') { $v[$col] = $raw; continue; }            // as typed (no trimming)
-				[$val, $e] = self::convert($raw, $cols[$col], $opt, $m['fmt'] ?? '');
-				if ($e !== null) { $addError($line, $col, $raw, $e); $bad = true; continue; }
-				$v[$col] = $val === self::SKIP || $val === null ? '' : (string)$val;
+			$c = self::checkUserRow($line, $r, $map, $cols, $opt, $ctx, $file);
+			if ($c['skip']) {                                          // the login exists already: skipped, listed
+				$res['skipped']++;
+				if (count($res['skipped_logins']) < self::MAX_ERRORS) $res['skipped_logins'][] = ['line' => $line, 'login' => $c['login']];
+				continue;
 			}
-			$login = (string)($v['sus_login_name'] ?? '');
-			$lk = mb_strtolower($login);
-			if (!$bad) {
-				if ($login === '') { $addError($line, 'sus_login_name', '', t('err_required')); $bad = true; }
-				elseif ($lk === $ga) { $addError($line, 'sus_login_name', $login, t('user_err_globeadmin_name')); $bad = true; }
-				elseif (isset($existing[$lk])) {                              // already there: skipped, listed
-					$res['skipped']++;
-					if (count($res['skipped_logins']) < self::MAX_ERRORS) $res['skipped_logins'][] = ['line' => $line, 'login' => $login];
-					continue;
-				}
-				elseif (isset($seen[$lk])) { $addError($line, 'sus_login_name', $login, t('imp_err_dupkey', $seen[$lk])); $bad = true; }
-				else $seen[$lk] = $line;
-			}
-			$accCode = '';
-			if (!$bad) {
-				if (($v['sus_name'] ?? '') === '') $v['sus_name'] = mb_substr(trim(($v['sus_first_name'] ?? '') . ' ' . ($v['sus_last_name'] ?? '')), 0, 50);
-				if ($v['sus_name'] === '') { $addError($line, 'sus_name', '', t('err_required')); $bad = true; }
-				$uc = trim((string)($v['sus_code'] ?? ''));                       // user code: unique (0.8.626), also within the file
-				if ($uc !== '') {
-					$ucK = mb_strtolower($uc);
-					if (($owner = NuAuth::userCodeOwner($uc)) !== null) { $addError($line, 'sus_code', $uc, t('user_err_code_taken', $owner['name'])); $bad = true; }
-					elseif (isset($codeSeen[$ucK])) { $addError($line, 'sus_code', $uc, t('imp_err_dupkey', $codeSeen[$ucK])); $bad = true; }
-					else $codeSeen[$ucK] = $line;
-				}
-				$email = (string)($v['sus_email'] ?? '');
-				if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) { $addError($line, 'sus_email', $email, t('user_err_email')); $bad = true; }
-				$accCode = mb_strtolower((string)($v['access_level'] ?? ''));
-				if ($accCode === '') { $addError($line, 'access_level', '', t('err_required')); $bad = true; }
-				elseif (!isset($allLevels[$accCode])) { $addError($line, 'access_level', (string)$v['access_level'], t('imp_u_err_access')); $bad = true; }
-				elseif (!isset($levels[$accCode]) && !in_array($allLevels[$accCode], $levels, true)) { $addError($line, 'access_level', (string)$v['access_level'], t('secchk_err_admin_level')); $bad = true; }
-				$lang = ['', ''];
-				if (($v['sus_language'] ?? '') !== '') {
-					$lang = self::userLanguage($v['sus_language']);
-					if (!$lang) { $addError($line, 'sus_language', $v['sus_language'], t('imp_u_err_lang')); $bad = true; $lang = ['', '']; }
-				}
-				$pw = (string)($v['password'] ?? '');
-				if ($pw !== '') {
-					if (mb_strlen($pw) < $min) { $addError($line, 'password', '***', t('pw_err_min', $min)); $bad = true; }
-					elseif (strlen($pw) > 72) { $addError($line, 'password', '***', t('err_too_long', 72)); $bad = true; }
-				} elseif ($welcome && $email === '') { $addError($line, 'sus_email', '', t('welcome_err_email')); $bad = true; }
-				// custom user fields (0.8.454): checked like in the user form; unique also within the file
-				$ufv = [];
-				foreach (NuUserFields::editable('import') as $code => $f) {
-					if (!isset($cols['uf_' . $code]) || !array_key_exists('uf_' . $code, $v)) continue;
-					$x = (string)$v['uf_' . $code];
-					$err = NuUserFields::checkValue($f, $x, '');
-					if ($err === null && $x !== '' && (string)$f['is_unique'] === '1') {
-						$k = $code . "\x1f" . mb_strtolower($x);
-						if (isset($ufSeen[$k])) $err = t('imp_err_dupkey', $ufSeen[$k]); else $ufSeen[$k] = $line;
-					}
-					if ($err !== null) { $addError($line, 'uf_' . $code, $x, $err); $bad = true; continue; }
-					if ($x !== '') $ufv[$code] = $x;
-				}
-			}
-			if ($bad) {
+			if ($c['errors']) {
+				foreach ($c['errors'] as [$col, $value, $msg]) self::userError($res, $line, $col, $value, $msg);
 				$res['failed']++;
 				continue;
 			}
-			$id = nu_id();
-			$row = ['zzzzsys_user_id' => $id, 'sus_zzzzsys_access_id' => $allLevels[$accCode]];
-			foreach (['sus_name', 'sus_first_name', 'sus_last_name', 'sus_email', 'sus_code', 'sus_position', 'sus_department', 'sus_team', 'sus_additional1', 'sus_additional2'] as $c) {
-				$row[$c] = ($v[$c] ?? '') === '' ? null : $v[$c];
-			}
-			$row['sus_language'] = $lang[0] === '' ? null : $lang[0];
-			$row['sus_login_name'] = $login;
-			$row['sus_expires_on'] = ($v['sus_expires_on'] ?? '') === '' ? null : $db->datetime($v['sus_expires_on']);
-			$row['sus_change_password'] = '1';                          // own password at the first login
-			$row['sus_accessibility_features'] = '0';
-			$sendWelcome = $pw === '' && $welcome;
-			$rows[] = [$row, $pw, $sendWelcome, $lang[1], $line, $ufv];
+			$rows[] = [$c['row'], $c['pw'], $c['pw'] === '' && $ctx['welcome'], $c['variant'], $line, $c['ufv']];
 		}
 
 		// 2. write – with "stop on error" only when every row is fine
 		if ($dryRun || ($opt['on_error'] === 'stop' && $res['failed'])) {
 			$res['rolled_back'] = !$dryRun;
-			foreach ($rows as [, $pw, $sendWelcome]) {
-				if ($dryRun) { $res['inserted']++; if ($sendWelcome) $res['welcome']++; elseif ($pw === '') $res['random']++; }
-			}
+			if ($dryRun) foreach ($rows as [, $pw, $sendWelcome]) { $res['inserted']++; if ($sendWelcome) $res['welcome']++; elseif ($pw === '') $res['random']++; }
 			return $res;
 		}
+		$created = self::writeUsers($rows, $res);
+		self::afterUsers($created, $res);
+		return $res;
+	}
+
+	/** One error of the user import (at most MAX_ERRORS kept). */
+	private static function userError(array &$res, int $line, string $col, string $value, string $msg): void
+	{
+		if (count($res['errors']) < self::MAX_ERRORS) $res['errors'][] = ['line' => $line, 'column' => $col, 'value' => mb_strimwidth($value, 0, 80, '…'), 'message' => $msg];
+	}
+
+	/** What the checks of the user import need once: the access levels this admin may give, all levels, the existing logins … */
+	private static function userContext(array $opt): array
+	{
+		$all = [];
+		foreach (NuAcl::levels() as $a) $all[strtolower((string)$a['sal_code'])] = $all[strtolower((string)$a['zzzzsys_access_id'])] = (string)$a['zzzzsys_access_id'];
+		$existing = [];
+		foreach (nu_db()->all('SELECT sus_login_name FROM zzzzsys_user') as $u) $existing[mb_strtolower((string)$u['sus_login_name'])] = true;
+		return ['levels' => array_change_key_case(self::userLevels(), CASE_LOWER), 'all' => $all, 'existing' => $existing,
+			'ga' => mb_strtolower((string)nu_cfg('nuConfigDBGlobeadminUsername')), 'min' => NuPwPolicy::minLength(),
+			'welcome' => $opt['welcome'] && NuMail::configured()];
+	}
+
+	/**
+	 * One row of the user import, checked like the user form: returns ['skip' => the login exists, 'login', 'errors' => [[column, value,
+	 * message]], 'row' => the zzzzsys_user row, 'pw', 'variant', 'ufv' => custom field values]. $file keeps what must be unique within the
+	 * file (logins, user codes, unique custom fields) – the line that has it first.
+	 */
+	private static function checkUserRow(int $line, array $r, array $map, array $cols, array $opt, array $ctx, array &$file): array
+	{
+		$errors = [];
+		$v = [];
+		foreach ($map as $col => $m) {
+			$raw = $m['src'] === 'csv' ? ($r[$m['idx']] ?? '') : $m['value'];
+			if ($col === 'password') { $v[$col] = $raw; continue; }            // as typed (no trimming)
+			[$val, $e] = self::convert($raw, $cols[$col], $opt, $m['fmt'] ?? '');
+			if ($e !== null) { $errors[] = [$col, (string)$raw, $e]; continue; }
+			$v[$col] = $val === self::SKIP || $val === null ? '' : (string)$val;
+		}
+		$login = (string)($v['sus_login_name'] ?? '');
+		$out = ['skip' => false, 'login' => $login, 'errors' => [], 'row' => [], 'pw' => '', 'variant' => '', 'ufv' => []];
+		if ($errors) return ['errors' => $errors] + $out;
+		$lk = mb_strtolower($login);
+		if ($login === '') return ['errors' => [['sus_login_name', '', t('err_required')]]] + $out;
+		if ($lk === $ctx['ga']) return ['errors' => [['sus_login_name', $login, t('user_err_globeadmin_name')]]] + $out;
+		if (isset($ctx['existing'][$lk])) return ['skip' => true] + $out;
+		if (isset($file['logins'][$lk])) return ['errors' => [['sus_login_name', $login, t('imp_err_dupkey', $file['logins'][$lk])]]] + $out;
+		$file['logins'][$lk] = $line;
+
+		if (($v['sus_name'] ?? '') === '') $v['sus_name'] = mb_substr(trim(($v['sus_first_name'] ?? '') . ' ' . ($v['sus_last_name'] ?? '')), 0, 50);
+		if ($v['sus_name'] === '') $errors[] = ['sus_name', '', t('err_required')];
+		$uc = trim((string)($v['sus_code'] ?? ''));                       // user code: unique, also within the file
+		if ($uc !== '') {
+			$ucK = mb_strtolower($uc);
+			if (($owner = NuAuth::userCodeOwner($uc)) !== null) $errors[] = ['sus_code', $uc, t('user_err_code_taken', $owner['name'])];
+			elseif (isset($file['codes'][$ucK])) $errors[] = ['sus_code', $uc, t('imp_err_dupkey', $file['codes'][$ucK])];
+			else $file['codes'][$ucK] = $line;
+		}
+		$email = (string)($v['sus_email'] ?? '');
+		if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = ['sus_email', $email, t('user_err_email')];
+		$acc = mb_strtolower((string)($v['access_level'] ?? ''));
+		if ($acc === '') $errors[] = ['access_level', '', t('err_required')];
+		elseif (!isset($ctx['all'][$acc])) $errors[] = ['access_level', (string)$v['access_level'], t('imp_u_err_access')];
+		elseif (!isset($ctx['levels'][$acc]) && !in_array($ctx['all'][$acc], $ctx['levels'], true)) $errors[] = ['access_level', (string)$v['access_level'], t('secchk_err_admin_level')];
+		$lang = ['', ''];
+		if (($v['sus_language'] ?? '') !== '') {
+			$lang = self::userLanguage($v['sus_language']);
+			if (!$lang) { $errors[] = ['sus_language', $v['sus_language'], t('imp_u_err_lang')]; $lang = ['', '']; }
+		}
+		$pw = (string)($v['password'] ?? '');
+		if ($pw !== '') {
+			if (mb_strlen($pw) < $ctx['min']) $errors[] = ['password', '***', t('pw_err_min', $ctx['min'])];
+			elseif (strlen($pw) > 72) $errors[] = ['password', '***', t('err_too_long', 72)];
+		} elseif ($ctx['welcome'] && $email === '') $errors[] = ['sus_email', '', t('welcome_err_email')];
+		// custom user fields: checked like in the user form; unique also within the file
+		$ufv = [];
+		foreach (NuUserFields::editable('import') as $code => $f) {
+			if (!isset($cols['uf_' . $code]) || !array_key_exists('uf_' . $code, $v)) continue;
+			$x = (string)$v['uf_' . $code];
+			$err = NuUserFields::checkValue($f, $x, '');
+			if ($err === null && $x !== '' && (string)$f['is_unique'] === '1') {
+				$k = $code . "\x1f" . mb_strtolower($x);
+				if (isset($file['unique'][$k])) $err = t('imp_err_dupkey', $file['unique'][$k]); else $file['unique'][$k] = $line;
+			}
+			if ($err !== null) { $errors[] = ['uf_' . $code, $x, $err]; continue; }
+			if ($x !== '') $ufv[$code] = $x;
+		}
+		if ($errors) return ['errors' => $errors] + $out;
+
+		$row = ['zzzzsys_user_id' => nu_id(), 'sus_zzzzsys_access_id' => $ctx['all'][$acc]];
+		foreach (['sus_name', 'sus_first_name', 'sus_last_name', 'sus_email', 'sus_code', 'sus_position', 'sus_department', 'sus_team', 'sus_additional1', 'sus_additional2'] as $c) {
+			$row[$c] = ($v[$c] ?? '') === '' ? null : $v[$c];
+		}
+		$row['sus_language'] = $lang[0] === '' ? null : $lang[0];
+		$row['sus_login_name'] = $login;
+		$row['sus_expires_on'] = ($v['sus_expires_on'] ?? '') === '' ? null : nu_db()->datetime($v['sus_expires_on']);
+		$row['sus_change_password'] = '1';                          // own password at the first login
+		$row['sus_accessibility_features'] = '0';
+		return ['row' => $row, 'pw' => $pw, 'variant' => $lang[1], 'ufv' => $ufv] + $out;
+	}
+
+	/** Writes the checked rows; returns the users created [id, row, password given, welcome, variant, line, custom field values]. */
+	private static function writeUsers(array $rows, array &$res): array
+	{
+		$db = nu_db();
 		$created = [];
 		foreach ($rows as [$row, $pw, $sendWelcome, $variant, $line, $ufv]) {
 			$row['sus_login_password'] = NuAuth::hash($pw !== '' ? $pw : bin2hex(random_bytes(24)));   // random: unknown to anybody
 			try {
 				$db->insert('zzzzsys_user', $row);
 			} catch (PDOException $e) {
-				$addError($line, '', '', self::dbMessage($e));
+				self::userError($res, $line, '', '', self::dbMessage($e));
 				$res['failed']++;
 				continue;
 			}
@@ -935,12 +961,16 @@ final class NuImport
 			if ($sendWelcome) $res['welcome']++; elseif ($pw === '') $res['random']++;
 			$created[] = [(string)$row['zzzzsys_user_id'], $row, $pw !== '', $sendWelcome, $variant, $line, $ufv];
 		}
+		return $created;
+	}
 
-		// then: language variant, password history, log, welcome e-mails
+	/** After writing: language variant, password history, custom fields, stamp, log and welcome e-mail of every new user. */
+	private static function afterUsers(array $created, array &$res): void
+	{
 		foreach ($created as [$id, $row, $hasPw, $sendWelcome, $variant, $line, $ufv]) {
 			if ($variant !== '') NuUserJson::set($id, 'NUNEXT_LANG_VARIANT', $variant);
 			if ($hasPw) NuUserJson::passwordChanged($id, 'admin');
-			$ufv += NuUserDefault::forNew($ufv, $row);   // defaults for the fields left out, worked out with the row's values (0.8.1074)
+			$ufv += NuUserDefault::forNew($ufv, $row);   // defaults for the fields left out, worked out with the row's values
 			[$ufOk] = NuUserFields::validate($ufv, $id, 'import');
 			$ufDiff = NuUserFields::save($id, $ufOk);
 			NuUserJson::stamp($id, true, 'import');
@@ -949,11 +979,10 @@ final class NuImport
 				$err = NuWelcome::send($row);
 				if ($err !== null) {
 					$res['welcome']--; $res['welcome_failed']++;
-					$addError($line, 'sus_email', (string)$row['sus_email'], t('welcome_failed') . ' ' . $err);
+					self::userError($res, $line, 'sus_email', (string)$row['sus_email'], t('welcome_failed') . ' ' . $err);
 				}
 			}
 		}
-		return $res;
 	}
 
 	/** Short database error without the SQL statement. */

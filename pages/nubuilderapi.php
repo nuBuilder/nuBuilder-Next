@@ -13,60 +13,33 @@ header('Content-Type: application/json; charset=utf-8');
 require_once NU_ROOT . '/core/form/nubuilder_gen.php';
 require_once NU_ROOT . '/core/form/nuhistory.php';
 
-function nb_out(array $d, int $status = 200): never
-{
-	nu_json($d, $status);
-}
 
-function nb_err(string $msg, int $status = 400): never
-{
-	nb_out(['ok' => false, 'error' => $msg], $status);
-}
 
-/**
- * Unique tab names (0.8.1198): a tab that is new or renamed may not take the name of another tab of the form (compared without HTML,
- * spaces and case). Tabs a nuBuilder Forte form already has with the same name stay as they are, so such a form can still be saved.
- * @param array<int, mixed> $rows the list sent (id, title)
- * @param array<int, array<string, mixed>> $cur the form's tabs now (zzzzsys_tab_id, syt_title)
- */
-function nb_tab_dupe(array $rows, array $cur): void
-{
-	$norm = static fn($v): string => mb_strtolower(trim(preg_replace('/\s+/u', ' ', html_entity_decode(strip_tags((string)$v), ENT_QUOTES | ENT_HTML5, 'UTF-8')) ?? ''));
-	$was = [];
-	foreach ($cur as $c) $was[(string)$c['zzzzsys_tab_id']] = trim((string)$c['syt_title']);
-	$names = [];
-	foreach (array_values($rows) as $i => $t) $names[$i] = $norm(trim((string)(is_array($t) ? ($t['title'] ?? '') : '')) ?: 'Tab');
-	foreach (array_values($rows) as $i => $t) {
-		if (!is_array($t)) continue;
-		$id = (string)($t['id'] ?? '');
-		$title = trim((string)($t['title'] ?? '')) ?: 'Tab';
-		if ($id !== '' && array_key_exists($id, $was) && $was[$id] === $title) continue;   // unchanged
-		foreach ($names as $k => $n) if ($k !== $i && $n === $names[$i]) nb_err(sprintf(t('ds_tab_dupe'), trim(strip_tags($title))), 409);
-	}
-}
 
-if (!nu_is_post()) nb_err('POST required', 405);
+if (!nu_is_post()) NuBuilderApi::err('POST required', 405);
 
 $in = json_decode((string)file_get_contents('php://input'), true);
-if (!is_array($in)) nb_err('Invalid request');
+if (!is_array($in)) NuBuilderApi::err('Invalid request');
 
 // reading needs view rights on "nuform", every change needs save rights
 $readOnly = in_array($in['action'] ?? '', ['state', 'tables', 'columns', 'files', 'history.list', 'history.diff', 'draft.diff', 'draft.conflict'], true);
-// publishing (form drafts, 0.8.386) needs the right "Publish forms" – checked in NuFormDraft – and view rights on the builder
+// publishing (form drafts) needs the right "Publish forms" – checked in NuFormDraft – and view rights on the builder
 $publish  = in_array($in['action'] ?? '', ['draft.publish', 'form.publishnew'], true);
-if (!NuAcl::can(NuAcl::FORM_FORM, $readOnly || $publish ? 'view' : 'save')) nb_err(t('err_forbidden'), 403);
-if (!$readOnly && NuDemo::active()) nb_err(t('demo_not_available'), 403);      // demo mode: the builder only shows (core/nudemo.php)
+if (!NuAcl::can(NuAcl::FORM_FORM, $readOnly || $publish ? 'view' : 'save')) NuBuilderApi::err(t('err_forbidden'), 403);
+if (!$readOnly && NuDemo::active()) NuBuilderApi::err(t('demo_not_available'), 403);      // demo mode: the builder only shows (core/nudemo.php)
 
 $db     = nu_db();
 $action = (string)($in['action'] ?? '');
 $formId = (string)($in['form_id'] ?? '');
 
 const NB_FORM_FIELDS = ['sfo_type', 'sfo_code', 'sfo_description', 'sfo_group', 'sfo_status', 'sfo_breadcrumb_title', 'sfo_table', 'sfo_primary_key',
-	'sfo_browse_redirect_form_id', 'sfo_browse_rows_per_page', 'sfo_browse_row_height', 'sfo_browse_title_multiline', 'sfo_browse_autoresize_columns', 'sfo_browse_target', 'sfo_browse_sql', 'sfo_javascript', 'sfo_browse_javascript', 'sfo_edit_javascript', 'sfo_style'];
+	'sfo_browse_redirect_form_id', 'sfo_browse_rows_per_page', 'sfo_browse_row_height', 'sfo_browse_title_multiline', 'sfo_browse_autoresize_columns',
+		'sfo_browse_target', 'sfo_browse_sql', 'sfo_javascript', 'sfo_browse_javascript', 'sfo_edit_javascript', 'sfo_style'];
 
 const NB_OBJECT_FIELDS = ['sob_all_type', 'sob_all_id', 'sob_all_label', 'sob_all_zzzzsys_tab_id', 'sob_all_order', 'sob_all_top', 'sob_all_left',
 	'sob_all_width', 'sob_all_height', 'sob_all_cloneable', 'sob_all_align', 'sob_all_validate', 'sob_all_access', 'sob_all_access_condition', 'sob_all_style_type', 'sob_all_style',
-	'sob_calc_formula', 'sob_calc_format', 'sob_run_zzzzsys_form_id', 'sob_run_method', 'sob_run_type', 'sob_run_target', 'sob_run_id', 'sob_run_filter', 'sob_display_sql', 'sob_display_procedure', 'sob_select_multiple', 'sob_select_sql',
+	'sob_calc_formula', 'sob_calc_format', 'sob_run_zzzzsys_form_id', 'sob_run_method', 'sob_run_type', 'sob_run_target', 'sob_run_id', 'sob_run_filter',
+		'sob_display_sql', 'sob_display_procedure', 'sob_select_multiple', 'sob_select_sql',
 	'sob_lookup_code', 'sob_lookup_description', 'sob_lookup_description_width', 'sob_lookup_zzzzsys_form_id', 'sob_lookup_javascript', 'sob_lookup_table',
 	'sob_subform_zzzzsys_form_id', 'sob_subform_foreign_key', 'sob_subform_add', 'sob_subform_delete', 'sob_subform_type', 'sob_subform_table',
 	'sob_input_format', 'sob_input_type', 'sob_input_icon', 'sob_input_javascript', 'sob_input_datalist', 'sob_input_attribute', 'sob_input_count', 'sob_input_file_target', 'sob_html_code',
@@ -77,550 +50,132 @@ const NB_INT_FIELDS = ['sob_all_order', 'sob_all_top', 'sob_all_left', 'sob_all_
 const NB_TYPES      = ['input', 'select', 'textarea', 'editor', 'display', 'calc', 'lookup', 'subform', 'html', 'chart', 'word', 'contentbox', 'run', 'image'];
 const NB_HOOKS      = ['BB', 'BE', 'BS', 'AS', 'BD', 'AD'];
 
-/**
- * A view picked in the New form wizard (0.8.721): null for a table, else {updatable: true | false | null (unknown), key: suggested
- * key column, unique: true | false | null (not checked)}. Updatable: MySQL / MariaDB say so in information_schema.VIEWS.IS_UPDATABLE;
- * SQL Server from the view's text (GROUP BY, DISTINCT, UNION, TOP, aggregates → not). Key: <view>_id, else the first column ending in
- * _id, else id, else the first column; unique = no value twice (read only, errors → null).
- */
-function nb_view_info(string $t, array $cols): ?array
-{
-	$db = nu_db();
-	if ($t === '' || !$cols || !preg_match('/^[A-Za-z_][A-Za-z0-9_$]*$/', $t)) return null;
-	try {
-		$type = match ($db->type) {
-			'mysql'  => $db->value('SELECT TABLE_TYPE FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?', [$t]),
-			'sqlsrv' => $db->value('SELECT TABLE_TYPE FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = ?', [$t]),
-			default  => $db->value("SELECT CASE type WHEN 'table' THEN 'BASE TABLE' ELSE 'VIEW' END FROM sqlite_master WHERE name = ?", [$t]),
-		};
-	} catch (Throwable) { return null; }
-	if (strtoupper((string)$type) !== 'VIEW') return null;
-	$upd = null;
-	try {
-		if ($db->type === 'mysql') {
-			$v = $db->value('SELECT IS_UPDATABLE FROM information_schema.VIEWS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?', [$t]);
-			if ($v !== null) $upd = strtoupper((string)$v) === 'YES';
-		} elseif ($db->type === 'sqlsrv') {
-			$def = (string)$db->value('SELECT m.definition FROM sys.sql_modules m WHERE m.object_id = OBJECT_ID(?)', [$t]);
-			if ($def !== '') $upd = nb_view_text_updatable($def);
-		} else {
-			$upd = false;                                                     // SQLite views are read only
-		}
-	} catch (Throwable) {}
-	$lc  = array_map('strtolower', $cols);
-	$key = null;
-	foreach ([strtolower($t) . '_id', 'id'] as $want) if (($i = array_search($want, $lc, true)) !== false) { $key = $cols[$i]; break; }
-	if ($key === null) foreach ($cols as $c) if (preg_match('/_id$/i', $c)) { $key = $c; break; }
-	$key ??= $cols[0];
-	$unique = null;
-	try {
-		$k = NuDB::ident($key);
-		$unique = (int)$db->readOnly(static fn(NuDB $d) => $d->value('SELECT COUNT(*) - COUNT(DISTINCT ' . $k . ') FROM ' . NuDB::ident($t))) === 0;   // COUNT(DISTINCT) skips NULLs too
-	} catch (Throwable) {}
-	return ['updatable' => $upd, 'key' => $key, 'unique' => $unique];
-}
-
-/** SQL Server view text → can it be written to? Not with GROUP BY, DISTINCT, UNION / EXCEPT / INTERSECT, TOP or aggregates. */
-function nb_view_text_updatable(string $def): bool
-{
-	$sql = (string)preg_replace(['/--[^\n]*/', '~/\*.*?\*/~s', "/'(?:[^']|'')*'/"], ' ', $def);
-	return !preg_match('/\b(GROUP\s+BY|DISTINCT|UNION|EXCEPT|INTERSECT|PIVOT)\b|\bTOP\s*[\d(]|\b(SUM|COUNT|AVG|MIN|MAX)\s*\(/i', $sql);
-}
-
-/**
- * The form's table as offered in "Delete form" (0.8.245; the globeadmin only, like deleting the form itself), only a real table
- * (no view, no zzzzsys table) that no other form uses. Deleting it also needs a recent password confirmation.
- */
-function nb_table_info(NuFormMeta $meta): array
-{
-	$db = nu_db();
-	$t  = $meta->table();
-	$r  = ['table' => $t, 'exists' => false, 'rows' => null, 'used_by' => [], 'can_drop' => false, 'reason' => '', 'reauth' => false];
-	if ($t === '' || !preg_match('/^[A-Za-z_][A-Za-z0-9_$]*$/', $t)) return $r;
-	$type = match ($db->type) {
-		'mysql'  => $db->value('SELECT TABLE_TYPE FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?', [$t]),
-		'sqlsrv' => $db->value('SELECT TABLE_TYPE FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = ?', [$t]),
-		default  => $db->value("SELECT CASE type WHEN 'table' THEN 'BASE TABLE' ELSE 'VIEW' END FROM sqlite_master WHERE name = ?", [$t]),
-	};
-	if ($type === null) return $r;
-	$r['exists'] = true;
-	$r['used_by'] = array_column($db->all('SELECT sfo_code FROM zzzzsys_form WHERE sfo_table = ? AND zzzzsys_form_id <> ? ORDER BY sfo_code', [$t, $meta->id]), 'sfo_code');
-	if (strtoupper((string)$type) !== 'BASE TABLE') $r['reason'] = 'view';
-	elseif (stripos($t, 'zzzzsys') === 0) $r['reason'] = 'system';
-	elseif ($r['used_by']) $r['reason'] = 'used';
-	elseif (empty(NuAuth::user()['globeadmin'])) $r['reason'] = 'globeadmin';     // not reached: form.delete is globeadmin only
-	else {
-		$r['can_drop'] = true;
-		try { $r['rows'] = (int)$db->value('SELECT COUNT(*) FROM ' . NuDB::ident($t)); } catch (Throwable) {}
-		$r['reauth'] = !NuSecurity::recentAuth();
-	}
-	return $r;
-}
-
-/**
- * Several objects moved / resized at once in the preview (0.8.606, Arrange panel): [{object_id, top, left, width, height}] → columns
- * of zzzzsys_object (whole pixels, never below 0 / 10). @return array<string, array<string, int>> object id => fields
- */
-function nb_geometry(array $items): array
-{
-	$out = [];
-	foreach (array_slice($items, 0, 500) as $it) {
-		if (!is_array($it) || (string)($it['object_id'] ?? '') === '') continue;
-		$f = [];
-		foreach (['top' => 'sob_all_top', 'left' => 'sob_all_left'] as $k => $col) if (isset($it[$k]) && is_numeric($it[$k])) $f[$col] = max(0, (int)round((float)$it[$k]));
-		foreach (['width' => 'sob_all_width', 'height' => 'sob_all_height'] as $k => $col) if (isset($it[$k]) && is_numeric($it[$k])) $f[$col] = max(10, (int)round((float)$it[$k]));
-		if ($f) $out[(string)$it['object_id']] = $f;
-	}
-	return $out;
-}
-
-/** Design mode (0.8.669): where the password confirmation leads back to – only a form page of this installation (no other site). */
-function nb_back(array $in): ?string
-{
-	$b = (string)($in['back'] ?? '');
-	return preg_match('/^index\.php\?p=form&[A-Za-z0-9_&=%.\-]*$/', $b) ? $b : null;
-}
-
-/** The form being edited – must exist and not be a nuBuilder system form. */
-/** Validation rules (0.8.812): parse an expression / test rules against a saved record – read only, the same on live forms and drafts. */
-function nb_rules(NuFormMeta $meta, string $action, array $in): never
-{
-	if ($action === 'rules.parse') {
-		$p = NuFormRules::parse((string)($in['expr'] ?? ''));
-		nb_out(is_string($p) ? ['ok' => false, 'error' => $p] : ['ok' => true, 'tree' => $p, 'text' => NuFormRules::text($p)]);
-	}
-	$cl = NuFormRules::clean(is_array($in['rules'] ?? null) ? $in['rules'] : [], $meta);
-	if ($cl['errors']) nb_out(['ok' => false, 'error' => implode("\n", $cl['errors']), 'errors' => $cl['errors']]);
-	$rid = trim((string)($in['record_id'] ?? ''));
-	if ($rid === '') {
-		$pk = $meta->primaryKey();
-		$rid = $meta->table() !== '' && $pk !== '' ? (string)(nu_db()->page('SELECT ' . NuDB::ident($pk) . ' AS k FROM ' . NuDB::ident($meta->table()), [], NuDB::ident($pk) . ' DESC', 1, 0)[0]['k'] ?? '') : '';
-	}
-	if ($rid === '') nb_err(t('vr_test_none'));
-	nb_out(['record_id' => $rid] + NuFormRules::test($meta, $cl['rules'], $rid));
-}
-
-function nb_form(string $id): NuFormMeta
-{
-	$meta = NuFormMeta::load($id, true);                 // the builder edits the live form (drafts: NuDraftStore)
-	if (!$meta) nb_err(t('form_err_not_found'), 404);
-	if ($meta->isSystem() && !$meta->isUserHome()) nb_err(t('builder_err_system'), 403);   // User Home: tabs, objects, Before Edit (0.8.605)
-	return $meta;
-}
-
-function nb_clean(array $fields, array $allowed): array
-{
-	$out = [];
-	foreach ($allowed as $k) {
-		if (!array_key_exists($k, $fields)) continue;
-		$v = $fields[$k];
-		if (is_bool($v)) $v = $v ? '1' : '0';
-		if (is_array($v)) continue;
-		$v = $v === null ? null : (string)$v;
-		if (in_array($k, NB_INT_FIELDS, true)) $v = ($v === null || trim($v) === '') ? null : (string)(int)$v;
-		elseif ($v !== null && trim($v) === '') $v = null;
-		$out[$k] = $v;
-	}
-	return $out;
-}
-
-function nb_upsert_php(string $id, ?string $code): void
-{
-	$db = nu_db();
-	$exists = (bool)$db->value('SELECT COUNT(*) FROM zzzzsys_php WHERE zzzzsys_php_id = ?', [$id]);
-	$code = ($code !== null && trim($code) !== '') ? $code : null;
-	if ($exists) {
-		$db->update('zzzzsys_php', ['sph_php' => $code], 'zzzzsys_php_id', $id);
-	} elseif ($code !== null) {
-		$db->insert('zzzzsys_php', ['zzzzsys_php_id' => $id, 'sph_code' => $id, 'sph_description' => 'System PHP', 'sph_group' => 'nubuilder',
-			'sph_php' => $code, 'sph_system' => '1', 'sph_global' => '0', 'sph_hide' => '1']);
-	}
-}
-
-/**
- * Column proposal when a saved object stores a value but its form's table has no such column:
- * ['name' => …, 'type' => …, 'length' => …, 'table' => …] or null.
- */
-function nb_missing_column(NuFormMeta $meta, string $objectId): ?array
-{
-	$table = $meta->table();
-	if ($table === '' || $meta->type() === 'launch') return null;
-	$o = nu_db()->one('SELECT * FROM zzzzsys_object WHERE zzzzsys_object_id = ?', [$objectId]);
-	if (!$o) return null;
-	$proposal = NuDDL::typeForObject($o);
-	if ($proposal === null) return null;
-	$cols = nu_db()->columns($table);
-	if (!$cols || NuRecord::column($cols, (string)$o['sob_all_id']) !== null) return null;
-	return ['name' => (string)$o['sob_all_id'], 'type' => $proposal[0], 'length' => $proposal[1], 'table' => $table];
-}
-
-/** Builder view of a form: everything the client needs to render lists and panels. */
-function nb_state(string $formId): array
-{
-	NuFormMeta::forget($formId);
-	$meta = NuFormMeta::load($formId, true);
-	$db   = nu_db();
-	// 0.8.827: three queries instead of one per hook / object / lookup (the state is fetched after every change in design mode)
-	$php  = array_fill_keys(NB_HOOKS, '');
-	$ab   = [];
-	$objIds = array_map(static fn($o) => (string)$o['zzzzsys_object_id'], $meta->objects);
-	foreach ($meta->objects as $o) if ($o['sob_all_type'] === 'lookup') $ab[$o['zzzzsys_object_id']] = '';
-	$phpIds = array_merge(array_map(static fn($h) => $formId . '_' . $h, NB_HOOKS), array_map(static fn($id) => $id . '_AB', array_keys($ab)));
-	foreach (array_chunk($phpIds, 200) as $chunk) {
-		foreach ($db->all('SELECT zzzzsys_php_id AS id, sph_php FROM zzzzsys_php WHERE zzzzsys_php_id IN (' . implode(',', array_fill(0, count($chunk), '?')) . ')', $chunk) as $r) {
-			$pid = (string)$r['id'];
-			if (str_ends_with($pid, '_AB') && isset($ab[substr($pid, 0, -3)])) $ab[substr($pid, 0, -3)] = (string)$r['sph_php'];
-			elseif (str_starts_with($pid, $formId . '_')) $php[substr($pid, strlen($formId) + 1)] = (string)$r['sph_php'];
-		}
-	}
-	$events = array_fill_keys($objIds, []);
-	foreach (array_chunk($objIds, 200) as $chunk) {
-		foreach ($db->all('SELECT sev_zzzzsys_object_id AS oid, sev_event AS event, sev_javascript AS js FROM zzzzsys_event WHERE sev_zzzzsys_object_id IN (' . implode(',', array_fill(0, count($chunk), '?')) . ') ORDER BY sev_event', $chunk) as $r) {
-			$events[(string)$r['oid']][] = ['event' => $r['event'], 'js' => $r['js']];
-		}
-	}
-	$objects = array_map(static function ($o) { unset($o['tab_index']); return $o; }, $meta->objects);
-	return [
-		'form' => $meta->form + ['layout' => $meta->layout()], 'tabs' => $meta->tabs, 'objects' => $objects, 'browse' => $meta->browse,
-		'events' => (object)$events, 'php' => $php, 'lookup_php' => (object)$ab, 'readonly' => $meta->isSystem(),
-		'draft' => null, 'live_draft' => $meta->isSystem() ? null : nb_live_draft($formId),   // form drafts (0.8.386)
-	];
-}
-
-/**
- * Form drafts (0.8.386): the builder's actions on the open draft $store (draft_id + rev from the builder) – the same rules as the live
- * actions below, on the draft's snapshot (NuDraftStore). Every change is a new revision of the draft (undo list); nothing reaches
- * nuBuilder's tables before draft.publish.
- */
-function nb_draft(NuDraftStore $store, string $action, array $in): never
-{
-	$out = static fn(array $extra = []) => nb_out(['ok' => true] + $extra + $store->state(NB_HOOKS));
-	switch ($action) {
-		case 'state':
-			$out();
-
-		case 'history.list':
-			nb_out(['ok' => true, 'history' => NuFormHistory::list($store->formId)]);
-
-		case 'history.diff':           // design mode (0.8.668): what changed from a history entry to the draft
-			nb_out(['ok' => true, 'diff' => NuFormSnapshot::diff(NuFormHistory::get($store->formId, (string)($in['id'] ?? '')), $store->snapshot())]);
-
-		case 'history.restore':
-		case 'history.undo':
-			nb_err(t('builder_draft_use_undo'));
-
-		case 'form.save':
-			$fields = nb_clean(is_array($in['fields'] ?? null) ? $in['fields'] : [], NB_FORM_FIELDS);
-			$layout = null;
-			if (array_key_exists('layout', $in['fields'] ?? [])) $layout = in_array($in['fields']['layout'], ['absolute', 'auto', 'grid'], true) ? (string)$in['fields']['layout'] : 'absolute';
-			$store->formSave($fields, $layout, is_array($in['php'] ?? null) ? $in['php'] : null, NB_HOOKS, NuFormMeta::tagsIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuFormMeta::recordCheckIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuUserHelp::formKeysIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuRowDetails::keysIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuCalendar::keysIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuRecycle::keysIn(is_array($in['fields'] ?? null) ? $in['fields'] : []));
-			$store->commit('form.save');
-			$out();
-
-		case 'rules.save':             // validation rules (0.8.812)
-			$cl = NuFormRules::clean(is_array($in['rules'] ?? null) ? $in['rules'] : [], $store->meta());
-			if ($cl['errors']) nb_out(['ok' => false, 'error' => implode("\n", $cl['errors']), 'errors' => $cl['errors']], 400);
-			$store->rulesSave($cl['rules']);
-			$store->commit('rules.save');
-			$out(['rules' => $cl['rules']]);
-
-		case 'rules.parse':
-		case 'rules.test':
-			nb_rules($store->meta(), $action, $in);
-
-		case 'object.clone':                                   // object menu → Actions → Clone (0.8.927), then as object.save
-			if ($action === 'object.clone') {
-				$cid = (string)($in['object_id'] ?? '');
-				$snap = $store->snapshot();
-				nb_clone_prep($in, $store->object($cid), array_map(static fn($o) => (string)$o['sob_all_id'], $snap['objects'] ?? []),
-					array_values(array_filter($snap['events'] ?? [], static fn($e) => (string)$e['sev_zzzzsys_object_id'] === $cid)), $store->php($cid . '_AB'));
-			}
-			// no break: the copy is saved as a new object
-		case 'object.save':
-			$fields = nb_clean(is_array($in['fields'] ?? null) ? $in['fields'] : [], NB_OBJECT_FIELDS);
-			foreach (['sob_input_format', 'sob_calc_format'] as $fk) {
-				if (isset($fields[$fk]) && mb_strlen((string)$fields[$fk]) > NuFormat::MAX_KEY) nb_err(t('fmt_err_length', NuFormat::MAX_KEY - 2));
-				NuFormat::ensureSaved($fields[$fk] ?? null);       // shared format row – harmless while drafting
-			}
-			// the same checks as the live save (0.8.670: design mode saves into drafts)
-			if (isset($fields['sob_all_id'])) $fields['sob_all_id'] = trim((string)$fields['sob_all_id']);
-			if (isset($fields['sob_input_icon']) && mb_strlen((string)$fields['sob_input_icon']) > 50) nb_err(t('builder_obj_icon') . ': ' . t('err_too_long', 50));
-			$oid = $store->objectSave((string)($in['object_id'] ?? ''), $fields, is_array($in['grid'] ?? null) ? $in['grid'] : null,
-				is_array($in['events'] ?? null) ? $in['events'] : null, array_key_exists('lookup_php', $in), ($in['lookup_php'] ?? null) === null ? null : (string)$in['lookup_php']);
-			if (!empty($in['clone_extra'])) {                     // object.clone: the columns object.save does not take
-				$x = $in['clone_extra'];
-				$store->objectSave($oid, $x + ['sob_all_type' => (string)($store->object($oid)['sob_all_type'] ?? '')], null, null, false, null);
-			}
-			$store->commit('object.save ' . (string)($store->object($oid)['sob_all_id'] ?? ''));
-			$store->subformIndex($oid);
-			$out(['object_id' => $oid, 'missing_column' => $store->missingColumn($oid)]);
-
-		case 'column.add':
-			// DDL at once (additive, nullable) – the draft lists it for the publish summary
-			$oid = (string)($in['object_id'] ?? '');
-			$o = $store->object($oid);
-			if (!$o) nb_err(t('record_not_found'), 404);
-			if ($store->missingColumn($oid) === null) nb_err(t('builder_err_column_exists'));
-			$type = (string)($in['type'] ?? '');
-			$length = trim((string)($in['length'] ?? ''));
-			if (!in_array($type, NuDDL::TYPES, true)) nb_err(t('builder_err_column_type', (string)$o['sob_all_id']));
-			if ($length !== '' && !preg_match('/^\d{1,5}([,.]\d{1,2})?$/', $length)) nb_err(t('builder_err_column_length', (string)$o['sob_all_id']));
-			$table = trim((string)($store->snapshot()['form']['sfo_table'] ?? ''));
-			NuDDL::addColumn($table, (string)$o['sob_all_id'], $type, $length);
-			NuFormDraft::addDdl($store->draftId, $table, (string)$o['sob_all_id'], $type, $length);
-			$out();
-
-		case 'object.delete':
-			$label = (string)($store->object((string)($in['object_id'] ?? ''))['sob_all_id'] ?? '');
-			$store->objectDelete((string)($in['object_id'] ?? ''));
-			$store->commit('object.delete ' . $label);
-			$out();
-
-		case 'objects.geometry':
-			foreach (nb_geometry(is_array($in['items'] ?? null) ? $in['items'] : []) as $oid => $f) {
-				if ($store->object($oid)) $store->objectSave($oid, $f, null, null, false, null);
-			}
-			$store->commit('objects.geometry');
-			$out();
-
-		case 'object.order':
-			$store->objectOrder(is_array($in['ids'] ?? null) ? $in['ids'] : []);
-			$store->commit('object.order');
-			$out();
-
-		case 'tabs.save':
-			$rows = is_array($in['tabs'] ?? null) ? $in['tabs'] : [];
-			if (!$rows) nb_err(t('builder_err_one_tab'));
-			if (empty(NuAuth::user()['globeadmin'])) {               // only the globeadmin renames or deletes tabs (0.8.247) – also in a draft
-				$sent = [];
-				foreach ($rows as $t) if (is_array($t) && (string)($t['id'] ?? '') !== '') $sent[(string)$t['id']] = trim((string)($t['title'] ?? ''));
-				foreach ($store->snapshot()['tabs'] ?? [] as $cur) {
-					$id = (string)$cur['zzzzsys_tab_id'];
-					if (!array_key_exists($id, $sent) || $sent[$id] !== trim((string)$cur['syt_title'])) nb_err(t('builder_tabs_globeadmin'), 403);
-				}
-			}
-			nb_tab_dupe($rows, $store->snapshot()['tabs'] ?? []);
-			$store->tabsSave($rows);
-			$store->commit('tabs.save');
-			$out();
-
-		case 'browse.save':
-			$rows = is_array($in['columns'] ?? null) ? $in['columns'] : [];
-			foreach ($rows as $c) NuFormat::ensureSaved(is_array($c) ? (string)($c['format'] ?? '') : '');
-			$store->browseSave($rows);
-			$store->commit('browse.save');
-			$out();
-
-		case 'layout.convert':
-			$store->layoutConvert();
-			$store->commit('layout.convert');
-			$out();
-
-		case 'draft.undo':
-			NuFormDraft::undo($store->draftId, $store->rev);
-			nb_out(['ok' => true] + NuDraftStore::open($store->draftId, $store->formId, -1)->state(NB_HOOKS));
-
-		case 'draft.redo':                                    // review H2 (0.8.765)
-			NuFormDraft::redo($store->draftId, $store->rev);
-			nb_out(['ok' => true] + NuDraftStore::open($store->draftId, $store->formId, -1)->state(NB_HOOKS));
-
-		case 'draft.settings':
-			NuFormDraft::setPreviewSaves($store->draftId, !empty($in['preview_saves']));
-			nb_out(['ok' => true] + NuDraftStore::open($store->draftId, $store->formId, -1)->state(NB_HOOKS));
-	}
-	nb_err('Unknown action');
-}
-
-/**
- * Change the database column of an object (0.8.623, NuColumnChange): column.info → the column as it is; column.check → the ALTER TABLE
- * for a type / length (or the globeadmin's own statement) and the data check; column.change → runs it (recent password; in a draft also
- * listed for the publish summary). Works on the table, so the same in live mode and in a draft.
- */
-function nb_column(string $formId, string $action, array $in): never
-{
-	$meta = nb_form($formId);
-	$table = $meta->table();
-	$column = trim((string)($in['column'] ?? ''));
-	if ($table === '' || $column === '') nb_err(t('builder_colchg_err_missing', $column, $table));
-	try {
-		$info = NuColumnChange::info($table, $column);
-	} catch (Throwable $e) {
-		nb_err($e->getMessage());
-	}
-	$ga = !empty(NuAuth::user()['globeadmin']);
-	$public = array_diff_key($info, ['raw' => 1]);
-	$usedBy = array_column(nu_db()->all('SELECT sfo_code FROM zzzzsys_form WHERE sfo_table = ? AND zzzzsys_form_id <> ? ORDER BY sfo_code', [$table, $formId]), 'sfo_code');
-	if ($action === 'column.info') {
-		$reauth = !NuSecurity::recentAuth();
-		if ($reauth) $_SESSION['nu_reauth_next'] = nb_back($in) ?? nu_url('builder', ['f' => $formId, 'colchg' => $column]);
-		nb_out(['ok' => true, 'info' => $public, 'free_sql' => $ga, 'used_by' => $usedBy, 'reauth' => $reauth] + ($reauth ? ['reauth_url' => nu_url('reauth')] : []));
-	}
-	$free = trim((string)($in['sql'] ?? ''));
-	try {
-		if ($free !== '') {
-			if (!$ga) nb_err(t('err_forbidden'), 403);
-			$plan = ['sql' => NuColumnChange::checkFreeSql($free, $table), 'checks' => [], 'same' => false, 'target' => '', 'free' => true];
-		} else {
-			$plan = NuColumnChange::plan($info, (string)($in['type'] ?? ''), trim((string)($in['length'] ?? ''))) + ['free' => false];
-		}
-	} catch (Throwable $e) {
-		nb_err($e->getMessage());
-	}
-	if ($action === 'column.check') nb_out(['ok' => true, 'plan' => $plan, 'info' => $public]);
-	// column.change
-	if ($plan['same']) nb_err(t('builder_colchg_err_same'));
-	if (!NuSecurity::recentAuth()) nb_out(['ok' => false, 'error' => t('reauth_needed'), 'code' => 'reauth', 'reauth_url' => nu_url('reauth')], 403);
-	if ($plan['checks'] && empty($in['accept_loss'])) nb_out(['ok' => false, 'error' => t('builder_colchg_err_accept'), 'code' => 'accept', 'plan' => $plan], 409);
-	try {
-		NuColumnChange::run($info, $plan['sql'], $plan['free'] ? 'SQL' : $plan['target']);
-	} catch (Throwable $e) {
-		nb_err(t('builder_colchg_err_run', $e->getMessage()));
-	}
-	$draftId = (string)($in['draft_id'] ?? '');
-	if ($draftId !== '') NuFormDraft::addDdl($draftId, $table, $info['column'], (string)($in['type'] ?? ''), trim((string)($in['length'] ?? '')), $info['sql_type'] . ' → ' . ($plan['free'] ? 'SQL' : $plan['target']));
-	$after = NuColumnChange::info($table, $column);
-	nb_out(['ok' => true, 'info' => array_diff_key($after, ['raw' => 1])]);
-}
-
-/** Info of the open draft of a form for live mode (the builder's info bar), null when there is none. */
-function nb_live_draft(string $formId): ?array
-{
-	return NuFormDraft::info(NuFormDraft::openFor($formId));
-}
 
 
-/**
- * Object menu → Actions → Clone (0.8.927): the request of object.save for a copy of $src – every sob_ column, a free field id
- * (<id>_2, _3 …), placed below the original, the same events and lookup PHP. $in is changed in place.
- */
-function nb_clone_prep(array &$in, ?array $src, array $takenIds, array $events, ?string $lookupPhp): void
-{
-	if (!$src) nb_err(t('record_not_found'), 404);
-	$fields = [];
-	foreach ($src as $k => $v) if (str_starts_with((string)$k, 'sob_') && !in_array($k, ['sob_all_zzzzsys_form_id', 'sob_all_json', 'sob_json'], true)) $fields[$k] = $v;
-	$base = (string)$src['sob_all_id'];
-	$n = 1; $id = $base . '_' . (++$n);
-	while (in_array($id, $takenIds, true)) $id = $base . '_' . (++$n);
-	$fields['sob_all_id'] = $id;
-	$fields['sob_all_top'] = (string)((int)($src['sob_all_top'] ?? 0) + max(20, (int)($src['sob_all_height'] ?? 0)) + 8);
-	$fields['sob_all_order'] = (string)((int)($src['sob_all_order'] ?? 0) + 1);
-	$in['object_id'] = '';
-	$in['fields'] = array_intersect_key($fields, array_flip(NB_OBJECT_FIELDS));
-	// what object.save does not take (other sob_ columns, nuBuilder Next's settings in sob_all_json) – written after the save
-	$extra = array_diff_key($fields, array_flip(NB_OBJECT_FIELDS));
-	foreach (['sob_all_json', 'sob_json'] as $j) if (array_key_exists($j, $src)) $extra[$j] = $src[$j];
-	$in['clone_extra'] = $extra;
-	$in['events'] = array_map(static fn($e) => ['event' => (string)$e['sev_event'], 'js' => (string)$e['sev_javascript']], $events);
-	if ($lookupPhp !== null && trim($lookupPhp) !== '') $in['lookup_php'] = $lookupPhp;
-	$in['clone_of'] = (string)$src['zzzzsys_object_id'];
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 const NB_SNAPSHOT_ACTIONS = ['form.save', 'rules.save', 'object.save', 'object.clone', 'objects.geometry', 'object.delete', 'object.order', 'tabs.save', 'browse.save', 'layout.convert'];
-/** Live changes – refused or confirmed while a draft is open (form drafts, 0.8.386). */
-const NB_WRITE_ACTIONS = ['form.save', 'rules.save', 'object.save', 'object.clone', 'objects.geometry', 'object.delete', 'object.order', 'tabs.save', 'browse.save', 'layout.convert', 'column.add', 'history.restore', 'history.undo'];
+/** Live changes – refused or confirmed while a draft is open (form drafts). */
+const NB_WRITE_ACTIONS = ['form.save', 'rules.save', 'object.save', 'object.clone', 'objects.geometry', 'object.delete', 'object.order', 'tabs.save',
+	'browse.save', 'layout.convert', 'column.add', 'history.restore', 'history.undo'];
 
 try {
-	// form drafts (0.8.386): with draft_id the action works on the draft; without it on the live form – refused or confirmed while
+	// form drafts: with draft_id the action works on the draft; without it on the live form – refused or confirmed while
 	// a draft is open or changes only go through drafts (NuFormDraft::liveEditRefused)
-	// nuBuilder Forte's User Home (0.8.605): its form row is replaced by Forte's updates – no form settings, browse, layout change or
+	// nuBuilder Forte's User Home: its form row is replaced by Forte's updates – no form settings, browse, layout change or
 	// delete; form.save keeps only the Before Edit PHP (Forte keeps nuuserhome_BE, its tabs and objects)
 	if ($formId === NuUserHome::FORM) {
-		if (in_array($action, ['browse.save', 'layout.convert', 'form.delete', 'form.deleteinfo', 'column.add'], true)) nb_err(t('builder_userhome_part'), 403);
+		if (in_array($action, ['browse.save', 'layout.convert', 'form.delete', 'form.deleteinfo', 'column.add'], true)) NuBuilderApi::err(t('builder_userhome_part'), 403);
 		if ($action === 'form.save') {
 			$in['fields'] = [];
 			$in['php'] = is_array($in['php'] ?? null) ? array_intersect_key($in['php'], ['BE' => 1]) : null;
 		}
 	}
-	if (in_array($action, ['column.info', 'column.check', 'column.change'], true)) nb_column($formId, $action, $in);   // table-level (0.8.623)
+	if (in_array($action, ['column.info', 'column.check', 'column.change'], true)) NuBuilderApi::column($formId, $action, $in);   // table-level
 	$draftId = (string)($in['draft_id'] ?? '');
 	if ($draftId !== '' && !str_starts_with($action, 'draft.publish') && $action !== 'draft.discard' && $action !== 'draft.diff' && $action !== 'draft.conflict') {
-		nb_form($formId);
-		nb_draft(NuDraftStore::open($draftId, $formId, (int)($in['rev'] ?? -1)), $action, $in);
+		NuBuilderApi::form($formId);
+		NuBuilderApi::draft(NuDraftStore::open($draftId, $formId, (int)($in['rev'] ?? -1)), $action, $in);
 	}
 	if (in_array($action, NB_WRITE_ACTIONS, true) && $formId !== '' && ($refused = NuFormDraft::liveEditRefused($formId, !empty($in['live_ok'])))) {
-		nb_out(['ok' => false, 'error' => $refused['message'], 'code' => $refused['code']], 409);
+		NuBuilderApi::out(['ok' => false, 'error' => $refused['message'], 'code' => $refused['code']], 409);
 	}
 
-	// tabs (0.8.247): only the globeadmin renames or deletes existing tabs – others may add tabs, reorder them and set their visibility
+	// tabs: only the globeadmin renames or deletes existing tabs – others may add tabs, reorder them and set their visibility
 	if ($action === 'tabs.save' && empty(NuAuth::user()['globeadmin'])) {
 		$sent = [];
 		foreach (is_array($in['tabs'] ?? null) ? $in['tabs'] : [] as $t) if (is_array($t) && (string)($t['id'] ?? '') !== '') $sent[(string)$t['id']] = trim((string)($t['title'] ?? ''));
 		foreach ($db->all('SELECT zzzzsys_tab_id, syt_title FROM zzzzsys_tab WHERE syt_zzzzsys_form_id = ?', [$formId]) as $cur) {
 			$id = (string)$cur['zzzzsys_tab_id'];
-			if (!array_key_exists($id, $sent) || $sent[$id] !== trim((string)$cur['syt_title'])) nb_err(t('builder_tabs_globeadmin'), 403);
+			if (!array_key_exists($id, $sent) || $sent[$id] !== trim((string)$cur['syt_title'])) NuBuilderApi::err(t('builder_tabs_globeadmin'), 403);
 		}
 	}
 	if (in_array($action, NB_SNAPSHOT_ACTIONS, true)) {
-		nb_form($formId);
-		NuFormHistory::snapshot($formId, $action . (isset($in['object_id']) && $in['object_id'] !== '' ? ' ' . (string)($db->value('SELECT sob_all_id FROM zzzzsys_object WHERE zzzzsys_object_id = ?', [(string)$in['object_id']]) ?? '') : ''));
+		NuBuilderApi::form($formId);
+		NuFormHistory::snapshot($formId, $action
+			. (isset($in['object_id']) && $in['object_id'] !== '' ? ' ' . (string)($db->value('SELECT sob_all_id FROM zzzzsys_object WHERE zzzzsys_object_id = ?', [(string)$in['object_id']]) ?? '') : ''));
 	}
 
 	switch ($action) {
 		case 'history.list':
-			nb_out(['ok' => true, 'history' => NuFormHistory::list($formId)]);
+			NuBuilderApi::out(['ok' => true, 'history' => NuFormHistory::list($formId)]);
 
-		case 'history.diff':           // design mode (0.8.668): what changed from a history entry to the live form
-			nb_form($formId);
-			nb_out(['ok' => true, 'diff' => NuFormSnapshot::diff(NuFormHistory::get($formId, (string)($in['id'] ?? '')), NuFormSnapshot::capture($formId) ?? [])]);
+		case 'history.diff':           // design mode: what changed from a history entry to the live form
+			NuBuilderApi::form($formId);
+			NuBuilderApi::out(['ok' => true, 'diff' => NuFormSnapshot::diff(NuFormHistory::get($formId, (string)($in['id'] ?? '')), NuFormSnapshot::capture($formId) ?? [])]);
 
 		case 'history.restore':
-			nb_form($formId);
+			NuBuilderApi::form($formId);
 			NuFormHistory::restore($formId, (string)($in['id'] ?? ''));
-			nb_out(['ok' => true] + nb_state($formId));
+			NuBuilderApi::out(['ok' => true] + NuBuilderApi::state($formId));
 
 		case 'history.undo':
-			nb_form($formId);
+			NuBuilderApi::form($formId);
 			$last = NuFormHistory::list($formId)[0] ?? null;
-			if (!$last) nb_err(t('builder_history_empty'));
+			if (!$last) NuBuilderApi::err(t('builder_history_empty'));
 			NuFormHistory::restore($formId, (string)$last['id']);
-			nb_out(['ok' => true, 'restored' => $last] + nb_state($formId));
+			NuBuilderApi::out(['ok' => true, 'restored' => $last] + NuBuilderApi::state($formId));
 
 
-		// --------------------------------------------------------------- form drafts (0.8.386)
+		// --------------------------------------------------------------- form drafts
 		case 'draft.start':
-			nb_form($formId);
+			NuBuilderApi::form($formId);
 			$d = NuFormDraft::start($formId, (string)($in['note'] ?? ''));
-			if (!empty($in['preview'])) NuFormDraft::startPreview((string)$d['zzzzsys_nunext_form_draft_id']);   // design mode (0.8.662): this session shows the draft
-			nb_out(['ok' => true] + NuDraftStore::open((string)$d['zzzzsys_nunext_form_draft_id'], $formId, -1)->state(NB_HOOKS));
+			if (!empty($in['preview'])) NuFormDraft::startPreview((string)$d['zzzzsys_nunext_form_draft_id']);   // design mode: this session shows the draft
+			NuBuilderApi::out(['ok' => true] + NuDraftStore::open((string)$d['zzzzsys_nunext_form_draft_id'], $formId, -1)->state(NB_HOOKS));
 
 		case 'draft.diff':
 		case 'draft.conflict':
-			nb_form($formId);
+			NuBuilderApi::form($formId);
 			$d = NuFormDraft::get($draftId);
-			if (!$d || (string)$d['form_id'] !== $formId) nb_err(t('record_not_found'), 404);
+			if (!$d || (string)$d['form_id'] !== $formId) NuBuilderApi::err(t('record_not_found'), 404);
 			$live = NuFormSnapshot::capture($formId) ?? [];
 			$snap = NuFormDraft::snapshotOf($d);
 			$base = NuFormDraft::snapshotOf($d, 'base_snapshot');
-			if ($action === 'draft.conflict') nb_out(['ok' => true, 'conflict' => NuFormSnapshot::hash($live, $base) !== (string)$d['base_hash'], 'changes' => NuFormSnapshot::diff($base, $live)]);
+			if ($action === 'draft.conflict') NuBuilderApi::out(['ok' => true, 'conflict' => NuFormSnapshot::hash($live, $base) !== (string)$d['base_hash'], 'changes' => NuFormSnapshot::diff($base, $live)]);
 			$from = ($in['against'] ?? 'live') === 'base' ? $base : $live;
-			nb_out(['ok' => true, 'diff' => NuFormSnapshot::diff($from, $snap), 'ddl' => json_decode((string)($d['ddl'] ?? '[]'), true) ?: [],
+			NuBuilderApi::out(['ok' => true, 'diff' => NuFormSnapshot::diff($from, $snap), 'ddl' => json_decode((string)($d['ddl'] ?? '[]'), true) ?: [],
 				'validation' => NuFormDraft::validate($formId, $snap, $live)]);
 
 		case 'draft.publish':
-			nb_form($formId);
+			NuBuilderApi::form($formId);
 			$d = NuFormDraft::get($draftId);
-			if (!$d || (string)$d['form_id'] !== $formId) nb_err(t('record_not_found'), 404);
-			if (!NuFormDraft::canPublish()) nb_err(t('err_forbidden'), 403);
+			if (!$d || (string)$d['form_id'] !== $formId) NuBuilderApi::err(t('record_not_found'), 404);
+			if (!NuFormDraft::canPublish()) NuBuilderApi::err(t('err_forbidden'), 403);
 			$force = !empty($in['force']);
-			if ($force && trim((string)($in['confirm_code'] ?? '')) !== (string)(NuFormDraft::snapshotOf($d)['form']['sfo_code'] ?? '')) nb_err(t('builder_draft_overwrite_type', (string)(NuFormDraft::snapshotOf($d)['form']['sfo_code'] ?? '')));
+			if ($force
+				&& trim((string)($in['confirm_code'] ?? '')) !== (string)(NuFormDraft::snapshotOf($d)['form']['sfo_code']
+					?? '')) NuBuilderApi::err(t('builder_draft_overwrite_type', (string)(NuFormDraft::snapshotOf($d)['form']['sfo_code'] ?? '')));
 			$r = NuFormDraft::publish($draftId, (string)($in['note'] ?? ''), $force, !empty($in['warnings_ok']));
-			nb_out($r + ($r['ok'] ? nb_state($formId) : []));
+			NuBuilderApi::out($r + ($r['ok'] ? NuBuilderApi::state($formId) : []));
 
 		case 'draft.discard':
-			nb_form($formId);
+			NuBuilderApi::form($formId);
 			$d = NuFormDraft::get($draftId);
-			if (!$d || (string)$d['form_id'] !== $formId) nb_err(t('record_not_found'), 404);
+			if (!$d || (string)$d['form_id'] !== $formId) NuBuilderApi::err(t('record_not_found'), 404);
 			NuFormDraft::discard($draftId);
-			nb_out(['ok' => true] + nb_state($formId));
+			NuBuilderApi::out(['ok' => true] + NuBuilderApi::state($formId));
 
 		case 'form.publishnew':
-			nb_form($formId);
+			NuBuilderApi::form($formId);
 			$v = NuFormDraft::publishNewForm($formId);
-			nb_out(['ok' => true, 'version' => $v] + nb_state($formId));
+			NuBuilderApi::out(['ok' => true, 'version' => $v] + NuBuilderApi::state($formId));
 
 		// --------------------------------------------------------------- read
 		case 'state':
-			nb_out(['ok' => true] + nb_state($formId));
+			NuBuilderApi::out(['ok' => true] + NuBuilderApi::state($formId));
 
 		case 'tables':
 			$tables = match ($db->type) {
@@ -628,7 +183,7 @@ try {
 				'sqlsrv' => $db->all("SELECT TABLE_NAME AS t FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME NOT LIKE 'zzzzsys%' ORDER BY TABLE_NAME"),
 				default  => $db->all("SELECT name AS t FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'zzzzsys%' ORDER BY name"),
 			};
-			// views (0.8.721): marked in the New form wizard; 'tables' stays a plain list of names (design mode uses it too)
+			// views: marked in the New form wizard; 'tables' stays a plain list of names (design mode uses it too)
 			$views = match ($db->type) {
 				'mysql'  => $db->all("SELECT TABLE_NAME AS t FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = 'VIEW' AND TABLE_NAME NOT LIKE 'zzzzsys%'"),
 				'sqlsrv' => $db->all("SELECT TABLE_NAME AS t FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'VIEW' AND TABLE_NAME NOT LIKE 'zzzzsys%'"),
@@ -638,75 +193,79 @@ try {
 				$tables = array_merge($tables, $views);
 				usort($tables, static fn($a, $b) => strcasecmp((string)$a['t'], (string)$b['t']));
 			}
-			nb_out(['ok' => true, 'tables' => array_column($tables, 't'), 'views' => array_column($views, 't')]);
+			NuBuilderApi::out(['ok' => true, 'tables' => array_column($tables, 't'), 'views' => array_column($views, 't')]);
 
 		case 'files':
 			$files = $db->tableExists('zzzzsys_file') ? $db->all('SELECT zzzzsys_file_id, sfi_code, sfi_description FROM zzzzsys_file ORDER BY sfi_code') : [];
-			nb_out(['ok' => true, 'files' => array_map(static fn($f) => [$f['zzzzsys_file_id'], $f['sfi_code'] . ($f['sfi_description'] ? ' – ' . $f['sfi_description'] : '')], $files)]);
+			NuBuilderApi::out(['ok' => true, 'files' => array_map(static fn($f) => [$f['zzzzsys_file_id'], $f['sfi_code'] . ($f['sfi_description'] ? ' – ' . $f['sfi_description'] : '')], $files)]);
 
 		case 'columns':
 			$cols = $db->columns(NuDB::ident((string)($in['table'] ?? '')));
-			$lbl  = NuBuilderGen::defaultLabels(array_map('strval', array_keys($cols)));     // placeholder labels of the wizard's column list (0.8.675)
+			$lbl  = NuBuilderGen::defaultLabels(array_map('strval', array_keys($cols)));     // placeholder labels of the wizard's column list
 			$table = (string)($in['table'] ?? '');
-			nb_out(['ok' => true, 'columns' => array_map(static fn($n, $c) => ['name' => $n, 'label' => $lbl[(string)$n] ?? ''] + $c, array_keys($cols), $cols),
-				'view' => nb_view_info($table, array_map('strval', array_keys($cols)))]);
+			NuBuilderApi::out(['ok' => true, 'columns' => array_map(static fn($n, $c) => ['name' => $n, 'label' => $lbl[(string)$n] ?? ''] + $c, array_keys($cols), $cols),
+				'view' => NuBuilderApi::viewInfo($table, array_map('strval', array_keys($cols)))]);
 
 		// --------------------------------------------------------------- form
 		case 'form.create':
-			nb_out(['ok' => true, 'form_id' => NuBuilderGen::create($in)]);
+			NuBuilderApi::out(['ok' => true, 'form_id' => NuBuilderGen::create($in)]);
 
 		case 'form.save':
-			$meta   = nb_form($formId);
-			$fields = nb_clean(is_array($in['fields'] ?? null) ? $in['fields'] : [], NB_FORM_FIELDS);
-			// required as in nuBuilder's form properties (nuform: description, code, type – 0.8.564); nb_clean turned '' into null
-			foreach (['sfo_description', 'sfo_code', 'sfo_type'] as $rk) if (array_key_exists($rk, $fields) && trim((string)$fields[$rk]) === '') nb_err(t('builder_err_required'));
+			$meta   = NuBuilderApi::form($formId);
+			$fields = NuBuilderApi::clean(is_array($in['fields'] ?? null) ? $in['fields'] : [], NB_FORM_FIELDS);
+			// required as in nuBuilder's form properties (nuform: description, code, type); nb_clean turned '' into null
+			foreach (['sfo_description', 'sfo_code', 'sfo_type'] as $rk) if (array_key_exists($rk, $fields) && trim((string)$fields[$rk]) === '') NuBuilderApi::err(t('builder_err_required'));
 			if (isset($fields['sfo_code']) && (int)$db->value('SELECT COUNT(*) FROM zzzzsys_form WHERE sfo_code = ? AND zzzzsys_form_id <> ?', [$fields['sfo_code'], $formId])) {
-				nb_err(t('builder_err_code_taken'));
+				NuBuilderApi::err(t('builder_err_code_taken'));
 			}
 			if (array_key_exists('layout', $in['fields'] ?? [])) {
 				$layout = in_array($in['fields']['layout'], ['absolute', 'auto', 'grid'], true) ? $in['fields']['layout'] : 'absolute';
 				$fields['sfo_json'] = NuFormMeta::mergeNunextJson($meta->form['sfo_json'] ?? null, ['layout' => $layout === 'absolute' ? null : $layout]);
 			}
-			if ($tags = NuFormMeta::tagsIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuFormMeta::recordCheckIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuUserHelp::formKeysIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuRowDetails::keysIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuCalendar::keysIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuRecycle::keysIn(is_array($in['fields'] ?? null) ? $in['fields'] : [])) {      // department / team (0.8.1020), help pages (0.8.1023): sfo_json nunext
+			if ($tags = NuFormMeta::tagsIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuFormMeta::recordCheckIn(is_array($in['fields']
+				?? null) ? $in['fields'] : []) + NuUserHelp::formKeysIn(is_array($in['fields']
+				?? null) ? $in['fields'] : []) + NuRowDetails::keysIn(is_array($in['fields']
+				?? null) ? $in['fields'] : []) + NuCalendar::keysIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuRecycle::keysIn(is_array($in['fields']
+				?? null) ? $in['fields'] : [])) {      // department / team, help pages: sfo_json nunext
 				$fields['sfo_json'] = NuFormMeta::mergeNunextJson($fields['sfo_json'] ?? ($meta->form['sfo_json'] ?? null), $tags);
 			}
 			if ($fields) $db->update('zzzzsys_form', $fields, 'zzzzsys_form_id', $formId);
 			if (is_array($in['php'] ?? null)) {
-				foreach (NB_HOOKS as $h) if (array_key_exists($h, $in['php'])) nb_upsert_php($formId . '_' . $h, $in['php'][$h] === null ? null : (string)$in['php'][$h]);
+				foreach (NB_HOOKS as $h) if (array_key_exists($h, $in['php'])) NuBuilderApi::upsertPhp($formId . '_' . $h, $in['php'][$h] === null ? null : (string)$in['php'][$h]);
 			}
-			nb_out(['ok' => true] + nb_state($formId));
+			NuBuilderApi::out(['ok' => true] + NuBuilderApi::state($formId));
 
-		case 'rules.save':             // validation rules (0.8.812): sfo_json nunext.rules
-			$meta = nb_form($formId);
+		case 'rules.save':             // validation rules: sfo_json nunext.rules
+			$meta = NuBuilderApi::form($formId);
 			$cl = NuFormRules::clean(is_array($in['rules'] ?? null) ? $in['rules'] : [], $meta);
-			if ($cl['errors']) nb_out(['ok' => false, 'error' => implode("\n", $cl['errors']), 'errors' => $cl['errors']], 400);
+			if ($cl['errors']) NuBuilderApi::out(['ok' => false, 'error' => implode("\n", $cl['errors']), 'errors' => $cl['errors']], 400);
 			$db->update('zzzzsys_form', ['sfo_json' => NuFormMeta::mergeNunextJson($meta->form['sfo_json'] ?? null, ['rules' => $cl['rules'] ?: null])], 'zzzzsys_form_id', $formId);
 			NuFormMeta::forget($formId);
-			nb_out(['ok' => true, 'rules' => $cl['rules']] + nb_state($formId));
+			NuBuilderApi::out(['ok' => true, 'rules' => $cl['rules']] + NuBuilderApi::state($formId));
 
 		case 'rules.parse':
 		case 'rules.test':
-			nb_rules(nb_form($formId), $action, $in);
+			NuBuilderApi::rules(NuBuilderApi::form($formId), $action, $in);
 
 		case 'form.deleteinfo':
-			if (empty(NuAuth::user()['globeadmin'])) nb_err(t('builder_delete_globeadmin'), 403);
-			if (NuFormDraft::openFor($formId)) nb_err(t('builder_draft_delete_first'));
-			$info = nb_table_info(nb_form($formId));
-			if ($info['reauth']) $_SESSION['nu_reauth_next'] = nb_back($in) ?? nu_url('builder', ['f' => $formId, 'delete' => '1']);
-			nb_out(['ok' => true] + $info + ($info['reauth'] ? ['reauth_url' => nu_url('reauth')] : []));
+			if (empty(NuAuth::user()['globeadmin'])) NuBuilderApi::err(t('builder_delete_globeadmin'), 403);
+			if (NuFormDraft::openFor($formId)) NuBuilderApi::err(t('builder_draft_delete_first'));
+			$info = NuBuilderApi::tableInfo(NuBuilderApi::form($formId));
+			if ($info['reauth']) $_SESSION[NuSess::REAUTH_NEXT] = NuBuilderApi::back($in) ?? nu_url('builder', ['f' => $formId, 'delete' => '1']);
+			NuBuilderApi::out(['ok' => true] + $info + ($info['reauth'] ? ['reauth_url' => nu_url('reauth')] : []));
 
 		case 'form.delete':
-			// a whole form (objects, tabs, events, PHP, rights) is deleted by the globeadmin only (0.8.246)
-			if (empty(NuAuth::user()['globeadmin'])) nb_err(t('builder_delete_globeadmin'), 403);
-			if (NuFormDraft::openFor($formId)) nb_err(t('builder_draft_delete_first'));
-			$meta = nb_form($formId);
+			// a whole form (objects, tabs, events, PHP, rights) is deleted by the globeadmin only
+			if (empty(NuAuth::user()['globeadmin'])) NuBuilderApi::err(t('builder_delete_globeadmin'), 403);
+			if (NuFormDraft::openFor($formId)) NuBuilderApi::err(t('builder_draft_delete_first'));
+			$meta = NuBuilderApi::form($formId);
 			// with the table: the typed name must match exactly; checked again here (rights, not a view, not used elsewhere, password)
 			$drop = (string)($in['drop_table'] ?? '');
 			if ($drop !== '') {
-				$info = nb_table_info($meta);
-				if (!$info['can_drop']) nb_err(t('builder_drop_not_allowed'), 403);
-				if ($drop !== $info['table']) nb_err(t('builder_drop_mismatch'));
-				if ($info['reauth']) nb_err(t('reauth_needed'), 403);
+				$info = NuBuilderApi::tableInfo($meta);
+				if (!$info['can_drop']) NuBuilderApi::err(t('builder_drop_not_allowed'), 403);
+				if ($drop !== $info['table']) NuBuilderApi::err(t('builder_drop_mismatch'));
+				if ($info['reauth']) NuBuilderApi::err(t('reauth_needed'), 403);
 			}
 			$db->transaction(static function (NuDB $db) use ($formId) {
 				$ids = array_column($db->all('SELECT zzzzsys_object_id FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id = ?', [$formId]), 'zzzzsys_object_id');
@@ -721,53 +280,53 @@ try {
 				foreach (NB_HOOKS as $h) $db->delete('zzzzsys_php', 'zzzzsys_php_id', $formId . '_' . $h);
 				$db->delete('zzzzsys_form', 'zzzzsys_form_id', $formId);
 			});
-			NuPage::forget($formId);                       // settings of a page form (0.8.387)
+			NuPage::forget($formId);                       // settings of a page form
 			NuLog::write('form_deleted', $meta->code(), $formId, ['table' => $meta->table()]);
-			if ($drop === '') nb_out(['ok' => true]);
+			if ($drop === '') NuBuilderApi::out(['ok' => true]);
 			// DDL ends a transaction on MySQL – the table goes after the form; if it fails, the form is gone and the table stays
 			try {
 				$db->run('DROP TABLE ' . NuDB::ident($drop));
 				NuDB::forgetColumns($drop);
 			} catch (Throwable $e) {
-				nb_out(['ok' => true, 'warning' => t('builder_drop_failed', $drop) . (empty(NuAuth::user()['globeadmin']) ? '' : ' ' . $e->getMessage())]);
+				NuBuilderApi::out(['ok' => true, 'warning' => t('builder_drop_failed', $drop) . (empty(NuAuth::user()['globeadmin']) ? '' : ' ' . $e->getMessage())]);
 			}
 			NuLog::write('table_dropped', $drop, $formId, ['form' => $meta->code(), 'rows' => $info['rows']]);
-			nb_out(['ok' => true, 'dropped' => $drop]);
+			NuBuilderApi::out(['ok' => true, 'dropped' => $drop]);
 
 		// --------------------------------------------------------------- objects
-		case 'object.clone':                                   // object menu → Actions → Clone (0.8.927), then as object.save
+		case 'object.clone':                                   // object menu → Actions → Clone, then as object.save
 			if ($action === 'object.clone') {
 				$cid = (string)($in['object_id'] ?? '');
-				nb_clone_prep($in, $db->one('SELECT * FROM zzzzsys_object WHERE zzzzsys_object_id = ? AND sob_all_zzzzsys_form_id = ?', [$cid, $formId]) ?: null,
+				NuBuilderApi::clonePrep($in, $db->one('SELECT * FROM zzzzsys_object WHERE zzzzsys_object_id = ? AND sob_all_zzzzsys_form_id = ?', [$cid, $formId]) ?: null,
 					array_map('strval', array_column($db->all('SELECT sob_all_id FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id = ?', [$formId]), 'sob_all_id')),
 					$db->all('SELECT sev_event, sev_javascript FROM zzzzsys_event WHERE sev_zzzzsys_object_id = ? ORDER BY zzzzsys_event_id', [$cid]),
 					$db->value('SELECT sph_php FROM zzzzsys_php WHERE zzzzsys_php_id = ?', [$cid . '_AB']));
 			}
 			// no break: the copy is saved as a new object
 		case 'object.save':
-			$meta     = nb_form($formId);
+			$meta     = NuBuilderApi::form($formId);
 			$objectId = (string)($in['object_id'] ?? '');
-			$fields   = nb_clean(is_array($in['fields'] ?? null) ? $in['fields'] : [], NB_OBJECT_FIELDS);
+			$fields   = NuBuilderApi::clean(is_array($in['fields'] ?? null) ? $in['fields'] : [], NB_OBJECT_FIELDS);
 			$existing = $objectId !== '' ? $db->one('SELECT * FROM zzzzsys_object WHERE zzzzsys_object_id = ? AND sob_all_zzzzsys_form_id = ?', [$objectId, $formId]) : null;
-			if ($objectId !== '' && !$existing) nb_err(t('record_not_found'), 404);
+			if ($objectId !== '' && !$existing) NuBuilderApi::err(t('record_not_found'), 404);
 			foreach (['sob_input_format', 'sob_calc_format'] as $fk) {
-				if (isset($fields[$fk]) && mb_strlen((string)$fields[$fk]) > NuFormat::MAX_KEY) nb_err(t('fmt_err_length', NuFormat::MAX_KEY - 2));
+				if (isset($fields[$fk]) && mb_strlen((string)$fields[$fk]) > NuFormat::MAX_KEY) NuBuilderApi::err(t('fmt_err_length', NuFormat::MAX_KEY - 2));
 				NuFormat::ensureSaved($fields[$fk] ?? null);           // built-in format → zzzzsys_format, so nuBuilder knows it
 			}
 
-			if (isset($fields['sob_all_id'])) $fields['sob_all_id'] = trim((string)$fields['sob_all_id']);   // spaces at the ends (0.8.536)
-			if (isset($fields['sob_input_icon']) && mb_strlen((string)$fields['sob_input_icon']) > 50) nb_err(t('builder_obj_icon') . ': ' . t('err_too_long', 50));   // VARCHAR(50) in nuBuilder (0.8.559)
+			if (isset($fields['sob_all_id'])) $fields['sob_all_id'] = trim((string)$fields['sob_all_id']);   // spaces at the ends
+			if (isset($fields['sob_input_icon']) && mb_strlen((string)$fields['sob_input_icon']) > 50) NuBuilderApi::err(t('builder_obj_icon') . ': ' . t('err_too_long', 50));   // VARCHAR(50) in nuBuilder
 			$type = (string)($fields['sob_all_type'] ?? $existing['sob_all_type'] ?? '');
 			$fid  = (string)($fields['sob_all_id'] ?? $existing['sob_all_id'] ?? '');
-			if (!in_array($type, NB_TYPES, true)) nb_err(t('builder_err_type'));
-			// an id nuBuilder Forte allowed (umlauts …) is kept as long as it is not changed (0.8.1165)
-			if ($fid !== (string)($existing['sob_all_id'] ?? "\0") && !preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $fid)) nb_err(t('builder_err_id'));
+			if (!in_array($type, NB_TYPES, true)) NuBuilderApi::err(t('builder_err_type'));
+			// an id nuBuilder Forte allowed (umlauts …) is kept as long as it is not changed
+			if ($fid !== (string)($existing['sob_all_id'] ?? "\0") && !preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $fid)) NuBuilderApi::err(t('builder_err_id'));
 			if ((int)$db->value('SELECT COUNT(*) FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id = ? AND sob_all_id = ? AND zzzzsys_object_id <> ?', [$formId, $fid, $objectId])) {
-				nb_err(t('builder_err_id_taken', $fid));
+				NuBuilderApi::err(t('builder_err_id_taken', $fid));
 			}
 			if (isset($fields['sob_all_zzzzsys_tab_id']) && $fields['sob_all_zzzzsys_tab_id'] !== null
 				&& !(int)$db->value('SELECT COUNT(*) FROM zzzzsys_tab WHERE zzzzsys_tab_id = ? AND syt_zzzzsys_form_id = ?', [$fields['sob_all_zzzzsys_tab_id'], $formId])) {
-				nb_err(t('builder_err_tab'));
+				NuBuilderApi::err(t('builder_err_tab'));
 			}
 
 			if (is_array($in['grid'] ?? null)) {
@@ -775,42 +334,7 @@ try {
 				$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($existing['sob_all_json'] ?? null, NuResponsive::gridKeys($g, (string)($fields['sob_all_type'] ?? $existing['sob_all_type'] ?? '')));
 			}
 
-			if (array_key_exists('nunext_help', $fields)) {            // user help page of the field (0.8.1023): sob_all_json nunext.help
-				$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($fields['sob_all_json'] ?? $existing['sob_all_json'] ?? null, ['help' => NuUserHelp::cleanCode($fields['nunext_help'])]);
-				unset($fields['nunext_help']);
-			}
-			if (array_key_exists('nunext_calendar', $fields)) {        // calendar object (0.8.1165): sob_all_json nunext.calendar of an HTML object
-				$cc = is_string($fields['nunext_calendar']) ? json_decode($fields['nunext_calendar'], true) : $fields['nunext_calendar'];
-				$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($fields['sob_all_json'] ?? $existing['sob_all_json'] ?? null, ['calendar' => is_array($cc) ? NuCalendar::cleanObject($cc) : null]);
-				unset($fields['nunext_calendar']);
-			}
-			if (array_key_exists('nunext_suggest', $fields)) {         // suggestions while typing (0.8.1212): sob_all_json nunext.suggest of a text input
-				$sg = NuSuggest::clean($fields['nunext_suggest']);
-				if ($sg && ($sp = NuSuggest::problem($sg)) !== null) nb_err($sp);
-				$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($fields['sob_all_json'] ?? $existing['sob_all_json'] ?? null, ['suggest' => $sg]);
-				unset($fields['nunext_suggest']);
-			}
-			if (array_key_exists('nunext_fit', $fields)) {             // grid sub-form: fit columns to the width (0.8.1141): sob_all_json nunext.fit
-				$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($fields['sob_all_json'] ?? $existing['sob_all_json'] ?? null, ['fit' => !empty($fields['nunext_fit']) && $fields['nunext_fit'] !== '0' ? true : null]);
-				unset($fields['nunext_fit']);
-			}
-			if (array_key_exists('nunext_phone_table', $fields)) {     // grid sub-form on phones (usability review G15): rows as cards unless nunext.phone = 'table'
-				$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($fields['sob_all_json'] ?? $existing['sob_all_json'] ?? null, ['phone' => !empty($fields['nunext_phone_table']) && $fields['nunext_phone_table'] !== '0' ? 'table' : null]);
-				unset($fields['nunext_phone_table']);
-			}
-			if (array_key_exists('nunext_run_pivot', $fields)) {       // run object that shows a saved pivot (0.8.1156): sob_all_json nunext.pivot {f, id}
-				$pv = NuRender::cleanRunPivot($fields['nunext_run_pivot']);
-				$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($fields['sob_all_json'] ?? $existing['sob_all_json'] ?? null, ['pivot' => $pv]);
-				if ($pv) { $fields['sob_run_type'] = ''; $fields['sob_run_zzzzsys_form_id'] = ''; }
-				unset($fields['nunext_run_pivot']);
-			}
-			if (array_key_exists('nunext_run_url', $fields)) {         // run object of type URL (0.8.830): kept in sob_all_json nunext.url
-				$ru = $fields['nunext_run_url'] === null ? null : trim((string)$fields['nunext_run_url']);
-				if ($ru !== null && $ru !== '' && NuRender::cleanRunUrl($ru) === null) nb_err(t('builder_err_run_url'));
-				$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($fields['sob_all_json'] ?? $existing['sob_all_json'] ?? null, ['url' => $ru === '' ? null : $ru]);
-				if ($ru !== null && $ru !== '') { $fields['sob_run_type'] = ''; $fields['sob_run_zzzzsys_form_id'] = ''; }
-				unset($fields['nunext_run_url']);
-			}
+			try { $fields = NuFormMeta::objectNunextFields($fields, $existing ?: null); } catch (RuntimeException $x) { NuBuilderApi::err($x->getMessage()); }
 			$fields = array_intersect_key($fields, $db->columns('zzzzsys_object') ?: $fields);   // older nuBuilder versions lack sob_run_target / sob_run_type
 			$db->transaction(static function (NuDB $db) use (&$objectId, $existing, $fields, $formId, $meta, $in) {
 				if ($existing) {
@@ -828,7 +352,7 @@ try {
 						if ($ev === '' || trim($js) === '' || !preg_match('/^[a-z]+$/', $ev)) continue;
 						$new[] = [$ev, $js];
 					}
-					// unchanged events keep their rows (and ids) – as nuBuilder's sub-form (0.8.366)
+					// unchanged events keep their rows (and ids) – as nuBuilder's sub-form
 					$old = array_map(static fn($r) => [(string)$r['sev_event'], (string)$r['sev_javascript']],
 						$db->all('SELECT sev_event, sev_javascript FROM zzzzsys_event WHERE sev_zzzzsys_object_id = ? ORDER BY zzzzsys_event_id', [$objectId]));
 					$key = static fn(array $l) => json_encode(array_map(static fn($x) => $x[0] . "\n" . $x[1], $l));
@@ -838,70 +362,71 @@ try {
 						foreach ($new as [$ev, $js]) $db->insert('zzzzsys_event', ['zzzzsys_event_id' => nu_id(), 'sev_zzzzsys_object_id' => $objectId, 'sev_event' => $ev, 'sev_javascript' => $js]);
 					}
 				}
-				if (array_key_exists('lookup_php', $in)) nb_upsert_php($objectId . '_AB', $in['lookup_php'] === null ? null : (string)$in['lookup_php']);
+				if (array_key_exists('lookup_php', $in)) NuBuilderApi::upsertPhp($objectId . '_AB', $in['lookup_php'] === null ? null : (string)$in['lookup_php']);
 				if (!empty($in['clone_extra'])) {                     // object.clone: the columns object.save does not take
 					$x = array_intersect_key($in['clone_extra'], $db->columns('zzzzsys_object') ?: $in['clone_extra']);
 					if ($x) $db->update('zzzzsys_object', $x, 'zzzzsys_object_id', $objectId);
 				}
 			});
-			if ($type === 'subform') {                                // the sub-form's link column gets an index (0.8.366)
+			if ($type === 'subform') {                                // the sub-form's link column gets an index
 				$so = $db->one('SELECT o.sob_subform_foreign_key, f.sfo_table FROM zzzzsys_object o JOIN zzzzsys_form f ON f.zzzzsys_form_id = o.sob_subform_zzzzsys_form_id WHERE o.zzzzsys_object_id = ?', [$objectId]);
 				if ($so && trim((string)$so['sfo_table']) !== '' && trim((string)$so['sob_subform_foreign_key']) !== '') {
 					try { NuDDL::ensureIndex((string)$so['sfo_table'], (string)$so['sob_subform_foreign_key']); } catch (Throwable $e) { error_log('nuBuilder Next index: ' . $e->getMessage()); }
 				}
 			}
-			nb_out(['ok' => true, 'object_id' => $objectId, 'missing_column' => nb_missing_column($meta, $objectId)] + nb_state($formId));
+			NuBuilderApi::out(['ok' => true, 'object_id' => $objectId, 'missing_column' => NuBuilderApi::missingColumn($meta, $objectId)] + NuBuilderApi::state($formId));
 
 		case 'column.add':
 			// adds the column an object needs to its form's table (confirmed by the user in the builder)
-			$meta     = nb_form($formId);
+			$meta     = NuBuilderApi::form($formId);
 			$objectId = (string)($in['object_id'] ?? '');
 			$o        = $db->one('SELECT * FROM zzzzsys_object WHERE zzzzsys_object_id = ? AND sob_all_zzzzsys_form_id = ?', [$objectId, $formId]);
-			if (!$o) nb_err(t('record_not_found'), 404);
-			if (nb_missing_column($meta, $objectId) === null) nb_err(t('builder_err_column_exists'));
+			if (!$o) NuBuilderApi::err(t('record_not_found'), 404);
+			if (NuBuilderApi::missingColumn($meta, $objectId) === null) NuBuilderApi::err(t('builder_err_column_exists'));
 			$type   = (string)($in['type'] ?? '');
 			$length = trim((string)($in['length'] ?? ''));
-			if (!in_array($type, NuDDL::TYPES, true)) nb_err(t('builder_err_column_type', (string)$o['sob_all_id']));
-			if ($length !== '' && !preg_match('/^\d{1,5}([,.]\d{1,2})?$/', $length)) nb_err(t('builder_err_column_length', (string)$o['sob_all_id']));
+			if (!in_array($type, NuDDL::TYPES, true)) NuBuilderApi::err(t('builder_err_column_type', (string)$o['sob_all_id']));
+			if ($length !== '' && !preg_match('/^\d{1,5}([,.]\d{1,2})?$/', $length)) NuBuilderApi::err(t('builder_err_column_length', (string)$o['sob_all_id']));
 			NuDDL::addColumn($meta->table(), (string)$o['sob_all_id'], $type, $length);
-			nb_out(['ok' => true] + nb_state($formId));
+			NuBuilderApi::out(['ok' => true] + NuBuilderApi::state($formId));
 
 		case 'object.delete':
-			nb_form($formId);
+			NuBuilderApi::form($formId);
 			$objectId = (string)($in['object_id'] ?? '');
 			$db->transaction(static function (NuDB $db) use ($objectId, $formId) {
 				$db->run('DELETE FROM zzzzsys_object WHERE zzzzsys_object_id = ? AND sob_all_zzzzsys_form_id = ?', [$objectId, $formId]);
 				$db->delete('zzzzsys_event', 'sev_zzzzsys_object_id', $objectId);
 				$db->delete('zzzzsys_php', 'zzzzsys_php_id', $objectId . '_AB');
 			});
-			nb_out(['ok' => true] + nb_state($formId));
+			NuBuilderApi::out(['ok' => true] + NuBuilderApi::state($formId));
 
 		case 'objects.geometry':
-			nb_form($formId);
-			$geo = nb_geometry(is_array($in['items'] ?? null) ? $in['items'] : []);
+			NuBuilderApi::form($formId);
+			$geo = NuBuilderApi::geometry(is_array($in['items'] ?? null) ? $in['items'] : []);
 			$db->transaction(static function (NuDB $db) use ($geo, $formId) {
 				foreach ($geo as $oid => $f) {
-					if ((int)$db->value('SELECT COUNT(*) FROM zzzzsys_object WHERE zzzzsys_object_id = ? AND sob_all_zzzzsys_form_id = ?', [$oid, $formId])) $db->update('zzzzsys_object', $f, 'zzzzsys_object_id', $oid);
+					if ((int)$db->value('SELECT COUNT(*) FROM zzzzsys_object WHERE zzzzsys_object_id = ? AND sob_all_zzzzsys_form_id = ?', [$oid, $formId])) $db->update('zzzzsys_object',
+						$f, 'zzzzsys_object_id', $oid);
 				}
 			});
-			nb_out(['ok' => true] + nb_state($formId));
+			NuBuilderApi::out(['ok' => true] + NuBuilderApi::state($formId));
 
 		case 'object.order':
-			nb_form($formId);
+			NuBuilderApi::form($formId);
 			$ids = is_array($in['ids'] ?? null) ? $in['ids'] : [];
 			$db->transaction(static function (NuDB $db) use ($ids, $formId) {
 				foreach (array_values($ids) as $i => $oid) {
 					$db->run('UPDATE zzzzsys_object SET sob_all_order = ? WHERE zzzzsys_object_id = ? AND sob_all_zzzzsys_form_id = ?', [($i + 1) * 10, (string)$oid, $formId]);
 				}
 			});
-			nb_out(['ok' => true] + nb_state($formId));
+			NuBuilderApi::out(['ok' => true] + NuBuilderApi::state($formId));
 
 		// --------------------------------------------------------------- tabs & browse columns (whole list replaced)
 		case 'tabs.save':
-			nb_form($formId);
+			NuBuilderApi::form($formId);
 			$rows = is_array($in['tabs'] ?? null) ? $in['tabs'] : [];
-			if (!$rows) nb_err(t('builder_err_one_tab'));
-			nb_tab_dupe($rows, $db->all('SELECT zzzzsys_tab_id, syt_title FROM zzzzsys_tab WHERE syt_zzzzsys_form_id = ?', [$formId]));
+			if (!$rows) NuBuilderApi::err(t('builder_err_one_tab'));
+			NuBuilderApi::tabDupe($rows, $db->all('SELECT zzzzsys_tab_id, syt_title FROM zzzzsys_tab WHERE syt_zzzzsys_form_id = ?', [$formId]));
 			$db->transaction(static function (NuDB $db) use ($rows, $formId) {
 				$keep = [];
 				foreach (array_values($rows) as $i => $t) {
@@ -922,10 +447,10 @@ try {
 				$db->run("UPDATE zzzzsys_object SET sob_all_zzzzsys_tab_id = ? WHERE sob_all_zzzzsys_form_id = ? AND (sob_all_zzzzsys_tab_id IS NULL OR sob_all_zzzzsys_tab_id NOT IN ($in))", [$first, $formId, ...$keep]);
 				$db->run("DELETE FROM zzzzsys_tab WHERE syt_zzzzsys_form_id = ? AND zzzzsys_tab_id NOT IN ($in)", [$formId, ...$keep]);
 			});
-			nb_out(['ok' => true] + nb_state($formId));
+			NuBuilderApi::out(['ok' => true] + NuBuilderApi::state($formId));
 
 		case 'browse.save':
-			nb_form($formId);
+			NuBuilderApi::form($formId);
 			$rows = is_array($in['columns'] ?? null) ? $in['columns'] : [];
 			foreach ($rows as $c) NuFormat::ensureSaved(is_array($c) ? (string)($c['format'] ?? '') : '');
 			$db->transaction(static function (NuDB $db) use ($rows, $formId) {
@@ -939,7 +464,7 @@ try {
 					$defFilter = in_array(strtolower(trim((string)($c['display'] ?? ''))), NuFormMeta::DEFAULT_FILTERS[$formId] ?? [], true);
 					$data['sbr_json'] = NuFormMeta::mergeNunextJson($existingJson, ['filter' => !empty($c['filter']) ? true : ($defFilter ? false : null)]);
 					if (array_key_exists('badge', $c)) $data['sbr_json'] = NuFormMeta::mergeNunextJson($data['sbr_json'], ['badge' => NuFormMeta::cleanBadge($c['badge'])]);
-				if (array_key_exists('action', $c)) $data['sbr_json'] = NuFormMeta::mergeNunextJson($data['sbr_json'], ['action' => NuFormMeta::cleanAction($c['action'])]);   // On click (0.8.872)
+				if (array_key_exists('action', $c)) $data['sbr_json'] = NuFormMeta::mergeNunextJson($data['sbr_json'], ['action' => NuFormMeta::cleanAction($c['action'])]);   // On click
 					if (array_key_exists('total', $c)) $data['sbr_json'] = NuFormMeta::mergeNunextJson($data['sbr_json'], ['total' => NuFormMeta::cleanTotal($c['total'])]);   // column total
 					if (array_key_exists('group', $c)) $data['sbr_json'] = NuFormMeta::mergeNunextJson($data['sbr_json'], ['group' => !empty($c['group']) ? true : null]);   // group the list by this column
 					if (trim($data['sbr_display']) === '') continue;
@@ -959,27 +484,29 @@ try {
 					$db->delete('zzzzsys_browse', 'sbr_zzzzsys_form_id', $formId);
 				}
 			});
-			nb_out(['ok' => true] + nb_state($formId));
+			NuBuilderApi::out(['ok' => true] + NuBuilderApi::state($formId));
 
 		// --------------------------------------------------------------- layout
 		case 'layout.convert':
-			$meta = nb_form($formId);
+			$meta = NuBuilderApi::form($formId);
 			$db->transaction(static function (NuDB $db) use ($meta, $formId) {
 				$tabs = $meta->tabs ?: [['zzzzsys_tab_id' => '']];
 				foreach ($tabs as $t) {
 					foreach (NuLayout::placement($meta->objectsOfTab((string)$t['zzzzsys_tab_id'])) as $oid => $pl) {
 						$json = $db->value('SELECT sob_all_json FROM zzzzsys_object WHERE zzzzsys_object_id = ?', [$oid]);
-						$db->update('zzzzsys_object', ['sob_all_json' => NuFormMeta::mergeNunextJson($json, ['row' => $pl['row'], 'col' => $pl['col'], 'span' => $pl['span'], 'box' => $pl['box'] ?: null])], 'zzzzsys_object_id', (string)$oid);
+						$db->update('zzzzsys_object',
+							['sob_all_json' => NuFormMeta::mergeNunextJson($json, ['row' => $pl['row'], 'col' => $pl['col'], 'span' => $pl['span'], 'box' => $pl['box'] ?: null])],
+							'zzzzsys_object_id', (string)$oid);
 					}
 				}
 				$db->update('zzzzsys_form', ['sfo_json' => NuFormMeta::mergeNunextJson($meta->form['sfo_json'] ?? null, ['layout' => 'grid'])], 'zzzzsys_form_id', $formId);
 			});
-			nb_out(['ok' => true] + nb_state($formId));
+			NuBuilderApi::out(['ok' => true] + NuBuilderApi::state($formId));
 	}
-	nb_err('Unknown action');
+	NuBuilderApi::err('Unknown action');
 } catch (NuDraftRevException $e) {
-	nb_out(['ok' => false, 'error' => $e->getMessage(), 'code' => 'draft_rev'], 409);          // the builder reloads the draft
+	NuBuilderApi::out(['ok' => false, 'error' => $e->getMessage(), 'code' => 'draft_rev'], 409);          // the builder reloads the draft
 } catch (Throwable $e) {
 	error_log('nuBuilder Next builder: ' . $e->getMessage());
-	nb_err($e->getMessage(), 500);
+	NuBuilderApi::err($e->getMessage(), 500);
 }

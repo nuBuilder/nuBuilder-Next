@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Calendars (0.8.1165, FullCalendar 6 standard – vendor/bundled/fullcalendar-*, assets/js/nu/nucalendar.js). Three places:
+ * Calendars (FullCalendar 6 standard – vendor/bundled/fullcalendar-*, assets/js/nu/nucalendar.js). Three places:
  *  - list view: a form list with sfo_json nunext.calendar {start, end, title, color, group: list column index, allday, view, edit, drag,
  *    min, max} – page ?p=calendar&f=<form>, the list's search / filters / advanced search / column access apply (NuBrowse::filtered);
  *  - calendar object: an HTML object with sob_all_json nunext.calendar {src: form | sql, form, filter, sql, edit_form, start_field,
@@ -103,8 +103,7 @@ final class NuCalendar
 				$m = NuFormMeta::load((string)$r['zzzzsys_form_id']);
 				if ($m && self::ofForm($m) && NuAcl::can($m->id, 'browse')) $out[] = [$m->id, trim($r['sfo_code'] . ' – ' . $r['sfo_description'], ' –')];
 			}
-		} catch (Throwable) {
-		}
+		} catch (Throwable $ig) { nu_ignored($ig); }
 		return $out;
 	}
 
@@ -133,7 +132,8 @@ final class NuCalendar
 		if (!$b) return '';
 		$disp = trim((string)$b['sbr_display']);
 		if (!preg_match('/^(?:[A-Za-z_]\w*\.)?([A-Za-z_]\w*)$/', $disp, $m)) return '';
-		foreach ($meta->objects as $o) if (strcasecmp((string)$o['sob_all_id'], $m[1]) === 0 && in_array($o['sob_all_type'], ['input', 'select', 'calc', 'display', 'textarea'], true)) return (string)$o['sob_all_id'];
+		foreach ($meta->objects as $o) if (strcasecmp((string)$o['sob_all_id'], $m[1]) === 0
+			&& in_array($o['sob_all_type'], ['input', 'select', 'calc', 'display', 'textarea'], true)) return (string)$o['sob_all_id'];
 		return '';
 	}
 
@@ -266,7 +266,8 @@ final class NuCalendar
 	{
 		// the same checks as Save on the form (pages/nuformapi.php)
 		$rights = NuAcl::rights($meta->id);
-		if (!empty($rights['no_edits']) || empty($rights['edit']) || empty($rights['save']) || NuSecurity::runtimeBlocked($meta) || $meta->isDraft() || NuDemo::active()) return ['ok' => false, 'error' => t('err_forbidden')];
+		if (!empty($rights['no_edits']) || empty($rights['edit']) || empty($rights['save']) || NuSecurity::runtimeBlocked($meta) || $meta->isDraft()
+			|| NuDemo::active()) return ['ok' => false, 'error' => t('err_forbidden')];
 		if (NuFormStatus::blocked(NuFormStatus::of($meta->id))) return ['ok' => false, 'error' => t('err_forbidden')];
 		if ($startField === '') return ['ok' => false, 'error' => t('cal_err_move')];
 		$row = NuRecord::load($meta, $pk);
@@ -389,6 +390,7 @@ final class NuCalendar
 	/** The host element of a calendar: data-nu-cal = what the script needs (never the SQL). */
 	public static function host(array $client, string $id = '', string $cls = ''): string
 	{
-		return '<div class="nuCalHost ' . h($cls) . '"' . ($id !== '' ? ' id="' . h($id) . '"' : '') . ' data-nu-cal="' . h(json_encode($client, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) . '"></div>';
+		return '<div class="nuCalHost ' . h($cls) . '"' . ($id !== '' ? ' id="' . h($id) . '"' : '') . ' data-nu-cal="'
+			. h(json_encode($client, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) . '"></div>';
 	}
 }

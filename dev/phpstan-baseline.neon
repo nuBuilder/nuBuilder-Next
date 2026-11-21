@@ -1,0 +1,775 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Match expression does not handle remaining value\: mixed$#'
+			identifier: match.unhandled
+			count: 2
+			path: ../core/form/nuadvsearch.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between ''object\.clone'' and ''object\.clone'' will always evaluate to true\.$#'
+			identifier: identical.alwaysTrue
+			count: 1
+			path: ../core/form/nubuilderapi.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between mixed~\(0\|0\.0\|''''\|''0''\|array\{\}\|false\|null\) and ''0'' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 2
+			path: ../core/form/nucalendar.php
+
+		-
+			message: '#^Call to function token_get_all\(\) on a separate line has no effect\.$#'
+			identifier: function.resultUnused
+			count: 1
+			path: ../core/form/nuformdraft.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between null and false will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: ../core/form/nuformpage.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: ../core/form/nuformpage.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>objects" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: ../core/form/nuformpage.php
+
+		-
+			message: '#^Call to function token_get_all\(\) on a separate line has no effect\.$#'
+			identifier: function.resultUnused
+			count: 1
+			path: ../core/form/nuformspec.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between mixed and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: ../core/form/nuformstore.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between mixed~\(0\|0\.0\|''''\|''0''\|array\{\}\|false\|null\) and ''0'' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 2
+			path: ../core/form/nuformstore.php
+
+		-
+			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: ../core/form/nuhash.php
+
+		-
+			message: '#^Instanceof between stdClass and stdClass will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 1
+			path: ../core/form/nuonprocess.php
+
+		-
+			message: '#^Ternary operator condition is always true\.$#'
+			identifier: ternary.alwaysTrue
+			count: 1
+			path: ../core/form/nuonprocess.php
+
+		-
+			message: '#^Call to function is_string\(\) with '''' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: ../core/form/nuphp.php
+
+		-
+			message: '#^Offset ''function'' on array\{function\: string, line\?\: int, file\?\: string, class\?\: class\-string, type\?\: ''\-\>''\|''\:\:'', args\?\: array\<mixed\>, object\?\: object\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: ../core/form/nuphp_api.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>byId" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: ../core/form/nuphp_api.php
+
+		-
+			message: '#^Function nuRunProcedure\(\) never returns string so it can be removed from the return type\.$#'
+			identifier: return.unusedType
+			count: 1
+			path: ../core/form/nuphp_compat.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between '''' and '''' will always evaluate to true\.$#'
+			identifier: identical.alwaysTrue
+			count: 1
+			path: ../core/form/nuphp_compat.php
+
+		-
+			message: '#^Result of && is always false\.$#'
+			identifier: booleanAnd.alwaysFalse
+			count: 1
+			path: ../core/form/nurecord.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between ''calc''\|''editor''\|''input''\|''lookup''\|''select''\|''textarea'' and ''subform'' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: ../core/form/nurecord.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between \*NEVER\* and string will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: ../core/form/nurecord.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between null and null will always evaluate to false\.$#'
+			identifier: notIdentical.alwaysFalse
+			count: 1
+			path: ../core/form/nurecord.php
+
+		-
+			message: '#^Right side of \|\| is always false\.$#'
+			identifier: booleanOr.rightAlwaysFalse
+			count: 1
+			path: ../core/form/nurender.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between mixed~\(0\|0\.0\|''''\|''0''\|array\{\}\|false\|null\) and ''0'' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 2
+			path: ../core/form/nurowdetails.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between mixed~\(0\|0\.0\|''''\|''0''\|array\{\}\|false\|null\) and ''0'' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: ../core/form/nusuggest.php
+
+		-
+			message: '#^Comparison operation "\>" between 0 and 2000000 is always false\.$#'
+			identifier: greater.alwaysFalse
+			count: 1
+			path: ../core/nuaiprovider.php
+
+		-
+			message: '#^Match arm comparison between ''test'' and ''test'' is always true\.$#'
+			identifier: match.alwaysTrue
+			count: 1
+			path: ../core/nuaiprovider.php
+
+		-
+			message: '#^Static property NuApi\:\:\$after \(\(callable\(\)\: void\)\|null\) is never assigned callable\(\)\: void so it can be removed from the property type\.$#'
+			identifier: property.unusedType
+			count: 1
+			path: ../core/nuapi.php
+
+		-
+			message: '#^Comparison operation "\>" between 0 and 0 is always false\.$#'
+			identifier: greater.alwaysFalse
+			count: 2
+			path: ../core/nuappcloner.php
+
+		-
+			message: '#^Constant NuAppCloner\:\:COMMIT_BYTES is unused\.$#'
+			identifier: classConstant.unused
+			count: 1
+			path: ../core/nuappcloner.php
+
+		-
+			message: '#^Negated boolean expression is always true\.$#'
+			identifier: booleanNot.alwaysTrue
+			count: 1
+			path: ../core/nuappcloner.php
+
+		-
+			message: '#^Result of && is always false\.$#'
+			identifier: booleanAnd.alwaysFalse
+			count: 1
+			path: ../core/nuappcloner.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: ../core/nuappcloner.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between '';base64'' and '''' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 2
+			path: ../core/nubranding.php
+
+		-
+			message: '#^Call to function token_get_all\(\) on a separate line has no effect\.$#'
+			identifier: function.resultUnused
+			count: 1
+			path: ../core/nucodesearch.php
+
+		-
+			message: '#^Call to function token_get_all\(\) on a separate line has no effect\.$#'
+			identifier: function.resultUnused
+			count: 1
+			path: ../core/nuconfigfile.php
+
+		-
+			message: '#^Call to function is_array\(\) with \*NEVER\* will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: ../core/nudashboard.php
+
+		-
+			message: '#^Empty array passed to foreach\.$#'
+			identifier: foreach.emptyArray
+			count: 1
+			path: ../core/nudashboard.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between \*NEVER\* and 0 will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: ../core/nudashboard.php
+
+		-
+			message: '#^Elseif condition is always false\.$#'
+			identifier: elseif.alwaysFalse
+			count: 1
+			path: ../core/nudb.php
+
+		-
+			message: '#^If condition is always false\.$#'
+			identifier: if.alwaysFalse
+			count: 1
+			path: ../core/nudb.php
+
+		-
+			message: '#^Right side of && is always true\.$#'
+			identifier: booleanAnd.rightAlwaysTrue
+			count: 1
+			path: ../core/nudb.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between mixed and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: ../core/nudb.php
+
+		-
+			message: '#^Call to function is_array\(\) with array\<int\|string, array\<mixed\>\|string\> will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: ../core/nuemailpage.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between '';base64'' and '''' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: ../core/nufiles.php
+
+		-
+			message: '#^Offset 2 on array\{non\-falsy\-string, string, ''''\|''\.\.\.'', non\-empty\-string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: ../core/nufnref.php
+
+		-
+			message: '#^Call to function in_array\(\) with arguments ''fail'', array\{''fail''\|''ok'', ''ok''\|''unknown''\|''warn'', ''ok''\|''warn'', ''ok''\|''warn'', ''ok''\|''warn''\} and true will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: ../core/nuhealth.php
+
+		-
+			message: '#^Call to function in_array\(\) with arguments ''warn'', array\{''ok'', ''ok''\|''unknown''\|''warn'', ''ok''\|''warn'', ''ok''\|''warn'', ''ok''\|''warn''\} and true will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: ../core/nuhealth.php
+
+		-
+			message: '#^Negated boolean expression is always true\.$#'
+			identifier: booleanNot.alwaysTrue
+			count: 1
+			path: ../core/nuinfra.php
+
+		-
+			message: '#^Call to function token_get_all\(\) on a separate line has no effect\.$#'
+			identifier: function.resultUnused
+			count: 1
+			path: ../core/nuinstall.php
+
+		-
+			message: '#^Method NuInstallPage\:\:finish\(\) never assigns array to &\$S so it can be removed from the by\-ref type\.$#'
+			identifier: parameterByRef.unusedType
+			count: 1
+			path: ../core/nuinstallpage.php
+
+		-
+			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: ../core/nujquery.php
+
+		-
+			message: '#^Offset ''de''\|''en'' on array\{de\: ''de\-DE'', en\: ''en\-GB''\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: ../core/nulanguages.php
+
+		-
+			message: '#^Comparison operation "\>" between int\<2, max\> and 1 is always true\.$#'
+			identifier: greater.alwaysTrue
+			count: 1
+			path: ../core/nulayout.php
+
+		-
+			message: '#^Negated boolean expression is always false\.$#'
+			identifier: booleanNot.alwaysFalse
+			count: 1
+			path: ../core/nulayout.php
+
+		-
+			message: '#^Call to function method_exists\(\) with ''NuSecurity'' and ''protectDir'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: ../core/nulibs.php
+
+		-
+			message: '#^Offset 0 on array\{string, int\<\-1, max\>\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: ../core/nulibs.php
+
+		-
+			message: '#^If condition is always false\.$#'
+			identifier: if.alwaysFalse
+			count: 1
+			path: ../core/numarkdown.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between mixed~\(0\|0\.0\|''''\|''0''\|array\{\}\|false\|null\) and ''0'' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 4
+			path: ../core/nunotify.php
+
+		-
+			message: '#^Call to function in_array\(\) with arguments int\<min, 0\>\|int\<2, max\>, array\{1\} and true will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: ../core/nupage.php
+
+		-
+			message: '#^Result of && is always false\.$#'
+			identifier: booleanAnd.alwaysFalse
+			count: 2
+			path: ../core/nupage.php
+
+		-
+			message: '#^Ternary operator condition is always false\.$#'
+			identifier: ternary.alwaysFalse
+			count: 1
+			path: ../core/nupage.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between numeric\-string and '''' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: ../core/nupageno.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: ../core/nupasskey.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between mixed~\(0\|0\.0\|''''\|''0''\|array\{\}\|false\|null\) and ''0'' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: ../core/nuproject.php
+
+		-
+			message: '#^Offset ''slot'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: ../core/nuready.php
+
+		-
+			message: '#^Offset ''title'' on array\{slot\: string, title\: string, min\: string, needed\: bool, have\: string, best\: array\|null\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: ../core/nuready.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: ../core/nureport.php
+
+		-
+			message: '#^Offset ''action'' on array\{action\: ''fields''\|''save'', layout\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: ../core/nureportdesignerpage.php
+
+		-
+			message: '#^Offset ''layout'' on array\{action\: ''fields''\|''save'', layout\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: ../core/nureportdesignerpage.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: ../core/nureportdesignerpage.php
+
+		-
+			message: '#^Property NuReportSection\:\:\$fontDir is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: ../core/nureportengine.php
+
+		-
+			message: '#^Offset ''comm''\|''data''\|''dev''\|''integration''\|''logs''\|''look''\|''system''\|''users'' on array\{system\: ''home_group_system'', data\: ''home_group_data'', dev\: ''home_group_dev'', users\: ''home_group_users'', look\: ''home_group_look'', comm\: ''home_group_comm'', integration\: ''home_group…'', logs\: ''adm_group_logs''\} in isset\(\) always exists and is not nullable\.$#'
+			identifier: isset.offset
+			count: 1
+			path: ../core/nuselftest.php
+
+		-
+			message: '#^Negated boolean expression is always false\.$#'
+			identifier: booleanNot.alwaysFalse
+			count: 1
+			path: ../core/nusettings.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between mixed and null will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: ../core/nusso.php
+
+		-
+			message: '#^Comparison operation "\<" between 0 and 5 is always true\.$#'
+			identifier: smaller.alwaysTrue
+			count: 1
+			path: ../core/nutranslate.php
+
+		-
+			message: '#^Offset 0 on non\-empty\-list\<string\> on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: ../core/nuupdatepage.php
+
+		-
+			message: '#^Empty array passed to foreach\.$#'
+			identifier: foreach.emptyArray
+			count: 1
+			path: ../core/nuuserhelp.php
+
+		-
+			message: '#^Offset ''mime'' on array\{0\: int\<0, max\>, 1\: int\<0, max\>, 2\: int, 3\: string, mime\: string, channels\?\: int, bits\?\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: ../core/nuuserhelp.php
+
+		-
+			message: '#^Offset 3 on array\{non\-falsy\-string, string, non\-falsy\-string, string, string, string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: ../core/nuuserhelp.php
+
+		-
+			message: '#^If condition is always false\.$#'
+			identifier: if.alwaysFalse
+			count: 1
+			path: ../core/nuuserpage.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between non\-falsy\-string&numeric\-string and '''' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: ../core/nuxlsx.php
+
+		-
+			message: '#^Instanceof between Throwable and PDOException will always evaluate to false\.$#'
+			identifier: instanceof.alwaysFalse
+			count: 1
+			path: ../pages/nuappcloner.php
+
+		-
+			message: '#^If condition is always true\.$#'
+			identifier: if.alwaysTrue
+			count: 1
+			path: ../pages/nubuilder.php
+
+		-
+			message: '#^Left side of && is always true\.$#'
+			identifier: booleanAnd.leftAlwaysTrue
+			count: 1
+			path: ../pages/nubuilder.php
+
+		-
+			message: '#^Offset 0 on non\-empty\-list\<string\> on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: ../pages/nubuilder.php
+
+		-
+			message: '#^Offset ''globeadmin'' on non\-empty\-array in empty\(\) always exists and is not falsy\.$#'
+			identifier: empty.offset
+			count: 1
+			path: ../pages/nubuilderapi.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between mixed and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: ../pages/nubuilderapi.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between mixed~\(0\|0\.0\|''''\|''0''\|array\{\}\|false\|null\) and ''0'' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 2
+			path: ../pages/nubuilderapi.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between ''object\.clone'' and ''object\.clone'' will always evaluate to true\.$#'
+			identifier: identical.alwaysTrue
+			count: 1
+			path: ../pages/nubuilderapi.php
+
+		-
+			message: '#^Call to function token_get_all\(\) on a separate line has no effect\.$#'
+			identifier: function.resultUnused
+			count: 1
+			path: ../pages/nucodecheck.php
+
+		-
+			message: '#^Offset 0 on non\-empty\-list\<string\> on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: ../pages/nudebug.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between mixed~'''' and '''' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 3
+			path: ../pages/nufiles.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between mixed~'''' and '''' will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: ../pages/nufiles.php
+
+		-
+			message: '#^Negated boolean expression is always true\.$#'
+			identifier: booleanNot.alwaysTrue
+			count: 1
+			path: ../pages/nuform.php
+
+		-
+			message: '#^Result of \|\| is always true\.$#'
+			identifier: booleanOr.alwaysTrue
+			count: 1
+			path: ../pages/nuform.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between non\-empty\-string and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 2
+			path: ../pages/nuform.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between ''browse'' and ''browse'' will always evaluate to true\.$#'
+			identifier: identical.alwaysTrue
+			count: 3
+			path: ../pages/nuform.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between 1 and 1 will always evaluate to false\.$#'
+			identifier: notIdentical.alwaysFalse
+			count: 1
+			path: ../pages/nuformai.php
+
+		-
+			message: '#^Offset ''props'' on non\-empty\-array on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: ../pages/nuformapi.php
+
+		-
+			message: '#^Offset ''header''\|''include''\|''style'' on array\{header\: ''set_header'', style\: ''set_style'', include\: ''set_include''\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: ../pages/nuglobalcode.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between mixed~'''' and '''' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 3
+			path: ../pages/nuitems.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between mixed~'''' and '''' will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: ../pages/nuitems.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between non\-falsy\-string and ''0'' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: ../pages/nunotifications.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between mixed~'''' and '''' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 4
+			path: ../pages/nupermissions.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between mixed~'''' and '''' will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 2
+			path: ../pages/nupermissions.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between mixed~'''' and '''' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 3
+			path: ../pages/nuprocedures.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between mixed~'''' and '''' will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: ../pages/nuprocedures.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between mixed~'''' and '''' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 4
+			path: ../pages/nuprompts.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between mixed~'''' and '''' will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: ../pages/nuprompts.php
+
+		-
+			message: '#^Right side of && is always true\.$#'
+			identifier: booleanAnd.rightAlwaysTrue
+			count: 1
+			path: ../pages/nureports.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between mixed~'''' and '''' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 4
+			path: ../pages/nureports.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between mixed~'''' and '''' will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: ../pages/nureports.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between mixed~'''' and '''' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 5
+			path: ../pages/nusqlbuilder.php
+
+		-
+			message: '#^If condition is always false\.$#'
+			identifier: if.alwaysFalse
+			count: 1
+			path: ../pages/nutodo.php
+
+		-
+			message: '#^Negated boolean expression is always true\.$#'
+			identifier: booleanNot.alwaysTrue
+			count: 1
+			path: ../pages/nutodo.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between null and null will always evaluate to true\.$#'
+			identifier: identical.alwaysTrue
+			count: 1
+			path: ../pages/nutodo.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 2
+			path: ../pages/nutodo.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between '''' and '''' will always evaluate to true\.$#'
+			identifier: identical.alwaysTrue
+			count: 1
+			path: ../pages/nutranslations.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between ''missing'' and ''list'' will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 2
+			path: ../pages/nutranslations.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between ''missing'' and ''missing'' will always evaluate to true\.$#'
+			identifier: identical.alwaysTrue
+			count: 2
+			path: ../pages/nutranslations.php
+
+		-
+			message: '#^Result of && is always false\.$#'
+			identifier: booleanAnd.alwaysFalse
+			count: 1
+			path: ../pages/nuupdate.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between ''bundled'' and ''bundled'' will always evaluate to true\.$#'
+			identifier: identical.alwaysTrue
+			count: 2
+			path: ../pages/nuupdate.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between ''bundled'' and ''external'' will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: ../pages/nuupdate.php
+
+		-
+			message: '#^If condition is always false\.$#'
+			identifier: if.alwaysFalse
+			count: 1
+			path: ../pages/nuuser.php
+
+		-
+			message: '#^If condition is always true\.$#'
+			identifier: if.alwaysTrue
+			count: 1
+			path: ../pages/nuuser.php
+
+		-
+			message: '#^Negated boolean expression is always true\.$#'
+			identifier: booleanNot.alwaysTrue
+			count: 4
+			path: ../pages/nuuser.php
+
+		-
+			message: '#^Negated boolean expression is always true\.$#'
+			identifier: booleanNot.alwaysTrue
+			count: 1
+			path: ../pages/nuvendor.php
+
+		-
+			message: '#^Offset ''ADM''\|''PMA'' on array\{PMA\: ''phpMyAdmin'', ADM\: ''Adminer''\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: ../pages/nuvendor.php

@@ -8,7 +8,7 @@ defined('NU_ROOT') || exit;
  * data as hex, functions / procedures / triggers / events without DEFINER, no sessions and one-time tokens), so both stay the same.
  * MySQL / MariaDB and SQL Server (the SQL file then uses GO between batches). The file ends with a marker line; complete() checks it, so a dump that was cut off is never taken for a
  * full one.
- * Restore (0.8.1031, MySQL / MariaDB): restoreCheck() / restore() put the database part of a backup back – the file is read line by line
+ * Restore (MySQL / MariaDB): restoreCheck() / restore() put the database part of a backup back – the file is read line by line
  * (NuSqlImport), the tables of the dump's scope are dropped first, nuBuilder Next's database steps run afterwards.
  */
 final class NuSqlDump
@@ -16,7 +16,7 @@ final class NuSqlDump
 	public const MARKER = '-- nuBuilder Next SQL dump completed';
 	/** Rows left out with "without logs" (the tables are created, empty). */
 	public const LOG_TABLES = ['zzzzsys_debug', 'zzzzsys_email_log', 'zzzzsys_nunext_log', 'zzzzsys_nunext_form_history'];
-	// 'nubuilder' (0.8.615): every zzzzsys_* table – nuBuilder Forte's and nuBuilder Next's, all an update can change; 'nunext' only
+	// 'nubuilder': every zzzzsys_* table – nuBuilder Forte's and nuBuilder Next's, all an update can change; 'nunext' only
 	// nuBuilder Next's own tables (no longer offered, older backups have it)
 	public const SCOPES = ['none', 'nubuilder', 'nunext', 'all'];
 
@@ -73,7 +73,7 @@ final class NuSqlDump
 			$st = $r['stats'];
 			$res = ['tables' => (int)$st['tables'], 'views' => (int)$st['views'], 'rows' => (int)$st['rows'],
 				'routines' => (int)$st['functions'] + (int)$st['procedures'] + (int)$st['triggers'] + (int)$st['events'],
-				'counts' => (array)($r['counts'] ?? [])] + $res;   // rows per table (0.8.1032): compared after a restore
+				'counts' => (array)($r['counts'] ?? [])] + $res;   // rows per table: compared after a restore
 			gzwrite($gz, "\n" . self::MARKER . ' ' . date('Y-m-d H:i:s') . "\n");
 		} catch (Throwable $e) {
 			$res['error'] = $e->getMessage();
@@ -101,7 +101,7 @@ final class NuSqlDump
 		return str_contains($tail, self::MARKER);
 	}
 
-	// ------------------------------------------------------------------ restore (0.8.1031)
+	// ------------------------------------------------------------------ restore
 
 	/** The database part can be restored here: MySQL / MariaDB (SQL Server: TODO.md – its dump uses GO batches, not tried on a server). */
 	public static function canRestore(): bool
@@ -165,7 +165,7 @@ final class NuSqlDump
 	 */
 	public static function restoreCheck(string $zip): array
 	{
-		nu_time_limit(0);   // 0.8.1148: reading a large dump through
+		nu_time_limit(0);   // reading a large dump through
 		if (!self::canRestore()) return ['ok' => false, 'error' => t('rst_err_mysql')];
 		$tmp = '';
 		try {
@@ -186,7 +186,7 @@ final class NuSqlDump
 	/**
 	 * Puts the database part of a backup back: checks it again, makes a backup of the database now (same scope), maintenance mode on,
 	 * drops the tables of the scope, runs the dump, compares the row count of every table with the backup, then nuBuilder Next's tables
-	 * and database steps of THIS version. If the restore fails after the drop, the backup made first is put back by itself (0.8.1032).
+	 * and database steps of THIS version. If the restore fails after the drop, the backup made first is put back by itself.
 	 * $backupFirst false only from the command line (--no-backup): then there is no way back.
 	 * @return array{safety: string, dropped: int, statements: int, steps: array, scope: string, version: string, checked: int, mismatch: array<string, array{0: int, 1: int}>}
 	 */
@@ -216,7 +216,7 @@ final class NuSqlDump
 				try {
 					[$out['dropped'], $out['statements']] = self::load($db, $tmp, $scope, $progress);
 				} catch (Throwable $e) {
-					// the tables are gone: put the backup made first back (0.8.1032), then report both
+					// the tables are gone: put the backup made first back, then report both
 					$back = '';
 					if ($out['safety'] !== '' && ($sf = NuUpdate::backupPath($out['safety']))) {
 						$st = '';
@@ -264,8 +264,8 @@ final class NuSqlDump
 		if (PHP_SAPI === 'cli' || session_status() !== PHP_SESSION_ACTIVE) return;
 		$u = NuAuth::user();
 		if (!$u) return;
-		unset($_SESSION['nu_sess'], $_SESSION['nu_schema'], $_SESSION['nu_db_ready']);
-		try { NuSessions::touch($u); } catch (Throwable) {}
+		unset($_SESSION[NuSess::SESS], $_SESSION[NuSess::SCHEMA], $_SESSION[NuSess::DB_READY]);
+		try { NuSessions::touch($u); } catch (Throwable $ig) { nu_ignored($ig); }
 	}
 
 	/** Drops the tables of the scope and runs a dump (.sql.gz). @return array{0: int, 1: int} dropped, statements */
@@ -284,7 +284,7 @@ final class NuSqlDump
 		}
 	}
 
-	// ------------------------------------------------------------------ free disk space (0.8.1032, as mydumper's --disk-limits)
+	// ------------------------------------------------------------------ free disk space (as mydumper's --disk-limits)
 
 	/** Bytes of the SQL dump inside a backup zip (gzip), 0 when missing. */
 	private static function entrySize(string $zip): int

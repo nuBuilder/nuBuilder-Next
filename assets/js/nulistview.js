@@ -1,6 +1,6 @@
 /* global nuBs */
 /*
- * List views (0.8.329, core/nulistview.php): the editor of a view (columns, phone card, filters, general) and the import dialog.
+ * List views (core/nulistview.php): the editor of a view (columns, phone card, filters, general) and the import dialog.
  * Data from <div id="nuLvData" data-lv="…">; saves with POST index.php?p=listview (action save / delete / import, JSON answer).
  */
 (function () {
@@ -92,7 +92,9 @@
 			return '<li class="nav-item" role="presentation"><button class="nav-link' + (i ? '' : ' active') + '" type="button" role="tab" data-bs-toggle="tab" data-bs-target="#' + p + t[0] + '" aria-controls="' + p + t[0] + '" aria-selected="' + (i ? 'false' : 'true') + '">' + esc(t[1]) + '</button></li>';
 		}).join('') + '</ul><div class="tab-content">';
 		// columns
-		html += '<div class="tab-pane fade show active" id="' + p + 'cols" role="tabpanel"><div class="table-responsive"><table class="table table-sm align-middle nuLvEdTable"><thead><tr><th><span class="visually-hidden">' + esc(T.actions || '') + '</span></th><th>' + esc(T.lv_visible) + '</th><th>' + esc(T.lv_width) + '</th><th>' + esc(T.lv_align) + '</th><th><span class="visually-hidden">' + esc(T.actions || '') + '</span></th></tr></thead><tbody class="nuLvColRows">'
+		html += '<div class="tab-pane fade show active" id="' + p + 'cols" role="tabpanel"><div class="table-responsive"><table class="table table-sm align-middle nuLvEdTable"><thead><tr><th><span class="visually-hidden">' + esc(T.actions
+			|| '') + '</span></th><th>' + esc(T.lv_visible) + '</th><th>' + esc(T.lv_width) + '</th><th>' + esc(T.lv_align) + '</th><th><span class="visually-hidden">' + esc(T.actions
+			|| '') + '</span></th></tr></thead><tbody class="nuLvColRows">'
 			+ colRows.map(function (c) {
 				var lock = lockedOf[c.key];
 				return '<tr draggable="true" data-key="' + esc(c.key) + '"><td class="nuLvGrip"><i class="bi bi-grip-vertical"></i></td>'
@@ -104,14 +106,18 @@
 		var colOpts = D.columns.map(function (c) { return [c.key, c.label]; });
 		var noneOpts = [['', T.lv_none]].concat(colOpts);
 		html += '<div class="tab-pane fade" id="' + p + 'phone" role="tabpanel"><div class="row g-3"><div class="col-md-7">'
-			+ (D.grid && d.display === 'grid' ? '' : '<label class="form-label small mb-1">' + esc(T.lv_phone_layout) + '</label>' + sel([['cards', T.lv_phone_cards], ['table', T.lv_phone_table]], d.phone || 'cards', 'lvPhoneLayout') + '<hr class="my-2">')
+			+ (D.grid
+				&& d.display === 'grid' ? '' : '<label class="form-label small mb-1">' + esc(T.lv_phone_layout) + '</label>' + sel([['cards', T.lv_phone_cards], ['table', T.lv_phone_table]],
+					d.phone || 'cards', 'lvPhoneLayout') + '<hr class="my-2">')
 			+ '<label class="form-label small mb-1">' + esc(T.lv_card_title) + '</label>' + sel(colOpts, d.card.title, 'lvCardTitle')
 			+ '<label class="form-label small mb-1 mt-2">' + esc(T.lv_card_badge) + '</label>' + sel(noneOpts, d.card.badge, 'lvCardBadge')
 			+ '<label class="form-label small mb-1 mt-2">' + esc(T.lv_card_lines) + '</label>';
 		for (var i = 0; i < 4; i++) html += '<div class="mb-1">' + sel(noneOpts, d.card.lines[i] || '', 'lvCardLine') + '</div>';
 		html += '</div><div class="col-md-5"><div class="small text-body-secondary mb-1">' + esc(T.lv_card_preview) + '</div><div class="nuLvCard nuLvCardDemo"></div></div></div></div>';
 		// filters
-		html += '<div class="tab-pane fade" id="' + p + 'filters" role="tabpanel"><table class="table table-sm align-middle nuLvEdTable"><thead><tr><th><span class="visually-hidden">' + esc(T.actions || '') + '</span></th><th>' + esc(T.lv_filter_shown) + '</th><th>' + esc(T.lv_filter_default) + '</th><th><span class="visually-hidden">' + esc(T.actions || '') + '</span></th></tr></thead><tbody class="nuLvFilRows">';
+		html += '<div class="tab-pane fade" id="' + p + 'filters" role="tabpanel"><table class="table table-sm align-middle nuLvEdTable"><thead><tr><th><span class="visually-hidden">' + esc(T.actions
+			|| '') + '</span></th><th>' + esc(T.lv_filter_shown) + '</th><th>' + esc(T.lv_filter_default) + '</th><th><span class="visually-hidden">' + esc(T.actions
+			|| '') + '</span></th></tr></thead><tbody class="nuLvFilRows">';
 		var fOrder = d.filters.shown.concat(D.filters.map(function (f) { return f.key; }).filter(function (k) { return d.filters.shown.indexOf(k) === -1; }));
 		fOrder.forEach(function (k) {
 			var f = D.filters.filter(function (x) { return x.key === k; })[0];
@@ -128,7 +134,8 @@
 			+ '<div class="col-md-5"><label class="form-label">' + esc(T.lv_sort) + '</label>' + sel(sortOpts, d.sort[0], 'lvSortKey') + '</div>'
 			+ '<div class="col-md-4 d-flex align-items-end">' + sel([['asc', T.lv_sort_asc], ['desc', T.lv_sort_desc]], d.sort[1], 'lvSortDir') + '</div>'
 			+ '<div class="col-md-3"><label class="form-label">' + esc(T.lv_per) + '</label>' + sel(D.per.map(function (n) { return [n, n]; }), d.per, 'lvPer') + '</div>'
-			+ (D.grid ? '<div class="col-md-5"><label class="form-label">' + esc(T.lv_display) + '</label>' + sel([['table', T.lv_display_table], ['grid', T.lv_display_grid]], d.display || 'table', 'lvDisplay') + '</div>' : '');
+			+ (D.grid ? '<div class="col-md-5"><label class="form-label">' + esc(T.lv_display) + '</label>' + sel([['table', T.lv_display_table], ['grid', T.lv_display_grid]],
+				d.display || 'table', 'lvDisplay') + '</div>' : '');
 		if (D.manage) {
 			html += '<div class="col-12"><label class="form-label">' + esc(T.lv_scope) + '</label><div>'
 				+ '<div class="form-check form-check-inline"><input class="form-check-input" type="radio" name="' + p + 'scope" id="' + p + 'su" value="user"' + (scope === 'user' ? ' checked' : '') + '><label class="form-check-label" for="' + p + 'su">' + esc(T.lv_scope_user) + '</label></div>'
@@ -224,7 +231,7 @@
 	});
 })();
 
-/* Phones (0.8.471): the ▦ / ☰ button switches this list between cards and table. The choice is kept on the device per list
+/* Phones: the ▦ / ☰ button switches this list between cards and table. The choice is kept on the device per list
    (localStorage nunext-lv-phone-<route>, read early by nutheme.js → <html data-lv-phone>); choosing the view's own layout removes it,
    so the list follows its view again. */
 (function () {
@@ -248,10 +255,10 @@
 	mark();
 	}
 	phone();
-	(window.nuLvInits = window.nuLvInits || []).push(phone);   // run again after a list refresh in place (0.8.776, nulistsmooth.js)
+	(window.nuLvInits = window.nuLvInits || []).push(phone);   // run again after a list refresh in place (nulistsmooth.js)
 })();
 
-// long cells fold to three lines with "more" / "less" (0.8.690): <div class="nuLvClamp" data-more data-less> – the log's details
+// long cells fold to three lines with "more" / "less": <div class="nuLvClamp" data-more data-less> – the log's details
 (function () {
 	'use strict';
 	function setup(box) {

@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Installable app (0.8.1136): web manifest, icons, service worker, offline page.
+ * Installable app: web manifest, icons, service worker, offline page.
  *   ?p=pwa&a=manifest   manifest (name / colours from Branding; shortcuts = the signed-in user's favourites)
  *   ?p=pwa&a=icon&s=192|512|180&m=1   icon (own logo of Branding when "Use as browser icon" is on, else nuBuilder Next's)
  *   ?p=pwa&a=sw         service worker – scope = the installation's folder; caches only versioned static files, pages never

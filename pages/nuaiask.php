@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * "Ask AI" (0.8.1099, core/nuaiprovider.php, assets/js/nuaiask.js): the AI dialogues send their prompt to a configured AI service.
+ * "Ask AI" (core/nuaiprovider.php, assets/js/nuaiask.js): the AI dialogues send their prompt to a configured AI service.
  *   unlock  provider, password                          → {ok, error}             a password-protected configuration, once per session
  *   ask     provider, feature, prompt[, prev, errors[]] → {ok, text, error, note} prev + errors = the automatic correction round
  * The answer is only handed to the dialogue, which checks it as a pasted answer – nothing is applied here.

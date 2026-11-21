@@ -3,11 +3,11 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Advanced search of form browse lists (0.8.719): conditions on the list's columns – ?adv={"m":"all"|"any","c":[[column index, operator,
+ * Advanced search of form browse lists: conditions on the list's columns – ?adv={"m":"all"|"any","c":[[column index, operator,
  * value, value 2], …]} – built in the ▾ panel next to the search (assets/js/nu/nuadvsearch.js). NuBrowse::query turns them into a WHERE
  * on the outer query (nuT.nu_c<i>), so they work with any browse SQL; values are parameters. Hidden / masked columns are not offered.
  * Named searches per user and form ("My searches") are rows of zzzzsys_nunext_list_view with list_key advsearch:<form id>.
- * System lists (0.8.769): the same conditions on NuListDefs columns (keys instead of indexes, NuListDefs::advColumns(), NuListView::query),
+ * System lists: the same conditions on NuListDefs columns (keys instead of indexes, NuListDefs::advColumns(), NuListView::query),
  * saved as advsearch:list:<list key>; columns there may carry 'type' (text / number / date / bool) and no all / any switch.
  */
 final class NuAdvSearch
@@ -18,7 +18,7 @@ final class NuAdvSearch
 		'text' => ['contains' => 1, 'ncontains' => 1, 'eq' => 1, 'neq' => 1, 'starts' => 1, 'ends' => 1, 'in' => 'list', 'nin' => 'list', 'empty' => '', 'nempty' => ''],
 		'number' => ['eq' => 1, 'neq' => 1, 'lt' => 1, 'le' => 1, 'gt' => 1, 'ge' => 1, 'between' => '2', 'empty' => '', 'nempty' => ''],
 		'date' => ['on' => 1, 'before' => 1, 'after' => 1, 'between' => '2', 'today' => '', 'd7' => '', 'd30' => '', 'month' => '', 'year' => '', 'empty' => '', 'nempty' => ''],
-		'bool' => ['yes' => '', 'no' => ''],                      // system lists (0.8.769): '1' / 'true' / 'yes' = yes
+		'bool' => ['yes' => '', 'no' => ''],                      // system lists: '1' / 'true' / 'yes' = yes
 	];
 	public const KEY = 'advsearch:';
 
@@ -26,8 +26,7 @@ final class NuAdvSearch
 	public static function typeOf(array $col): string
 	{
 		if (isset($col['type']) && isset(self::OPS[$col['type']])) return (string)$col['type'];   // system lists: declared type
-		$f = strtoupper((string)($col['format'] ?? ''));
-		return str_starts_with($f, 'D|') ? 'date' : (str_starts_with($f, 'N|') ? 'number' : 'text');
+		return NuFormat::kind((string)($col['format'] ?? ''));
 	}
 
 	/** Columns that can be searched: shown in the list (width > 0), not masked, not NULL. */
@@ -44,7 +43,7 @@ final class NuAdvSearch
 		$c = [];
 		foreach (array_slice(is_array($j['c'] ?? null) ? $j['c'] : [], 0, self::MAX) as $x) {
 			if (!is_array($x) || !isset($x[0], $x[1]) || !is_string($x[1])) continue;
-			// form lists: column index; system lists: column key (0.8.769)
+			// form lists: column index; system lists: column key
 			$col = is_int($x[0]) || (is_string($x[0]) && ctype_digit($x[0])) ? (int)$x[0] : (is_string($x[0]) && preg_match('/^[a-z][a-z0-9_]{0,39}$/', $x[0]) ? $x[0] : null);
 			if ($col === null) continue;
 			$v = $x[2] ?? '';
@@ -183,7 +182,7 @@ final class NuAdvSearch
 		return self::clientFor($meta->id, $cols, $adv);
 	}
 
-	/** The panel's data for a form ($id = form id) or a system list ($id = 'list:<key>', 0.8.769: no all / any, own search field). */
+	/** The panel's data for a form ($id = form id) or a system list ($id = 'list:<key>': no all / any, own search field). */
 	public static function clientFor(string $id, array $cols, array $adv, array $extra = []): array
 	{
 		$list = [];

@@ -1,4 +1,4 @@
-/* Admin tools → Branding (pages/nubranding.php): live preview of logo, title, accent colour and environment label (0.8.297). */
+/* Admin tools → Branding (pages/nubranding.php): live preview of logo, title, accent colour and environment label. */
 (function () {
 	'use strict';
 	const $ = (id) => document.getElementById(id);
@@ -13,7 +13,7 @@
 	const onColor = (hex) => ((1.05) / (lum(hex) + 0.05) >= 3 ? '#fff' : '#000');
 
 	function accent() {
-		if (!$('accent_on')) return;                              // 0.8.632: the accent colour is in the themes
+		if (!$('accent_on')) return;                              // the accent colour is in the themes
 		const on = $('accent_on').checked;
 		const c = $('accent').value;
 		$('accentHex').textContent = c;
@@ -50,10 +50,10 @@
 		}
 	}
 
-	// Show logo (0.8.630): the preview is the top bar – no logo there unless "everywhere"
+	// Show logo: the preview is the top bar – no logo there unless "everywhere"
 	function logoShow() {
 		$('prevLogo').hidden = $('logo_show').value !== 'all';
-		const l = $('show_title_lbl');                     // 0.8.736: "next to the logo" only while the logo is in the top bar
+		const l = $('show_title_lbl');                     // "next to the logo" only while the logo is in the top bar
 		if (l) l.textContent = l.getAttribute($('logo_show').value === 'all' ? 'data-logo' : 'data-bar');
 	}
 	$('logo_show').addEventListener('change', logoShow);

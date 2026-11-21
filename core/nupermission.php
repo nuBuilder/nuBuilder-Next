@@ -16,7 +16,7 @@ final class NuPermission
 	{
 		$db = nu_db();
 		$T = static fn(string $t, string $l = '') => NuDDL::sqlType($t, $l);
-		$opt = $db->type === 'mysql' ? NuDDL::mysqlTableOptions() : '';
+		$opt = $db->tableOptions();
 		if (!$db->tableExists(self::ITEM)) {
 			$db->run('CREATE TABLE ' . self::ITEM . ' (zzzzsys_permission_item_id ' . $T('id') . ' NOT NULL PRIMARY KEY, pme_description ' . $T('longtext') . ' NULL, '
 				. 'pme_group ' . $T('text', '50') . ' NULL, pme_ident ' . $T('text', '50') . ' NULL)' . $opt);
@@ -24,7 +24,7 @@ final class NuPermission
 		if (!$db->tableExists(self::USER)) {
 			$db->run('CREATE TABLE ' . self::USER . ' (zzzzsys_user_permission_id ' . $T('id') . ' NOT NULL PRIMARY KEY, upe_zzzzsys_user_id ' . $T('id') . ' NULL, '
 				. 'upe_ident ' . $T('text', '50') . ' NULL, upe_active ' . $T('text', '1') . ' NULL)' . $opt);
-			try { $db->run('CREATE INDEX upe_zzzzsys_user_id ON ' . self::USER . ' (upe_zzzzsys_user_id)'); } catch (Throwable) {}
+			try { $db->run('CREATE INDEX upe_zzzzsys_user_id ON ' . self::USER . ' (upe_zzzzsys_user_id)'); } catch (Throwable) { /* expected when the index exists already – not logged */ }
 		}
 	}
 
@@ -162,7 +162,8 @@ final class NuPermission
 		}
 		if ($db->tableExists('zzzzsys_php')) {
 			$js = isset($db->columns('zzzzsys_php')['sph_javascript']);
-			$sql = "SELECT zzzzsys_php_id, sph_code FROM zzzzsys_php WHERE sph_php LIKE ? ESCAPE '!' OR sph_php LIKE ? ESCAPE '!'" . ($js ? " OR sph_javascript LIKE ? ESCAPE '!' OR sph_javascript LIKE ? ESCAPE '!'" : '');
+			$sql = "SELECT zzzzsys_php_id, sph_code FROM zzzzsys_php WHERE sph_php LIKE ? ESCAPE '!' OR sph_php LIKE ? ESCAPE '!'"
+				. ($js ? " OR sph_javascript LIKE ? ESCAPE '!' OR sph_javascript LIKE ? ESCAPE '!'" : '');
 			foreach ($db->all($sql, $js ? [$p1, $p2, $p1, $p2] : [$p1, $p2]) as $r) {
 				$hook = NuProcedure::isHook((string)$r['zzzzsys_php_id']);
 				$out[] = ['form_id' => $hook ? substr((string)$r['zzzzsys_php_id'], 0, -3) : '', 'proc_id' => $hook ? '' : (string)$r['zzzzsys_php_id'], 'label' => 'PHP ' . $r['sph_code']];

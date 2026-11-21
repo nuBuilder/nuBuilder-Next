@@ -1,11 +1,11 @@
-/* Advanced search of form browse lists (0.8.719, core/form/nuadvsearch.php): the ▾ next to the search opens #nuAdvPanel – conditions on the
+/* Advanced search of form browse lists (core/form/nuadvsearch.php): the ▾ next to the search opens #nuAdvPanel – conditions on the
    list's columns (field, operator, value), all / any, Apply (?adv=…), Clear, "My searches" (?p=advsearch). nuNextAdvancedSearch() reads or
    sets the search from form code. Data: window.nuNext.adv {cols, cur, ops, saved, url, form, canSave, texts}.
-   System lists (0.8.769, core/nulistview.php): the data comes from #nuAdvData[data-adv] (+ noMatch: no all / any, search: id of the search
+   System lists (core/nulistview.php): the data comes from #nuAdvData[data-adv] (+ noMatch: no all / any, search: id of the search
    field, csrf); columns are keys there instead of indexes. */
 (function () {
 	'use strict';
-	// system lists refreshed in place (0.8.776, assets/js/nulistsmooth.js) call it again for the new list card
+	// system lists refreshed in place (assets/js/nulistsmooth.js) call it again for the new list card
 	window.nuAdvSearchInit = init;
 	init();
 	function init() {

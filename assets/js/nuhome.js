@@ -1,5 +1,5 @@
 /* global nuBs */
-/* Globeadmin start page (pages/nuhome.php, core/nuhome.php): the view (tile styles, descriptions, navigation – View panel, 0.8.420),
+/* Globeadmin start page (pages/nuhome.php, core/nuhome.php): the view (tile styles, descriptions, navigation – View panel),
    tile colours, procedure tiles, the nuHome API, search, edit mode (Customise). */
 (function () {
 	'use strict';
@@ -51,7 +51,7 @@
 			b.disabled = true;
 			fetch(D.procUrl.replace('__ID__', encodeURIComponent(b.getAttribute('data-nu-proc'))), {method: 'POST', body: fd, credentials: 'same-origin', headers: {'Accept': 'application/json'}})
 				.then(function (r) {
-					// a procedure that sends a file (0.8.756): save it, no window
+					// a procedure that sends a file: save it, no window
 					var cd = r.headers.get('Content-Disposition') || '';
 					if (r.ok && /attachment/i.test(cd)) {
 						var m = /filename\*=UTF-8''([^;]+)/i.exec(cd), m2 = /filename="?([^";]+)"?/i.exec(cd);
@@ -72,7 +72,9 @@
 					var errs = (res.errors || []).map(function (e) { return e.message || String(e); });
 					if (w) {
 						w.document.open();
-						w.document.write(res.output || errs.map(function (m) { return '<p>' + String(m).replace(/[<&]/g, function (c) { return c === '<' ? '&lt;' : '&amp;'; }) + '</p>'; }).join('') || '<p>' + t('home_proc_done') + '</p>');
+						w.document.write(res.output
+							|| errs.map(function (m) { return '<p>' + String(m).replace(/[<&]/g, function (c) { return c === '<' ? '&lt;' : '&amp;'; }) + '</p>'; }).join('')
+							|| '<p>' + t('home_proc_done') + '</p>');
 						w.document.close();
 					}
 					if (!res.ok) toast(t('home_proc_failed') + (errs.length ? ' ' + errs.join(' ') : ''), false);
@@ -83,10 +85,10 @@
 		});
 	});
 
-	// ================================================================ nuHome – JavaScript API of the start page (0.8.379)
+	// ================================================================ nuHome – JavaScript API of the start page
 	// For the JavaScript of the procedure nu_home (served as ?p=homejs, loaded after this file): nuHome.on('tile' | 'ready' |
 	// 'search' | 'tab' | 'customize' | 'view', fn), off, tiles(filter), tile(key), data (nuHomeSetData() of the PHP hook),
-	// view (0.8.420: the view in effect, a copy). 'tile' and 'ready' are replayed for callbacks added later; every callback runs in
+	// view (the view in effect, a copy). 'tile' and 'ready' are replayed for callbacks added later; every callback runs in
 	// try/catch (console + toast for the globeadmin).
 	var H = (function () {
 		var handlers = {}, objs = [], byEl = (typeof WeakMap === 'function') ? new WeakMap() : null, isReady = false;
@@ -193,7 +195,7 @@
 	/** The box of a tile that is hidden / shown (search, favourites, tile.hide()). */
 	function box(a) { return a.closest('.nuHomeTileWrap') || a; }
 
-	// ================================================================ view (0.8.420): style, descriptions, navigation, look
+	// ================================================================ view: style, descriptions, navigation, look
 	// The layout's view (VD: main values, tabStyle, sizes.tablet / sizes.phone), the person's own changes over it (VO: view, sizes) and
 	// built-in phone values when the layout has none. Precedence of a value: own (this size) > own (all sizes) > layout (this size) >
 	// layout (all sizes) > defaults; the style of a tab sits between layout (this size) and layout (all sizes) – tabs / sidebar only.
@@ -370,8 +372,8 @@
 		});
 	}
 
-	// ---------------------------------------------------------------- recently used: drawn by the server, the side bar's list (0.8.492)
-	// ------------------------------------------------------------------ fold the rows Favourites / Recently used (0.8.465)
+	// ---------------------------------------------------------------- recently used: drawn by the server, the side bar's list
+	// ------------------------------------------------------------------ fold the rows Favourites / Recently used
 	// remembered per device (localStorage nunext-home-strip-<fav|recent> = 'open' | 'folded'); without a choice: open, on phones
 	// (< 576 px) Recently used starts folded. A folded heading shows the number of entries.
 	function stripKey(st) { return 'nunext-home-strip-' + st.getAttribute('data-nu-strip'); }
@@ -381,13 +383,13 @@
 		var saved = null;
 		saved = nuStore.get(stripKey(st));
 		var folded = saved ? saved === 'folded' : (st.getAttribute('data-nu-strip') === 'recent' && window.matchMedia && window.matchMedia('(max-width: 575.98px)').matches);
-		if (!toggle && stripAuto(st)) folded = true;              // Auto collapse (0.8.828): folded whenever the page opens
+		if (!toggle && stripAuto(st)) folded = true;              // Auto collapse: folded whenever the page opens
 		if (toggle) {
 			folded = !st.classList.contains('nuHomeStripFolded');
 			nuStore.set(stripKey(st), folded ? 'folded' : 'open');
 		}
 		st.classList.toggle('nuHomeStripFolded', folded);
-		document.documentElement.classList.remove('nuHomeFold-' + st.getAttribute('data-nu-strip'));   // set in <head> by nutheme.js (0.8.995)
+		document.documentElement.classList.remove('nuHomeFold-' + st.getAttribute('data-nu-strip'));   // set in <head> by nutheme.js
 		btn.setAttribute('aria-expanded', folded ? 'false' : 'true');
 		var cnt = $('.nuHomeStripCount', st);
 		if (cnt) cnt.textContent = String(st.querySelectorAll('.nuHomeChip:not([hidden])').length);
@@ -401,7 +403,7 @@
 			});
 		}
 	}
-	// Auto collapse per row and device (0.8.828): localStorage nunext-home-strip-auto-<fav|recent> = '1'
+	// Auto collapse per row and device: localStorage nunext-home-strip-auto-<fav|recent> = '1'
 	function stripAutoKey(st) { return 'nunext-home-strip-auto-' + st.getAttribute('data-nu-strip'); }
 	function stripAuto(st, set) {
 		try {
@@ -447,7 +449,7 @@
 		if (fs) fs.hidden = !v.favRow || !$('.nuHomeChip', fs);
 		var rs = $('[data-nu-strip="recent"]', viewEl);
 		if (rs) {
-			// 0.8.1115: the first 8 show; "Without favourites" leaves out what the Favourites row already holds (only while that row shows)
+			// the first 8 show; "Without favourites" leaves out what the Favourites row already holds (only while that row shows)
 			var noFav = !!v.recentNoFav && !!fs && !fs.hidden, shown = 0;
 			Array.prototype.forEach.call(rs.querySelectorAll('.nuHomeChip'), function (c) {
 				var on = shown < 8 && !(noFav && c.getAttribute('data-nu-fav') === '1');
@@ -602,15 +604,16 @@
 		});
 	}
 
-	// ---------------------------------------------------------------- right-click / long press on a tile (0.8.497): the tile's name and
+	// ---------------------------------------------------------------- right-click / long press on a tile: the tile's name and
 	// description and "Add to favourites" / "Remove from favourites" – the same POST as the ☆ of the side bar (?p=sidebar action fav),
 	// then the page reloads. Only where the reader may change the favourites (D.favUrl) and not while customising. On a chip of the row
-	// "Recently used" (0.8.498): Remove from recently used (action forget) and Clear recently used (action clear).
+	// "Recently used": Remove from recently used (action forget) and Clear recently used (action clear).
 	var ctxMenu = null;
 	function ctxKey(node) { return node.getAttribute('data-nu-tile') || node.getAttribute('data-nu-chip') || node.getAttribute('data-nu-recent') || ''; }
 	function ctxOk(node) {
 		if (node && node.classList && node.classList.contains('nuHomeStrip')) return !document.body.classList.contains('nuHomeEditing') && !document.body.classList.contains('nuHomeMineOn');
-		return !!(node && ctxKey(node) && (node.hasAttribute('data-nu-recent') ? D.usedUrl : D.favUrl) && !document.body.classList.contains('nuHomeEditing') && !document.body.classList.contains('nuHomeMineOn'));
+		return !!(node && ctxKey(node) && (node.hasAttribute('data-nu-recent') ? D.usedUrl : D.favUrl) && !document.body.classList.contains('nuHomeEditing')
+			&& !document.body.classList.contains('nuHomeMineOn'));
 	}
 	function closeCtx() { if (ctxMenu) { ctxMenu.remove(); ctxMenu = null; } }
 	function ctxPost(url, data) {
@@ -619,7 +622,7 @@
 		Object.keys(data).forEach(function (k) { fd.append(k, data[k]); });
 		var sq = document.getElementById('nuHomeSearch');
 		if (sq && sq.value.trim()) { nuStore.session.set('nunext-home-q', sq.value); }
-		// redirect manual (0.8.652): following it would load the start page once in the background – and use up a one-time message (Undo of Hide)
+		// redirect manual: following it would load the start page once in the background – and use up a one-time message (Undo of Hide)
 		fetch(url, {method: 'POST', body: fd, credentials: 'same-origin', redirect: 'manual'}).then(function () { location.reload(); }, function () { location.reload(); });
 	}
 	function ctxItem(iconCls, text, run) {
@@ -636,7 +639,7 @@
 			items = rowItems(row, false);
 		} else if (src.hasAttribute('data-nu-recent')) {           // a chip of the row "Recently used" (the side bar's list)
 			label = (src.querySelector('.nuHomeChipLabel') || src).textContent;
-			// 0.8.955: a recently used tile that sits on the start page can be added to / removed from the favourites here too
+			// a recently used tile that sits on the start page can be added to / removed from the favourites here too
 			if (D.favUrl && src.getAttribute('data-nu-canfav') === '1') {
 				var rf = src.getAttribute('data-nu-fav') === '1';
 				items.push(ctxItem(rf ? 'bi-star' : 'bi-star-fill text-warning', t(rf ? 'home_unfav' : 'home_fav_add'), function () { ctxPost(D.favUrl, {action: 'fav', key: key}); }));
@@ -648,7 +651,7 @@
 			var fav = tile.getAttribute('data-nu-fav') === '1' || src.hasAttribute('data-nu-chip');
 			label = tile.getAttribute('data-nu-label') || key; desc = tile.getAttribute('data-nu-desc') || '';
 			items.push(ctxItem(fav ? 'bi-star' : 'bi-star-fill text-warning', t(fav ? 'home_unfav' : 'home_fav_add'), function () { ctxPost(D.favUrl, {action: 'fav', key: key}); }));
-			// Hide (0.8.652): admin start pages – in the layout (as Edit tiles and groups), user start pages – for me (as Personalise);
+			// Hide: admin start pages – in the layout (as Edit tiles and groups), user start pages – for me (as Personalise);
 			// after the reload a message with Undo (pages/nuhome.php, NuSidebar::hideTile)
 			if (D.hideMode) items.push(ctxItem('bi-eye-slash', t(D.hideMode === 'me' ? 'home_u_mine_hide' : 'home_ctx_hide'), function () { ctxPost(D.favUrl, {action: 'hide', key: key, label: label}); }));
 		}
@@ -668,11 +671,12 @@
 	window.addEventListener('blur', closeCtx);
 	tip.addEventListener('mouseover', function () { clearTimeout(hideT); });
 	tip.addEventListener('mouseout', function (e) { if (!tip.contains(e.relatedTarget)) hideTip(); });
-	document.addEventListener('pointerdown', function (e) { if (tipFor && !tip.contains(e.target) && !(e.target.closest && e.target.closest('[data-nu-descinfo]')) && tileOf(e.target) !== tipFor) hideTip(true); });
+	document.addEventListener('pointerdown',
+		function (e) { if (tipFor && !tip.contains(e.target) && !(e.target.closest && e.target.closest('[data-nu-descinfo]')) && tileOf(e.target) !== tipFor) hideTip(true); });
 	window.addEventListener('scroll', function (e) { if (tipFor && !(e.target && e.target.nodeType === 1 && tip.contains(e.target))) hideTip(true); }, true);
 	window.addEventListener('resize', function () { if (tipFor) hideTip(true); });
 
-	// ---------------------------------------------------------------- rows Favourites / Recently used (0.8.807): right-click / long press
+	// ---------------------------------------------------------------- rows Favourites / Recently used: right-click / long press
 	// on a row → Edit favourites (edit mode / Personalise with the editor's favourites filter on) or Clear, and Hide this row = the
 	// view key favRow / recentStrip off (as the switches of Appearance → On top of the page); a message says how to show it again.
 	var favEditTo = document.getElementById('nuHomeMine') || document.getElementById('nuHomeCustomize');
@@ -709,7 +713,7 @@
 		});
 	}
 
-	// ================================================================ the View panel (0.8.420)
+	// ================================================================ the View panel
 	// Where a change goes: a personal layout → the layout; a shared / the built-in layout → the person's own view (overlay), for
 	// "Start page layout" admins also the layout itself ("Everyone" – chosen anew each time the panel opens).
 	var vp = document.getElementById('nuHomeViewPanel'), viewBtn = document.getElementById('nuHomeViewBtn');
@@ -718,10 +722,11 @@
 	var DESCS = [['auto', 'bi-magic'], ['inline', 'bi-text-paragraph'], ['tooltip', 'bi-chat-square-text'], ['hovercard', 'bi-window'], ['info', 'bi-info-circle'], ['off', 'bi-eye-slash']];
 	var NAVS = ['groups', 'tabs', 'sidebar', 'none'];
 	var KEYNAME = {style: 'home_v_style', listCols: 'home_v_list_cols', listWidth: 'home_v_list_width', desc: 'home_v_desc', lines: 'home_v_lines', delay: 'home_v_delay',
-		nav: 'home_v_nav', density: 'home_v_density', icon: 'home_v_icons', groupColors: 'home_v_group_colors', favRow: 'home_v_fav_row', recentStrip: 'home_v_recent_row', recentNoFav: 'home_v_recent_nofav',
+		nav: 'home_v_nav', density: 'home_v_density', icon: 'home_v_icons', groupColors: 'home_v_group_colors', favRow: 'home_v_fav_row',
+			recentStrip: 'home_v_recent_row', recentNoFav: 'home_v_recent_nofav',
 		badges: 'home_v_badges', actions: 'home_v_actions'};
 	function sizeName(z) { return t('home_v_size_' + z); }
-	// user start pages (0.8.425): the editor of an access level's page (scope level) changes that page; users keep their own view
+	// user start pages: the editor of an access level's page (scope level) changes that page; users keep their own view
 	function target() { return VS.scope === 'user' || VS.scope === 'level' ? 'layout' : (VS.editable && VP.everyone ? 'layout' : 'me'); }
 	function bag(z) {
 		if (target() === 'layout') {
@@ -778,7 +783,7 @@
 			}
 		}).catch(function (e) { toast(t('home_saved_err') + ' ' + e.message, false); });
 	}
-	// the two links of "Only me" (0.8.504): first a dialog that says what happens (the page's #nuConfirm of core/nulayout.php)
+	// the two links of "Only me": first a dialog that says what happens (the page's #nuConfirm of core/nulayout.php)
 	function ask(title, text, okLabel, okClass, run) {
 		var m = document.getElementById('nuConfirm');
 		if (!m) { if (window.confirm(title + '\n\n' + text)) run(); return; }
@@ -804,7 +809,7 @@
 	}
 	function openPanel(tab) {
 		if (!vp) return;
-		if (tab) VP.tab = tab;                                      // V: Appearance (0.8.452)
+		if (tab) VP.tab = tab;                                      // V: Appearance
 		VP.open = true; VP.everyone = false; VP.scopeDev = 'all'; VP.scopeTab = 'all'; VP.snap = clone(VD); VP.undone = false;
 		vp.hidden = false;
 		document.body.classList.add('nuHomeVpOpen');
@@ -834,17 +839,25 @@
 	function R(x, y, w, h, rx, o) { return '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="' + (rx || 1) + '" opacity="' + (o || 1) + '"/>'; }
 	function card(x, y, w, h) { return '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="2" class="nuHomeThCard"/>'; }
 	var THUMB = {
-		large: [4, 32].map(function (x) { return [4, 22].map(function (y) { return card(x, y, 24, 14) + R(x + 3, y + 4, 6, 6, 1.5, 0.55) + R(x + 11, y + 4.5, 10, 2) + R(x + 11, y + 8.5, 8, 1.5, 1, 0.4); }).join(''); }).join(''),
-		cards: [4, 22.5, 41].map(function (x) { return card(x, 5, 15, 30) + R(x + 2.5, 8, 6, 6, 1.5, 0.55) + R(x + 2.5, 18, 9, 2) + R(x + 2.5, 22, 10, 1.5, 1, 0.4) + R(x + 2.5, 25.5, 7, 1.5, 1, 0.4); }).join(''),
-		compact: [5, 14, 23, 32].map(function (y) { return [4, 23, 42].map(function (x) { return card(x, y, 15, 6.5) + R(x + 1.5, y + 1.5, 3.5, 3.5, 1, 0.55) + R(x + 6.5, y + 2.5, 6, 1.5); }).join(''); }).join(''),
+		large: [4,
+			32].map(function (x) { return [4,
+				22].map(function (y) { return card(x, y, 24, 14) + R(x + 3, y + 4, 6, 6, 1.5, 0.55) + R(x + 11, y + 4.5, 10, 2) + R(x + 11, y + 8.5, 8, 1.5, 1, 0.4); }).join(''); }).join(''),
+		cards: [4, 22.5,
+			41].map(function (x) { return card(x, 5, 15, 30) + R(x + 2.5, 8, 6, 6, 1.5, 0.55) + R(x + 2.5, 18, 9, 2) + R(x + 2.5, 22, 10, 1.5, 1, 0.4) + R(x + 2.5, 25.5, 7, 1.5, 1, 0.4); }).join(''),
+		compact: [5, 14, 23,
+			32].map(function (y) { return [4, 23, 42].map(function (x) { return card(x, y, 15, 6.5) + R(x + 1.5, y + 1.5, 3.5, 3.5, 1, 0.55) + R(x + 6.5, y + 2.5, 6, 1.5); }).join(''); }).join(''),
 		list: card(10, 4, 40, 32) + [7, 15, 23, 30].map(function (y) { return R(13, y, 4.5, 4.5, 1, 0.55) + R(20, y + 0.4, 14, 1.8) + R(20, y + 3.2, 20, 1.2, 1, 0.4); }).join(''),
 		launcher: [6, 23].map(function (y) { return [6, 19, 32, 45].map(function (x) { return R(x, y, 9, 9, 2.5, 0.6) + R(x + 1, y + 11, 7, 1.5, 1, 0.45); }).join(''); }).join(''),
 		panels: card(4, 4, 25, 32) + R(7, 7, 12, 2.2) + [13, 18, 23, 28].map(function (y) { return R(7, y, 3, 3, 0.8, 0.5) + R(12, y + 0.7, 12, 1.5, 1, 0.5); }).join('')
 			+ card(31, 4, 25, 20) + R(34, 7, 10, 2.2) + [13, 18].map(function (y) { return R(34, y, 3, 3, 0.8, 0.5) + R(39, y + 0.7, 12, 1.5, 1, 0.5); }).join(''),
-		table: card(4, 4, 52, 32) + R(7, 7, 46, 2, 0.5, 0.35) + [12, 17, 22, 27, 32].map(function (y) { return R(7, y, 3, 3, 0.8, 0.55) + R(12, y + 0.7, 9, 1.5) + R(24, y + 0.7, 16, 1.5, 1, 0.4) + R(44, y + 0.5, 8, 2, 1, 0.3); }).join(''),
-		groups: R(4, 4, 14, 1.8, 0.5, 0.5) + [4, 22, 40].map(function (x) { return card(x, 8, 16, 9); }).join('') + R(4, 22, 14, 1.8, 0.5, 0.5) + [4, 22].map(function (x) { return card(x, 26, 16, 9); }).join(''),
-		tabs: R(4, 4, 12, 3, 0.8) + R(18, 4, 12, 3, 0.8, 0.35) + R(4, 8.5, 52, 0.8, 0.3, 0.3) + [4, 22, 40].map(function (x) { return card(x, 13, 16, 9); }).join('') + [4, 22].map(function (x) { return card(x, 25, 16, 9); }).join(''),
-		sidebar: R(4, 5, 13, 3, 0.8, 0.55) + R(4, 11, 13, 2, 0.8, 0.3) + R(4, 16, 13, 2, 0.8, 0.3) + R(4, 21, 13, 2, 0.8, 0.3) + R(4, 26, 13, 2, 0.8, 0.3) + [21, 39].map(function (x) { return card(x, 5, 16, 13); }).join('') + card(21, 21, 16, 13),
+		table: card(4, 4, 52, 32) + R(7, 7, 46, 2, 0.5, 0.35) + [12, 17, 22, 27,
+			32].map(function (y) { return R(7, y, 3, 3, 0.8, 0.55) + R(12, y + 0.7, 9, 1.5) + R(24, y + 0.7, 16, 1.5, 1, 0.4) + R(44, y + 0.5, 8, 2, 1, 0.3); }).join(''),
+		groups: R(4, 4, 14, 1.8, 0.5, 0.5) + [4, 22, 40].map(function (x) { return card(x, 8, 16, 9); }).join('') + R(4, 22, 14, 1.8, 0.5, 0.5) + [4,
+			22].map(function (x) { return card(x, 26, 16, 9); }).join(''),
+		tabs: R(4, 4, 12, 3, 0.8) + R(18, 4, 12, 3, 0.8, 0.35) + R(4, 8.5, 52, 0.8, 0.3, 0.3) + [4, 22,
+			40].map(function (x) { return card(x, 13, 16, 9); }).join('') + [4, 22].map(function (x) { return card(x, 25, 16, 9); }).join(''),
+		sidebar: R(4, 5, 13, 3, 0.8, 0.55) + R(4, 11, 13, 2, 0.8, 0.3) + R(4, 16, 13, 2, 0.8, 0.3) + R(4, 21, 13, 2, 0.8, 0.3) + R(4, 26, 13, 2, 0.8,
+			0.3) + [21, 39].map(function (x) { return card(x, 5, 16, 13); }).join('') + card(21, 21, 16, 13),
 		none: [4, 22, 40].map(function (x) { return [5, 17, 29].map(function (y) { return card(x, y, 16, 8); }).join(''); }).join('')
 	};
 	function thumb(id) {
@@ -870,14 +883,9 @@
 	function note(kids, warn) { return el('p', {'class': 'nuHomeVpNote' + (warn ? ' nuHomeVpWarn' : '')}, kids); }
 	function link(text, fn, f) { return el('button', {type: 'button', 'class': 'nuHomeVpLink', 'data-f': f || null, onclick: fn}, [text]); }
 
-	function drawPanel() {
-		if (!vp || !VP.open) return;
-		var focus = document.activeElement && vp.contains(document.activeElement) ? document.activeElement.getAttribute('data-f') : null;
-		var old = $('.nuHomeVpBody', vp), top = old ? old.scrollTop : 0;
-		var v = eff(size), tabbed = v.nav === 'tabs' || v.nav === 'sidebar', unit = panelUnit(), st = styleFor(unit, size, v), tg = target();
-		var secs = [], lays = [], cont = [];   // tabs Appearance · Layouts · Content (0.8.452)
-
-		// layout: the saved layouts, Save as, ⋯ (name / visibility, delete, default for everyone); where changes go
+	// Customise panel: the sections drawPanel() puts together
+	// layout: the saved layouts, Save as, ⋯ (name / visibility, delete, default for everyone); where changes go – into secs (Appearance) / lays
+	function panelLayout(secs, lays) {
 		var sel = el('select', {'class': 'form-select form-select-sm', id: 'nuHomeVpLayout', 'data-f': 'layout'});
 		var groupsOf = {shared: el('optgroup', {label: t('home_layout_scope_shared')}), user: el('optgroup', {label: t('home_v_personal')})};
 		(VS.layouts || []).forEach(function (l) {
@@ -892,7 +900,9 @@
 		if (VS.canDefault) more.push(['default', 'bi-pin-angle', t('home_layout_make_default')]);
 		if (VS.canDelete) more.push(['delete', 'bi-trash', t('home_layout_delete')]);
 		var moreBox = more.length ? el('div', {'class': 'dropdown'}, [
-			el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', 'data-bs-toggle': 'dropdown', 'aria-expanded': 'false', title: t('home_v_more'), 'aria-label': t('home_v_more'), 'data-f': 'more'}, [icon('bi-three-dots')]),
+			el('button',
+				{type: 'button', 'class': 'btn btn-sm btn-outline-secondary', 'data-bs-toggle': 'dropdown', 'aria-expanded': 'false', title: t('home_v_more'), 'aria-label': t('home_v_more'), 'data-f': 'more'},
+				[icon('bi-three-dots')]),
 			el('ul', {'class': 'dropdown-menu dropdown-menu-end shadow-sm'}, more.map(function (m) {
 				return el('li', {}, [el('button', {type: 'button', 'class': 'dropdown-item' + (m[0] === 'delete' ? ' text-danger' : ''), onclick: function () {
 					if (m[0] === 'meta') layoutDialog('meta');
@@ -901,7 +911,7 @@
 				}}, [icon(m[1] + ' me-2'), m[2]])]);
 			}))]) : null;
 		var store2 = [], sc = VS.scope;
-		if (D.mode && D.mode !== 'admin') {                         // user start pages (0.8.425): one layout – no choice, no Save as
+		if (D.mode && D.mode !== 'admin') {                         // user start pages: one layout – no choice, no Save as
 			secs.push(el('section', {'class': 'nuHomeVpSec'}, [lbl('home_v_layout'), el('p', {'class': 'nuHomeVpStore'}, D.mode === 'level'
 				? [icon('bi-people'), el('span', {text: tf('home_u_store_level', VS.name)})]
 				: [icon('bi-person'), el('span', {text: t('home_u_store_user') + ' '})].concat(ovCount() ? [link(tf('home_v_undo_mine', ovCount()), askClearMine, 'undomine')] : []))]));
@@ -915,16 +925,19 @@
 				el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', title: t('home_layout_saveas'), 'aria-label': t('home_layout_saveas'), 'data-f': 'saveas', onclick: function () { layoutDialog('saveas'); }}, [icon('bi-plus-lg')]), moreBox]),
 				el('p', {'class': 'nuHomeVpStore'}, [icon(sc === 'user' ? 'bi-person' : 'bi-people')].concat(store2))];
 			lays.push(el('section', {'class': 'nuHomeVpSec'}, layoutSec));
-			if (sc !== 'user' && VS.editable) {                         // admins of shared layouts: only me (default) or everyone using it – on Appearance (0.8.452)
+			if (sc !== 'user' && VS.editable) {                         // admins of shared layouts: only me (default) or everyone using it – on Appearance
 				var tgt = [el('div', {'class': 'nuHomeVpTarget'}, [el('span', {text: t('home_v_applies_to')}),
 					seg('target', [['me', t('home_v_only_me')], ['all', tf('home_v_everyone', VS.name)]], VP.everyone ? 'all' : 'me', function (x) { VP.everyone = x === 'all'; drawPanel(); }, 'nuHomeSeg2')])];
 				if (VP.everyone) tgt.push(note([icon('bi-exclamation-triangle'), tf('home_v_everyone_note', VS.name)], true));
-				else if (ovCount()) tgt.push(note([(ovCount() === 1 ? t('home_v_mine_count_one') : tf('home_v_mine_count', ovCount())) + ' ', link(t('home_v_make_layout'), askMakeLayout, 'mklayout'), ' · ', link(tf('home_v_undo_mine', ovCount()), askClearMine, 'undomine')]));
+				else if (ovCount()) tgt.push(note([(ovCount() === 1 ? t('home_v_mine_count_one') : tf('home_v_mine_count', ovCount())) + ' ',
+					link(t('home_v_make_layout'), askMakeLayout, 'mklayout'), ' · ', link(tf('home_v_undo_mine', ovCount()), askClearMine, 'undomine')]));
 				secs.push(el('section', {'class': 'nuHomeVpSec'}, tgt));
 			} else if (sc !== 'user' && ovCount()) secs.push(el('section', {'class': 'nuHomeVpSec'}, [note([link(tf('home_v_undo_mine', ovCount()), askClearMine, 'undomine')])]));
 		}
+	}
 
-		// settings for: all screen sizes / only this one
+	// settings for: all screen sizes / only this one
+	function panelScope() {
 		var own = ownKeys(size), dev = {desktop: 'bi-display', tablet: 'bi-tablet', phone: 'bi-phone'}[size];
 		var scope = [lbl('home_v_settings_for'), seg('scopeDev', [['all', t('home_v_all_sizes'), 'bi-aspect-ratio'], ['this', tf('home_v_only_size', sizeName(size)), dev]], VP.scopeDev,
 			function (x) { VP.scopeDev = x; drawPanel(); }, 'nuHomeSeg2')];
@@ -936,16 +949,20 @@
 				viewChanged();
 			}, 'sameall')]));
 		else if (VP.scopeDev === 'this') scope.push(note([tf('home_v_only_size_note', sizeName(size))]));
-		secs.push(el('section', {'class': 'nuHomeVpSec'}, scope));
+		return el('section', {'class': 'nuHomeVpSec'}, scope);
+	}
 
-		// tile style (per tab when the layout is the target)
+	// tile style (per tab when the layout is the target)
+	function panelStyle(v, st, tabbed, unit, tg) {
 		var stl = [lbl('home_v_style', 'style'), el('div', {'class': 'nuHomeVpPick', role: 'group', 'aria-label': t('home_v_style')}, STYLES.map(function (s) {
 			return el('button', {type: 'button', 'data-f': 'style:' + s, 'aria-pressed': st === s ? 'true' : 'false', title: t('home_v_style_' + s + '_hint'), onclick: function () { setStyle(s); }},
 				[thumb(s), el('span', {text: t('home_v_style_' + s)})]);
 		})), el('p', {'class': 'nuHomeVpHelp', text: t('home_v_style_' + st + '_hint')})];
 		if (st === 'list') {
-			stl.push(el('div', {'class': 'nuHomeVpSub'}, [el('span', {text: t('home_v_list_cols')}), seg('listCols', [['1', '1'], ['2', '2'], ['3', '3'], ['4', '4'], ['auto', t('home_v_auto')]], v.listCols, function (x) { setOpt('listCols', x); })]));
-			if (v.listCols === '1') stl.push(el('div', {'class': 'nuHomeVpSub'}, [el('span', {text: t('home_v_list_width')}), seg('listWidth', [['readable', t('home_v_readable')], ['full', t('home_v_full')]], v.listWidth, function (x) { setOpt('listWidth', x); })]));
+			stl.push(el('div', {'class': 'nuHomeVpSub'},
+				[el('span', {text: t('home_v_list_cols')}), seg('listCols', [['1', '1'], ['2', '2'], ['3', '3'], ['4', '4'], ['auto', t('home_v_auto')]], v.listCols, function (x) { setOpt('listCols', x); })]));
+			if (v.listCols === '1') stl.push(el('div', {'class': 'nuHomeVpSub'},
+				[el('span', {text: t('home_v_list_width')}), seg('listWidth', [['readable', t('home_v_readable')], ['full', t('home_v_full')]], v.listWidth, function (x) { setOpt('listWidth', x); })]));
 		}
 		if (tabbed && VP.scopeDev === 'all' && (VS.units || []).length > 1) {
 			var tabOwn = (VS.units || []).filter(function (u) { return VD.tabStyle[u.id]; });
@@ -958,30 +975,40 @@
 		}
 		var sizeStyle = (VO && VO.sizes[size] && VO.sizes[size].style) || (size !== 'desktop' && layoutSize(size).style);
 		if (sizeStyle && tabbed && size !== 'desktop') stl.push(note([icon('bi-exclamation-circle'), tf('home_v_size_beats_tab', sizeName(size), t('home_v_style_' + sizeStyle))], true));
-		secs.push(el('section', {'class': 'nuHomeVpSec'}, stl));
+		return el('section', {'class': 'nuHomeVpSec'}, stl);
+	}
 
-		// descriptions
-		var ds = [lbl('home_v_desc', 'desc'), seg('desc', DESCS.map(function (d) { return [d[0], t('home_v_desc_' + d[0]), d[1], t('home_v_desc_' + d[0] + '_hint')]; }), v.desc, function (x) { setOpt('desc', x); }, 'nuHomeSeg3'),
+	// descriptions
+	function panelDesc(v) {
+		var ds = [lbl('home_v_desc', 'desc'),
+			seg('desc', DESCS.map(function (d) { return [d[0], t('home_v_desc_' + d[0]), d[1], t('home_v_desc_' + d[0] + '_hint')]; }), v.desc, function (x) { setOpt('desc', x); }, 'nuHomeSeg3'),
 			el('p', {'class': 'nuHomeVpHelp', text: t('home_v_desc_' + v.desc + '_hint')})];
-		if (v.desc !== 'off' && v.desc !== 'info') ds.push(el('div', {'class': 'nuHomeVpSub'}, [el('span', {text: t('home_v_lines')}), seg('lines', [[1, '1'], [2, '2'], [3, '3'], [0, t('home_v_all')]], v.lines, function (x) { setOpt('lines', +x); })]));
+		if (v.desc !== 'off'
+			&& v.desc !== 'info') ds.push(el('div', {'class': 'nuHomeVpSub'},
+				[el('span', {text: t('home_v_lines')}), seg('lines', [[1, '1'], [2, '2'], [3, '3'], [0, t('home_v_all')]], v.lines, function (x) { setOpt('lines', +x); })]));
 		if (['auto', 'tooltip', 'hovercard'].indexOf(v.desc) >= 0) ds.push(el('div', {'class': 'nuHomeVpSub'}, [el('span', {text: t('home_v_delay')}),
 			seg('delay', [[0, t('home_v_delay_none')], [300, t('home_v_delay_short')], [800, t('home_v_delay_long')]], v.delay, function (x) { setOpt('delay', +x); })]));
-		secs.push(el('section', {'class': 'nuHomeVpSec'}, ds));
+		return el('section', {'class': 'nuHomeVpSec'}, ds);
+	}
 
-		// navigation
-		secs.push(el('section', {'class': 'nuHomeVpSec'}, [lbl('home_v_nav', 'nav'), el('div', {'class': 'nuHomeVpPick', role: 'group', 'aria-label': t('home_v_nav')}, NAVS.map(function (n) {
-			return el('button', {type: 'button', 'data-f': 'nav:' + n, 'aria-pressed': v.nav === n ? 'true' : 'false', title: t('home_v_nav_' + n + '_hint'), onclick: function () { if (v.nav !== n) setOpt('nav', n); }},
+	// navigation
+	function panelNav(v) {
+		return el('section', {'class': 'nuHomeVpSec'}, [lbl('home_v_nav', 'nav'), el('div', {'class': 'nuHomeVpPick', role: 'group', 'aria-label': t('home_v_nav')}, NAVS.map(function (n) {
+			return el('button',
+				{type: 'button', 'data-f': 'nav:' + n, 'aria-pressed': v.nav === n ? 'true' : 'false', title: t('home_v_nav_' + n + '_hint'), onclick: function () { if (v.nav !== n) setOpt('nav', n); }},
 				[thumb(n), el('span', {text: t('home_v_nav_' + n)})]);
-		})), el('p', {'class': 'nuHomeVpHelp', text: t('home_v_nav_' + v.nav + '_hint')})]));
+		})), el('p', {'class': 'nuHomeVpHelp', text: t('home_v_nav_' + v.nav + '_hint')})]);
+	}
 
-		// on top of the page
-		secs.push(el('section', {'class': 'nuHomeVpSec'}, [lbl('home_v_on_top'),
+	// on top of the page
+	function panelOnTop(v) {
+		return el('section', {'class': 'nuHomeVpSec'}, [lbl('home_v_on_top'),
 			sw('favRow', t('home_v_fav_row'), v.favRow, t('home_v_fav_row_hint'), function (x) { setOpt('favRow', x); }),
 			sw('recentStrip', t('home_v_recent_row'), v.recentStrip, t('home_v_recent_row_hint'), function (x) { setOpt('recentStrip', x); }),
-			(function () {                                             // 0.8.1115 (mockup A): belongs to Recently used, off while it cannot do anything
+			(function () {                                             // (mockup A): belongs to Recently used, off while it cannot do anything
 				var x = sw('recentNoFav', t('home_v_recent_nofav'), v.recentNoFav, '', function (on) { setOpt('recentNoFav', on); });
 				x.classList.add('nuHomeVpSub');
-				// 0.8.1116: the explanation behind an (i) – as a line it made the panel scroll sideways; a click on it does not flip the switch
+				// the explanation behind an (i) – as a line it made the panel scroll sideways; a click on it does not flip the switch
 				var tip = el('span', {'class': 'nuInfoTip ms-1', tabindex: '0', role: 'img', 'data-bs-toggle': 'tooltip', 'data-bs-custom-class': 'nuTipWide',
 					'data-bs-trigger': 'hover focus click', title: t('home_v_recent_nofav_hint'), 'aria-label': t('home_v_recent_nofav_hint')}, [icon('bi-info-circle')]);
 				tip.addEventListener('click', function (e) { e.preventDefault(); });
@@ -989,19 +1016,12 @@
 				if (window.nuBs && nuBs.ready()) nuBs.tooltip(tip);
 				if (!v.favRow || !v.recentStrip) { x.classList.add('nuHomeVpOff'); x.querySelector('input').disabled = true; }
 				return x;
-			})()]));
+			})()]);
+	}
 
-		// side bar (0.8.708, was in the user menu): only for me – POST ?p=sidebar action toggle, then the page again
-		if (D.sidebar) secs.push(el('section', {'class': 'nuHomeVpSec'}, [lbl('home_v_sidebar_sec'),
-			sw('sidebar', t('home_v_sidebar'), D.sidebar.on, t('home_v_sidebar_hint'), function () {
-				var f = new FormData();
-				f.append('_csrf', D.csrf); f.append('action', 'toggle'); f.append('back', D.sidebar.back);
-				fetch(D.sidebar.url, {method: 'POST', body: f, credentials: 'same-origin', redirect: 'manual'}).then(function () { location.reload(); }, function () { location.reload(); });
-			})]));
-
-		// this device (0.8.1227, was in the user menu in 0.8.1226): page width of this browser – localStorage nunext-page-width, applied at
+		// this device (was in the user menu in): page width of this browser – localStorage nunext-page-width, applied at
 		// once by nutheme.js's nuPageWidthApply(); "Default" = Settings → Look. Not on phones (the pages are narrower anyway)
-		if (D.pageWidth && window.nuPageWidthApply && size === 'desktop') secs.push((function () {
+	function panelPageWidth() {
 			var PW = D.pageWidth, cur = '';
 			try { cur = localStorage.getItem('nunext-page-width') || ''; } catch (e) { /* none */ }
 			var custom = /^\d+$/.test(cur);
@@ -1035,15 +1055,17 @@
 			return el('section', {'class': 'nuHomeVpSec', 'data-f': 'pagewidth'}, [lbl('pgw_device_sec'),
 				el('div', {'class': 'nuHomeVpSub nuHomeVpPwRow'}, [el('span', {text: t('pgw_title')}), el('div', {'class': 'nuHomeVpPwCtl'}, [sel, px])]),
 				el('p', {'class': 'nuHomeVpHelp', text: t('pgw_device_tip')})]);
-		})());
+	}
 
-		// look (collapsed)
+	// look (collapsed)
+	function panelLook(v) {
 		var look = [el('button', {type: 'button', 'class': 'nuHomeVpMore', 'data-f': 'look', 'aria-expanded': VP.more ? 'true' : 'false', onclick: function () { VP.more = !VP.more; drawPanel(); }},
 			[el('span', {'class': 'nuHomeVpLbl', text: t('home_v_look')}), icon('bi-chevron-' + (VP.more ? 'up' : 'down'))])];
 		if (VP.more) {
 			look.push(el('div', {'class': 'nuHomeVpSub'}, [el('span', {text: t('home_v_density')}),
 				seg('density', [['comfortable', t('home_v_roomy')], ['cozy', t('home_v_medium')], ['dense', t('home_v_dense')]], v.density, function (x) { setOpt('density', x); })]));
-			look.push(el('div', {'class': 'nuHomeVpSub nuHomeVpCol'}, [el('span', {text: t('home_v_icons')}), el('div', {'class': 'nuHomeVpPick nuHomeVpPickIcon', role: 'group', 'aria-label': t('home_v_icons')},
+			look.push(el('div', {'class': 'nuHomeVpSub nuHomeVpCol'},
+				[el('span', {text: t('home_v_icons')}), el('div', {'class': 'nuHomeVpPick nuHomeVpPickIcon', role: 'group', 'aria-label': t('home_v_icons')},
 				['soft', 'solid', 'outline', 'mono', 'none'].map(function (i) {
 					var sample = el('span', {'class': 'nu-tile-icon nuHomeIcon'}, [icon('bi-people')]);
 					return el('button', {type: 'button', 'class': 'nuHomeIcn-' + i, 'data-f': 'icon:' + i, 'aria-pressed': v.icon === i ? 'true' : 'false', onclick: function () { setOpt('icon', i); }},
@@ -1053,16 +1075,41 @@
 			look.push(sw('badges', t('home_v_badges'), v.badges, t('home_v_badges_hint'), function (x) { setOpt('badges', x); }));
 			look.push(sw('actions', t('home_v_actions'), v.actions, t('home_v_actions_hint'), function (x) { setOpt('actions', x); }));
 		}
-		secs.push(el('section', {'class': 'nuHomeVpSec'}, look));
+		return el('section', {'class': 'nuHomeVpSec'}, look);
+	}
 
-		// content (0.8.452): the edit mode (tiles, groups, tabs of the layout) and a user's Personalise – the hidden page buttons start them
+	// content: the edit mode (tiles, groups, tabs of the layout) and a user's Personalise – the hidden page buttons start them
+	function panelContent() {
+		var cont = [];
 		var editB = $('#nuHomeCustomize'), mineB = $('#nuHomeMine');
 		var start = function (b) { return function () { closePanel(); b.click(); }; };
 		if (editB) cont.push(el('section', {'class': 'nuHomeVpSec'}, [lbl('home_c_edit'), el('p', {'class': 'nuHomeVpHelp', text: t('home_c_edit_hint')}),
 			el('button', {type: 'button', 'class': 'btn btn-primary btn-sm', 'data-f': 'edit', id: 'nuHomeVpEdit', onclick: start(editB)}, [icon('bi-pencil me-1'), t('home_c_edit_btn')])]));
 		if (mineB) cont.push(el('section', {'class': 'nuHomeVpSec'}, [lbl('home_u_mine'), el('p', {'class': 'nuHomeVpHelp', text: t('home_c_mine_hint')}),
 			el('button', {type: 'button', 'class': 'btn btn-primary btn-sm', 'data-f': 'mine', id: 'nuHomeVpMine', onclick: start(mineB)}, [icon('bi-person-gear me-1'), t('home_u_mine')])]));
-		var tabs = [['appearance', t('home_c_tab_appearance'), secs], ['content', t('home_c_tab_content'), cont], ['layouts', t('home_layouts'), lays]].filter(function (x) { return x[2].length; });   // order: owner's choice (0.8.453)
+		return cont;
+	}
+
+	function drawPanel() {
+		if (!vp || !VP.open) return;
+		var focus = document.activeElement && vp.contains(document.activeElement) ? document.activeElement.getAttribute('data-f') : null;
+		var old = $('.nuHomeVpBody', vp), top = old ? old.scrollTop : 0;
+		var v = eff(size), tabbed = v.nav === 'tabs' || v.nav === 'sidebar', unit = panelUnit(), st = styleFor(unit, size, v), tg = target();
+		var secs = [], lays = [];   // tabs Appearance · Layouts · Content
+		panelLayout(secs, lays);
+		secs.push(panelScope(), panelStyle(v, st, tabbed, unit, tg), panelDesc(v), panelNav(v), panelOnTop(v));
+		// side bar (was in the user menu): only for me – POST ?p=sidebar action toggle, then the page again
+		if (D.sidebar) secs.push(el('section', {'class': 'nuHomeVpSec'}, [lbl('home_v_sidebar_sec'),
+			sw('sidebar', t('home_v_sidebar'), D.sidebar.on, t('home_v_sidebar_hint'), function () {
+				var f = new FormData();
+				f.append('_csrf', D.csrf); f.append('action', 'toggle'); f.append('back', D.sidebar.back);
+				fetch(D.sidebar.url, {method: 'POST', body: f, credentials: 'same-origin', redirect: 'manual'}).then(function () { location.reload(); }, function () { location.reload(); });
+			})]));
+		if (D.pageWidth && window.nuPageWidthApply && size === 'desktop') secs.push(panelPageWidth());
+		secs.push(panelLook(v));
+		var cont = panelContent();
+		var tabs = [['appearance', t('home_c_tab_appearance'), secs], ['content', t('home_c_tab_content'), cont],
+			['layouts', t('home_layouts'), lays]].filter(function (x) { return x[2].length; });   // order: owner's choice
 		if (!tabs.some(function (x) { return x[0] === VP.tab; })) VP.tab = tabs[0][0];
 		var cur = tabs.filter(function (x) { return x[0] === VP.tab; })[0];
 
@@ -1110,7 +1157,7 @@
 		measure();
 	}
 
-	// ================================================================ user start pages (0.8.425)
+	// ================================================================ user start pages
 	// The editor's "Start page for" choice; Personalise: a user stars and hides tiles of his start page (saved with Done)
 	var forSel = document.getElementById('nuHomeFor');
 	if (forSel) forSel.addEventListener('change', function () { var o = forSel.options[forSel.selectedIndex]; if (o && o.getAttribute('data-url')) window.location.href = o.getAttribute('data-url'); });
@@ -1179,7 +1226,7 @@
 		mineBtn.addEventListener('click', open);
 	})();
 
-	// ================================================================ edit mode (0.8.263): the start page itself is edited
+	// ================================================================ edit mode: the start page itself is edited
 	// Customize turns the page into an editable copy of itself: tiles and groups are dragged (mouse; on touch screens hold
 	// briefly, then drag), group and tab names are typed in place, Done saves the whole layout, Cancel throws it away.
 	var btn = $('#nuHomeCustomize'), view = $('#nuHomeView'), edit = $('#nuHomeEdit');
@@ -1188,9 +1235,9 @@
 	var L = null;                        // layout being edited (copy)
 	var dirty = false;
 	var activeTab = '';                  // tab shown while editing (display tabs)
-	var editFav = false;                 // Customise: show only the favourite tiles (0.8.354) – a view filter, not saved
-	var editFavNext = false;             // set by Edit of the row Favourites (0.8.806)
-	var baseL = null;                    // the saved layout when Customise opened (own tiles for "Start from", 0.8.385)
+	var editFav = false;                 // Customise: show only the favourite tiles – a view filter, not saved
+	var editFavNext = false;             // set by Edit of the row Favourites
+	var baseL = null;                    // the saved layout when Customise opened (own tiles for "Start from")
 	var prevEdit = null;                 // before the last profile was loaded: {L, dirty, activeTab} – Undo
 	var pfNote = null;                   // strip under the bar after loading a profile: {icon, text}
 	var keepOwn = true;                  // Start from: take own tiles along
@@ -1254,7 +1301,7 @@
 	window.addEventListener('beforeunload', function (e) { if (dirty && !edit.hidden) { e.preventDefault(); e.returnValue = ''; } });
 
 
-	// ---------------------------------------------------------------- pin in a tile's ▾ menu (0.8.321): that page as a tile of its own
+	// ---------------------------------------------------------------- pin in a tile's ▾ menu: that page as a tile of its own
 	$$('[data-nu-pin]').forEach(function (b) {
 		b.addEventListener('click', function (e) {
 			e.preventDefault();
@@ -1268,7 +1315,7 @@
 		});
 	});
 
-	// ---------------------------------------------------------------- search (0.8.321; one list since 0.8.723): while typing the tile page
+	// ---------------------------------------------------------------- search (one list): while typing the tile page
 	// gives way to ONE result list – the matching tiles of the page first, then pages, forms, procedures, reports … that are no tile (same
 	// list as Ctrl+K – assets/js/nupalette.js); the filter button lists the kinds to include (localStorage nunext-home-search-kinds, a
 	// per-browser convenience). Enter opens the first result, / focuses the field
@@ -1305,14 +1352,15 @@
 	function resItem(key, iconEl, label, sub, href, open) {
 		var a = el('a', {'class': 'list-group-item list-group-item-action d-flex align-items-center gap-3', href: href || '#', 'data-nu-res': key}, [
 			iconEl,
-			el('span', {'class': 'flex-grow-1 min-w-0'}, [el('span', {'class': 'd-block text-body', text: label}), sub ? el('span', {'class': 'd-block small text-body-secondary text-truncate', text: sub}) : null].filter(Boolean))]);
+			el('span', {'class': 'flex-grow-1 min-w-0'},
+				[el('span', {'class': 'd-block text-body', text: label}), sub ? el('span', {'class': 'd-block small text-body-secondary text-truncate', text: sub}) : null].filter(Boolean))]);
 		a.addEventListener('click', function (e) { e.preventDefault(); open(e); });
 		a.nuOpen = open;
 		a.id = 'nuHomeRes_' + (resSeq++);
 		a.setAttribute('role', 'option');
 		return a;
 	}
-	// ↓ / ↑ in the search field move the selection through the results, Enter opens the selected one (0.8.724)
+	// ↓ / ↑ in the search field move the selection through the results, Enter opens the selected one
 	function resItems() { return $$('[data-nu-res]', moreList); }
 	function selectRes(i) {
 		var items = resItems();
@@ -1336,7 +1384,7 @@
 			onPage['t:' + key] = true;
 			var hay = it ? it.hay : (P ? P.norm(a.textContent) : a.textContent.toLowerCase());
 			var ok = words.every(function (w) { return hay.indexOf(w) >= 0; });
-			ok = ok && !a.hasAttribute('data-nu-js-hidden');                  // hidden by nuHome tile.hide() (0.8.379)
+			ok = ok && !a.hasAttribute('data-nu-js-hidden');                  // hidden by nuHome tile.hide()
 			box(a).hidden = !ok;
 			if (ok) shownEls.push(a);
 		});
@@ -1377,7 +1425,7 @@
 		if (!words.length) H.groups();
 		H.emit('search', q, shownEls.map(H.wrap));
 	}
-	// right-click / long press on a result that is a tile of the page (t:<tile>): the tile's menu – favourites, Hide (0.8.855);
+	// right-click / long press on a result that is a tile of the page (t:<tile>): the tile's menu – favourites, Hide;
 	// pages, forms … that are no tile here keep the browser's menu (open in a new tab)
 	function resTile(node) {
 		var a = node && node.closest ? node.closest('[data-nu-res^="t:"]') : null;
@@ -1433,7 +1481,7 @@
 			}
 			if (e.key !== 'Enter') return;
 			e.preventDefault();
-			if (window.nuPageNoGo && window.nuPageNoGo(search.value)) return;     // P100 … – page numbers (0.8.804)
+			if (window.nuPageNoGo && window.nuPageNoGo(search.value)) return;     // P100 … – page numbers
 			var cur = resItems()[resSel];
 			if (cur && cur.nuOpen) cur.nuOpen(e);
 			else if (firstRes) firstRes(e);
@@ -1445,13 +1493,13 @@
 			e.preventDefault();
 			search.focus();
 		});
-		// the Home button of the top bar (0.8.774, nuapp.js sets the flag): the cursor goes into the search field
+		// the Home button of the top bar (nuapp.js sets the flag): the cursor goes into the search field
 		var fromHome = false;
 		try { fromHome = sessionStorage.getItem('nunext-home-focus') === '1'; sessionStorage.removeItem('nunext-home-focus'); } catch (x) { /* no storage */ }
 		// touch screens: no focus – it would pop up the on-screen keyboard (window.nuHasKeyboard, nuapp.js)
 		var kb = function () { return !window.nuHasKeyboard || window.nuHasKeyboard(); };
 		if (fromHome && edit.hidden && search.offsetParent !== null && kb()) search.focus({preventScroll: true});
-		// already on this start page (0.8.786): Home / the title of the top bar does not load the page again (no flicker) – the page goes
+		// already on this start page: Home / the title of the top bar does not load the page again (no flicker) – the page goes
 		// back to its first view: search emptied, top of the page, cursor in the search field (assets/js/nuapp.js asks window.nuHomeReset)
 		window.nuHomeReset = function (href) {
 			try {
@@ -1471,7 +1519,7 @@
 		};
 	}
 
-	// saved layouts (0.8.333, in the View panel since 0.8.420): switch at once; Save as / name and visibility in a small dialog
+	// saved layouts (in the View panel): switch at once; Save as / name and visibility in a small dialog
 	var SV = D.saved || {};
 	function layoutPost(body) {
 		post(body).then(function (j) {
@@ -1489,7 +1537,7 @@
 			return '<div class="form-check form-check-inline"><input class="form-check-input nuHlRole" type="checkbox" id="nuHlR' + r.id + '" value="' + r.id + '"' + (roles.indexOf(r.id) !== -1 ? ' checked' : '') + '>'
 				+ '<label class="form-check-label" for="nuHlR' + r.id + '"></label></div>';
 		}).join('');
-		// Save as → Based on (0.8.385): the current layout (as before) or a profile, own tiles optionally along
+		// Save as → Based on: the current layout (as before) or a profile, own tiles optionally along
 		var P = D.presets || {}, own = isNew ? ownNames(D.layout) : '';
 		var baseHtml = isNew ? '<div class="mb-3 nuHlBaseBox"><label class="form-label" for="nuHlBase"></label><select class="form-select" id="nuHlBase"></select>'
 			+ '<div class="small mt-2 nuHlBaseInfo"></div>'
@@ -1598,7 +1646,10 @@
 		if (fav) attrs['data-fav'] = '1';
 		// favourite: a star in the corner that stays visible (the tools with ★ show on hover)
 		var mark = fav && !hidden ? el('span', {'class': 'nuHeFavMark', title: t('home_fav'), 'aria-hidden': 'true'}, [icon('bi-star-fill')]) : null;
-		var cnd = L.custom[key] && L.custom[key].cond && Object.keys(L.custom[key].cond).length ? el('span', {'class': 'nuHeCondMark', title: condText(L.custom[key].cond), 'aria-label': condText(L.custom[key].cond), role: 'img'}, [icon('bi-funnel-fill')]) : null;
+		var cnd = L.custom[key] && L.custom[key].cond
+			&& Object.keys(L.custom[key].cond).length ? el('span',
+				{'class': 'nuHeCondMark', title: condText(L.custom[key].cond), 'aria-label': condText(L.custom[key].cond), role: 'img'},
+				[icon('bi-funnel-fill')]) : null;
 		if (isList(size)) {
 			return el('div', Object.assign({'class': 'list-group-item d-flex align-items-center gap-3 nuHeItem'}, attrs), [tileIcon(i, false),
 				el('span', {'class': 'flex-grow-1 min-w-0'}, [el('span', {'class': 'd-block text-body'}, [i.label, fav ? el('i', {'class': 'bi bi-star-fill ms-2 nuHeFavInline', 'aria-hidden': 'true'}) : null, cnd]), i.hint ? el('span', {'class': 'd-block small text-body-secondary', text: i.hint}) : null]), tools]);
@@ -1610,12 +1661,14 @@
 		return el('div', Object.assign({'class': (size === 'compact' ? 'col-6 col-md-4 col-xl-3' : 'col-sm-6 col-lg-4') + ' nuHeItem'}, attrs), [
 			el('div', {'class': 'card nu-tile h-100 shadow-sm' + (i.own ? ' nuHeOwn' : '')}, [body, mark, cnd, tools])]);
 	}
-	/** Tiles shown as list rows: List, Wide list, List in 2 columns (0.8.363). */
+	/** Tiles shown as list rows: List, Wide list, List in 2 columns. */
 	function isList(size) { return size === 'list' || size === 'listwide' || size === 'list2'; }
 	/** Container of tiles (group or hidden); data-list = group id or "__hidden". */
 	function tileList(listId, keys, hidden) {
 		var list = isList(L.size);
-		var box = el('div', {'class': (list ? 'list-group shadow-sm nuHomeList' + (L.size === 'listwide' ? ' nuHomeListWide' : L.size === 'list2' ? ' nuHomeListWide nuHomeList2' : '') : 'row g-3') + ' nuHeDrop', 'data-list': listId});
+		var box = el('div',
+			{'class': (list ? 'list-group shadow-sm nuHomeList' + (L.size === 'listwide' ? ' nuHomeListWide' : L.size === 'list2' ? ' nuHomeListWide nuHomeList2' : '') : 'row g-3') + ' nuHeDrop',
+				'data-list': listId});
 		keys.forEach(function (k) { var c = tileEl(k, hidden); if (c) box.appendChild(c); });
 		box.appendChild(el('div', {'class': (list ? 'list-group-item ' : 'col-12 ') + 'nuHeEmpty small text-body-secondary', text: hidden ? t('home_hidden_hint') : t('home_drop_here')}));
 		return box;
@@ -1635,7 +1688,9 @@
 			el('div', {'class': 'nuHeGroupHead'}, [
 				el('button', {type: 'button', 'class': 'btn nuHeGrip', title: t('home_drag'), 'aria-label': t('home_drag')}, [icon('bi-grip-vertical')]),
 			title, tabSel,
-			D.mode === 'level' ? toolBtn(g.cond && Object.keys(g.cond).length ? 'bi-funnel-fill' : 'bi-funnel', g.cond && Object.keys(g.cond).length ? condText(g.cond) : t('home_u_cond_group'), function () { condDialog(g); }, g.cond && Object.keys(g.cond).length ? 'nuHeCondOn' : '') : null,
+			D.mode === 'level' ? toolBtn(g.cond && Object.keys(g.cond).length ? 'bi-funnel-fill' : 'bi-funnel', g.cond
+				&& Object.keys(g.cond).length ? condText(g.cond) : t('home_u_cond_group'), function () { condDialog(g); }, g.cond
+				&& Object.keys(g.cond).length ? 'nuHeCondOn' : '') : null,
 			toolBtn('bi-arrow-up', t('home_move_up'), function () { swapGroup(g, -1); }, gi <= 0 ? 'disabled' : ''),
 				toolBtn('bi-arrow-down', t('home_move_down'), function () { swapGroup(g, 1); }, gi < 0 || gi >= mine.length - 1 ? 'disabled' : ''),
 				toolBtn('bi-trash', t('home_group_delete'), function () {
@@ -1680,12 +1735,15 @@
 			var on = tb.id === activeTab;
 			var inner;
 			if (on) {
-				var inp = el('input', {'class': 'nuHeTabInput', value: tb.title, maxlength: '40', placeholder: t('home_group_untitled'), 'aria-label': t('home_tab_title'), size: String(Math.max(4, (tb.title || '').length + 1))});
+				var inp = el('input',
+					{'class': 'nuHeTabInput', value: tb.title, maxlength: '40', placeholder: t('home_group_untitled'), 'aria-label': t('home_tab_title'), size: String(Math.max(4, (tb.title || '').length + 1))});
 				inp.addEventListener('input', function () { tb.title = inp.value; inp.size = Math.max(4, inp.value.length + 1); changed(); });
 				inp.addEventListener('change', function () { $$('.nuHeGroupTab option[value="' + tb.id + '"]', edit).forEach(function (o) { o.textContent = tb.title || t('home_group_untitled'); }); });
 				inner = [el('span', {'class': 'nuHeGrip nuHeTabGrip', title: t('home_drag')}, [icon('bi-grip-vertical')]), inp,
 					toolBtn('bi-chevron-left', t('home_move_left'), function () { if (ti > 0) { L.tabs.splice(ti - 1, 0, L.tabs.splice(ti, 1)[0]); changed(); render(); } }, ti === 0 ? 'disabled' : ''),
-					toolBtn('bi-chevron-right', t('home_move_right'), function () { if (ti < L.tabs.length - 1) { L.tabs.splice(ti + 1, 0, L.tabs.splice(ti, 1)[0]); changed(); render(); } }, ti === L.tabs.length - 1 ? 'disabled' : ''),
+					toolBtn('bi-chevron-right', t('home_move_right'),
+						function () { if (ti < L.tabs.length - 1) { L.tabs.splice(ti + 1, 0, L.tabs.splice(ti, 1)[0]); changed(); render(); } },
+						ti === L.tabs.length - 1 ? 'disabled' : ''),
 					toolBtn('bi-x-lg', t('home_tab_delete'), function () {
 						var mine = L.groups.filter(function (g) { return g.tab === tb.id; });
 						if (mine.length && L.tabs.length > 1 && !window.confirm(t('home_tab_delete_confirm'))) return;
@@ -1706,7 +1764,8 @@
 			}
 			ul.appendChild(li);
 		});
-		ul.appendChild(el('li', {'class': 'nav-item nuHeTabAdd'}, [el('button', {type: 'button', 'class': 'nav-link', id: 'nuHomeAddTab', title: t('home_add_tab'), 'aria-label': t('home_add_tab'), onclick: addTab}, [icon('bi-plus-lg')])]));
+		ul.appendChild(el('li', {'class': 'nav-item nuHeTabAdd'},
+			[el('button', {type: 'button', 'class': 'nav-link', id: 'nuHomeAddTab', title: t('home_add_tab'), 'aria-label': t('home_add_tab'), onclick: addTab}, [icon('bi-plus-lg')])]));
 		return ul;
 	}
 
@@ -1720,19 +1779,27 @@
 		if (editFav && !L.fav.length) editFav = false;
 		var favSel = el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary nuHomeFavBtn' + (editFav ? ' active' : ''), id: 'nuHomeEditFav',
 			'aria-pressed': editFav ? 'true' : 'false', disabled: L.fav.length ? null : 'disabled', title: L.fav.length ? t('home_fav_only') : t('home_fav_none_edit'),
-			'aria-label': t('home_fav_only'), onclick: function () { editFav = !editFav; render(); }}, [icon(editFav ? 'bi-star-fill me-sm-1' : 'bi-star me-sm-1'), el('span', {'class': 'd-none d-sm-inline', text: t('home_fav')})]);
+			'aria-label': t('home_fav_only'), onclick: function () { editFav = !editFav; render(); }},
+				[icon(editFav ? 'bi-star-fill me-sm-1' : 'bi-star me-sm-1'), el('span', {'class': 'd-none d-sm-inline', text: t('home_fav')})]);
 
 		edit.classList.toggle('nuHeFavOnly', editFav);
 		edit.appendChild(el('div', {'class': 'nuHeBar'}, [
 			el('div', {'class': 'nuHeBarRow'}, [
 				el('span', {'class': 'fw-semibold me-1 text-nowrap'}, [icon('bi-pencil-square me-2 text-primary'), el('span', {'class': 'd-none d-xxl-inline', text: t('home_editing')}),
-					el('span', {'class': 'nuInfoTip ms-1 fw-normal', tabindex: '0', role: 'img', 'data-bs-toggle': 'tooltip', 'data-bs-custom-class': 'nuTipWide', title: t('home_edit_hint'), 'aria-label': t('home_edit_hint')}, [icon('bi-info-circle')])]),
+					el('span',
+						{'class': 'nuInfoTip ms-1 fw-normal', tabindex: '0', role: 'img', 'data-bs-toggle': 'tooltip', 'data-bs-custom-class': 'nuTipWide',
+							title: t('home_edit_hint'), 'aria-label': t('home_edit_hint')},
+						[icon('bi-info-circle')])]),
 				el('label', {'class': 'visually-hidden', 'for': 'nuHomeDisplay', text: t('home_display')}), displaySel,
-				favSel,                                                  // tile style: Customise → Appearance (0.8.452)
+				favSel,                                                  // tile style: Customise → Appearance
 				el('span', {'class': 'flex-grow-1'}),
-				el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuHomeAddGroup', title: t('home_add_group'), 'aria-label': t('home_add_group'), onclick: addGroup}, [icon('bi-collection me-sm-1'), el('span', {'class': 'd-none d-sm-inline', text: t('home_add_group')})]),
-				el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuHomeAddTile', title: t('home_add_tile'), 'aria-label': t('home_add_tile'), onclick: function () { tileDialog(null); }}, [icon('bi-plus-square me-sm-1'), el('span', {'class': 'd-none d-sm-inline', text: t('home_add_tile')})]),
-				Object.keys(D.presets || {}).length ? startFromMenu() : null,    // Start from ▾ – profiles (0.8.385, replaces Reset); none on user start pages
+				el('button',
+					{type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuHomeAddGroup', title: t('home_add_group'), 'aria-label': t('home_add_group'), onclick: addGroup},
+					[icon('bi-collection me-sm-1'), el('span', {'class': 'd-none d-sm-inline', text: t('home_add_group')})]),
+				el('button',
+					{type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuHomeAddTile', title: t('home_add_tile'), 'aria-label': t('home_add_tile'), onclick: function () { tileDialog(null); }},
+					[icon('bi-plus-square me-sm-1'), el('span', {'class': 'd-none d-sm-inline', text: t('home_add_tile')})]),
+				Object.keys(D.presets || {}).length ? startFromMenu() : null,    // Start from ▾ – profiles (replaces Reset); none on user start pages
 				el('span', {'class': 'd-inline-flex gap-2 ms-auto'}, [                   // Cancel and Done stay together
 					el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuHomeCancel', onclick: cancel}, [t('cancel')]),
 					el('button', {type: 'button', 'class': 'btn btn-sm btn-primary', id: 'nuHomeSave', 'data-nu-save': true, onclick: save}, [icon('bi-check-lg me-1'), t('home_done')])])
@@ -1960,7 +2027,7 @@
 	}
 
 	// ---------------------------------------------------------------- Done / Cancel / Reset
-	/** Tile size / display chosen in Customise → the view (0.8.420: size and display are derived from it on the server). */
+	/** Tile size / display chosen in Customise → the view (size and display are derived from it on the server). */
 	var LEGACY = {large: {style: 'large'}, compact: {style: 'compact'}, list: {style: 'list', listCols: '1', listWidth: 'readable'},
 		listwide: {style: 'list', listCols: '1', listWidth: 'full'}, list2: {style: 'list', listCols: '2'}};
 	function save() {
@@ -1981,7 +2048,7 @@
 		if (dirty && !window.confirm(t('home_discard_confirm'))) return;
 		close();
 	}
-	// ---------------------------------------------------------------- profiles: Start from (0.8.385, in place of Reset)
+	// ---------------------------------------------------------------- profiles: Start from (in place of Reset)
 	/** A profile of D.presets as an edit copy – own tiles of "from" along with keep (same rules as NuHome::presetLayout()). */
 	function presetLayout(id, from, keep) {
 		var l = clone(D.presets[id].layout);
@@ -2063,26 +2130,30 @@
 	function pfNoteEl() {
 		return el('div', {'class': 'alert alert-info d-flex align-items-start gap-2 py-2 px-3 small mt-2 mb-0 nuHeNote', role: 'status'}, [
 			icon(pfNote.icon + ' mt-1'), el('div', {'class': 'flex-grow-1', text: pfNote.text}),
-			prevEdit ? el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-primary py-0 text-nowrap', id: 'nuHomeUndo', onclick: undoPreset}, [icon('bi-arrow-90deg-left me-1'), t('home_pf_undo')]) : null,
+			prevEdit ? el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-primary py-0 text-nowrap', id: 'nuHomeUndo', onclick: undoPreset},
+				[icon('bi-arrow-90deg-left me-1'), t('home_pf_undo')]) : null,
 			el('button', {type: 'button', 'class': 'btn-close btn-sm ms-1', 'aria-label': t('close'), onclick: function () { pfNote = null; render(); }})]);
 	}
 
-	// ---------------------------------------------------------------- conditions of tiles and groups (user start pages, 0.8.425)
+	// ---------------------------------------------------------------- conditions of tiles and groups (user start pages)
 	var COND = ['permission', 'team', 'department', 'position'];
 	/** Who sees a tile / group: one field per kind (values separated by commas, suggestions from D.cond); value() → {kind: [values]}. */
 	function condFields(cond) {
 		var inputs = {};
 		var rows = COND.map(function (k) {
 			var id = 'htCond_' + k, list = 'htCondList_' + k;
-			inputs[k] = el('input', {'class': 'form-control form-control-sm', id: id, value: (cond[k] || []).join(', '), list: list, autocomplete: 'off', spellcheck: 'false', placeholder: t('home_u_cond_values')});
+			inputs[k] = el('input',
+				{'class': 'form-control form-control-sm', id: id, value: (cond[k] || []).join(', '), list: list, autocomplete: 'off', spellcheck: 'false', placeholder: t('home_u_cond_values')});
 			return el('div', {'class': 'col-sm-6'}, [el('label', {'class': 'form-label small mb-1', 'for': id, text: t('home_u_cond_' + k)}), inputs[k],
 				el('datalist', {id: list}, ((D.cond || {})[k] || []).map(function (v) { return el('option', {value: v}); }))]);
 		});
-		// custom user fields (0.8.454): one row per field, stored as cond.fields = {code: [values]}
+		// custom user fields: one row per field, stored as cond.fields = {code: [values]}
 		var fin = {};
 		((D.cond || {}).fields || []).forEach(function (fd) {
 			var id = 'htCondF_' + fd.code, list = 'htCondFList_' + fd.code;
-			fin[fd.code] = el('input', {'class': 'form-control form-control-sm', id: id, value: ((cond.fields || {})[fd.code] || []).join(', '), list: list, autocomplete: 'off', spellcheck: 'false', placeholder: t('home_u_cond_values')});
+			fin[fd.code] = el('input',
+				{'class': 'form-control form-control-sm', id: id, value: ((cond.fields || {})[fd.code] || []).join(', '), list: list, autocomplete: 'off',
+					spellcheck: 'false', placeholder: t('home_u_cond_values')});
 			rows.push(el('div', {'class': 'col-sm-6'}, [el('label', {'class': 'form-label small mb-1', 'for': id, text: fd.label}), fin[fd.code],
 				el('datalist', {id: list}, (fd.values || []).map(function (v) { return el('option', {value: v}); }))]));
 		});
@@ -2154,7 +2225,7 @@
 		noColor.checked = !c.color;
 		var kinds = [['form', t('home_kind_form')], ['report', t('home_kind_report')], ['page', t('home_kind_page')], ['procedure', t('home_kind_procedure')], ['url', t('home_kind_url')]];
 		if (!(D.reports || []).length && c.kind !== 'report') kinds.splice(1, 1);
-		if (!key && Object.keys(D.catalog || {}).length) kinds.unshift(['builtin', t('home_kind_builtin')]);   // a page / action of nuBuilder Next that is not on the page yet (0.8.321)
+		if (!key && Object.keys(D.catalog || {}).length) kinds.unshift(['builtin', t('home_kind_builtin')]);   // a page / action of nuBuilder Next that is not on the page yet
 		if (!key && c.kind === 'builtin' && kinds[0][0] !== 'builtin') c.kind = 'form';
 		var kind = sel('htKind', kinds, c.kind);
 		var placed = {};
@@ -2171,7 +2242,7 @@
 		var record = inp('htRecord', c.record, {maxlength: '25', placeholder: '-1'});
 		var page = sel('htPage', D.pages.map(function (p) { return [p, p]; }), c.kind === 'page' ? c.target : '');
 		var report = sel('htReport', (D.reports || []).map(function (p) { return [p.id, p.label]; }), c.kind === 'report' ? c.target : '');
-		var condBox = D.mode === 'level' ? condFields(c.cond || {}) : null;   // user start pages (0.8.425): who sees the tile
+		var condBox = D.mode === 'level' ? condFields(c.cond || {}) : null;   // user start pages: who sees the tile
 		var proc = sel('htProc', D.procedures.map(function (p) { return [p.id, p.label]; }), c.kind === 'procedure' ? c.target : '');
 		var run = sel('htRun', [['window', t('home_run_window')], ['hidden', t('home_run_hidden')]], c.run);
 		var url = inp('htUrl', c.kind === 'url' ? c.target : '', {maxlength: '500', placeholder: 'https://…'});
@@ -2200,7 +2271,9 @@
 			err
 		]);
 		function sync() {
-			var k = kind.value, showFor = {builtin: ['htBuiltin'], form: ['htForm', 'htRecord', 'htNewtab'], report: ['htReport', 'htNewtab'], page: ['htPage', 'htNewtab'], procedure: ['htProc', 'htRun'], url: ['htUrl', 'htNewtab']}[k];
+			var k = kind.value,
+				showFor = {builtin: ['htBuiltin'], form: ['htForm', 'htRecord', 'htNewtab'], report: ['htReport', 'htNewtab'], page: ['htPage', 'htNewtab'],
+					procedure: ['htProc', 'htRun'], url: ['htUrl', 'htNewtab']}[k];
 			$$('.nuHomeField', body).forEach(function (f) {
 				var id = f.getAttribute('data-for');
 				if (['htBuiltin', 'htForm', 'htRecord', 'htPage', 'htReport', 'htProc', 'htRun', 'htUrl', 'htNewtab'].indexOf(id) >= 0) f.hidden = showFor.indexOf(id) < 0;
@@ -2224,7 +2297,7 @@
 		document.body.appendChild(m);
 		sync();
 		modal = nuBs.modal(m);
-		[form, report, proc].forEach(function (x) { x.classList.add('nuListTomSelect'); });   // lists of forms / reports / procedures are searchable (0.8.1079)
+		[form, report, proc].forEach(function (x) { x.classList.add('nuListTomSelect'); });   // lists of forms / reports / procedures are searchable
 		if (window.nuListSelects) window.nuListSelects(m);
 		m.addEventListener('shown.bs.modal', function () { (kind.value === 'builtin' ? builtin : label).focus(); });
 		ok.addEventListener('click', function () {
@@ -2240,7 +2313,8 @@
 				kind: k, target: {form: form.value, report: report.value, page: page.value, procedure: proc.value, url: url.value.trim()}[k], record: k === 'form' ? record.value.trim() : '',
 				run: run.value, newtab: k !== 'procedure' && newtab.checked};
 			if (condBox) { var cv = condBox.value(); if (Object.keys(cv).length) tile.cond = cv; }
-			var problem = !tile.label ? t('home_tile_label') : (!tile.target ? ({form: t('home_tile_form'), report: t('home_tile_report'), page: t('home_tile_page'), procedure: t('home_tile_procedure'), url: t('home_tile_url')}[k]) : '');
+			var problem = !tile.label ? t('home_tile_label') : (!tile.target ? ({form: t('home_tile_form'), report: t('home_tile_report'),
+				page: t('home_tile_page'), procedure: t('home_tile_procedure'), url: t('home_tile_url')}[k]) : '');
 			if (!problem && k === 'url' && !/^(https?:\/\/\S+|index\.php\?\S*)$/i.test(tile.target)) problem = t('home_tile_url_hint');
 			if (!/^bi-[a-z0-9-]{1,40}$/.test(tile.icon)) problem = t('home_tile_icon');
 			if (problem) { err.hidden = false; err.textContent = problem; return; }

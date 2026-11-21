@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * "Last opened" (0.8.1117): when a person last opened a form in design mode, a procedure, a report or a SQL query – one row per person and
+ * "Last opened": when a person last opened a form in design mode, a procedure, a report or a SQL query – one row per person and
  * object in zzzzsys_nunext_opened, written when the page is opened. The lists of these objects get the sortable column "Last opened" and the
  * view "Recently opened" (NuListDefs). Personal: nobody sees another person's order. Rows older than KEEP_DAYS go (housekeeping).
  */

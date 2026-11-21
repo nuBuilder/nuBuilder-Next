@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * File uploads with Uppy (0.8.459) – nuBuilder 4.9's file objects with target "File System" (sob_input_file_target 1):
+ * File uploads with Uppy – nuBuilder 4.9's file objects with target "File System" (sob_input_file_target 1):
  *   - the object's HTML code is the Uppy template (code snippet nu_upload_file_uppy_code_template, filled in by the form builder);
  *   - Uppy posts each file to ?p=upload (pages/nuupload.php), which runs the procedure the template names – nuBuilder's
  *     nu_upload_file_template – and answers with its $result;
@@ -227,8 +227,7 @@ NUPHP;
 					if (trim($v) !== '') return $v;
 				}
 			}
-		} catch (Throwable) {
-		}
+		} catch (Throwable $ig) { nu_ignored($ig); }
 		return self::HTML;
 	}
 
@@ -285,9 +284,11 @@ NUPHP;
 			$db->insert('zzzzsys_php', array_intersect_key($row, $cols ?: $row));
 			$added[] = self::PROCEDURE_CODE;
 		}
-		if ($db->tableExists('zzzzsys_code_snippet') && !(int)$db->value('SELECT COUNT(*) FROM zzzzsys_code_snippet WHERE cot_code = ? OR zzzzsys_code_snippet_id = ?', [self::SNIPPET_CODE, self::SNIPPET_ID])) {
+		if ($db->tableExists('zzzzsys_code_snippet')
+			&& !(int)$db->value('SELECT COUNT(*) FROM zzzzsys_code_snippet WHERE cot_code = ? OR zzzzsys_code_snippet_id = ?', [self::SNIPPET_CODE, self::SNIPPET_ID])) {
 			$cols = $db->columns('zzzzsys_code_snippet');
-			$row = ['zzzzsys_code_snippet_id' => self::SNIPPET_ID, 'cot_code' => self::SNIPPET_CODE, 'cot_group' => 'nubuilder', 'cot_source_code' => self::HTML, 'cot_language' => 'JavaScript', 'cot_scope' => '[""]', 'cot_template' => '1'];
+			$row = ['zzzzsys_code_snippet_id' => self::SNIPPET_ID, 'cot_code' => self::SNIPPET_CODE, 'cot_group' => 'nubuilder', 'cot_source_code' => self::HTML,
+				'cot_language' => 'JavaScript', 'cot_scope' => '[""]', 'cot_template' => '1'];
 			$db->insert('zzzzsys_code_snippet', array_intersect_key($row, $cols ?: $row));
 			$added[] = self::SNIPPET_CODE;
 		}

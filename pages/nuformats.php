@@ -18,7 +18,7 @@ $reg = NuFormat::registry();
 $usage = $usedBy = [];
 foreach ($rows as $c) if ($c['saved']) { $usedBy[$c['value']] = NuFormat::usage($c['value']); $usage[$c['value']] = count($usedBy[$c['value']]); }
 $canDesign = NuAcl::can(NuAcl::FORM_FORM);
-/** The Used count: a menu of the forms / objects / list columns that use the format, each opening the form (design mode for designers, 0.8.688). */
+/** The Used count: a menu of the forms / objects / list columns that use the format, each opening the form (design mode for designers). */
 $usedCell = static function (string $key) use ($usage, $usedBy, $canDesign): string {
 	$n = (int)($usage[$key] ?? 0);
 	if ($n === 0) return '0';
@@ -28,24 +28,16 @@ $usedCell = static function (string $key) use ($usage, $usedBy, $canDesign): str
 		$href = $canDesign ? nu_url('form', ['f' => $u['form'], 'r' => '-1', 'design' => '1']) : nu_url('form', ['f' => $u['form']]);
 		$items .= '<li><a class="dropdown-item small" href="' . h($href) . '">' . h($label) . '</a></li>';
 	}
-	return '<div class="dropdown nuFmtUsed d-inline-block"><button type="button" class="btn btn-link btn-sm p-0 text-decoration-none" data-bs-toggle="dropdown" data-bs-popper-config="{&quot;strategy&quot;:&quot;fixed&quot;}" aria-expanded="false" title="' . h(t('fmt_used_show')) . '">' . $n . '</button>'
+	return '<div class="dropdown nuFmtUsed d-inline-block"><button type="button" class="btn btn-link btn-sm p-0 text-decoration-none" data-bs-toggle="dropdown" data-bs-popper-config="{&quot;strategy&quot;:&quot;fixed&quot;}" aria-expanded="false" title="'
+		. h(t('fmt_used_show')) . '">' . $n . '</button>'
 		. '<ul class="dropdown-menu dropdown-menu-end">' . $items . '</ul></div>';
 };
 
-/** Sample output for the list. */
-function nu_format_examples(string $key): array
-{
-	return match ($key[0]) {
-		'D' => [NuFormat::format(date('Y-m-d H:i:s'), $key)],
-		'N' => [NuFormat::format('1234567.891', $key), NuFormat::format('-1234.5', $key)],
-		default => [],
-	};
-}
 
 NuListExport::handle(NuAcl::FORM_FORMAT, t('fmt_title'), [
 	t('fmt_type')            => static fn($c) => t('fmt_type_' . strtolower($c['type'])),
 	t('fmt_format')          => static fn($c) => substr($c['value'], 2) . ($c['default'] ? ' (' . t('fmt_default_badge') . ')' : '') . ($c['saved'] ? '' : ' (' . t('fmt_builtin') . ')'),
-	t('fmt_example')         => static fn($c) => implode(' / ', nu_format_examples($c['value'])),
+	t('fmt_example')         => static fn($c) => implode(' / ', NuFormatsPage::examples($c['value'])),
 	t('fmt_description_col') => static fn($c) => $c['description'],
 	t('fmt_used')            => static fn($c) => $c['saved'] ? (int)$usage[$c['value']] : '',
 ], static fn(int $limit) => array_slice($rows, 0, $limit), NuListExport::filterText([t('search') => $q, t('fmt_type') => $type]));
@@ -71,7 +63,7 @@ nu_layout_start(t('fmt_title'), 'forms');
 			<?php if ($designer['rights']['add']): ?>
 				<button type="button" class="btn nuAddBtn" title="<?= h(t('fmt_new')) ?>" id="fmtNew"><i class="bi bi-plus-lg me-1"></i><?= h(t('add')) ?></button>
 			<?php endif; ?>
-			<?= $rows ? NuListExport::buttons(NuAcl::FORM_FORMAT, 'formats', ['q' => $q, 'type' => $type]) : '' /* no records: nothing to export (0.8.749) */ ?>
+			<?= $rows ? NuListExport::buttons(NuAcl::FORM_FORMAT, 'formats', ['q' => $q, 'type' => $type]) : '' /* no records: nothing to export */ ?>
 		</div>
 	</div>
 <form class="nuListFilter border-bottom px-3 py-2" method="get" action="index.php" role="search">
@@ -108,7 +100,7 @@ nu_layout_start(t('fmt_title'), 'forms');
 						<?php if ($r && $c['value'][0] === 'T'): ?><div class="small text-body-secondary"><?= h(t($r['store'] === 'raw' ? 'fmt_store_raw' : 'fmt_store_masked')) ?><?= $r['complete'] ? ' · ' . h(t('fmt_complete')) : '' ?></div><?php endif; ?>
 					</td>
 					<td class="small">
-						<?php foreach (nu_format_examples($c['value']) as $i => $ex): ?>
+						<?php foreach (NuFormatsPage::examples($c['value']) as $i => $ex): ?>
 							<div class="<?= $i === 1 && NuFormat::cssClass('-1234.5', $c['value']) ? 'nuNegative' : '' ?>"><?= h($ex) ?></div>
 						<?php endforeach; ?>
 						<?php if ($c['value'][0] === 'T'): ?><span class="text-body-secondary"><?= h(implode('', array_map(static fn($t) => $t[0] === 'L' ? $t[1] : '_', NuFormat::maskTokens(substr($c['value'], 2))))) ?></span><?php endif; ?>

@@ -22,7 +22,7 @@ final class NuProcedure
 		'sph_php', 'sph_javascript', 'sph_javascript_active', 'sph_global', 'sph_demo'];
 
 	/**
-	 * nuBuilder's global hook procedures (0.8.462, gap analysis B5) – run where nuBuilder 4.9 runs them: nu_before_save (before Before
+	 * nuBuilder's global hook procedures (gap analysis B5) – run where nuBuilder 4.9 runs them: nu_before_save (before Before
 	 * Browse and before Before Save), nu_before_edit (before Before Edit), nu_before_delete (before Before Delete), nu_startup (after a
 	 * login), nu_invalid_login (after a failed one), nu_check_password_policy (password changes), nu_after_update (after an update),
 	 * nu_debug_result_added (after a Debug result). Like nuBuilder's eval(nuProcedure()): the procedure with that code, without
@@ -97,7 +97,8 @@ final class NuProcedure
 		if ($row['sph_code'] === '') $errors['sph_code'] = t('proc_err_code');
 		elseif (!preg_match('/^[A-Za-z0-9_\-.]+$/', $row['sph_code'])) $errors['sph_code'] = t('proc_err_code_chars');
 		elseif (self::isHook($row['sph_code'])) $errors['sph_code'] = t('proc_err_code_hook');
-		elseif ($db->value('SELECT COUNT(*) FROM zzzzsys_php WHERE (sph_code = ? OR zzzzsys_php_id = ?) AND zzzzsys_php_id <> ?', [$row['sph_code'], $row['sph_code'], $id])) $errors['sph_code'] = t('proc_err_code_taken');
+		elseif ($db->value('SELECT COUNT(*) FROM zzzzsys_php WHERE (sph_code = ? OR zzzzsys_php_id = ?) AND zzzzsys_php_id <> ?',
+			[$row['sph_code'], $row['sph_code'], $id])) $errors['sph_code'] = t('proc_err_code_taken');
 		if ($row['sph_description'] === '') $errors['sph_description'] = t('proc_err_description');
 		if (trim($row['sph_php']) === '') $errors['sph_php'] = t('proc_err_php');
 		if ($row['sph_zzzzsys_form_id'] !== '' && !nu_form_exists((string)$row['sph_zzzzsys_form_id'])) $errors['sph_zzzzsys_form_id'] = t('form_err_not_found');
@@ -106,7 +107,7 @@ final class NuProcedure
 		$cols = $db->columns('zzzzsys_php');
 		$row = array_intersect_key($row, $cols);
 		if ($id !== '') {
-			// NULL columns of nuBuilder Forte's row stay NULL while the form shows their default (0.8.956)
+			// NULL columns of nuBuilder Forte's row stay NULL while the form shows their default
 			$row = NuDB::keepNull($db->one('SELECT * FROM zzzzsys_php WHERE zzzzsys_php_id = ?', [$id]), $row,
 				['sph_status' => '1', 'sph_javascript_active' => '0', 'sph_global' => '0', 'sph_demo' => '0', 'sph_run' => '']);
 			$db->update('zzzzsys_php', $row, 'zzzzsys_php_id', $id);
@@ -196,7 +197,8 @@ final class NuProcedure
 		}
 		foreach ($db->all("SELECT zzzzsys_php_id, sph_code FROM zzzzsys_php WHERE zzzzsys_php_id <> ? AND (sph_php LIKE ? ESCAPE '!' OR sph_php LIKE ? ESCAPE '!')", [$id, $p1, $p2]) as $r) {
 			$hook = self::isHook((string)$r['zzzzsys_php_id']);
-			$out[] = ['kind' => 'code', 'form_id' => $hook ? substr((string)$r['zzzzsys_php_id'], 0, -3) : '', 'proc_id' => $hook ? '' : (string)$r['zzzzsys_php_id'], 'form' => '', 'where' => 'PHP ' . $r['sph_code']];
+			$out[] = ['kind' => 'code', 'form_id' => $hook ? substr((string)$r['zzzzsys_php_id'], 0, -3) : '',
+				'proc_id' => $hook ? '' : (string)$r['zzzzsys_php_id'], 'form' => '', 'where' => 'PHP ' . $r['sph_code']];
 		}
 		return $out;
 	}

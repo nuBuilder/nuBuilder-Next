@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Themes (0.8.632, Admin tools → Themes, pages/nuthemes.php): the look of the whole application – nuBuilder Next's pages and forms –
+ * Themes (Admin tools → Themes, pages/nuthemes.php): the look of the whole application – nuBuilder Next's pages and forms –
  * as a set of values (colours, corner radius, shadow, font, size, density, button / field / tab / list / top bar looks, form buttons).
  *   - Five built-in themes (BUILTIN, read-only, ids "b:<name>"); own themes in zzzzsys_nunext_theme (vals JSON {v: {...}, d: {...}}:
  *     v = values, d = colours for dark mode). An empty colour = nuBuilder Next's own (its dark mode stays as it is).
@@ -93,7 +93,7 @@ final class NuTheme
 				'fbtn_bg' => '#7fb2ff', 'fbtn_text' => '#000000', 'f_label' => '#ffffff']],
 	];
 
-	/** nuBuilder Next's own colours (no theme) – light / dark, as the browser shows them (0.8.643): exports of a theme are complete with them. */
+	/** nuBuilder Next's own colours (no theme) – light / dark, as the browser shows them: exports of a theme are complete with them. */
 	public const DEFAULTS = [
 		'v' => ['accent' => '#2f6fd6', 'page_bg' => '#f4f6f9', 'surface' => '#ffffff', 'text' => '#212529', 'muted' => '#595c5f', 'border' => '#dee2e6',
 			'nav_bg' => '#ffffff', 'nav_text' => '#212529', 'btn_bg' => '#f8f9fa', 'btn_text' => '#212529', 'btn_border' => '#dee2e6',
@@ -124,7 +124,8 @@ final class NuTheme
 	public static function all(): array
 	{
 		$out = [];
-		foreach (self::BUILTIN as $k => $t) $out['b:' . $k] = ['id' => 'b:' . $k, 'name' => t('theme_b_' . $k), 'builtin' => true, 'base' => '', 'v' => $t['v'], 'd' => $t['d'], 'updated_at' => '', 'updated_by' => ''];
+		foreach (self::BUILTIN as $k => $t) $out['b:' . $k] = ['id' => 'b:' . $k, 'name' => t('theme_b_' . $k), 'builtin' => true, 'base' => '',
+			'v' => $t['v'], 'd' => $t['d'], 'updated_at' => '', 'updated_by' => ''];
 		return $out + self::own();
 	}
 
@@ -142,7 +143,7 @@ final class NuTheme
 						'updated_at' => (string)($r['updated_at'] ?? ''), 'updated_by' => (string)($r['updated_by'] ?? '')];
 				}
 			}
-		} catch (Throwable) {}
+		} catch (Throwable $ig) { nu_ignored($ig); }
 		return self::$own = $out;
 	}
 
@@ -169,7 +170,7 @@ final class NuTheme
 		return [$ov, $od];
 	}
 
-	/** Is the name used by another theme – an own one (except $exceptId) or a built-in one? Case and spaces at the ends do not count (0.8.694). */
+	/** Is the name used by another theme – an own one (except $exceptId) or a built-in one? Case and spaces at the ends do not count. */
 	public static function nameTaken(string $name, string $exceptId = ''): bool
 	{
 		$n = mb_strtolower(trim($name));
@@ -178,7 +179,7 @@ final class NuTheme
 		return false;
 	}
 
-	/** The name itself when it is free, else "name (2)", "name (3)" … (imports and copies, 0.8.694). */
+	/** The name itself when it is free, else "name (2)", "name (3)" … (imports and copies). */
 	public static function uniqueName(string $name): string
 	{
 		$name = mb_substr(trim($name), 0, 100);
@@ -198,7 +199,7 @@ final class NuTheme
 		$errors = [];
 		if ($name === '') $errors['name'] = t('err_required');
 		elseif (mb_strlen($name) > 100) $errors['name'] = t('err_too_long', 100);
-		elseif (self::nameTaken($name, $id)) $errors['name'] = t('theme_err_name_taken', $name);   // names are unique (0.8.694)
+		elseif (self::nameTaken($name, $id)) $errors['name'] = t('theme_err_name_taken', $name);   // names are unique
 		if ($id !== '' && (str_starts_with($id, 'b:') || !isset(self::own()[$id]))) $errors['_'] = t('err_not_found');
 		if ($errors) return ['', $errors];
 		[$v, $d] = self::clean($v, $d);
@@ -231,7 +232,7 @@ final class NuTheme
 	}
 
 	/**
-	 * Every colour of a theme, light and dark (0.8.643): the theme's own values, the rest as nuBuilder Next shows them. Colours that follow the
+	 * Every colour of a theme, light and dark: the theme's own values, the rest as nuBuilder Next shows them. Colours that follow the
 	 * accent (focus, active tab, form buttons) follow the theme's accent when it has one; the dark accent is the light one unless set.
 	 * @return array{0: array, 1: array}
 	 */
@@ -266,7 +267,7 @@ final class NuTheme
 	{
 		$j = json_decode(trim($json), true);
 		if (!is_array($j) || ($j['type'] ?? '') !== 'nunext-theme' || !is_array($j['values'] ?? null)) throw new RuntimeException(t('theme_err_import'));
-		$name = self::uniqueName(trim((string)($j['name'] ?? '')) ?: t('theme_imported'));   // a name in use gets " (2)" … (0.8.694)
+		$name = self::uniqueName(trim((string)($j['name'] ?? '')) ?: t('theme_imported'));   // a name in use gets " (2)" …
 		[$id, $err] = self::save('', $name, (array)$j['values'], (array)($j['dark'] ?? []), 'import');
 		if ($err) throw new RuntimeException(implode(' ', $err));
 		return $id;
@@ -305,7 +306,7 @@ final class NuTheme
 			$s['user_choice'] = !empty($j['user_choice']);
 			if (is_array($j['allowed'] ?? null)) $s['allowed'] = array_values(array_filter(array_map('strval', $j['allowed'])));
 			$s['rev'] = (string)($j['rev'] ?? '');
-		} catch (Throwable) {}
+		} catch (Throwable $ig) { nu_ignored($ig); }
 		return self::$settings = $s;
 	}
 
@@ -339,7 +340,7 @@ final class NuTheme
 	{
 		$s = self::settings();
 		$u = NuAuth::user();
-		if ($u && !empty($u['globeadmin']) && empty($u['demo'])) return self::all();   // globeadmin: any theme for himself (0.8.643)
+		if ($u && !empty($u['globeadmin']) && empty($u['demo'])) return self::all();   // globeadmin: any theme for himself
 		if (!$s['user_choice']) return [];
 		$all = self::all();
 		$ids = $s['allowed'] ?: array_keys($all);
@@ -352,7 +353,7 @@ final class NuTheme
 		$u = NuAuth::user();
 		if (!$u) return '';
 		try {
-			if (!empty($u['demo'])) return (string)($_SESSION['nu_theme'] ?? '');
+			if (!empty($u['demo'])) return (string)($_SESSION[NuSess::THEME] ?? '');
 			if ($u['globeadmin']) return (string)(nu_setting_value(self::SETTING_GA) ?? '');
 			return (string)NuUserJson::get((string)$u['id'], self::JSON);
 		} catch (Throwable) {
@@ -366,7 +367,7 @@ final class NuTheme
 		$u = NuAuth::user();
 		if (!$u) return;
 		if ($id !== '' && !isset(self::choices()[$id])) throw new RuntimeException(t('err_not_found'));
-		if (!empty($u['demo'])) $_SESSION['nu_theme'] = $id;
+		if (!empty($u['demo'])) $_SESSION[NuSess::THEME] = $id;
 		elseif ($u['globeadmin']) self::putSetting(self::SETTING_GA, $id);
 		else NuUserJson::set((string)$u['id'], self::JSON, $id);
 		self::$current = null;
@@ -386,7 +387,7 @@ final class NuTheme
 				$p = self::userPick();
 				if ($p !== '' && isset(self::choices()[$p])) $id = $p;
 			}
-		} catch (Throwable) {}
+		} catch (Throwable $ig) { nu_ignored($ig); }
 		if (!self::get($id)) $id = 'b:next';
 		return self::$current = $id;
 	}
@@ -424,7 +425,7 @@ final class NuTheme
 		header('X-Content-Type-Options: nosniff');
 		if ($id === 'draft') {
 			header('Cache-Control: no-store');
-			$dr = $_SESSION['nu_theme_draft'] ?? null;
+			$dr = $_SESSION[NuSess::THEME_DRAFT] ?? null;
 			echo is_array($dr) ? self::css((array)($dr['v'] ?? []), (array)($dr['d'] ?? [])) : '';
 			exit;
 		}
@@ -458,7 +459,8 @@ final class NuTheme
 		$o = "/* nuBuilder Next – theme (Admin tools → Themes) */\n";
 		if (!empty($v['accent'])) $o .= NuBranding::accentCss($v['accent']);
 		if (!empty($d['accent'])) $o .= self::darkOnly(NuBranding::accentCss($d['accent']));
-		$o .= ":root:not([data-bs-theme=\"dark\"]), [data-bs-theme=\"light\"] {\n" . self::vars($v, false) . "}\n";   // light mode only (not :root – it would win over the dark values of Bootstrap / nuapp.css); :not() = the specificity of nuapp.css's light-only rules
+		$o .= ":root:not([data-bs-theme=\"dark\"]), [data-bs-theme=\"light\"] {\n" . self::vars($v, false)
+			. "}\n";   // light mode only (not :root – it would win over the dark values of Bootstrap / nuapp.css); :not() = the specificity of nuapp.css's light-only rules
 		if ($d) $o .= "[data-bs-theme=\"dark\"] {\n" . self::vars($d, true) . "}\n";
 		$o .= self::rules($v, $d);
 		return $o;
@@ -539,7 +541,8 @@ final class NuTheme
 		// form buttons
 		$o .= ".btn.nuFormBtn:not([class*=\"btn-\"]) { --nu-btn-ink: var(--nu-fbtn-ink, var(--nu-on-accent, #fff)); --bs-btn-bg: var(--nu-fbtn-bg, var(--nu-accent)); --bs-btn-hover-bg: var(--nu-fbtn-bg, var(--nu-accent));"
 			. " --bs-btn-active-bg: var(--nu-fbtn-bg, var(--nu-accent)); --bs-btn-disabled-bg: var(--nu-fbtn-bg, var(--nu-accent)); }\n";
-		if (!empty($v['btn_weight'])) $o .= '.btn.nuBtnAct, .btn.nuFormBtn:not([class*="btn-"]), .nuActionButton:where(:not(.btn)) { --bs-btn-font-weight: ' . $v['btn_weight'] . '; font-weight: ' . $v['btn_weight'] . "; }\n";
+		if (!empty($v['btn_weight'])) $o .= '.btn.nuBtnAct, .btn.nuFormBtn:not([class*="btn-"]), .nuActionButton:where(:not(.btn)) { --bs-btn-font-weight: '
+			. $v['btn_weight'] . '; font-weight: ' . $v['btn_weight'] . "; }\n";
 		if (!empty($v['label_weight'])) $o .= '.form-label, .nuLabel, .form-check-label { font-weight: ' . $v['label_weight'] . "; }\n";
 		// corners
 		if (isset($v['radius'])) {
@@ -554,7 +557,8 @@ final class NuTheme
 		// shadow
 		if (($v['shadow'] ?? '') === 'none') $o .= ".shadow-sm, .shadow, .card.shadow-sm { box-shadow: none !important; }\n.btn.nuFormBtn:not([class*=\"btn-\"]) { box-shadow: none; }\n";
 		if (($v['shadow'] ?? '') === 'light') $o .= ".shadow-sm, .card.shadow-sm { box-shadow: 0 1px 2px rgba(0, 0, 0, .05) !important; }\n";
-		if (($v['shadow'] ?? '') === 'medium') $o .= ".shadow-sm, .card.shadow-sm { box-shadow: 0 .35rem 1rem rgba(15, 23, 42, .09) !important; }\n[data-bs-theme=\"dark\"] .shadow-sm { box-shadow: 0 .35rem 1rem rgba(0, 0, 0, .45) !important; }\n";
+		if (($v['shadow']
+			?? '') === 'medium') $o .= ".shadow-sm, .card.shadow-sm { box-shadow: 0 .35rem 1rem rgba(15, 23, 42, .09) !important; }\n[data-bs-theme=\"dark\"] .shadow-sm { box-shadow: 0 .35rem 1rem rgba(0, 0, 0, .45) !important; }\n";
 		// font
 		if (!empty($v['font'])) $o .= ':root { --bs-body-font-family: ' . self::FONTS[$v['font']] . "; --bs-font-sans-serif: var(--bs-body-font-family); }\n";
 		if (!empty($v['font_size'])) $o .= ':root { --bs-body-font-size: ' . $v['font_size'] . "px; }\n.btn, .form-control, .form-select { font-size: " . $v['font_size'] . "px; }\n"
@@ -565,7 +569,8 @@ final class NuTheme
 		if (($v['density'] ?? '') === 'comfortable') $o .= ".btn { --bs-btn-padding-y: .5rem; --bs-btn-padding-x: 1rem; }\n.form-control, .form-select { padding-top: .55rem; padding-bottom: .55rem; }\n"
 			. ".table > :not(caption) > * > * { padding: .7rem .75rem; }\n.card-body { padding: 1.5rem; }\n";
 		// tabs
-		if (($v['tab_style'] ?? '') === 'boxes') $o .= ".nav-tabs { gap: .15rem; }\n.nav-tabs .nav-link { border: 1px solid var(--nu-tab-border); border-bottom: 0; border-radius: var(--bs-border-radius-sm) var(--bs-border-radius-sm) 0 0; background: var(--nu-tab-hover-bg); margin-bottom: 0; }\n"
+		if (($v['tab_style']
+			?? '') === 'boxes') $o .= ".nav-tabs { gap: .15rem; }\n.nav-tabs .nav-link { border: 1px solid var(--nu-tab-border); border-bottom: 0; border-radius: var(--bs-border-radius-sm) var(--bs-border-radius-sm) 0 0; background: var(--nu-tab-hover-bg); margin-bottom: 0; }\n"
 			. ".nav-tabs .nav-link:hover, .nav-tabs .nav-link:focus { background: var(--nu-tab-surface); }\n"
 			. ".nav-tabs .nav-link.active, .nav-tabs .nav-item.show .nav-link { background: var(--nu-tab-surface); border-top: 3px solid var(--nu-tab-active); border-bottom: 1px solid var(--nu-tab-surface); margin-bottom: -1px; font-weight: 600; color: var(--nu-tab-active-color); }\n";
 		if (($v['tab_style'] ?? '') === 'pills') $o .= ".nav-tabs { border-bottom: 0; gap: .35rem; }\n.nav-tabs .nav-link { border: 0; border-radius: 999px; padding: .4rem 1rem; }\n"

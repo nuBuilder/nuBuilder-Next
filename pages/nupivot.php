@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Pivot of a form list (0.8.1151, core/form/nupivot.php, assets/js/nu/nupivot.js). POST action (X-CSRF-Token, form fields):
+ * Pivot of a form list (core/form/nupivot.php, assets/js/nu/nupivot.js). POST action (X-CSRF-Token, form fields):
  *   fields | run (spec) | values (c, g) | drill (spec, rk, ck) | saved | save (name, spec) | delete (id) → JSON
  *   export (fmt xlsx | csv, head, lines – the table as shown) → file
  * f = form id; the list's search state comes along as on the list page (q, rf, flt[], adv, nsc, sc, ps). Rights: the list's view + print.
@@ -53,7 +53,7 @@ try {
 	};
 } catch (Throwable $e) {
 	NuBrowse::dropTempTable();
-	if (class_exists('NuDebugLog')) { try { NuDebugLog::write("Pivot:\n" . $e->getMessage()); } catch (Throwable) {} }
+	if (class_exists('NuDebugLog')) { try { NuDebugLog::write("Pivot:\n" . $e->getMessage()); } catch (Throwable $ig) { nu_ignored($ig); } }
 	$json(['ok' => false, 'error' => t('pv_err_query') . (nu_debug() || !empty(NuAuth::user()['globeadmin']) ? ' ' . $e->getMessage() : '')]);
 }
 NuBrowse::dropTempTable();

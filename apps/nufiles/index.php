@@ -48,7 +48,8 @@ $v = static function (string $c, string $fallback, string $file) use ($nu): stri
 <link rel="stylesheet" href="<?= $nu->h($nu->asset('assets/app.css')) ?>">
 </head>
 <body class="nuf">
-<script type="application/json" id="nufBoot"><?= json_encode($boot, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_INVALID_UTF8_SUBSTITUTE) ?></script>
+<script type="application/json"
+	id="nufBoot"><?= json_encode($boot, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_INVALID_UTF8_SUBSTITUTE) ?></script>
 
 <div class="nuf-app" id="nufApp">
 	<aside class="nuf-side" id="nufSide" aria-label="<?= $t('shares') ?>">
@@ -65,7 +66,8 @@ $v = static function (string $c, string $fallback, string $file) use ($nu): stri
 
 	<main class="nuf-main" id="nufMain">
 		<div class="nuf-bar">
-			<button type="button" class="btn btn-sm btn-outline-secondary d-md-none" id="nufSideToggle" aria-controls="nufSide" aria-expanded="false" title="<?= $t('shares') ?>"><i class="bi bi-list"></i></button>
+			<button type="button" class="btn btn-sm btn-outline-secondary d-md-none" id="nufSideToggle" aria-controls="nufSide" aria-expanded="false"
+				title="<?= $t('shares') ?>"><i class="bi bi-list"></i></button>
 			<nav aria-label="breadcrumb" class="nuf-crumbs"><ol class="breadcrumb mb-0" id="nufCrumbs"></ol><div class="nuf-phpath" id="nufPhPath"></div></nav>
 			<form class="nuf-search" id="nufSearchForm" role="search">
 				<div class="input-group input-group-sm">
@@ -78,25 +80,32 @@ $v = static function (string $c, string $fallback, string $file) use ($nu): stri
 		<div class="nuf-tools" id="nufTools" role="toolbar">
 			<div class="btn-group btn-group-sm" data-need="upload">
 				<button type="button" class="btn btn-primary" id="nufUploadBtn"><i class="bi bi-upload"></i> <span class="nuf-lbl"><?= $t('upload') ?></span></button>
-				<button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false" data-need="delete"><span class="visually-hidden"><?= $t('details') ?></span></button>
+				<button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false"
+					data-need="delete"><span class="visually-hidden"><?= $t('details') ?></span></button>
 				<div class="dropdown-menu p-2 nuf-upload-opts">
 					<div class="form-check"><input class="form-check-input" type="checkbox" id="nufOverwrite"><label class="form-check-label" for="nufOverwrite"><?= $t('overwrite_existing') ?></label></div>
 				</div>
 			</div>
 			<input type="file" id="nufFileInput" multiple hidden>
 			<button type="button" class="btn btn-sm btn-outline-secondary" id="nufMkdirBtn" data-need="mkdir"><i class="bi bi-folder-plus"></i> <span class="nuf-lbl"><?= $t('new_folder') ?></span></button>
-			<button type="button" class="btn btn-sm btn-outline-secondary" id="nufNewFileBtn" data-need="edit"><i class="bi bi-file-earmark-plus"></i> <span class="nuf-lbl"><?= $t('new_file') ?></span></button>
+			<button type="button" class="btn btn-sm btn-outline-secondary" id="nufNewFileBtn"
+				data-need="edit"><i class="bi bi-file-earmark-plus"></i> <span class="nuf-lbl"><?= $t('new_file') ?></span></button>
 			<span class="nuf-sep"></span>
-			<button type="button" class="btn btn-sm btn-outline-secondary nuf-selclear" id="nufSelClear" title="<?= $t('clear_selection') ?>" aria-label="<?= $t('clear_selection') ?>"><i class="bi bi-x-lg"></i> <span id="nufSelCount">0</span></button>
+			<button type="button" class="btn btn-sm btn-outline-secondary nuf-selclear" id="nufSelClear" title="<?= $t('clear_selection') ?>"
+				aria-label="<?= $t('clear_selection') ?>"><i class="bi bi-x-lg"></i> <span id="nufSelCount">0</span></button>
 			<button type="button" class="btn btn-sm btn-outline-secondary" id="nufDownloadBtn" data-sel="1"><i class="bi bi-download"></i> <span class="nuf-lbl"><?= $t('download') ?></span></button>
 			<button type="button" class="btn btn-sm btn-outline-secondary" id="nufCopyBtn" data-sel="1" data-need="view"><i class="bi bi-copy"></i> <span class="nuf-lbl"><?= $t('copy') ?></span></button>
-			<button type="button" class="btn btn-sm btn-outline-secondary" id="nufMoveBtn" data-sel="1" data-need="rename|delete"><i class="bi bi-arrow-right-square"></i> <span class="nuf-lbl"><?= $t('move') ?></span></button>
-			<button type="button" class="btn btn-sm btn-outline-secondary" id="nufZipBtn" data-sel="1" data-need="zip"><i class="bi bi-file-earmark-zip"></i> <span class="nuf-lbl"><?= $t('zip') ?></span></button>
+			<button type="button" class="btn btn-sm btn-outline-secondary" id="nufMoveBtn" data-sel="1"
+				data-need="rename|delete"><i class="bi bi-arrow-right-square"></i> <span class="nuf-lbl"><?= $t('move') ?></span></button>
+			<button type="button" class="btn btn-sm btn-outline-secondary" id="nufZipBtn" data-sel="1"
+				data-need="zip"><i class="bi bi-file-earmark-zip"></i> <span class="nuf-lbl"><?= $t('zip') ?></span></button>
 			<button type="button" class="btn btn-sm btn-outline-danger" id="nufDeleteBtn" data-sel="1" data-need="delete"><i class="bi bi-trash3"></i> <span class="nuf-lbl"><?= $t('delete') ?></span></button>
 			<span class="ms-auto"></span>
 			<span class="badge text-bg-warning d-none" id="nufRoBadge"><?= $t('readonly_badge') ?></span>
-			<button type="button" class="btn btn-sm btn-outline-secondary d-md-none" id="nufColToggle" title="<?= $t('show_modified') ?>" aria-label="<?= $t('show_modified') ?>" aria-pressed="false"><i class="bi bi-clock nuf-ic-time"></i><i class="bi bi-hdd nuf-ic-size"></i></button>
-			<button type="button" class="btn btn-sm btn-outline-secondary" id="nufLayoutBtn" title="<?= $t('view_grid') ?>" aria-label="<?= $t('view_grid') ?>" aria-pressed="false"><i class="bi bi-grid-3x3-gap nuf-ic-grid"></i><i class="bi bi-list-ul nuf-ic-list"></i></button>
+			<button type="button" class="btn btn-sm btn-outline-secondary d-md-none" id="nufColToggle" title="<?= $t('show_modified') ?>"
+				aria-label="<?= $t('show_modified') ?>" aria-pressed="false"><i class="bi bi-clock nuf-ic-time"></i><i class="bi bi-hdd nuf-ic-size"></i></button>
+			<button type="button" class="btn btn-sm btn-outline-secondary" id="nufLayoutBtn" title="<?= $t('view_grid') ?>" aria-label="<?= $t('view_grid') ?>"
+				aria-pressed="false"><i class="bi bi-grid-3x3-gap nuf-ic-grid"></i><i class="bi bi-list-ul nuf-ic-list"></i></button>
 			<button type="button" class="btn btn-sm btn-outline-secondary" id="nufRefreshBtn" title="<?= $t('refresh') ?>"><i class="bi bi-arrow-clockwise"></i></button>
 		</div>
 
@@ -146,7 +155,8 @@ $v = static function (string $c, string $fallback, string $file) use ($nu): stri
 <div class="modal fade" id="nufDlg" tabindex="-1" aria-hidden="true" aria-labelledby="nufDlgTitle">
 	<div class="modal-dialog modal-dialog-centered"><form class="modal-content" id="nufDlgForm" novalidate>
 		<div class="modal-header"><h5 class="modal-title" id="nufDlgTitle"></h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?= $t('close') ?>"></button></div>
-		<div class="modal-body"><div id="nufDlgText" class="mb-2"></div><input type="text" class="form-control d-none" id="nufDlgInput" autocomplete="off" spellcheck="false"><div class="invalid-feedback" id="nufDlgErr"></div></div>
+		<div class="modal-body"><div id="nufDlgText" class="mb-2"></div><input type="text" class="form-control d-none" id="nufDlgInput" autocomplete="off"
+			spellcheck="false"><div class="invalid-feedback" id="nufDlgErr"></div></div>
 		<div class="modal-footer" id="nufDlgFoot"></div>
 	</form></div>
 </div>
@@ -154,7 +164,8 @@ $v = static function (string $c, string $fallback, string $file) use ($nu): stri
 <!-- folder picker (copy / move) -->
 <div class="modal fade" id="nufPick" tabindex="-1" aria-hidden="true" aria-labelledby="nufPickTitle">
 	<div class="modal-dialog modal-dialog-scrollable"><div class="modal-content">
-		<div class="modal-header"><h5 class="modal-title" id="nufPickTitle"><?= $t('choose_folder') ?></h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?= $t('close') ?>"></button></div>
+		<div class="modal-header"><h5 class="modal-title" id="nufPickTitle"><?= $t('choose_folder') ?></h5><button type="button" class="btn-close"
+			data-bs-dismiss="modal" aria-label="<?= $t('close') ?>"></button></div>
 		<div class="modal-body">
 			<select class="form-select form-select-sm mb-2" id="nufPickShare" aria-label="<?= $t('shares') ?>"></select>
 			<div class="small mb-2 text-break" id="nufPickPath"></div>
@@ -170,9 +181,12 @@ $v = static function (string $c, string $fallback, string $file) use ($nu): stri
 <!-- preview -->
 <div class="modal fade" id="nufPreview" tabindex="-1" aria-hidden="true" aria-labelledby="nufPreviewTitle">
 	<div class="modal-dialog modal-xl modal-dialog-centered"><div class="modal-content">
-		<div class="modal-header"><h5 class="modal-title text-truncate" id="nufPreviewTitle"></h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?= $t('close') ?>"></button></div>
+		<div class="modal-header"><h5 class="modal-title text-truncate" id="nufPreviewTitle"></h5><button type="button" class="btn-close"
+			data-bs-dismiss="modal" aria-label="<?= $t('close') ?>"></button></div>
 		<div class="modal-body nuf-preview-body" id="nufPreviewBody"></div>
-		<div class="modal-footer"><a class="btn btn-outline-secondary" id="nufPreviewDl" href="#"><i class="bi bi-download"></i> <?= $t('download') ?></a><button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?= $t('close') ?></button></div>
+		<div class="modal-footer"><a class="btn btn-outline-secondary" id="nufPreviewDl"
+			href="#"><i class="bi bi-download"></i> <?= $t('download') ?></a><button type="button" class="btn btn-secondary"
+			data-bs-dismiss="modal"><?= $t('close') ?></button></div>
 	</div></div>
 </div>
 
@@ -187,13 +201,19 @@ $v = static function (string $c, string $fallback, string $file) use ($nu): stri
 			</div>
 			<div class="d-flex align-items-center gap-2 flex-wrap w-100 nuf-editor-tools">
 				<div class="nuf-codetools" id="nufCodeTools"></div>
-				<div class="form-check form-switch mb-0 small ms-auto"><input class="form-check-input" type="checkbox" id="nufWrap"><label class="form-check-label" for="nufWrap" title="<?= $t('wrap') ?>"><i class="bi bi-text-wrap nuf-icon-only" aria-hidden="true"></i><span class="nuf-btn-text"><?= $t('wrap') ?></span></label></div>
+				<div class="form-check form-switch mb-0 small ms-auto"><input class="form-check-input" type="checkbox"
+					id="nufWrap"><label class="form-check-label" for="nufWrap" title="<?= $t('wrap') ?>"><i class="bi bi-text-wrap nuf-icon-only"
+					aria-hidden="true"></i><span class="nuf-btn-text"><?= $t('wrap') ?></span></label></div>
 				<div class="dropdown">
-					<button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" id="nufVersionsBtn" title="<?= $t('versions') ?>" aria-label="<?= $t('versions') ?>"><i class="bi bi-clock-history" aria-hidden="true"></i><span class="nuf-btn-text"> <?= $t('versions') ?></span></button>
+					<button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" id="nufVersionsBtn"
+						title="<?= $t('versions') ?>" aria-label="<?= $t('versions') ?>"><i class="bi bi-clock-history"
+						aria-hidden="true"></i><span class="nuf-btn-text"> <?= $t('versions') ?></span></button>
 					<ul class="dropdown-menu dropdown-menu-end nuf-versions" id="nufVersions"></ul>
 				</div>
-				<button type="button" class="btn btn-sm btn-primary" id="nufSaveBtn" title="<?= $t('save') ?> – <?= $t('shortcut_hint') ?>" aria-label="<?= $t('save') ?>"><i class="bi bi-floppy" aria-hidden="true"></i><span class="nuf-btn-text"> <?= $t('save') ?></span></button>
-				<button type="button" class="btn btn-sm btn-outline-secondary" id="nufEditorClose" title="<?= $t('close') ?>" aria-label="<?= $t('close') ?>"><i class="bi bi-x-lg" aria-hidden="true"></i><span class="nuf-btn-text"> <?= $t('close') ?></span></button>
+				<button type="button" class="btn btn-sm btn-primary" id="nufSaveBtn" title="<?= $t('save') ?> – <?= $t('shortcut_hint') ?>"
+					aria-label="<?= $t('save') ?>"><i class="bi bi-floppy" aria-hidden="true"></i><span class="nuf-btn-text"> <?= $t('save') ?></span></button>
+				<button type="button" class="btn btn-sm btn-outline-secondary" id="nufEditorClose" title="<?= $t('close') ?>"
+					aria-label="<?= $t('close') ?>"><i class="bi bi-x-lg" aria-hidden="true"></i><span class="nuf-btn-text"> <?= $t('close') ?></span></button>
 			</div>
 		</div>
 		<div class="modal-body p-0 nuf-editor-body"><textarea id="nufCode" aria-labelledby="nufEditorTitle"></textarea></div>

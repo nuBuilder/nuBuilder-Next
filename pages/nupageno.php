@@ -2,7 +2,7 @@
 declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
-// Page numbers (0.8.804, core/nupageno.php): ?p=pageno&n=P100 → the page; unknown number → back with a message
+// Page numbers (core/nupageno.php): ?p=pageno&n=P100 → the page; unknown number → back with a message
 $n = (string)($_GET['n'] ?? '');
 $url = NuPageNo::url($n);
 if ($url === '') {

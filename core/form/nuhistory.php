@@ -10,7 +10,7 @@ final class NuFormHistory
 {
 	private const KEEP = 100;
 
-	/** Everything that defines a form, as plain rows (NuFormSnapshot, 0.8.386). */
+	/** Everything that defines a form, as plain rows (NuFormSnapshot). */
 	public static function capture(string $formId): array
 	{
 		return NuFormSnapshot::capture($formId) ?? [];
@@ -31,7 +31,8 @@ final class NuFormHistory
 		NuLog::write('form_changed', (string)(nu_form($formId)['code'] ?? ''), $formId, ['action' => $action]);
 
 		// keep the newest KEEP snapshots per form
-		$old = $db->page("SELECT zzzzsys_nunext_form_history_id FROM zzzzsys_nunext_form_history WHERE form_id = ? AND action NOT LIKE 'published v%'", [$formId], 'created_at DESC, zzzzsys_nunext_form_history_id DESC', 1000, self::KEEP);
+		$old = $db->page("SELECT zzzzsys_nunext_form_history_id FROM zzzzsys_nunext_form_history WHERE form_id = ? AND action NOT LIKE 'published v%'",
+			[$formId], 'created_at DESC, zzzzsys_nunext_form_history_id DESC', 1000, self::KEEP);
 		foreach ($old as $r) $db->delete('zzzzsys_nunext_form_history', 'zzzzsys_nunext_form_history_id', $r['zzzzsys_nunext_form_history_id']);
 		return $hid;
 	}
@@ -43,7 +44,7 @@ final class NuFormHistory
 			'created_at DESC, zzzzsys_nunext_form_history_id DESC', $limit, 0);
 	}
 
-	/** The stored snapshot of a history row (design mode's compare, 0.8.668). */
+	/** The stored snapshot of a history row (design mode's compare). */
 	public static function get(string $formId, string $historyId): array
 	{
 		NuSchema::ensure();
@@ -62,7 +63,7 @@ final class NuFormHistory
 		if (!$row) throw new RuntimeException(t('record_not_found'));
 		$snap = json_decode((string)$row['snapshot'], true);
 		if (!is_array($snap) || empty($snap['form'])) throw new RuntimeException('Invalid snapshot');
-		// only the globeadmin may rename or delete tabs (0.8.247) – also not through a restore
+		// only the globeadmin may rename or delete tabs – also not through a restore
 		if (empty(NuAuth::user()['globeadmin'])) {
 			$old = [];
 			foreach ($snap['tabs'] ?? [] as $t) $old[(string)($t['zzzzsys_tab_id'] ?? '')] = trim((string)($t['syt_title'] ?? ''));

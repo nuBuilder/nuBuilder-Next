@@ -45,15 +45,15 @@
 	cm = CodeMirror.fromTextArea(ta, {mode: {name: 'php', startOpen: false}, lineNumbers: true, lineWrapping: true, matchBrackets: true,
 		autoCloseBrackets: true, indentUnit: 4, tabSize: 4, indentWithTabs: true, readOnly: ro ? 'nocursor' : false});
 	cm.getWrapperElement().classList.add('cfgCM');
-	window.nuConfigEditor = cm;                               // settings centre search: ?find=<variable> (assets/js/nusettingshub.js, 0.8.702)
+	window.nuConfigEditor = cm;                               // settings centre search: ?find=<variable> (assets/js/nusettingshub.js)
 	cm.on('change', function () {
 		cm.save(); ta.dispatchEvent(new Event('input', {bubbles: true}));    // marks the form as changed
 		if (errLine !== null) { cm.removeLineClass(errLine, 'background', 'cfgErrLine'); errLine = null; }
 	});
 	var tools = document.querySelector('.cfgCodeTools');
-	if (tools && window.NuCodeTools) NuCodeTools.attach(cm, tools, {lang: 'PHP', readOnly: ro, noInsert: true});   // nuconfig.php: no nuBuilder functions (0.8.593)
+	if (tools && window.NuCodeTools) NuCodeTools.attach(cm, tools, {lang: 'PHP', readOnly: ro, noInsert: true});   // nuconfig.php: no nuBuilder functions
 	initInsert(cm);
-	// the editor fills the window below it (0.8.780): its height = window height − its top − what follows it on the page
+	// the editor fills the window below it: its height = window height − its top − what follows it on the page
 	var ed = cm.getWrapperElement();
 	function fit() {
 		if (ed.closest('.nuCodeFull')) return;                  // full screen of the code tools sizes it itself
@@ -68,7 +68,7 @@
 	setTimeout(fit, 300);                                         // after fonts / the alert above have their final height
 })();
 
-/* Insert variable (0.8.442): the dialog lists the variables nuBuilder Next reads (NuConfigFile::catalog) that the editor's text does not
+/* Insert variable: the dialog lists the variables nuBuilder Next reads (NuConfigFile::catalog) that the editor's text does not
  * set yet – a commented-out line counts as not set. A click inserts "$name = default;  //-- comment" as a line of its own after the
  * cursor's line (the cursor of the last click / key in the editor), otherwise at the end (before a closing ?>). Own variables below. */
 function initInsert(cm) {
@@ -168,7 +168,7 @@ function initInsert(cm) {
 	});
 }
 
-// the warning above the editor (0.8.1084): × hides it – kept in this browser (localStorage nunext-cfg-warn-hidden) –, the ⚠ next to the title shows it again
+// the warning above the editor: × hides it – kept in this browser (localStorage nunext-cfg-warn-hidden) –, the ⚠ next to the title shows it again
 (function () {
 	var warn = document.getElementById('cfgWarn'), hideB = document.getElementById('cfgWarnHide'), showB = document.getElementById('cfgWarnShow');
 	if (!warn || !hideB || !showB) return;
@@ -182,7 +182,7 @@ function initInsert(cm) {
 	var was = false;
 	try { was = localStorage.getItem(KEY) === '1'; } catch (e) { was = false; }
 	set(was, false);
-	document.documentElement.classList.remove('nuWarnOff-cfg');   // nutheme.js hid the warning until here (0.8.1120)
+	document.documentElement.classList.remove('nuWarnOff-cfg');   // nutheme.js hid the warning until here
 	hideB.addEventListener('click', function () { set(true, true); showB.focus(); });
 	showB.addEventListener('click', function () { set(false, true); hideB.focus(); });
 })();

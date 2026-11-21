@@ -1,4 +1,4 @@
-/* nuBuilder Next – Settings → Password policy (0.8.745, pages/nupwpolicy.php): "Try a password" asks the server (action=test, nothing stored). */
+/* nuBuilder Next – Settings → Password policy (pages/nupwpolicy.php): "Try a password" asks the server (action=test, nothing stored). */
 (function () {
 	'use strict';
 	var f = document.getElementById('pwpTestForm'), out = document.getElementById('pwpTestOut');

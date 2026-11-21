@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Code snippets in the code editors (0.8.714): nuBuilder Forte's zzzzsys_code_snippet, field cot_scope ("Selectable in", a multi
+ * Code snippets in the code editors: nuBuilder Forte's zzzzsys_code_snippet, field cot_scope ("Selectable in", a multi
  * select stored as ["0","3"]): 0 = Forms / Custom Code, 1 = Setup / Header, 2 = SQL, 3 = Procedures/PHP – as Forte's
  * nuSetSnippetFormFilter(). An editor asks for its scope (assets/js/nu/nucodetools.js → ?p=snippetlist, pages/nusnippetlist.php).
  * A snippet with a scope is offered where its scope matches; one without a scope (NULL, [""]) by its language, as before.

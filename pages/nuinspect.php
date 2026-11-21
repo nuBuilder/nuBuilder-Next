@@ -7,7 +7,7 @@ defined('NU_ROOT') || exit;
  * All columns of the record with type, keys and stored value; sort, filter, search, copy (assets/js/nuinspect.js).
  */
 
-// admin rights (0.8.323): the globeadmin, or a user whose admin role has the right (core/nuadmin.php)
+// admin rights: the globeadmin, or a user whose admin role has the right (core/nuadmin.php)
 NuAdmin::require('forms', 'view');
 require_once NU_ROOT . '/core/nuinspect.php';
 
@@ -136,7 +136,8 @@ nu_layout_start(t('insp_title') . ($meta ? ' · ' . $meta->code() : ''), 'forms'
 					</td>
 					<td class="text-end text-nowrap">
 						<?php if (!$isNull && !$isEmpty && !$binary): ?>
-							<?php if ($i['secret']): ?><button type="button" class="btn btn-sm btn-outline-secondary nuRowBtn inspReveal" title="<?= h(t('insp_show')) ?>" aria-label="<?= h(t('insp_show')) ?>"><i class="bi bi-eye"></i></button><?php endif; ?>
+							<?php if ($i['secret']): ?><button type="button" class="btn btn-sm btn-outline-secondary nuRowBtn inspReveal" title="<?= h(t('insp_show')) ?>"
+								aria-label="<?= h(t('insp_show')) ?>"><i class="bi bi-eye"></i></button><?php endif; ?>
 							<button type="button" class="btn btn-sm btn-outline-secondary nuRowBtn inspCopy" title="<?= h(t('insp_copy')) ?>" aria-label="<?= h(t('insp_copy')) ?>"><i class="bi bi-clipboard"></i></button>
 						<?php endif; ?>
 					</td>
@@ -151,7 +152,8 @@ nu_layout_start(t('insp_title') . ($meta ? ' · ' . $meta->code() : ''), 'forms'
 		<button type="button" class="btn-close flex-shrink-0" id="inspHintHide" aria-label="<?= h(t('close')) ?>" title="<?= h(t('close')) ?>"></button>
 	</div>
 	<div class="card-footer small py-1 text-end" id="inspHintShow" hidden>
-		<button type="button" class="btn btn-link btn-sm p-0 text-body-secondary" id="inspHintShowBtn" aria-label="<?= h(t('insp_hint_show')) ?>" title="<?= h(t('insp_hint_show')) ?>"><i class="bi bi-info-circle"></i></button>
+		<button type="button" class="btn btn-link btn-sm p-0 text-body-secondary" id="inspHintShowBtn" aria-label="<?= h(t('insp_hint_show')) ?>"
+			title="<?= h(t('insp_hint_show')) ?>"><i class="bi bi-info-circle"></i></button>
 	</div>
 </div>
 <?php endif;

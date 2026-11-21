@@ -1,4 +1,4 @@
-/* Admin tools → Dashboards, widget editor (pages/nudashboards.php): fields by type / source, link targets, Test with preview (0.8.298). */
+/* Admin tools → Dashboards, widget editor (pages/nudashboards.php): fields by type / source, link targets, Test with preview. */
 (function () {
 	'use strict';
 	const $ = (id) => document.getElementById(id);
@@ -59,7 +59,7 @@
 	});
 }());
 
-/* Dashboard form: Access levels list (0.8.697) – ticked count in the badge, group filter (hidden levels keep their ticks) */
+/* Dashboard form: Access levels list – ticked count in the badge, group filter (hidden levels keep their ticks) */
 (function () {
 	'use strict';
 	const cnt = document.getElementById('dAccCount');

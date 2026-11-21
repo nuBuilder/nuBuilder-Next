@@ -10,6 +10,7 @@ return [
 	'big_screen_note' => 'Dieser Designer braucht einen grösseren Bildschirm – zum Ändern auf einem Tablet oder Computer öffnen.',
 	'sb_recent_remove' => 'Aus «Zuletzt verwendet» entfernen',
 	'sb_menu_default' => 'Seitenleiste standardmässig für alle',
+	'uhome_empty_tab' => 'Auf diesem Tab gibt es noch keine Schaltflächen. Füge sie im Gestaltungsmodus hinzu oder lass den Assistenten «Neues Formular» für jedes neue Formular eine anlegen (Nach dem Erstellen → User Home).',
 	'si_db_size' => 'Grösse',
 	'pgw_set_tip' => 'Wie breit die Seiten für alle sind. Normal = bis 1600 px in einem gerahmten Blatt auf grossen Bildschirmen, Breit = 2400 px, Volle Breite = ohne Grenze. Jede Person kann auf der Startseite unter Anpassen → Aussehen für ein Gerät eine andere Breite wählen.',
 	'login_err_md5' => 'Dieses Passwort ist in einem alten Format gespeichert, das nicht mehr angenommen wird. Bitte «Passwort vergessen» verwenden oder beim Administrator ein neues Passwort anfordern.',

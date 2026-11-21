@@ -4,7 +4,7 @@ defined('NU_ROOT') || exit;
 
 /**
  * REST API (api.php/v1/…): users, access levels with their form rights, permission items, reports, exports, notifications, updates,
- * and the records of the application's forms (0.8.1337, core/nuapirecords.php NuApiRecords) + an OpenAPI description (/v1/openapi.json).
+ * and the records of the application's forms (core/nuapirecords.php NuApiRecords) + an OpenAPI description (/v1/openapi.json).
  *
  * Authentication: OAuth 2.0 client credentials. A client (Admin tools → API clients) has a public client_id and a secret that is
  * shown once; POST /v1/token exchanges them for a short-lived opaque access token, sent as "Authorization: Bearer …".
@@ -25,7 +25,7 @@ final class NuApiError extends RuntimeException
 	}
 }
 
-/** A file on disk as an API answer (0.8.761): streamed with its length, deleted afterwards. */
+/** A file on disk as an API answer: streamed with its length, deleted afterwards. */
 final class NuApiFile
 {
 	public function __construct(public readonly string $path) {}
@@ -80,7 +80,7 @@ final class NuApi
 			$status = $code;
 			foreach ($headers as $k => $v) header("$k: $v");
 			http_response_code($code);
-			if ($body instanceof NuApiFile) { $body->send(); }                                   // a file on disk, streamed and deleted (data export, 0.8.761)
+			if ($body instanceof NuApiFile) { $body->send(); }                                   // a file on disk, streamed and deleted (data export)
 			elseif (is_string($body)) { header('Content-Length: ' . strlen($body)); echo $body; }    // a file (headers set by the route, e.g. a report PDF)
 			elseif ($code !== 204) echo json_encode($body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
 		} catch (NuApiError $e) {
@@ -183,7 +183,7 @@ final class NuApi
 			if ($m !== $method) { $allowed[] = $m; continue; }
 			if ($scope !== null && !in_array($scope, self::$ctx['scopes'], true)) throw new NuApiError(403, "Scope '$scope' is required.");
 			$args = array_slice($mm, 1);
-			if (str_starts_with($fn, 'R:')) return NuApiRecords::{substr($fn, 2)}(...$args);   // records of the forms (0.8.1337)
+			if (str_starts_with($fn, 'R:')) return NuApiRecords::{substr($fn, 2)}(...$args);   // records of the forms
 			if ($fn === 'openapi') return NuApiRecords::openapi($routes, self::$ctx['scopes']);
 			return self::$fn(...$args);
 		}
@@ -240,7 +240,7 @@ final class NuApi
 		];
 	}
 
-	// ================================================================= system: unattended update (0.8.301, core/nuautoupdate.php)
+	// ================================================================= system: unattended update (core/nuautoupdate.php)
 
 	/**
 	 * POST /v1/system/update {url | github: true, sha256?, backup?, schema?, sample?, reinstall?, dry_run?, ignore_integrity?} – checks the package (dry_run: only that)
@@ -292,7 +292,7 @@ final class NuApi
 		if ($h !== '*' && !in_array(self::etag($current), array_map('trim', explode(',', $h)), true)) throw new NuApiError(412, 'The record was changed meanwhile (ETag does not match).');
 	}
 
-	/** If-Match against a known ETag (records, 0.8.1337). */
+	/** If-Match against a known ETag (records). */
 	public static function ifMatchTag(string $etag): void
 	{
 		$h = trim((string)($_SERVER['HTTP_IF_MATCH'] ?? ''));
@@ -350,7 +350,7 @@ final class NuApi
 		];
 		$pt = (int)NuUserJson::get((string)$r['zzzzsys_user_id'], 'PASSWORD_CHANGED_TIME');
 		$o['password_changed_at'] = $pt > 0 ? date('c', $pt) : null;
-		if (NuUserFields::all()) $o['fields'] = (object)NuUserFields::values((string)$r['zzzzsys_user_id']);   // custom user fields (0.8.454)
+		if (NuUserFields::all()) $o['fields'] = (object)NuUserFields::values((string)$r['zzzzsys_user_id']);   // custom user fields
 		return $o;
 	}
 
@@ -422,7 +422,7 @@ final class NuApi
 		if ($login === '') $errors['login'] = 'required';
 		elseif (strcasecmp($login, (string)nu_cfg('nuConfigDBGlobeadminUsername')) === 0) $errors['login'] = 'not allowed';
 		elseif ((int)$db->value('SELECT COUNT(*) FROM zzzzsys_user WHERE sus_login_name = ? AND zzzzsys_user_id <> ?', [$login, (string)($old['zzzzsys_user_id'] ?? '')])) $errors['login'] = 'already used';
-		if (array_key_exists('sus_code', $row) && NuAuth::userCodeOwner((string)$row['sus_code'], (string)($old['zzzzsys_user_id'] ?? '')) !== null) $errors['code'] = 'already used';   // 0.8.626
+		if (array_key_exists('sus_code', $row) && NuAuth::userCodeOwner((string)$row['sus_code'], (string)($old['zzzzsys_user_id'] ?? '')) !== null) $errors['code'] = 'already used';
 		$name = array_key_exists('sus_name', $row) ? (string)$row['sus_name'] : (string)($old['sus_name'] ?? '');
 		if (trim($name) === '') $errors['name'] = 'required';
 		if (!empty($row['sus_email']) && !filter_var($row['sus_email'], FILTER_VALIDATE_EMAIL)) $errors['email'] = 'not a valid e-mail address';
@@ -451,7 +451,7 @@ final class NuApi
 	}
 
 	/**
-	 * Custom user fields of a request ({"fields": {"code": "value"}}, 0.8.454): checked like in the user form; fields only the globeadmin
+	 * Custom user fields of a request ({"fields": {"code": "value"}}): checked like in the user form; fields only the globeadmin
 	 * edits are refused. @return array<string, string> values to save
 	 */
 	private static function userFields(array $in, string $userId): array
@@ -479,7 +479,7 @@ final class NuApi
 		$min = NuPwPolicy::minLength();
 		if (mb_strlen($pw) < $min) $errors['password'] = "at least $min characters";
 		elseif (strlen($pw) > 72) $errors['password'] = 'at most 72 bytes';
-		elseif (($policy = NuAuth::passwordPolicy($pw, $userId)) !== null) $errors['password'] = strip_tags($policy);   // nu_check_password_policy (0.8.462)
+		elseif (($policy = NuAuth::passwordPolicy($pw, $userId)) !== null) $errors['password'] = strip_tags($policy);   // nu_check_password_policy
 	}
 
 	private static function userCreate(): array
@@ -494,7 +494,7 @@ final class NuApi
 		$row += ['sus_login_password' => NuAuth::hash($pw !== '' ? $pw : bin2hex(random_bytes(24))), 'sus_change_password' => $row['sus_change_password'] ?? ($pw === '' ? '1' : '0')];
 		$db->insert('zzzzsys_user', ['zzzzsys_user_id' => $id] + $row);
 		if ($pw !== '') NuUserJson::passwordChanged($id, 'admin');
-		$uf += NuUserDefault::forNew($uf, $row);   // defaults worked out with the new user's values (0.8.1074)
+		$uf += NuUserDefault::forNew($uf, $row);   // defaults worked out with the new user's values
 		NuLog::write('user_created', 'zzzzsys_user', $id, ['fields' => NuLog::diff([], array_diff_key($row, ['sus_login_password' => 1])) + NuUserFields::save($id, $uf), 'via' => 'api']);
 		NuUserJson::stamp($id, true, 'api');
 		if (isset($in['permissions']) && is_array($in['permissions'])) self::setPerms($id, $in['permissions']);
@@ -542,7 +542,7 @@ final class NuApi
 			NuTwoFA::forgetDevices($id);
 			NuLog::write('user_deleted', 'zzzzsys_user', $id, ['login' => $old['sus_login_name'], 'via' => 'api']);
 			NuUserFields::forget($id);
-			NuUserAccess::forgetUser($id);   // additional access levels (0.8.585)
+			NuUserAccess::forgetUser($id);   // additional access levels
 			return [204, null, []];
 		}
 		self::need(NuAcl::FORM_USER, 'save');
@@ -579,7 +579,7 @@ final class NuApi
 
 	/**
 	 * POST /v1/users/{id}/login-link {"minutes": 1440, "form_id": "…", "record_id": "…", "email": false} – nuBuilder's single-use
-	 * login token (core/nulogintoken.php, 0.8.339): 201 {url, expires_at (ISO 8601 or null), emailed}. minutes 0 = no expiry.
+	 * login token (core/nulogintoken.php): 201 {url, expires_at (ISO 8601 or null), emailed}. minutes 0 = no expiry.
 	 */
 	private static function userLoginLink(string $id): array
 	{
@@ -613,12 +613,12 @@ final class NuApi
 		return [204, null, []];
 	}
 
-	// ================================================================= reports (core/nureportapi.php, 0.8.340)
+	// ================================================================= reports (core/nureportapi.php)
 
 	/** GET /v1/reports – reports the service user may run, with the hash variables they use (params). */
 	/**
-	 * POST /v1/notifications {"title", "body", "format" ("text" | "html": cleaned allowlist HTML, 0.8.400), "level", "link", "audience": {"all", "users" (ids or logins), "departments", "teams", "positions",
-	 * "access_levels", "exclude"}, "mode": "live"|"fixed", "publish_at", "expires_at", "pinned", "must_confirm", "email", "draft": false} (0.8.357)
+	 * POST /v1/notifications {"title", "body", "format" ("text" | "html": cleaned allowlist HTML), "level", "link", "audience": {"all", "users" (ids or logins), "departments", "teams", "positions",
+	 * "access_levels", "exclude"}, "mode": "live"|"fixed", "publish_at", "expires_at", "pinned", "must_confirm", "email", "draft": false}
 	 */
 	private static function notifyCreate(): array
 	{
@@ -651,7 +651,7 @@ final class NuApi
 			'recipients' => $r['total'], 'read' => $r['read'], 'confirmed' => $r['confirmed']];
 	}
 
-	// ------------------------------------------------------------------ data exports (0.8.758)
+	// ------------------------------------------------------------------ data exports
 
 	/** The service user needs the admin right dataexport ("view" = run). */
 	private static function exportRight(): void
@@ -695,7 +695,8 @@ final class NuApi
 			throw new NuApiError(500, 'The export failed.' . ($x instanceof PDOException ? '' : ' ' . $x->getMessage()));   // SQL details stay in the server log
 		}
 		$ascii = (string)preg_replace('/[^A-Za-z0-9_. -]+/', '_', (string)iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $r['name']));
-		return [200, new NuApiFile($r['path']), ['Content-Type' => $r['mime'], 'Content-Disposition' => 'attachment; filename="' . $ascii . '"', 'X-Export-Rows' => (string)array_sum(array_column($r['datasets'], 'rows'))]];
+		return [200, new NuApiFile($r['path']),
+			['Content-Type' => $r['mime'], 'Content-Disposition' => 'attachment; filename="' . $ascii . '"', 'X-Export-Rows' => (string)array_sum(array_column($r['datasets'], 'rows'))]];
 	}
 
 	private static function reportsList(): array
@@ -896,8 +897,8 @@ final class NuApi
 			if ($forms !== null) self::writeForms($id, $forms);
 		});
 		NuLog::write('access_created', 'zzzzsys_access', $id, ['code' => $row['sal_code'] ?? '', 'forms' => count($forms ?? []), 'via' => 'api']);
-		NuFormEveryone::addToLevel($id);                                  // forms for everyone (0.8.784)
-		if (NuHome::newLevelMode((string)($row['sal_zzzzsys_form_id'] ?? '')) === 'form') NuHome::setStartMode($id, 'form');   // database from Forte (0.8.1219)
+		NuFormEveryone::addToLevel($id);                                  // forms for everyone
+		if (NuHome::newLevelMode((string)($row['sal_zzzzsys_form_id'] ?? '')) === 'form') NuHome::setStartMode($id, 'form');   // database from Forte
 		[, $body, $h] = self::one(self::accessOut(self::accessRow($id)));
 		return [201, $body, $h + ['Location' => nu_base_url() . '/api.php/v1/access-levels/' . $id]];
 	}
@@ -924,7 +925,7 @@ final class NuApi
 		$old = self::accessRow($id);
 		self::guardAccess($id);
 		self::ifMatch(self::accessOut($old));
-		$use = NuUserAccess::levelUse($id);          // expired users do not block (0.8.1250)
+		$use = NuUserAccess::levelUse($id);          // expired users do not block
 		if ($use['active'] > 0) throw new NuApiError(409, "The access level is used by {$use['active']} active user(s).");
 		$emptied = $use['expired'];
 		nu_db()->transaction(static function (NuDB $db) use ($id, $emptied) {

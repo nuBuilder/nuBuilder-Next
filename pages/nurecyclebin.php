@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Recycle bin for records (0.8.1325, core/nurecycle.php) – deleted records of forms that keep them.
+ * Recycle bin for records (core/nurecycle.php) – deleted records of forms that keep them.
  *   ?p=recyclebin[&form=<form id>]   list (system list 'recyclebin': the forms whose delete right the user has; all with the admin right)
  *   ?p=recyclebin&id=<id>            one deleted record: its fields and sub-form rows, Restore / Delete for good
  * POST action restore | remove (id) | empty (form: every entry of that form the user may change).
@@ -14,31 +14,7 @@ NuAcl::require(NuAcl::FORM_RECYCLE);
 NuSchema::ensure();
 $json = str_contains((string)($_SERVER['HTTP_ACCEPT'] ?? ''), 'application/json');
 
-if (nu_is_post()) {
-	$action = nu_post('action');
-	$id = nu_post('id');
-	if ($action === 'restore') {
-		$res = NuRecycle::restore($id);
-		if ($json) { header('Content-Type: application/json; charset=utf-8'); echo json_encode($res, JSON_UNESCAPED_UNICODE); exit; }
-		if ($res['ok']) $_SESSION['nu_flash'][] = ['success', $res['message'], false, [(string)$res['url'], t('rb_open')]];
-		else nu_flash('danger', $res['message']);
-		nu_redirect($res['ok'] ? nu_url('recyclebin') : nu_url('recyclebin', ['id' => $id]));
-	}
-	if ($action === 'remove') {
-		$n = NuRecycle::remove([$id]);
-		nu_flash($n ? 'success' : 'danger', $n ? t('rb_removed', $n) : t('err_forbidden'));
-		nu_redirect(nu_url('recyclebin'));
-	}
-	if ($action === 'empty') {
-		$form = nu_post('form');
-		$ids = [];
-		foreach (nu_db()->all('SELECT zzzzsys_nunext_recycle_id AS i FROM ' . NuRecycle::TABLE . ' WHERE form_id = ?', [$form]) as $r) $ids[] = (string)$r['i'];
-		$n = NuRecycle::remove($ids);
-		nu_flash('success', t('rb_removed', $n));
-		nu_redirect(nu_url('recyclebin'));
-	}
-	nu_redirect(nu_url('recyclebin'));
-}
+NuRecyclebinPage::post(get_defined_vars());   // the POST actions (code review R7, nurecyclebinpage.php)
 
 $crumbs = static fn(array $items) => NuListView::crumbs(array_merge([[t('rb_title'), nu_url('recyclebin')]], $items));
 
@@ -67,8 +43,11 @@ if (($_GET['id'] ?? '') !== '') {
 	?>
 <div class="nuTitleBar nuRecHead"><h1><?= h((string)$e['title']) ?></h1><div class="d-flex flex-wrap gap-2"><?= $buttons ?></div></div>
 <?php if ($can): ?>
-<form method="post" id="rbRestoreForm" action="<?= h(nu_url('recyclebin')) ?>"><?= nu_csrf_field() ?><input type="hidden" name="action" value="restore"><input type="hidden" name="id" value="<?= h((string)$e['zzzzsys_nunext_recycle_id']) ?>"></form>
-<form method="post" id="rbRemoveForm" action="<?= h(nu_url('recyclebin')) ?>" data-confirm="<?= h(t('rb_remove_confirm')) ?>" data-confirm-ok="<?= h(t('rb_remove')) ?>" data-confirm-class="btn btn-danger"><?= nu_csrf_field() ?><input type="hidden" name="action" value="remove"><input type="hidden" name="id" value="<?= h((string)$e['zzzzsys_nunext_recycle_id']) ?>"></form>
+<form method="post" id="rbRestoreForm" action="<?= h(nu_url('recyclebin')) ?>"><?= nu_csrf_field() ?><input type="hidden" name="action"
+	value="restore"><input type="hidden" name="id" value="<?= h((string)$e['zzzzsys_nunext_recycle_id']) ?>"></form>
+<form method="post" id="rbRemoveForm" action="<?= h(nu_url('recyclebin')) ?>" data-confirm="<?= h(t('rb_remove_confirm')) ?>"
+	data-confirm-ok="<?= h(t('rb_remove')) ?>" data-confirm-class="btn btn-danger"><?= nu_csrf_field() ?><input type="hidden" name="action"
+	value="remove"><input type="hidden" name="id" value="<?= h((string)$e['zzzzsys_nunext_recycle_id']) ?>"></form>
 <?php endif; ?>
 <div class="card shadow-sm mb-3"><div class="card-body">
 	<dl class="row mb-0 small rbMeta">
@@ -104,5 +83,6 @@ NuListView::page('recyclebin', [
 	'before' => NuListView::crumbs([[t('rb_title')]]), 'active' => 'home',
 	'title_extra' => NuListView::infoTip(t('rb_title_tip')),
 	'foot' => '<script src="' . nu_asset('assets/js/nurecyclebin.js') . '"></script>',
-	'above_rows' => '<form method="post" id="rbRowRestore" class="d-none" action="' . h(nu_url('recyclebin')) . '">' . nu_csrf_field() . '<input type="hidden" name="action" value="restore"><input type="hidden" name="id" value=""></form>',
+	'above_rows' => '<form method="post" id="rbRowRestore" class="d-none" action="' . h(nu_url('recyclebin')) . '">' . nu_csrf_field()
+		. '<input type="hidden" name="action" value="restore"><input type="hidden" name="id" value=""></form>',
 ]);

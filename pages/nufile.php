@@ -4,7 +4,7 @@ defined('NU_ROOT') || exit;
 
 /*
  * A file of zzzzsys_file for forms (nuAttachImage, nuAttachButtonImage …): any logged-in user, like nuBuilder's "getfile" –
- * except files of image objects: only for users of those forms (0.8.478, NuFile::mayRead; 404 as for a missing file).
+ * except files of image objects: only for users of those forms (NuFile::mayRead; 404 as for a missing file).
  *   ?p=file&code=<sfi_code>  or  &id=<zzzzsys_file_id>   (&dl=1 = download)
  */
 

@@ -25,11 +25,11 @@
 		cm.on('change', function () { cm.save(); ta.dispatchEvent(new Event('input', {bubbles: true})); });   // marks the form as changed (red Save)
 		editors[ta.id] = cm;
 		var tools = $('.procCodeTools[data-for="' + ta.id + '"]');
-		// code snippets (zzzzsys_code_snippet) = second tab of the toolbar's Insert menu (0.8.593); by scope since 0.8.714: PHP → 3, JavaScript → 0
+		// code snippets (zzzzsys_code_snippet) = second tab of the toolbar's Insert menu; by scope: PHP → 3, JavaScript → 0
 		if (tools && window.NuCodeTools) NuCodeTools.attach(cm, tools, {lang: ta.getAttribute('data-mode') === 'php' ? 'PHP' : 'JS', db: D.db, readOnly: ro});
 		if (tools && !ro && ta.id === 'sph_php' && window.NuHashVars && D.catalog) NuHashVars.attach(cm, tools, {catalog: D.catalog});
 	});
-	// a dot on the JS tab while it holds code (0.8.1133; was a badge "1" set by the server only)
+	// a dot on the JS tab while it holds code (was a badge "1" set by the server only)
 	var jsTab = $('#procTabJsBtn');
 	function jsMark() {
 		if (!jsTab) return;
@@ -39,12 +39,12 @@
 	}
 	if (editors.sph_javascript) editors.sph_javascript.on('change', jsMark);
 	jsMark();
-	if (window.NuCodeTools && NuCodeTools.guardForm) NuCodeTools.guardForm(document.getElementById('nuRecordForm'));   // syntax errors: ask before saving (0.8.781)
+	if (window.NuCodeTools && NuCodeTools.guardForm) NuCodeTools.guardForm(document.getElementById('nuRecordForm'));   // syntax errors: ask before saving
 	// editors in hidden tabs need a refresh when shown
 	$$('#procTabs [data-bs-toggle="tab"]').forEach(function (b) {
 		b.addEventListener('shown.bs.tab', function () { Object.keys(editors).forEach(function (k) { editors[k].refresh(); }); fitEditors(); });
 	});
-	// the editor of the shown tab fills the window down to its bottom edge (0.8.1229, as the nuconfig.php editor): the page's content below
+	// the editor of the shown tab fills the window down to its bottom edge (as the nuconfig.php editor): the page's content below
 	// it (a test result …) stays reachable by scrolling; at least 22rem / 16rem (JS); not while the code tools' full screen sizes it
 	function fitEditors() {
 		Object.keys(editors).forEach(function (k) {
@@ -54,7 +54,8 @@
 			cm.setSize(null, 'auto');
 			var r = w.getBoundingClientRect(), main = document.getElementById('main'), end = 0;
 			// the end of the page's content (not the window: a short page is stretched to the window's height)
-			[main].concat(main ? [].slice.call(main.parentElement.children).filter(function (x) { return x !== main && x.offsetParent && getComputedStyle(x).position !== 'fixed'; }) : []).forEach(function (x) {
+			[main].concat(main ? [].slice.call(main.parentElement.children).filter(function (x) { return x !== main && x.offsetParent
+				&& getComputedStyle(x).position !== 'fixed'; }) : []).forEach(function (x) {
 				if (x) end = Math.max(end, x.getBoundingClientRect().bottom + (parseFloat(getComputedStyle(x).marginBottom) || 0));
 			});
 			var after = end - r.bottom;
@@ -103,8 +104,8 @@
 	// ------------------------------------------------------------------ remember the tab
 	var TAB_KEY = 'nunext-proc-tab';
 	try {
-		var last = /^#(php|js|access|usage|history)$/.test(location.hash) ? location.hash.slice(1) : localStorage.getItem(TAB_KEY);   // #access: link of the procedures list (0.8.688)
-		if (/[?&]cl=\d/.test(location.search)) last = null;   // a line link of the code search shows the editor's own tab (0.8.1178)
+		var last = /^#(php|js|access|usage|history)$/.test(location.hash) ? location.hash.slice(1) : localStorage.getItem(TAB_KEY);   // #access: link of the procedures list
+		if (/[?&]cl=\d/.test(location.search)) last = null;   // a line link of the code search shows the editor's own tab
 		var tb = last && $('#procTabs [data-tab="' + last + '"]');
 		if (tb && nuBs.ready() && !form.querySelector('.is-invalid')) nuBs.tab(tb).show();
 	} catch (e) { /* ignore */ }
@@ -141,7 +142,7 @@
 		fd.append('props', JSON.stringify(props || {}));
 		return fetch(D.url, {method: 'POST', body: fd, credentials: 'same-origin', headers: {'Accept': 'application/json'}})
 			.then(function (r) {
-				// a procedure that sends a file (0.8.756): saved, its name shown as the result
+				// a procedure that sends a file: saved, its name shown as the result
 				var cd = r.headers.get('Content-Disposition') || '';
 				if (r.ok && /attachment/i.test(cd)) {
 					var m = /filename\*=UTF-8''([^;]+)/i.exec(cd), m2 = /filename="?([^";]+)"?/i.exec(cd);
@@ -159,7 +160,8 @@
 			.then(function (res) {
 				if (res.file) { if (w) w.close(); result.innerHTML = ''; result.appendChild(el('div', {'class': 'alert alert-success py-2 small mb-0', id: 'procResultFile', text: '⬇ ' + res.file})); return; }
 				showResult(res, mode);
-				if (w) { w.document.open(); w.document.write(res.output || (res.errors || []).map(function (e) { return '<p>' + String(e.message).replace(/[<&]/g, function (c) { return c === '<' ? '&lt;' : '&amp;'; }) + '</p>'; }).join('')); w.document.close(); }
+				if (w) { w.document.open(); w.document.write(res.output
+					|| (res.errors || []).map(function (e) { return '<p>' + String(e.message).replace(/[<&]/g, function (c) { return c === '<' ? '&lt;' : '&amp;'; }) + '</p>'; }).join('')); w.document.close(); }
 			})
 			.catch(function (e) { showResult({ok: false, errors: [{message: e.message}]}, mode); if (w) w.close(); });
 	}

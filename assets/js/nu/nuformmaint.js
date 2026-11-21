@@ -1,5 +1,5 @@
 /* global nuBs */
-/* Maintenance of forms (0.8.808) – one dialog for the forms list (status menu, "Maintenance…" button), the form page's notice and design mode.
+/* Maintenance of forms – one dialog for the forms list (status menu, "Maintenance…" button), the form page's notice and design mode.
    Data: #nuFmsData[data-url, data-csrf, data-t (texts JSON)]. API: window.nuFormMaintOpen({forms: [{id, label}], pick: true|false, on, text, until, onDone(changed, on)}).
    pick = the forms can be chosen in the dialog (GET ?p=formstatus&all=1). Saves through POST ?p=formstatus (pages/nuformstatus.php). */
 (function () {
@@ -80,7 +80,8 @@
 					if (f.status === '0' || f.status === '3') cb.disabled = true;     // Draft / Archived: users cannot open them anyway
 					cb.addEventListener('change', function () { if (cb.checked) chosen[f.id] = label; else delete chosen[f.id]; count(); });
 					var row = el('div', {'class': 'form-check nuFmsRow', 'data-q': label.toLowerCase()}, [cb, el('label', {'class': 'form-check-label', 'for': id}, [label,
-						f.status !== '1' ? el('span', {'class': 'badge ms-2 ' + (f.status === '2' ? 'bg-danger-subtle text-danger-emphasis' : 'bg-secondary-subtle text-secondary-emphasis'), text: t('builder_status_' + f.status)}) : null])]);
+						f.status !== '1' ? el('span',
+							{'class': 'badge ms-2 ' + (f.status === '2' ? 'bg-danger-subtle text-danger-emphasis' : 'bg-secondary-subtle text-secondary-emphasis'), text: t('builder_status_' + f.status)}) : null])]);
 					listBox.appendChild(row);
 				});
 				count();
@@ -99,7 +100,8 @@
 	if (bar) {
 		var form = [{id: bar.getAttribute('data-form'), label: bar.getAttribute('data-label')}];
 		var edit = bar.querySelector('.nuFormMaintEdit'), end = bar.querySelector('.nuFormMaintEnd');
-		if (edit) edit.addEventListener('click', function () { open({forms: form, on: true, text: bar.getAttribute('data-text'), until: bar.getAttribute('data-until'), onDone: function () { location.reload(); }}); });
+		if (edit) edit.addEventListener('click',
+			function () { open({forms: form, on: true, text: bar.getAttribute('data-text'), until: bar.getAttribute('data-until'), onDone: function () { location.reload(); }}); });
 		if (end) end.addEventListener('click', function () {
 			api('POST', {forms: [form[0].id], on: false}).then(function (j) { if (j.ok) location.reload(); else toast(j.message || t('forms_status_failed'), false); });
 		});

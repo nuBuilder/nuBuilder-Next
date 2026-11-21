@@ -3,12 +3,12 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Reading SQL files statement by statement (0.8.1031) – one splitter for everything nuBuilder Next imports:
+ * Reading SQL files statement by statement – one splitter for everything nuBuilder Next imports:
  *  - split(): SQL text → statements (NuInstall::splitSql uses it);
  *  - statements(): a .sql / .sql.gz / .zip file read line by line, so its size does not matter (the memory holds one statement);
  *  - run(): every statement of a file executed, with a progress callback.
  * Understands what dumps contain: strings ('…', "…", with \ escapes on MySQL and doubled quotes), quoted names (`…`, SQL Server […]),
- * comments (-- , # on MySQL, /* … *\/ – MySQL's /*! … *\/ stays code), DELIMITER lines of the mysql client (routines, triggers and events
+ * comments (--, # on MySQL, /* … *\/ – MySQL's /*! … *\/ stays code), DELIMITER lines of the mysql client (routines, triggers and events
  * of a dump are written between "DELIMITER $$" … "$$") and, for SQL Server, GO lines between batches.
  */
 final class NuSqlImport
@@ -93,14 +93,15 @@ final class NuSqlImport
 		} finally {
 			if ($saved) {
 				$p = $db->pdo();
-				try { $p->exec('SET SESSION sql_mode = ' . $p->quote((string)$saved[0]) . ', time_zone = ' . $p->quote((string)$saved[1]) . ', autocommit = ' . ((int)$saved[2] ? 1 : 0)); } catch (PDOException) {}
+				try { $p->exec('SET SESSION sql_mode = ' . $p->quote((string)$saved[0]) . ', time_zone = ' . $p->quote((string)$saved[1]) . ', autocommit = '
+					. ((int)$saved[2] ? 1 : 0)); } catch (PDOException $ig) { nu_ignored($ig); }
 			}
 		}
 		return $n;
 	}
 
 	/**
-	 * Resumable import (0.8.1290, Reset database in steps): runs the statements of a PLAIN .sql file from byte $st['off'] on until the
+	 * Resumable import (Reset database in steps): runs the statements of a PLAIN .sql file from byte $st['off'] on until the
 	 * clock passes $until, then stops at the end of a line where no statement is open. $st (kept by the caller between requests):
 	 * off = bytes done, n = statements run, delim = the DELIMITER in force, sets = the SET statements of the dump so far – they are
 	 * session settings (time zone, sql_mode NO_AUTO_VALUE_ON_ZERO, character set …) and are run again at the start of the next slice,
@@ -134,7 +135,7 @@ final class NuSqlImport
 		};
 		try {
 			if ($off > 0 && fseek($h, $off) !== 0) throw new RuntimeException(t('ins_dump_err_read'));
-			foreach ($sets as $q) { try { $db->exec($q); } catch (PDOException) {} }
+			foreach ($sets as $q) { try { $db->exec($q); } catch (PDOException $ig) { nu_ignored($ig); } }
 			$done = true;
 			while (($line = fgets($h)) !== false) {
 				$off += strlen($line);
@@ -155,8 +156,8 @@ final class NuSqlImport
 		} finally {
 			fclose($h);
 			if ($db->type === 'mysql') {
-				try { $db->exec('COMMIT'); } catch (PDOException) {}
-				try { $db->exec('UNLOCK TABLES'); } catch (PDOException) {}
+				try { $db->exec('COMMIT'); } catch (PDOException $ig) { nu_ignored($ig); }
+				try { $db->exec('UNLOCK TABLES'); } catch (PDOException $ig) { nu_ignored($ig); }
 			}
 		}
 	}
@@ -250,7 +251,7 @@ final class NuSqlImport
 	}
 
 	/**
-	 * 0.8.1149: views, triggers and routines as mysqldump writes them – "/*!50001 CREATE ALGORITHM=… *\/ /*!50013 DEFINER=`u`@`h` SQL SECURITY
+	 * views, triggers and routines as mysqldump writes them – "/*!50001 CREATE ALGORITHM=… *\/ /*!50013 DEFINER=`u`@`h` SQL SECURITY
 	 * DEFINER *\/ /*!50001 VIEW … *\/" – become one plain CREATE without the DEFINER clause: the object then belongs to the user who imports it
 	 * (a definer that does not exist on this server, or needs SUPER, would stop the import) and the dump check accepts it.
 	 */

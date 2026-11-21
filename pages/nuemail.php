@@ -39,127 +39,11 @@ if (isset($_GET['body'])) {
 
 $errors = [];
 $testResult = null;
-$checkResult = null;                                                        // connection check without sending (0.8.432)
+$checkResult = null;                                                        // connection check without sending
 
 // ------------------------------------------------------------------ POST actions
-if (nu_is_post()) {
-	$action = nu_post('action');
-
-	if ($action === 'oauth_disconnect') {                                     // OAuth 2 (0.8.445): forget the connected mailbox
-		NuAcl::require(NuAcl::FORM_SETUP, 'save');
-		$was = NuMailOAuth::settings()['account'];
-		NuMailOAuth::disconnect();
-		NuLog::write('mail_oauth_disconnected', NuMailOAuth::SETTING, '', ['account' => $was]);
-		nu_flash('success', t('mail_oauth_disconnected'));
-		nu_redirect(nu_url('email', ['tab' => 'settings']) . '#nuMailOAuth');
-	}
-
-	if ($action === 'save' || $action === 'save_connect') {                  // save_connect: then the provider's consent page (0.8.445)
-		NuAcl::require(NuAcl::FORM_SETUP, 'save');
-		$host = nu_post('host');
-		$port = nu_post('port');
-		$user = nu_post('username');
-		$from = nu_post('from_address');
-		$name = nu_post('from_name');
-		nu_maxlen($errors, 'host', $host, 255);
-		nu_maxlen($errors, 'username', $user, 255);
-		nu_maxlen($errors, 'from_name', $name, 255);
-		if ($port !== '' && (!ctype_digit($port) || (int)$port < 1 || (int)$port > 65535)) $errors['port'] = t('mail_err_port');
-		if ($from !== '' && !NuMailer::validAddress($from)) $errors['from_address'] = t('user_err_email');
-		$pw = $_POST['password'] ?? '';
-		$pw = is_string($pw) ? $pw : '';
-		nu_maxlen($errors, 'password', $pw, 255);
-
-		if (!$errors) {
-			$data = [
-				'set_smtp_host' => $host, 'set_smtp_port' => $port === '' ? null : (int)$port, 'set_smtp_username' => $user,
-				'set_smtp_from_address' => $from, 'set_smtp_from_name' => $name,
-				'set_smtp_use_authentication' => nu_check('use_auth'), 'set_smtp_use_ssl' => nu_check('use_ssl'),
-			];
-			if (nu_check('clear_password') === '1') $data['set_smtp_password'] = '';
-			elseif ($pw !== '') $data['set_smtp_password'] = $pw;
-			$onlyBefore = NuSecret::smtp()['only'];
-			$data['smtp_only'] = nu_check('smtp_only') === '1';   // 0.8.1326: password only in nuBuilder Next's encrypted copy
-			$before = NuMailer::setupRow(true);
-			try {
-				$oldAuth = NuMailer::authType();
-				NuMailer::saveSettings($data);
-				$after = NuMailer::setupRow(true);
-				$diff = NuLog::diff(array_diff_key($before, ['set_smtp_password' => 1]), array_diff_key(array_intersect_key($after, $data), ['set_smtp_password' => 1]));
-				if (array_key_exists('set_smtp_password', $data)) $diff['set_smtp_password'] = ['***', $data['set_smtp_password'] === '' ? '' : '***'];
-				unset($diff['smtp_only']);
-				if ($onlyBefore !== NuSecret::smtp()['only']) $diff['smtp_only'] = [$onlyBefore ? '1' : '0', NuSecret::smtp()['only'] ? '1' : '0'];
-				if (NuMailer::setAuthType(nu_post('auth_type'))) $diff['auth_type'] = [$oldAuth ?: 'auto', NuMailer::authType() ?: 'auto'];   // 0.8.342
-				if (isset($_POST['oauth_provider'])) {           // OAuth 2 client (0.8.445) – secrets never in the log
-					$oc = NuMailOAuth::save(['provider' => nu_post('oauth_provider'), 'tenant' => nu_post('oauth_tenant'), 'client_id' => nu_post('oauth_client_id'),
-						'client_secret' => is_string($_POST['oauth_client_secret'] ?? null) ? $_POST['oauth_client_secret'] : '',
-						'auth_url' => nu_post('oauth_auth_url'), 'token_url' => nu_post('oauth_token_url'), 'scope' => nu_post('oauth_scope')]);
-					if ($oc) $diff['oauth'] = $oc;
-				}
-				NuLog::write('email_settings', 'zzzzsys_setup', (string)($after['zzzzsys_setup_id'] ?? '1'), $diff ? ['fields' => $diff] : []);
-				nu_flash('success', t('saved'));
-				if ($action === 'save_connect') nu_redirect(nu_url('mailoauth', ['go' => 1]));
-				nu_redirect(nu_url('email', ['tab' => 'settings']));
-			} catch (Throwable $e) {
-				error_log('nuBuilder Next email settings: ' . $e->getMessage());
-				$errors['_'] = t('mail_err_save') . (nu_debug() ? ' ' . $e->getMessage() : '');
-			}
-		}
-	}
-
-	if ($action === 'check') {                                              // connect, encryption, login, sender – nothing is sent (0.8.432)
-		NuAcl::require(NuAcl::FORM_SETUP);
-		$tab = 'test';
-		$checkResult = NuMailer::check();
-		NuLog::write($checkResult['ok'] ? 'email_check' : 'email_check_failed', 'zzzzsys_setup', '', ['steps' => array_map(static fn($x) => $x[0] . ':' . ($x[1] === null ? '-' : ($x[1] ? 'ok' : 'fail')), $checkResult['steps'])]);
-	}
-
-	if ($action === 'test') {
-		NuAcl::require(NuAcl::FORM_SETUP);
-		$tab = 'test';
-		$to = nu_post('to');
-		if (!NuMailer::addressList($to)) $errors['to'] = t('err_required');
-		if (!$errors) {
-			$level = max(0, min(4, (int)nu_post('debug', '2')));
-			$u = NuAuth::user();
-			$body = NuMail::layout(t('mail_test_subject'), '<p>' . h(t('mail_test_text', $u['login'], date(nu_dfmt('d.m.Y H:i:s')))) . '</p>');
-			NuMailer::$probe = true;                                         // read the server's AUTH methods (0.8.342)
-			$testResult = nuSendEmailEx(
-				['to' => $to, 'subject' => nu_post('subject') ?: t('mail_test_subject'), 'body' => $body, 'html' => true, 'debug' => $level],
-				['tag' => 'nunext_test', 'form_id' => NuAcl::FORM_SETUP, 'table_name' => 'zzzzsys_setup']
-			);
-			NuLog::write($testResult[0] ? 'email_test' : 'email_test_failed', 'zzzzsys_setup', '', ['to' => $to]);
-		}
-	}
-
-	if ($action === 'delete_entry') {                                                   // one entry (button in the list row or the detail)
-		NuAcl::require(NuAcl::FORM_EMAILLOG, 'delete');
-		$eid = nu_post('id');
-		if ($logExists && $eid !== '') {
-			$subj = (string)$db->value('SELECT eml_subject FROM ' . NuMailer::LOG_TABLE . ' WHERE zzzzsys_email_log_id = ?', [$eid]);
-			$st = $db->run('DELETE FROM ' . NuMailer::LOG_TABLE . ' WHERE zzzzsys_email_log_id = ?', [$eid]);
-			if ($st->rowCount()) {
-				NuLog::write('email_log_deleted', NuMailer::LOG_TABLE, $eid, ['subject' => mb_substr($subj, 0, 120)]);
-				nu_flash('success', t('mail_log_deleted'));
-			}
-		}
-		parse_str((string)nu_post('back'), $back);                                       // back to the same page, filters and search
-		$back = array_intersect_key(is_array($back) ? $back : [], array_flip(['state', 'q', 'from', 'to', 'pg', 'view', 'tag', 'when']));
-		nu_redirect(nu_url('email', ['tab' => 'log'] + array_map('strval', $back)));
-	}
-
-	if ($action === 'purge') {
-		NuAcl::require(NuAcl::FORM_EMAILLOG, 'delete');
-		$days = max(1, (int)nu_post('days', '90'));
-		if ($logExists) {
-			$cut = date('Y-m-d', strtotime("-$days days"));
-			$st = $db->run('DELETE FROM ' . NuMailer::LOG_TABLE . ' WHERE eml_created_at < ?', [$db->datetime($cut)]);
-			NuLog::write('email_log_purged', NuMailer::LOG_TABLE, '', ['days' => $days, 'rows' => $st->rowCount()]);
-			nu_flash('success', t('mail_log_purged', $st->rowCount()));
-		}
-		nu_redirect(nu_url('email', ['tab' => 'log']));
-	}
-}
+['errors' => $errors, 'tab' => $tab, 'checkResult' => $checkResult, 'testResult' => $testResult, 'logExists' => $logExists, 'db' => $db]
+	= NuEmailPage::post(get_defined_vars());   // the POST actions (code review R7, nuemailpage.php)
 
 $s       = NuMailer::settings();
 $row     = NuMailer::setupRow(true);
@@ -172,20 +56,7 @@ $smtpHasPw = NuSecret::smtpPassword(NuMailer::setupValue('set_smtp_password')) !
 $placeholders = array_filter(['set_smtp_host', 'set_smtp_username', 'set_smtp_password', 'set_smtp_from_address', 'set_smtp_from_name'],
 	static fn($k) => trim((string)($row[$k] ?? '')) === '1');
 
-function nu_mail_state(?string $st): string
-{
-	$st = (string)$st;
-	$cls = $st === 'sent' ? 'bg-success-subtle text-success-emphasis' : ($st === 'error' ? 'bg-danger-subtle text-danger-emphasis' : 'bg-secondary-subtle text-secondary-emphasis');
-	$l = t('mail_state_' . $st);
-	return '<span class="badge ' . $cls . '">' . h($l === 'mail_state_' . $st ? $st : $l) . '</span>';
-}
 
-function nu_mail_dt(mixed $v): string
-{
-	if ($v === null || $v === '') return '';
-	$ts = strtotime((string)$v);
-	return $ts ? date(nu_dfmt('d.m.Y H:i:s'), $ts) : (string)$v;
-}
 
 $encLabel = match ($s['secure']) { 'ssl' => 'SSL/TLS (SMTPS)', 'tls' => 'STARTTLS', 'none' => t('mail_enc_none'), default => t('mail_enc_auto') };
 
@@ -199,10 +70,11 @@ if ($tab === 'log' && isset($_GET['id']) && $logExists) {
 $lvState = null;
 $purgeForm = '';
 if ($tab === 'log' && !$detail && $logExists) {
-	// columns, filters and sort of the chosen list view (0.8.334, core/nulistdefs.php → emaillog); Print / CSV end here
+	// columns, filters and sort of the chosen list view (core/nulistdefs.php → emaillog); Print / CSV end here
 	$lvState = NuListView::prepare('emaillog');
 	if (NuAcl::can(NuAcl::FORM_EMAILLOG, 'delete')) {
-		$purgeForm = '<form method="post" class="d-flex align-items-center gap-2 small" data-confirm="' . h(t('mail_purge_confirm')) . '" data-confirm-ok="' . h(t('delete')) . '" data-confirm-class="btn btn-danger">'
+		$purgeForm = '<form method="post" class="d-flex align-items-center gap-2 small" data-confirm="' . h(t('mail_purge_confirm')) . '" data-confirm-ok="'
+			. h(t('delete')) . '" data-confirm-class="btn btn-danger">'
 			. nu_csrf_field() . '<input type="hidden" name="action" value="purge"><label for="p_days" class="text-nowrap">' . h(t('mail_purge_older')) . '</label>'
 			. '<input class="form-control form-control-sm nuPurgeDays" type="number" min="1" id="p_days" name="days" value="90"><span class="text-nowrap">' . h(t('mail_days')) . '</span>'
 			. '<button class="btn btn-sm btn-outline-danger" type="submit" title="' . h(t('delete')) . '" aria-label="' . h(t('delete')) . '"><i class="bi bi-trash"></i></button></form>';
@@ -217,19 +89,22 @@ nu_layout_start(t('nav_email'), 'email', ['head' => NuListView::head(), 'setting
 
 <ul class="nav nav-tabs mb-3">
 	<?php if ($canSetup): ?>
-		<li class="nav-item"><a class="nav-link<?= $tab === 'settings' ? ' active' : '' ?>" href="<?= h(nu_url('email', ['tab' => 'settings'])) ?>"><i class="bi bi-gear me-1"></i><?= h(t('mail_tab_settings')) ?></a></li>
-		<li class="nav-item"><a class="nav-link<?= $tab === 'test' ? ' active' : '' ?>" href="<?= h(nu_url('email', ['tab' => 'test'])) ?>"><i class="bi bi-send me-1"></i><?= h(t('mail_tab_test')) ?></a></li>
+		<li class="nav-item"><a class="nav-link<?= $tab === 'settings' ? ' active' : '' ?>"
+			href="<?= h(nu_url('email', ['tab' => 'settings'])) ?>"><i class="bi bi-gear me-1"></i><?= h(t('mail_tab_settings')) ?></a></li>
+		<li class="nav-item"><a class="nav-link<?= $tab === 'test' ? ' active' : '' ?>"
+			href="<?= h(nu_url('email', ['tab' => 'test'])) ?>"><i class="bi bi-send me-1"></i><?= h(t('mail_tab_test')) ?></a></li>
 	<?php endif; ?>
 	<?php if (NuAcl::can(NuAcl::FORM_EMAILTEMPLATE)): ?>
 		<li class="nav-item"><a class="nav-link" href="<?= h(nu_url('emailtemplates')) ?>"><i class="bi bi-file-earmark-richtext me-1"></i><?= h(t('emt_title')) ?></a></li>
 	<?php endif; ?>
 	<?php if ($canLog): ?>
-		<li class="nav-item"><a class="nav-link<?= $tab === 'log' ? ' active' : '' ?>" href="<?= h(nu_url('email', ['tab' => 'log'])) ?>"><i class="bi bi-journal-text me-1"></i><?= h(t('mail_tab_log')) ?></a></li>
+		<li class="nav-item"><a class="nav-link<?= $tab === 'log' ? ' active' : '' ?>"
+			href="<?= h(nu_url('email', ['tab' => 'log'])) ?>"><i class="bi bi-journal-text me-1"></i><?= h(t('mail_tab_log')) ?></a></li>
 	<?php endif; ?>
 </ul>
 
 <?php if (isset($errors['_'])): ?><div class="alert alert-danger"><?= h($errors['_']) ?></div><?php endif; ?>
-<?php if (NuAcl::can(NuAcl::FORM_SETUP)): // connection check without sending (0.8.432) – its buttons on the tabs Settings and Test point here ?>
+<?php if (NuAcl::can(NuAcl::FORM_SETUP)): // connection check without sending – its buttons on the tabs Settings and Test point here ?>
 <form method="post" action="<?= h(nu_url('email', ['tab' => 'test'])) ?>" id="nuMailCheckForm" data-nu-once><?= nu_csrf_field() ?><input type="hidden" name="action" value="check"></form>
 <form method="post" action="<?= h(nu_url('email', ['tab' => 'settings'])) ?>" id="nuMailOAuthOff" data-confirm="<?= h(t('mail_oauth_disconnect_confirm')) ?>"
 	data-confirm-ok="<?= h(t('mail_oauth_disconnect')) ?>" data-confirm-class="btn btn-danger"><?= nu_csrf_field() ?><input type="hidden" name="action" value="oauth_disconnect"></form>
@@ -254,18 +129,21 @@ nu_layout_start(t('nav_email'), 'email', ['head' => NuListView::head(), 'setting
 					<div class="row g-3">
 						<div class="col-sm-8">
 							<label class="form-label" for="m_host"><?= h(t('mail_host')) ?></label>
-							<input class="form-control<?= isset($errors['host']) ? ' is-invalid' : '' ?>" id="m_host" name="host" maxlength="255" value="<?= h($val('set_smtp_host', 'host')) ?>" placeholder="smtp.example.ch">
+							<input class="form-control<?= isset($errors['host']) ? ' is-invalid' : '' ?>" id="m_host" name="host" maxlength="255"
+								value="<?= h($val('set_smtp_host', 'host')) ?>" placeholder="smtp.example.ch">
 							<div class="invalid-feedback"><?= h($errors['host'] ?? '') ?></div>
 						</div>
 						<div class="col-sm-4">
 							<label class="form-label" for="m_port"><?= h(t('mail_port')) ?></label>
-							<input class="form-control<?= isset($errors['port']) ? ' is-invalid' : '' ?>" id="m_port" name="port" inputmode="numeric" value="<?= h($val('set_smtp_port', 'port')) ?>" placeholder="587" list="m_ports">
+							<input class="form-control<?= isset($errors['port']) ? ' is-invalid' : '' ?>" id="m_port" name="port" inputmode="numeric"
+								value="<?= h($val('set_smtp_port', 'port')) ?>" placeholder="587" list="m_ports">
 							<datalist id="m_ports"><option value="587">STARTTLS</option><option value="465">SSL/TLS</option><option value="25">SMTP</option></datalist>
 							<div class="invalid-feedback"><?= h($errors['port'] ?? '') ?></div>
 						</div>
 						<div class="col-sm-6">
 							<label class="form-label" for="m_user"><?= h(t('mail_username')) ?></label>
-							<input class="form-control<?= isset($errors['username']) ? ' is-invalid' : '' ?>" id="m_user" name="username" maxlength="255" value="<?= h($val('set_smtp_username', 'username')) ?>" autocomplete="off">
+							<input class="form-control<?= isset($errors['username']) ? ' is-invalid' : '' ?>" id="m_user" name="username" maxlength="255"
+								value="<?= h($val('set_smtp_username', 'username')) ?>" autocomplete="off">
 							<div class="invalid-feedback"><?= h($errors['username'] ?? '') ?></div>
 						</div>
 						<div class="col-sm-6">
@@ -283,12 +161,15 @@ nu_layout_start(t('nav_email'), 'email', ['head' => NuListView::head(), 'setting
 								<input class="form-check-input" type="checkbox" role="switch" id="m_only" name="smtp_only" value="1"<?= $smtpOnly ? ' checked' : '' ?><?= NuSecret::available() ? '' : ' disabled' ?>>
 								<label class="form-check-label" for="m_only"><?= h(t('mail_pw_only_next')) ?></label>
 								<?= nu_info_tip(t('mail_pw_only_next_tip')) ?>
-								<?php if (!NuSecret::available()): ?><div class="text-body-secondary" id="m_onlyNoKey"><?= h(t('mail_pw_only_nokey')) ?></div><?php elseif ($smtpOnly): ?><div class="text-body-secondary" id="m_onlyOn"><i class="bi bi-lock me-1"></i><?= h(t('mail_pw_only_on')) ?></div><?php endif; ?>
+								<?php if (!NuSecret::available()): ?><div class="text-body-secondary"
+									id="m_onlyNoKey"><?= h(t('mail_pw_only_nokey')) ?></div><?php elseif ($smtpOnly): ?><div class="text-body-secondary"
+									id="m_onlyOn"><i class="bi bi-lock me-1"></i><?= h(t('mail_pw_only_on')) ?></div><?php endif; ?>
 							</div>
 						</div>
 						<div class="col-sm-6">
 							<label class="form-label" for="m_from"><?= h(t('mail_from_address')) ?></label>
-							<input type="email" class="form-control<?= isset($errors['from_address']) ? ' is-invalid' : '' ?>" id="m_from" name="from_address" maxlength="255" value="<?= h($val('set_smtp_from_address', 'from_address')) ?>" placeholder="noreply@example.ch">
+							<input type="email" class="form-control<?= isset($errors['from_address']) ? ' is-invalid' : '' ?>" id="m_from" name="from_address"
+								maxlength="255" value="<?= h($val('set_smtp_from_address', 'from_address')) ?>" placeholder="noreply@example.ch">
 							<div class="invalid-feedback"><?= h($errors['from_address'] ?? '') ?></div>
 						</div>
 						<div class="col-sm-6">
@@ -298,7 +179,8 @@ nu_layout_start(t('nav_email'), 'email', ['head' => NuListView::head(), 'setting
 						</div>
 						<div class="col-sm-6">
 							<div class="form-check form-switch">
-								<input class="form-check-input" type="checkbox" role="switch" id="m_auth" name="use_auth" value="1"<?= (nu_is_post() ? nu_check('use_auth') === '1' : NuMailer::setupValue('set_smtp_use_authentication') === '1') ? ' checked' : '' ?>>
+								<input class="form-check-input" type="checkbox" role="switch" id="m_auth" name="use_auth"
+									value="1"<?= (nu_is_post() ? nu_check('use_auth') === '1' : NuMailer::setupValue('set_smtp_use_authentication') === '1') ? ' checked' : '' ?>>
 								<label class="form-check-label" for="m_auth"><?= h(t('mail_use_auth')) ?></label>
 							</div>
 						</div>
@@ -312,12 +194,13 @@ nu_layout_start(t('nav_email'), 'email', ['head' => NuListView::head(), 'setting
 						</div>
 						<div class="col-sm-6">
 							<div class="form-check form-switch">
-								<input class="form-check-input" type="checkbox" role="switch" id="m_ssl" name="use_ssl" value="1"<?= (nu_is_post() ? nu_check('use_ssl') === '1' : NuMailer::setupValue('set_smtp_use_ssl') === '1') ? ' checked' : '' ?>>
+								<input class="form-check-input" type="checkbox" role="switch" id="m_ssl" name="use_ssl"
+									value="1"<?= (nu_is_post() ? nu_check('use_ssl') === '1' : NuMailer::setupValue('set_smtp_use_ssl') === '1') ? ' checked' : '' ?>>
 								<label class="form-check-label" for="m_ssl"><?= h(t('mail_use_ssl')) ?></label><?php // hint only as tooltip of the (i) – outside the label, so a click does not toggle ?>
 								<?= nu_info_tip(t('mail_use_ssl_hint')) ?>
 							</div>
 						</div>
-						<?php // OAuth 2 (0.8.445, core/numailoauth.php): shown with the method OAuth 2 (assets/js/nuemail.js) ?>
+						<?php // OAuth 2 (core/numailoauth.php): shown with the method OAuth 2 (assets/js/nuemail.js) ?>
 						<?php $oa = NuMailOAuth::settings(); $oaPost = nu_is_post() && isset($_POST['oauth_provider']);
 						$ov = static fn(string $k) => $oaPost ? nu_post('oauth_' . $k) : (string)($oa[$k] ?? ''); $prov = $ov('provider') ?: 'google'; ?>
 						<div class="col-12<?= $curAuth === 'XOAUTH2' ? '' : ' d-none' ?>" id="nuMailOAuth">
@@ -325,7 +208,8 @@ nu_layout_start(t('nav_email'), 'email', ['head' => NuListView::head(), 'setting
 								<div class="d-flex flex-wrap align-items-center gap-2 mb-2">
 									<h3 class="h6 mb-0 me-auto"><i class="bi bi-shield-lock me-1"></i><?= h(t('mail_auth_oauth')) ?></h3>
 									<?php if (NuMailOAuth::connected()): ?>
-										<span class="badge text-bg-success" id="nuMailOAuthState"><i class="bi bi-check-circle me-1"></i><?= h($oa['account'] !== '' ? t('mail_oauth_connected_as', $oa['account']) : t('mail_oauth_connected')) ?></span>
+										<span class="badge text-bg-success"
+											id="nuMailOAuthState"><i class="bi bi-check-circle me-1"></i><?= h($oa['account'] !== '' ? t('mail_oauth_connected_as', $oa['account']) : t('mail_oauth_connected')) ?></span>
 									<?php else: ?>
 										<span class="badge text-bg-warning" id="nuMailOAuthState"><i class="bi bi-exclamation-circle me-1"></i><?= h(t('mail_oauth_not_connected')) ?></span>
 									<?php endif; ?>
@@ -335,7 +219,8 @@ nu_layout_start(t('nav_email'), 'email', ['head' => NuListView::head(), 'setting
 										<label class="form-label" for="m_oprov"><?= h(t('mail_oauth_provider')) ?></label>
 										<select class="form-select" id="m_oprov" name="oauth_provider">
 											<?php foreach (NuMailOAuth::PROVIDERS as $pv): ?><option value="<?= $pv ?>"<?= $prov === $pv ? ' selected' : '' ?>
-												<?php if (isset(NuMailOAuth::SERVERS[$pv])): ?> data-host="<?= h(NuMailOAuth::SERVERS[$pv][0]) ?>" data-port="<?= (int)NuMailOAuth::SERVERS[$pv][1] ?>"<?php endif; ?>><?= h(t('mail_oauth_p_' . $pv)) ?></option><?php endforeach; ?>
+												<?php if (isset(NuMailOAuth::SERVERS[$pv])): ?> data-host="<?= h(NuMailOAuth::SERVERS[$pv][0]) ?>"
+													data-port="<?= (int)NuMailOAuth::SERVERS[$pv][1] ?>"<?php endif; ?>><?= h(t('mail_oauth_p_' . $pv)) ?></option><?php endforeach; ?>
 										</select>
 										<button type="button" class="btn btn-link btn-sm px-0" id="nuMailOAuthServer" data-label="<?= h(t('mail_oauth_use_server')) ?>"></button>
 									</div>
@@ -368,12 +253,14 @@ nu_layout_start(t('nav_email'), 'email', ['head' => NuListView::head(), 'setting
 										<?= nu_info_tip(t('mail_oauth_redirect_tip')) ?>
 										<div class="input-group">
 											<input class="form-control font-monospace" id="m_oredir" value="<?= h(NuMailOAuth::redirectUri()) ?>" readonly>
-											<button type="button" class="btn btn-outline-secondary" data-nu-copy-text="<?= h(NuMailOAuth::redirectUri()) ?>" title="<?= h(t('copy')) ?>" aria-label="<?= h(t('copy')) ?>"><i class="bi bi-clipboard"></i></button>
+											<button type="button" class="btn btn-outline-secondary" data-nu-copy-text="<?= h(NuMailOAuth::redirectUri()) ?>"
+												title="<?= h(t('copy')) ?>" aria-label="<?= h(t('copy')) ?>"><i class="bi bi-clipboard"></i></button>
 										</div>
 									</div>
 									<div class="col-12 d-flex flex-wrap gap-2">
 										<?php if (NuAcl::can(NuAcl::FORM_SETUP, 'save')): ?>
-											<button type="submit" class="btn btn-primary" name="action" value="save_connect" id="nuMailOAuthConnect"><i class="bi bi-box-arrow-in-right me-1"></i><?= h(t(NuMailOAuth::connected() ? 'mail_oauth_reconnect' : 'mail_oauth_connect')) ?></button>
+											<button type="submit" class="btn btn-primary" name="action" value="save_connect"
+												id="nuMailOAuthConnect"><i class="bi bi-box-arrow-in-right me-1"></i><?= h(t(NuMailOAuth::connected() ? 'mail_oauth_reconnect' : 'mail_oauth_connect')) ?></button>
 											<?php if (NuMailOAuth::connected()): ?>
 												<button type="submit" class="btn btn-outline-danger" form="nuMailOAuthOff" id="nuMailOAuthDisconnect"><i class="bi bi-x-circle me-1"></i><?= h(t('mail_oauth_disconnect')) ?></button>
 											<?php endif; ?>
@@ -390,8 +277,9 @@ nu_layout_start(t('nav_email'), 'email', ['head' => NuListView::head(), 'setting
 				<?php $canSave = NuAcl::can(NuAcl::FORM_SETUP, 'save'); // copy / paste as JSON without the password (assets/js/nuemail.js) ?>
 				<div class="card-footer d-flex flex-wrap justify-content-end gap-2">
 					<span id="nuMailClipStatus" class="small me-auto align-self-center" role="status" aria-live="polite"></span>
-					<div class="dropdown" id="nuMailXfer"><!-- copy / paste / download as JSON (0.8.629, before: two buttons) -->
-						<button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" id="nuMailXferBtn"><i class="bi bi-arrow-left-right me-1"></i><?= h(t('mail_xfer')) ?></button>
+					<div class="dropdown" id="nuMailXfer"><!-- copy / paste / download as JSON (before: two buttons) -->
+						<button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false"
+							id="nuMailXferBtn"><i class="bi bi-arrow-left-right me-1"></i><?= h(t('mail_xfer')) ?></button>
 						<ul class="dropdown-menu dropdown-menu-end" aria-labelledby="nuMailXferBtn">
 							<li><button type="button" class="dropdown-item" id="nuMailCopy" title="<?= h(t('mail_copy_settings_help')) ?>"
 								data-copied="<?= h(t('mail_copied')) ?>" data-failed="<?= h(t('mail_copy_failed')) ?>"><i class="bi bi-clipboard me-2"></i><?= h(t('mail_copy_settings')) ?></button></li>
@@ -405,7 +293,8 @@ nu_layout_start(t('nav_email'), 'email', ['head' => NuListView::head(), 'setting
 						</ul>
 					</div>
 					<?php if (NuAcl::can(NuAcl::FORM_SETUP)): ?>
-						<button class="btn btn-outline-primary" type="submit" form="nuMailCheckForm" id="nuMailCheckBtn2" title="<?= h(t('mail_chk_tip')) ?>" data-nu-busy="<?= h(t('mail_chk_busy')) ?>"><i class="bi bi-plug me-1"></i><?= h(t('mail_chk_button')) ?></button>
+						<button class="btn btn-outline-primary" type="submit" form="nuMailCheckForm" id="nuMailCheckBtn2" title="<?= h(t('mail_chk_tip')) ?>"
+							data-nu-busy="<?= h(t('mail_chk_busy')) ?>"><i class="bi bi-plug me-1"></i><?= h(t('mail_chk_button')) ?></button>
 					<?php endif; ?>
 				</div>
 			</form>
@@ -440,7 +329,8 @@ nu_layout_start(t('nav_email'), 'email', ['head' => NuListView::head(), 'setting
 					<li class="list-group-item d-flex justify-content-between gap-2"><span class="text-body-secondary"><?= h(t('mail_use_auth')) ?></span><span><?= h($s['auth'] ? t('yes') : t('no')) ?><?= $s['auth'] && $s['username'] !== '' ? ' · ' . h($s['username']) : '' ?><?= $s['auth'] ? ' · ' . h($s['auth_type'] !== '' ? $s['auth_type'] : t('mail_auth_auto')) : '' ?></span></li>
 					<li class="list-group-item d-flex justify-content-between gap-2"><span class="text-body-secondary"><?= h(t('mail_from_address')) ?></span><span class="text-break text-end"><?= $s['from_address'] !== '' ? h(trim($s['from_name'] . ' <' . $s['from_address'] . '>')) : '<span class="text-danger">' . h(t('mail_not_set')) . '</span>' ?></span></li>
 					<li class="list-group-item d-flex justify-content-between gap-2"><span class="text-body-secondary">PHPMailer<?php // the folder (or the places searched) only as tooltip of the (i) ?>
-						<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-custom-class="nuTipWide" aria-label="<?= h($pmDir ?: implode(', ', NuMailer::phpMailerCandidates())) ?>"
+						<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-custom-class="nuTipWide"
+							aria-label="<?= h($pmDir ?: implode(', ', NuMailer::phpMailerCandidates())) ?>"
 							title="<?= h($pmDir ? nu_short_path($pmDir) : implode(', ', array_map('nu_short_path', NuMailer::phpMailerCandidates()))) ?>"><i class="bi bi-info-circle"></i></span></span>
 						<span><?= $pmDir ? h(NuMailer::phpMailerVersion()) : '<span class="text-danger">' . h(t('mail_phpmailer_missing')) . '</span>' ?></span></li>
 					<?php if (NuMailer::mailLogFile() !== ''): ?>
@@ -458,7 +348,8 @@ nu_layout_start(t('nav_email'), 'email', ['head' => NuListView::head(), 'setting
 			<div class="card shadow-sm mb-3" id="nuMailCheckCard">
 				<div class="card-body d-flex flex-wrap align-items-center gap-2">
 					<div class="me-auto"><div class="fw-semibold"><i class="bi bi-plug me-1"></i><?= h(t('mail_chk_title')) ?></div><div class="small text-body-secondary"><?= h(t('mail_chk_hint')) ?></div></div>
-					<button class="btn btn-outline-primary" type="submit" form="nuMailCheckForm" id="nuMailCheckBtn" data-nu-busy="<?= h(t('mail_chk_busy')) ?>"><i class="bi bi-plug me-1"></i><?= h(t('mail_chk_button')) ?></button>
+					<button class="btn btn-outline-primary" type="submit" form="nuMailCheckForm" id="nuMailCheckBtn"
+						data-nu-busy="<?= h(t('mail_chk_busy')) ?>"><i class="bi bi-plug me-1"></i><?= h(t('mail_chk_button')) ?></button>
 				</div>
 			</div>
 			<form method="post" class="card shadow-sm" novalidate>
@@ -504,7 +395,8 @@ nu_layout_start(t('nav_email'), 'email', ['head' => NuListView::head(), 'setting
 					<?php if (NuMailer::mailLogFile() !== ''): ?><div class="card-footer small text-body-secondary"><?= h(t('mail_chk_maillog')) ?></div><?php endif; ?>
 				</div>
 				<?php $pr = NuMailer::$probeResult; if ($pr && $pr['auth'] && $pr['offered'] !== null): ?>
-					<div class="alert alert-light border small" id="mailCheckProbe"><span class="fw-semibold"><?= h(t('mail_auth_offered')) ?>:</span> <?= $pr['offered'] ? '<code>' . h(implode(' ', $pr['offered'])) . '</code>' : h(t('mail_auth_none')) ?>
+					<div class="alert alert-light border small"
+						id="mailCheckProbe"><span class="fw-semibold"><?= h(t('mail_auth_offered')) ?>:</span> <?= $pr['offered'] ? '<code>' . h(implode(' ', $pr['offered'])) . '</code>' : h(t('mail_auth_none')) ?>
 						<?php if ($pr['used'] !== ''): ?> · <span class="fw-semibold"><?= h(t('mail_auth_used')) ?>:</span> <code><?= h($pr['used']) ?></code><?php endif; ?></div>
 				<?php endif; ?>
 				<?php if ($checkResult['debug'] !== ''): ?>
@@ -559,7 +451,7 @@ nu_layout_start(t('nav_email'), 'email', ['head' => NuListView::head(), 'setting
 	</div>
 	<div class="card shadow-sm mb-3">
 		<div class="card-header d-flex justify-content-between align-items-center gap-2">
-			<span class="fw-semibold text-break"><?= h($detail['eml_subject']) ?></span><?= nu_mail_state($detail['eml_state']) ?>
+			<span class="fw-semibold text-break"><?= h($detail['eml_subject']) ?></span><?= NuEmailPage::state($detail['eml_state']) ?>
 		</div>
 		<div class="card-body small">
 			<dl class="row mb-0 nuMailMeta">
@@ -568,8 +460,8 @@ nu_layout_start(t('nav_email'), 'email', ['head' => NuListView::head(), 'setting
 				<?php if ((string)$detail['eml_cc'] !== ''): ?><dt class="col-sm-3">Cc</dt><dd class="col-sm-9 text-break"><?= h($detail['eml_cc']) ?></dd><?php endif; ?>
 				<?php if ((string)$detail['eml_bcc'] !== ''): ?><dt class="col-sm-3">Bcc</dt><dd class="col-sm-9 text-break"><?= h($detail['eml_bcc']) ?></dd><?php endif; ?>
 				<?php if (!in_array((string)($detail['eml_reply_to'] ?? ''), ['', '[]', '{}'], true)): ?><dt class="col-sm-3">Reply-To</dt><dd class="col-sm-9 text-break"><?= h($detail['eml_reply_to']) ?></dd><?php endif; ?>
-				<dt class="col-sm-3"><?= h(t('mail_created')) ?></dt><dd class="col-sm-9"><?= h(nu_mail_dt($detail['eml_created_at'])) ?></dd>
-				<dt class="col-sm-3"><?= h(t('mail_sent')) ?></dt><dd class="col-sm-9"><?= h(nu_mail_dt($detail['eml_sent_at'])) ?></dd>
+				<dt class="col-sm-3"><?= h(t('mail_created')) ?></dt><dd class="col-sm-9"><?= h(NuEmailPage::dt($detail['eml_created_at'])) ?></dd>
+				<dt class="col-sm-3"><?= h(t('mail_sent')) ?></dt><dd class="col-sm-9"><?= h(NuEmailPage::dt($detail['eml_sent_at'])) ?></dd>
 				<?php if ($userLogin !== ''): ?><dt class="col-sm-3"><?= h(t('user')) ?></dt><dd class="col-sm-9"><?= h($userLogin) ?></dd><?php endif; ?>
 				<?php if ((string)($detail['eml_form_id'] ?? '') !== ''): ?><dt class="col-sm-3"><?= h(t('mail_form')) ?></dt><dd class="col-sm-9"><?= h(nu_form_label((string)$detail['eml_form_id'])) ?><?= (string)($detail['eml_record_id'] ?? '') !== '' ? ' · #' . h($detail['eml_record_id']) : '' ?><?= (string)($detail['eml_table_name'] ?? '') !== '' ? ' · ' . h($detail['eml_table_name']) : '' ?></dd><?php endif; ?>
 				<?php if ((string)($detail['eml_tag'] ?? '') !== ''): ?><dt class="col-sm-3">Tag</dt><dd class="col-sm-9"><?= h($detail['eml_tag']) ?></dd><?php endif; ?>

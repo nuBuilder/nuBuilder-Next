@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Names for the suggestions of the code editors (0.8.1336, assets/js/nu/nucodetools.js nameHints()):
+ * Names for the suggestions of the code editors (assets/js/nu/nucodetools.js nameHints()):
  * GET ?p=codenames[&f=<form id>] → {hash: [[name, description]], tables, cols, fields, table}
  *   hash    the "#" variables of NuHash::catalog() (every signed-in user)
  *   tables  [[name, 'v' for a view else '']] and cols {table: [[column, type]]} – only for users who may write SQL (NuSqlCheck::allowed:
@@ -48,7 +48,7 @@ if (NuSqlCheck::allowed()) {
 				AND sob_all_type NOT IN ('word', 'html', 'image', 'run', 'contentbox') ORDER BY sob_all_order", [$f]) as $r) {
 				if ((string)$r['i'] !== '') $out['fields'][] = [(string)$r['i'], trim(strip_tags((string)$r['l']))];
 			}
-		} catch (Throwable) { /* no form */ }
+		} catch (Throwable $ig) { nu_ignored($ig, 'no form'); }
 	}
 }
 header('Content-Type: application/json; charset=utf-8');

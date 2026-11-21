@@ -2,65 +2,17 @@
 declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
-/* Own account security: authenticator app (set up / remove), passkeys (0.8.877: list, add through assets/js/nupasskey.js, remove), trusted devices, password. */
+/* Own account security: authenticator app (set up / remove), passkeys (list, add through assets/js/nupasskey.js, remove), trusted devices, password. */
 
 $u      = NuAuth::user();
 $uid    = (string)$u['id'];
 $errors = [];
 
-if (nu_is_post()) {
-	$action = nu_post('action');
-
-	if ($action === 'totp_start') {
-		$_SESSION['nu_totp_setup'] = NuTwoFA::newSecret();
-		nu_redirect(nu_url('security'));
-	}
-	if ($action === 'totp_cancel') {
-		unset($_SESSION['nu_totp_setup']);
-		nu_redirect(nu_url('security'));
-	}
-	if ($action === 'totp_confirm' && !empty($_SESSION['nu_totp_setup'])) {
-		$step = NuTwoFA::matchCode((string)$_SESSION['nu_totp_setup'], nu_post('code'));
-		if ($step === null) {
-			$errors['code'] = t('twofa_err_code');
-		} else {
-			NuTwoFA::saveTotp($uid, (string)$_SESSION['nu_totp_setup'], $step);
-			unset($_SESSION['nu_totp_setup']);
-			NuLog::write('2fa_app_enabled');
-			nu_flash('success', t('sec_totp_enabled'));
-			nu_redirect(nu_url('security'));
-		}
-	}
-	if ($action === 'totp_remove') {
-		if (!NuTwoFA::verifyTotp($uid, nu_post('code'))) {
-			$errors['remove_code'] = t('twofa_err_code');
-		} else {
-			NuTwoFA::removeTotp($uid);
-			NuLog::write('2fa_app_removed');
-			nu_flash('success', t('sec_totp_removed'));
-			nu_redirect(nu_url('security'));
-		}
-	}
-	if ($action === 'pk_remove') {
-		NuSecurity::requireRecentAuth(nu_url('security'));
-		$pkId = nu_post('pk');
-		$pkName = (string)(array_column(NuPasskey::list($uid), 'name', 'zzzzsys_nunext_passkey_id')[$pkId] ?? '');
-		if (NuPasskey::remove($uid, $pkId)) {
-			NuLog::write('passkey_removed', NuPasskey::TABLE, $pkId, ['name' => $pkName]);
-			nu_flash('success', t('pk_removed', $pkName));
-		}
-		nu_redirect(nu_url('security') . '#secPasskeys');
-	}
-	if ($action === 'devices_forget') {
-		NuTwoFA::forgetDevices($uid);
-		NuLog::write('2fa_devices_forgotten');
-		nu_flash('success', t('sec_devices_forgotten'));
-		nu_redirect(nu_url('security'));
-	}
-}
+['errors' => $errors, 'uid' => $uid]
+	= NuSecurityPage::post(get_defined_vars());   // the POST actions (code review R7, nusecuritypage.php)
 
 $hasTotp  = NuTwoFA::hasTotp($uid);
-$setup    = $_SESSION['nu_totp_setup'] ?? null;
+$setup    = $_SESSION[NuSess::TOTP_SETUP] ?? null;
 $devices  = NuTwoFA::deviceCount($uid);
 $required = $u['globeadmin'] ? (bool)nu_cfg('nuConfig2FAAdmin')
 	: ((bool)nu_cfg('nuConfig2FAUser') && NuAuth::levels2fa((string)(NuAcl::level((string)$u['access_id'])['sal_use_2fa'] ?? '') === '1', (string)$u['id']));
@@ -97,7 +49,8 @@ nu_layout_start(t('sec_title'));
 							<form method="post" action="<?= h(nu_url('security')) ?>" class="d-flex gap-2 align-items-start" novalidate>
 								<?= nu_csrf_field() ?><input type="hidden" name="action" value="totp_confirm">
 								<div>
-									<input type="text" class="form-control nuOtp<?= nu_invalid($errors, 'code') ?>" name="code" inputmode="numeric" maxlength="7" autocomplete="one-time-code" placeholder="123456" aria-label="<?= h(t('twofa_code')) ?>" required autofocus>
+									<input type="text" class="form-control nuOtp<?= nu_invalid($errors, 'code') ?>" name="code" inputmode="numeric" maxlength="7"
+										autocomplete="one-time-code" placeholder="123456" aria-label="<?= h(t('twofa_code')) ?>" required autofocus>
 									<?= nu_feedback($errors, 'code') ?>
 								</div>
 								<button class="btn btn-primary" type="submit"><?= h(t('sec_activate')) ?></button>
@@ -111,7 +64,8 @@ nu_layout_start(t('sec_title'));
 					<form method="post" action="<?= h(nu_url('security')) ?>" class="d-flex flex-wrap gap-2 align-items-start" novalidate>
 						<?= nu_csrf_field() ?><input type="hidden" name="action" value="totp_remove">
 						<div>
-							<input type="text" class="form-control<?= nu_invalid($errors, 'remove_code') ?>" name="code" inputmode="numeric" maxlength="7" autocomplete="one-time-code" placeholder="<?= h(t('twofa_code')) ?>" aria-label="<?= h(t('twofa_code')) ?>">
+							<input type="text" class="form-control<?= nu_invalid($errors, 'remove_code') ?>" name="code" inputmode="numeric" maxlength="7"
+								autocomplete="one-time-code" placeholder="<?= h(t('twofa_code')) ?>" aria-label="<?= h(t('twofa_code')) ?>">
 							<?= nu_feedback($errors, 'remove_code') ?>
 						</div>
 						<button class="btn btn-outline-danger" type="submit"><i class="bi bi-x-circle me-1"></i><?= h(t('sec_totp_remove')) ?></button>
@@ -139,12 +93,15 @@ nu_layout_start(t('sec_title'));
 								<li class="list-group-item d-flex flex-wrap align-items-center gap-2" data-pk-id="<?= h((string)$pk['zzzzsys_nunext_passkey_id']) ?>">
 									<i class="bi bi-key text-body-secondary" aria-hidden="true"></i>
 									<div class="me-auto">
-										<div class="fw-semibold"><?= h((string)$pk['name']) ?><?php if ((string)$pk['backed_up'] === '1'): ?> <span class="badge text-bg-light border fw-normal" title="<?= h(t('pk_synced_tip')) ?>"><?= h(t('pk_synced')) ?></span><?php endif; ?></div>
+										<div class="fw-semibold"><?= h((string)$pk['name']) ?><?php if ((string)$pk['backed_up'] === '1'): ?> <span class="badge text-bg-light border fw-normal"
+											title="<?= h(t('pk_synced_tip')) ?>"><?= h(t('pk_synced')) ?></span><?php endif; ?></div>
 										<div class="small text-body-secondary"><?= h(t('pk_created', date(nu_dfmt('d.m.Y'), strtotime((string)$pk['created_at']) ?: time()))) ?> · <?= h($pkUsed !== '' ? t('pk_last_used', date(nu_dfmt('d.m.Y H:i'), strtotime($pkUsed) ?: time())) : t('pk_never_used')) ?></div>
 									</div>
-									<form method="post" action="<?= h(nu_url('security')) ?>" data-confirm="<?= h(t('pk_remove_confirm', (string)$pk['name'])) ?>" data-confirm-ok="<?= h(t('pk_remove')) ?>" data-confirm-class="btn btn-danger">
+									<form method="post" action="<?= h(nu_url('security')) ?>" data-confirm="<?= h(t('pk_remove_confirm', (string)$pk['name'])) ?>"
+										data-confirm-ok="<?= h(t('pk_remove')) ?>" data-confirm-class="btn btn-danger">
 										<?= nu_csrf_field() ?><input type="hidden" name="action" value="pk_remove"><input type="hidden" name="pk" value="<?= h((string)$pk['zzzzsys_nunext_passkey_id']) ?>">
-										<button class="btn btn-outline-danger btn-sm" type="submit" title="<?= h(t('pk_remove')) ?>" aria-label="<?= h(t('pk_remove') . ': ' . (string)$pk['name']) ?>"><i class="bi bi-trash"></i></button>
+										<button class="btn btn-outline-danger btn-sm" type="submit" title="<?= h(t('pk_remove')) ?>"
+											aria-label="<?= h(t('pk_remove') . ': ' . (string)$pk['name']) ?>"><i class="bi bi-trash"></i></button>
 									</form>
 								</li>
 							<?php endforeach; ?>

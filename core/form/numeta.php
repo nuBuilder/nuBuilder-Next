@@ -22,17 +22,17 @@ final class NuFormMeta
 	public array $browse = [];
 
 	private static array $cache = [];
-	/** Forms the live forms loaded so far name as sub-form or lookup (0.8.1343, review P6): loaded together on the first miss. */
+	/** Forms the live forms loaded so far name as sub-form or lookup (review P6): loaded together on the first miss. */
 	private static array $wanted = [];
 	/** Live forms whose hook code (<form>_BB … _AD) is not read yet: read together on the first hook asked for. */
 	private static array $phpWanted = [];
 	/** Hook suffixes of a form read with one statement (phpById). */
 	private const HOOKS = ['BB', 'BE', 'BS', 'AS', 'BD', 'AD'];
-	/** From a snapshot (form drafts, 0.8.386): zzzzsys_php_id => sph_php; null = read from the database. */
+	/** From a snapshot (form drafts): zzzzsys_php_id => sph_php; null = read from the database. */
 	private ?array $phpRows = null;
 
 	/**
-	 * The form for the runtime – the draft when this session previews one (form drafts, 0.8.386); $live: always the live form
+	 * The form for the runtime – the draft when this session previews one (form drafts); $live: always the live form
 	 * (form builder, publish).
 	 */
 	public static function load(string $formId, bool $live = false): ?self
@@ -41,7 +41,7 @@ final class NuFormMeta
 			return self::$cache['draft:' . $formId] ??= self::fromSnapshot($snap);
 		}
 		if (array_key_exists($formId, self::$cache)) return self::$cache[$formId];
-		// a sub-form or lookup form of a form already loaded: all of them in one statement per table (0.8.1343, review P6 – an order
+		// a sub-form or lookup form of a form already loaded: all of them in one statement per table (review P6 – an order
 		// record with a lookup, a sub-form and a lookup inside it read 4 × 5 statements, now 5 + 5 + 5)
 		if (isset(self::$wanted[$formId])) {
 			self::prime(array_keys(self::$wanted));
@@ -142,7 +142,7 @@ final class NuFormMeta
 			[$tabOrder[$a['sob_all_zzzzsys_tab_id']] ?? 999, (int)($a['sob_all_order'] ?? 0), (int)($a['sob_all_top'] ?? 0), (int)($a['sob_all_left'] ?? 0)]
 			<=> [$tabOrder[$b['sob_all_zzzzsys_tab_id']] ?? 999, (int)($b['sob_all_order'] ?? 0), (int)($b['sob_all_top'] ?? 0), (int)($b['sob_all_left'] ?? 0)]);
 
-		// a draft's new rows hold only the columns that were set (NuDraftStore::row): the others are NULL, as in the table (0.8.663)
+		// a draft's new rows hold only the columns that were set (NuDraftStore::row): the others are NULL, as in the table
 		$blank = $snap !== null ? array_fill_keys(array_keys($db->columns('zzzzsys_object') ?: []), null) : [];
 		foreach ($objects as $o) {
 			if ($blank) $o += $blank;
@@ -187,7 +187,7 @@ final class NuFormMeta
 			}
 			self::$phpWanted[$this->id] = true;
 		}
-		// column filters switched on by default for a few of nuBuilder's own lists (0.8.307) – only while the column has no setting of its
+		// column filters switched on by default for a few of nuBuilder's own lists – only while the column has no setting of its
 		// own: the form builder can switch them off, and a nuBuilder update (which rewrites its system rows) brings the default back
 		foreach ($this->browse as $i => $b) {
 			if (in_array(strtolower(trim((string)$b['sbr_display'])), self::DEFAULT_FILTERS[$this->id] ?? [], true)
@@ -221,7 +221,7 @@ final class NuFormMeta
 	}
 
 	/**
-	 * Badge of a list column (0.8.688, sbr_json nunext.badge – set in design mode): true = nuBrowseStyleBadge's look, or a list of rules
+	 * Badge of a list column (sbr_json nunext.badge – set in design mode): true = nuBrowseStyleBadge's look, or a list of rules
 	 * of nuBrowseStyleBadge(column, rules) in their JSON form. clean() keeps the keys the runtime knows and drops the rest; null = no badge.
 	 */
 	public const BADGE_KEYS = ['equals', 'contains', 'startsWith', 'endsWith', 'regex', 'default', 'ignoreCase', 'bg', 'color', 'border', 'label', 'icon', 'title', 'badge'];
@@ -245,7 +245,7 @@ final class NuFormMeta
 		return $out ?: true;
 	}
 	/**
-	 * Click action of a list column (0.8.872, sbr_json nunext.action – design mode → column → On click): a click on the cell opens another
+	 * Click action of a list column (sbr_json nunext.action – design mode → column → On click): a click on the cell opens another
 	 * form (record of the row, a column value or a new one), another list in the context of the row, runs a procedure / report or calls
 	 * a JavaScript function – instead of opening the row's edit form. {t, id, rec, open, pass, look, icon, label}; null = none.
 	 * nuBuilder Forte ignores it (the row opens its edit form there).
@@ -268,7 +268,8 @@ final class NuFormMeta
 		}
 		$out['look'] = in_array($a['look'] ?? '', ['link', 'button', 'icon'], true) ? (string)$a['look'] : 'link';
 		$icon = trim((string)($a['icon'] ?? ''));
-		if ($out['look'] !== 'link') $out['icon'] = preg_match('/^(bi-)?[a-z0-9-]{1,60}$/', $icon) ? (str_starts_with($icon, 'bi-') ? $icon : 'bi-' . $icon) : ($out['look'] === 'icon' ? 'bi-box-arrow-up-right' : '');
+		if ($out['look'] !== 'link') $out['icon'] = preg_match('/^(bi-)?[a-z0-9-]{1,60}$/', $icon) ? (str_starts_with($icon, 'bi-') ? $icon : 'bi-'
+			. $icon) : ($out['look'] === 'icon' ? 'bi-box-arrow-up-right' : '');
 		$label = trim((string)($a['label'] ?? ''));
 		if ($out['look'] !== 'link' && $label !== '') $out['label'] = mb_substr($label, 0, 60);
 		return $out;
@@ -310,7 +311,7 @@ final class NuFormMeta
 	}
 
 	/**
-	 * Department and team of a form (0.8.1020, sfo_json nunext.department / nunext.team): free text for grouping and filtering the forms
+	 * Department and team of a form (sfo_json nunext.department / nunext.team): free text for grouping and filtering the forms
 	 * list only – no effect on rights or behaviour, no link to the users' fields. nuBuilder Forte ignores the nunext key.
 	 */
 	public const FORM_TAGS = ['department', 'team'];
@@ -326,7 +327,7 @@ final class NuFormMeta
 
 	/** The tags present in a field list of form.save, cleaned (null = remove). */
 	/**
-	 * "Records only through the form's list" per form (0.8.1234, the owner: A + B): sfo_json nunext.record_check = false skips the
+	 * "Records only through the form's list" per form (the owner: A + B): sfo_json nunext.record_check = false skips the
 	 * check of NuRecord::visible() on this form (open, save, delete); set in design mode → Form → Data. design API field
 	 * record_check '1' (default, checked) | '0' (not checked). nuBuilder Forte ignores the key.
 	 */
@@ -386,11 +387,11 @@ final class NuFormMeta
 	public function code(): string        { return (string)$this->form['sfo_code']; }
 	public function description(): string { return (string)$this->form['sfo_description']; }
 	public function isSystem(): bool      { return str_starts_with($this->id, 'nu'); }
-	/** nuBuilder Forte's User Home (0.8.605): a system form whose tabs, objects and Before Edit belong to the application – the builder edits those. */
+	/** nuBuilder Forte's User Home: a system form whose tabs, objects and Before Edit belong to the application – the builder edits those. */
 	public function isUserHome(): bool    { return $this->id === NuUserHome::FORM; }
 	public function hasBrowse(): bool     { return in_array($this->type(), ['browse', 'browseedit'], true); }
 	public function hasEdit(): bool       { return in_array($this->type(), ['edit', 'browseedit', 'launch'], true); }
-	public function isPage(): bool        { return $this->type() === 'page'; }   // form type "page" (0.8.387, core/nupage.php)
+	public function isPage(): bool        { return $this->type() === 'page'; }   // form type "page" (core/nupage.php)
 
 	public function settings(): array     { return self::nunextJson($this->form['sfo_json'] ?? null); }
 
@@ -419,14 +420,14 @@ final class NuFormMeta
 
 	private function phpById(string $id): ?string
 	{
-		// the live row once per request (0.8.1341: a record page read its Before Edit code four times) – dropped by a write to zzzzsys_php (NuMemo)
+		// the live row once per request (a record page read its Before Edit code four times) – dropped by a write to zzzzsys_php (NuMemo)
 		if ($this->phpRows === null && self::$phpWanted && !NuMemo::has('php:' . $id)) self::primePhp();
 		$code = $this->phpRows !== null ? ($this->phpRows[$id] ?? null)
 			: NuMemo::get('php:' . $id, ['zzzzsys_php'], static fn() => nu_db()->value('SELECT sph_php FROM zzzzsys_php WHERE zzzzsys_php_id = ?', [$id]));
 		return ($code !== null && trim((string)$code) !== '') ? (string)$code : null;
 	}
 
-	/** The hooks (BB … AD) of every live form loaded so far, in one statement (0.8.1343) – kept in NuMemo, missing ones as null. */
+	/** The hooks (BB … AD) of every live form loaded so far, in one statement – kept in NuMemo, missing ones as null. */
 	private static function primePhp(): void
 	{
 		$ids = [];
@@ -441,7 +442,7 @@ final class NuFormMeta
 		foreach ($ids as $id) NuMemo::put('php:' . $id, ['zzzzsys_php'], $found[$id] ?? null);
 	}
 
-	/** sfo_status of the live form – from the row loaded already (0.8.1343), else read. */
+	/** sfo_status of the live form – from the row loaded already, else read. */
 	public static function liveStatus(string $formId): string
 	{
 		$m = self::$cache[$formId] ?? null;
@@ -463,10 +464,56 @@ final class NuFormMeta
 	public function breadcrumb(bool $new, array $hash): string
 	{
 		$parts = explode('|', (string)$this->form['sfo_breadcrumb_title']);
-		if ($this->type() === 'launch') $new = false;        // a launch form has no record: its title, not "New record" (0.8.605)
+		if ($this->type() === 'launch') $new = false;        // a launch form has no record: its title, not "New record"
 		$t     = $new ? ($parts[1] ?? '') : $parts[0];
 		$t     = trim(NuHash::replace($t, $hash));
 		if ($t === '' || preg_match('/^#[^#]+#$/', $t)) $t = $new ? t('form_new_record') : $this->description();
 		return $t;
+	}
+
+	/**
+	 * The design fields kept in sob_all_json nunext of an object (help page, calendar, suggestions, fit / phone of grid sub-forms, pivot and URL
+	 * of run objects) – moved from $fields into sob_all_json; shared by the live design API and the draft store (code review D5).
+	 * @throws RuntimeException a value that cannot be kept (suggestion query, URL)
+	 */
+	public static function objectNunextFields(array $fields, ?array $existing): array
+	{
+		if (array_key_exists('nunext_help', $fields)) {            // user help page of the field: sob_all_json nunext.help
+			$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($fields['sob_all_json'] ?? $existing['sob_all_json'] ?? null, ['help' => NuUserHelp::cleanCode($fields['nunext_help'])]);
+			unset($fields['nunext_help']);
+		}
+		if (array_key_exists('nunext_calendar', $fields)) {        // calendar object: sob_all_json nunext.calendar of an HTML object
+			$cc = is_string($fields['nunext_calendar']) ? json_decode($fields['nunext_calendar'], true) : $fields['nunext_calendar'];
+			$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($fields['sob_all_json'] ?? $existing['sob_all_json'] ?? null, ['calendar' => is_array($cc) ? NuCalendar::cleanObject($cc) : null]);
+			unset($fields['nunext_calendar']);
+		}
+		if (array_key_exists('nunext_suggest', $fields)) {         // suggestions while typing: sob_all_json nunext.suggest of a text input
+			$sg = NuSuggest::clean($fields['nunext_suggest']);
+			if ($sg && ($sp = NuSuggest::problem($sg)) !== null) throw new RuntimeException($sp);
+			$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($fields['sob_all_json'] ?? $existing['sob_all_json'] ?? null, ['suggest' => $sg]);
+			unset($fields['nunext_suggest']);
+		}
+		if (array_key_exists('nunext_fit', $fields)) {             // grid sub-form: fit columns to the width: sob_all_json nunext.fit
+			$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($fields['sob_all_json'] ?? $existing['sob_all_json'] ?? null, ['fit' => !empty($fields['nunext_fit']) ? true : null]);
+			unset($fields['nunext_fit']);
+		}
+		if (array_key_exists('nunext_phone_table', $fields)) {     // grid sub-form on phones (usability review G15): rows as cards unless nunext.phone = 'table'
+			$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($fields['sob_all_json'] ?? $existing['sob_all_json'] ?? null, ['phone' => !empty($fields['nunext_phone_table']) ? 'table' : null]);
+			unset($fields['nunext_phone_table']);
+		}
+		if (array_key_exists('nunext_run_pivot', $fields)) {       // run object that shows a saved pivot
+			$pv = NuRender::cleanRunPivot($fields['nunext_run_pivot']);
+			$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($fields['sob_all_json'] ?? $existing['sob_all_json'] ?? null, ['pivot' => $pv]);
+			if ($pv) { $fields['sob_run_type'] = ''; $fields['sob_run_zzzzsys_form_id'] = ''; }
+			unset($fields['nunext_run_pivot']);
+		}
+		if (array_key_exists('nunext_run_url', $fields)) {         // run object of type URL: kept in sob_all_json nunext.url
+			$ru = $fields['nunext_run_url'] === null ? null : trim((string)$fields['nunext_run_url']);
+			if ($ru !== null && $ru !== '' && NuRender::cleanRunUrl($ru) === null) throw new RuntimeException(t('builder_err_run_url'));
+			$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($fields['sob_all_json'] ?? $existing['sob_all_json'] ?? null, ['url' => $ru === '' ? null : $ru]);
+			if ($ru !== null && $ru !== '') { $fields['sob_run_type'] = ''; $fields['sob_run_zzzzsys_form_id'] = ''; }
+			unset($fields['nunext_run_url']);
+		}
+		return $fields;
 	}
 }

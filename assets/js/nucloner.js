@@ -43,7 +43,7 @@
 				if (!desc.value || desc.value === lastDesc) { desc.value = nd; lastDesc = nd; }
 				// the destination cannot be the source
 				Array.prototype.forEach.call($('#clDest').options, function (o) { o.disabled = o.value !== '' && o.value === id; });
-				if ($('#clDest').tomselect) $('#clDest').tomselect.sync();   // searchable select (0.8.536): take over the disabled option
+				if ($('#clDest').tomselect) $('#clDest').tomselect.sync();   // searchable select: take over the disabled option
 				sync();
 			}, function () { info.textContent = '?'; });
 	}
@@ -58,7 +58,7 @@
 		$('#clIfr').classList.toggle('opacity-50', !objects || !$('#clIfrOn').checked);
 		var dump = $('#clDump').checked;
 		$('#clDumpOpts').hidden = !dump;
-		var tgt = $('#clTarget'), rep = $('#clReplaceWrap');                // REPLACE INTO only in MySQL (0.8.794)
+		var tgt = $('#clTarget'), rep = $('#clReplaceWrap');                // REPLACE INTO only in MySQL
 		if (tgt && rep) { rep.hidden = tgt.value === 'sqlsrv'; if (rep.hidden) $('#clReplace').checked = false; }
 		var run = $('#clRun');
 		run.querySelector('span').textContent = run.getAttribute(dump ? 'data-label-dump' : 'data-label-clone');

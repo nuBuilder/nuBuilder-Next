@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Maintenance of forms (0.8.808, core/nuformstatus.php) – JSON for the forms list (status menu, "Maintenance…" dialog) and design mode.
+ * Maintenance of forms (core/nuformstatus.php) – JSON for the forms list (status menu, "Maintenance…" dialog) and design mode.
  *   GET  ?p=formstatus[&f=<id> | &all=1]  → {forms: [{id, code, description, status, text, until}] (forms in maintenance, or the one form), can_change}
  *   POST {forms: [ids], on: true|false, text, until} (X-CSRF-Token) → {ok, changed: [ids]}
  * Who may switch: those who may change a form's status (NuFormDraft::canEdit), not while acting as a user (read only), not in demo mode.

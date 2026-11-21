@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * F1 help (0.8.528): which page of nuBuilder Next's documentation (?p=help#<id>) belongs to the page that is open.
+ * F1 help: which page of nuBuilder Next's documentation (?p=help#<id>) belongs to the page that is open.
  * <body data-nu-help="<url>"> (NuCustomCode::bodyAttrs) – assets/js/nuapp.js opens it in a new tab on F1. Pages without an entry
  * (sign-in pages, the help itself, JSON routes) leave F1 to the browser. A new page = an entry here (dev/tests/run.php checks the ids).
  */
@@ -15,14 +15,16 @@ final class NuHelpLink
 		'formats' => 'formats', 'items' => 'items', 'page' => 'pages',
 		'users' => 'users', 'user' => 'users', 'userfields' => 'user-fields', 'import' => 'csv-import', 'dataexport' => 'data-export',
 		'access' => 'access', 'accesslevel' => 'access', 'permissions' => 'permissions', 'adminroles' => 'admin-roles',
-		'impersonate' => 'impersonate', 'sessions' => 'sessions', 'security' => 'security-check', 'securitycheck' => 'security-check', 'gettingready' => 'getting-ready', 'pwpolicy' => 'password-policy', 'ipaccess' => 'ip-access', 'sso' => 'sso',
+		'impersonate' => 'impersonate', 'sessions' => 'sessions', 'security' => 'security-check', 'securitycheck' => 'security-check',
+			'gettingready' => 'getting-ready', 'pwpolicy' => 'password-policy', 'ipaccess' => 'ip-access', 'sso' => 'sso',
 		'log' => 'log', 'audit' => 'audit-trail', 'recyclebin' => 'recycle-bin', 'audithistory' => 'audit-trail', 'notifications' => 'notifications',
 		'dashboards' => 'dashboards', 'reports' => 'reports', 'report' => 'reports', 'reportdesigner' => 'reports', 'sqlbuilder' => 'sql-builder',
 		'procedures' => 'procedures', 'prompts' => 'prompts', 'email' => 'email', 'mailoauth' => 'email', 'emailtemplates' => 'email-templates',
 		'translations' => 'translations', 'files' => 'files', 'filemanager' => 'file-manager', 'cloner' => 'cloner', 'appcloner' => 'appcloner',
 		'branding' => 'branding', 'brand' => 'branding', 'themes' => 'themes', 'settings' => 'settings', 'configfile' => 'configfile', 'globalcode' => 'globalcode', 'jquery' => 'jquery',
 		'setupwizard' => 'install', 'sample' => 'sample-data', 'inspect' => 'inspect', 'selftest' => 'selftest', 'dbreset' => 'db-reset', 'compat' => 'compat',
-		'update' => 'updating-p', 'apiclients' => 'api', 'webhooks' => 'webhooks', 'aiproviders' => 'ai-providers', 'helppages' => 'user-help', 'userhelp' => 'user-help', 'projects' => 'projects', 'codesearch' => 'code-search', 'apiplayground' => 'api-playground', 'debug' => 'debugging-p',
+		'update' => 'updating-p', 'apiclients' => 'api', 'webhooks' => 'webhooks', 'aiproviders' => 'ai-providers', 'helppages' => 'user-help',
+			'userhelp' => 'user-help', 'projects' => 'projects', 'codesearch' => 'code-search', 'apiplayground' => 'api-playground', 'debug' => 'debugging-p',
 		'password' => 'password', 'account' => 'password', 'tutorial' => 'tutorial-doc', 'listview' => 'list-views',
 	];
 

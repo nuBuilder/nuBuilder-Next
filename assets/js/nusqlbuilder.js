@@ -39,7 +39,8 @@
 		if (j && j.joins && typeof j.joins === 'object' && !Array.isArray(j.joins)) {
 			Object.keys(j.joins).forEach(function (k) { state.joins[k] = j.joins[k] === 'LEFT' ? 'LEFT' : ''; });
 		}
-		state.clauses = (D.clauses || []).map(function (c) { return {type: String(c.ssc_type || '1'), field: c.ssc_field || '', clause: c.ssc_clause || '', sort: c.ssc_sort || '', order: c.ssc_order || ''}; });
+		state.clauses = (D.clauses
+			|| []).map(function (c) { return {type: String(c.ssc_type || '1'), field: c.ssc_field || '', clause: c.ssc_clause || '', sort: c.ssc_sort || '', order: c.ssc_order || ''}; });
 	})();
 
 	// ----------------------------------------------------------------- skeleton
@@ -267,7 +268,9 @@
 			var type = el('select', {'class': 'form-select form-select-sm', 'aria-label': M.type});
 			[['1', 'WHERE'], ['2', 'GROUP BY'], ['3', 'ORDER BY'], ['4', 'HAVING']].forEach(function (o) { type.appendChild(el('option', {value: o[0], text: o[1], selected: o[0] === c.type})); });
 			var field = el('input', {type: 'text', 'class': 'form-control form-control-sm font-monospace', list: 'sqbFieldList', value: c.field, 'aria-label': M.field, spellcheck: 'false'});
-			var clause = el('input', {type: 'text', 'class': 'form-control form-control-sm font-monospace', value: c.clause, 'aria-label': M.clause, placeholder: c.type === '1' || c.type === '4' ? "= '#cus_country#'" : '', spellcheck: 'false'});
+			var clause = el('input',
+				{type: 'text', 'class': 'form-control form-control-sm font-monospace', value: c.clause, 'aria-label': M.clause, placeholder: c.type === '1'
+					|| c.type === '4' ? "= '#cus_country#'" : '', spellcheck: 'false'});
 			var sort = el('select', {'class': 'form-select form-select-sm', 'aria-label': M.sort});
 			[['', ''], ['ASC', 'ASC'], ['DESC', 'DESC']].forEach(function (o) { sort.appendChild(el('option', {value: o[0], text: o[1], selected: o[0] === c.sort})); });
 			var order = el('input', {type: 'number', 'class': 'form-control form-control-sm', value: c.order, 'aria-label': M.order});
@@ -281,7 +284,9 @@
 				p[0].addEventListener('change', function () { c[p[1]] = p[0].value; touched = true; sync(); });
 			});
 			del.addEventListener('click', function () { state.clauses.splice(i, 1); changed(); });
-			tb.appendChild(el('tr', {}, [el('td', {'class': 'sqbClType'}, [type]), el('td', {}, [field]), el('td', {}, [clause]), el('td', {'class': 'sqbClSort'}, [sort]), el('td', {'class': 'sqbClOrder'}, [order]), el('td', {}, [del])]));
+			tb.appendChild(el('tr', {},
+				[el('td', {'class': 'sqbClType'}, [type]), el('td', {}, [field]), el('td', {}, [clause]), el('td', {'class': 'sqbClSort'}, [sort]),
+					el('td', {'class': 'sqbClOrder'}, [order]), el('td', {}, [del])]));
 		});
 		table.appendChild(tb);
 		var add = el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary'}, [icon('plus-lg'), ' ' + M.clause_add]);
@@ -375,7 +380,7 @@
 		}), joins: state.joins});
 	}
 	// The stored SQL stays as it is until something in the builder changes – as nuBuilder, so a save without a change does not
-	// rewrite sse_sql (blank lines, order of the generator; 0.8.364, dev/tests/compat.js meta:sqlbuilder)
+	// rewrite sse_sql (blank lines, order of the generator; dev/tests/compat.js meta:sqlbuilder)
 	var touched = sqlInput.value.trim() === '';
 	function sync() {
 		jsonInput.value = buildJSON();

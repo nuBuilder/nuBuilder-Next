@@ -3,9 +3,9 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Secrets at rest (0.8.1326): one place for the encryption of stored secrets with $nuConfigSecretKey (libsodium secretbox).
+ * Secrets at rest: one place for the encryption of stored secrets with $nuConfigSecretKey (libsodium secretbox).
  *
- *   Format  "enc:" + base64(nonce + box), key = sha256(<context> . $nuConfigSecretKey); without a key (or libsodium) "plain:" + value
+ *   Format  "enc:" + base64(nonce + box), key = sha256(<context>. $nuConfigSecretKey); without a key (or libsodium) "plain:" + value
  *           (2FA secrets of older versions: the value as is). The contexts keep the formats the features used before:
  *           '' = 2FA secrets, OAuth mail login, single sign-on · 'webhook|' · 'ai|' · 'smtp|' (the SMTP password).
  *   Places  places() – every stored secret nuBuilder Next encrypts; status() counts encrypted / plain / unreadable values, rekey()
@@ -153,13 +153,11 @@ final class NuSecret
 		$shared = '';
 		try {
 			$shared = NuMailer::setupValue('set_smtp_password');
-		} catch (Throwable) {
-		}
+		} catch (Throwable $ig) { nu_ignored($ig); }
 		$clients = 0;
 		try {
 			if (nu_db()->tableExists(NuApiClient::CLIENT)) $clients = (int)nu_db()->value('SELECT COUNT(*) FROM ' . NuApiClient::CLIENT);
-		} catch (Throwable) {
-		}
+		} catch (Throwable $ig) { nu_ignored($ig); }
 		$sum = ['sealed' => 0, 'plain' => 0, 'bad' => 0, 'locked' => 0];
 		foreach ($p as $c) foreach ($c as $k => $n) $sum[$k] += $n;
 		return ['key' => ($key ?? self::key()) !== '', 'sodium' => function_exists('sodium_crypto_secretbox'), 'places' => $p, 'total' => $sum,

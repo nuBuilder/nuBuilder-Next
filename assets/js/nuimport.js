@@ -10,14 +10,14 @@
 	var T = JSON.parse(app.getAttribute('data-texts') || '{}');
 	var FORMATS = JSON.parse(app.getAttribute('data-formats') || '{}');
 	var TABLES = JSON.parse(app.getAttribute('data-tables') || '[]');
-	var MODES = JSON.parse(app.getAttribute('data-modes') || '{}');   // permission items (0.8.773): table → allowed modes; empty = all
+	var MODES = JSON.parse(app.getAttribute('data-modes') || '{}');   // permission items: table → allowed modes; empty = all
 	function limitModes(table) {
 		var allowed = MODES[table], sel = $('#impMode');
 		Array.prototype.forEach.call(sel.options, function (o) { o.hidden = o.disabled = !!(allowed && allowed.indexOf(o.value) < 0); });
 		if (allowed && allowed.indexOf(sel.value) < 0) sel.value = allowed[0];
 		$('#impKeyGroup').classList.toggle('d-none', sel.value === 'insert' || isUsers());
 	}
-	var USERS = 'zzzzsys_user', TARGET = app.getAttribute('data-target') || '';   // users (0.8.327): a target of its own, checked like the user form
+	var USERS = 'zzzzsys_user', TARGET = app.getAttribute('data-target') || '';   // users: a target of its own, checked like the user form
 	if (app.getAttribute('data-users') === '1') TABLES.unshift(USERS);
 	var isUsers = function () { return S.table === USERS; };
 	var $ = function (s, r) { return (r || document).querySelector(s); };
@@ -36,7 +36,8 @@
 	}
 	function busy(on) {
 		app.classList.toggle('impBusy', !!on);
-		$$('button', app).forEach(function (b) { if (on) { b.dataset.wasDisabled = b.disabled ? '1' : ''; b.disabled = true; } else if (b.dataset.wasDisabled !== undefined) { b.disabled = b.dataset.wasDisabled === '1'; delete b.dataset.wasDisabled; } });
+		$$('button',
+			app).forEach(function (b) { if (on) { b.dataset.wasDisabled = b.disabled ? '1' : ''; b.disabled = true; } else if (b.dataset.wasDisabled !== undefined) { b.disabled = b.dataset.wasDisabled === '1'; delete b.dataset.wasDisabled; } });
 	}
 	function read() {
 		var d = $('#impDelimiter').value;
@@ -89,7 +90,7 @@
 			if (S.config) applyReadConfig();
 		}).catch(function (e) { msg(e.message, 'danger'); }).finally(function () { busy(false); $('#impFile').value = ''; });
 	}
-	// spreadsheets (0.8.755): the sheet select takes the place of separator and quote; another sheet is written as CSV on the server
+	// spreadsheets: the sheet select takes the place of separator and quote; another sheet is written as CSV on the server
 	function showSheets(j) {
 		var sheets = j.sheets || [], sel = $('#impSheet');
 		S.sheet = sheets.length ? j.sheet || 0 : null;
@@ -127,7 +128,8 @@
 	$('#impHeader').addEventListener('change', reloadPreview);
 
 	// ------------------------------------------------------------------ step 2: table and mapping
-	var tableSel = window.TomSelect ? new TomSelect('#impTable', {options: TABLES.map(function (t) { return {value: t, text: t === USERS ? tx('imp_u_target') : t}; }), maxOptions: 1000, create: false, allowEmptyOption: true}) : null;
+	var tableSel = window.TomSelect ? new TomSelect('#impTable',
+		{options: TABLES.map(function (t) { return {value: t, text: t === USERS ? tx('imp_u_target') : t}; }), maxOptions: 1000, create: false, allowEmptyOption: true}) : null;
 	if (!tableSel) TABLES.forEach(function (t) { $('#impTable').insertAdjacentHTML('beforeend', '<option value="' + esc(t) + '">' + esc(t === USERS ? tx('imp_u_target') : t) + '</option>'); });
 	function setTable(t) { if (tableSel) tableSel.setValue(t, true); else $('#impTable').value = t; }
 
@@ -246,13 +248,16 @@
 		address: ['addr', 'street', 'strasse', 'adresse', 'address1'], city: ['town', 'ort', 'stadt', 'ville'], zip: ['zipcode', 'postalcode', 'postcode', 'plz', 'npa'],
 		state: ['province', 'region', 'kanton', 'bundesland'], country: ['nation', 'land', 'pays', 'countrycode'],
 		birthdate: ['dob', 'dateofbirth', 'birthday', 'geburtsdatum'], company: ['organization', 'organisation', 'org', 'firma', 'unternehmen'],
-		department: ['dept', 'division', 'abteilung'], position: ['jobtitle', 'title', 'funktion', 'role'], description: ['desc', 'beschreibung', 'notes', 'notizen', 'remarks', 'bemerkung', 'comment', 'kommentar'],
+		department: ['dept', 'division', 'abteilung'], position: ['jobtitle', 'title', 'funktion', 'role'],
+			description: ['desc', 'beschreibung', 'notes', 'notizen', 'remarks', 'bemerkung', 'comment', 'kommentar'],
 		status: ['state', 'zustand'], active: ['enabled', 'aktiv', 'isactive'], type: ['category', 'kind', 'kategorie', 'typ', 'art'],
 		amount: ['total', 'sum', 'betrag', 'summe', 'value', 'wert'], price: ['preis', 'cost', 'kosten', 'unitprice'], quantity: ['qty', 'count', 'menge', 'anzahl'],
-		code: ['number', 'nr', 'no', 'nummer', 'key', 'ref', 'reference', 'kundennummer', 'kundennr', 'customerno', 'customernumber', 'artikelnummer', 'artikelnr', 'itemno'], date: ['datum'], created: ['createdat', 'createdon', 'erstellt', 'datecreated'],
+		code: ['number', 'nr', 'no', 'nummer', 'key', 'ref', 'reference', 'kundennummer', 'kundennr', 'customerno', 'customernumber', 'artikelnummer', 'artikelnr', 'itemno'],
+			date: ['datum'], created: ['createdat', 'createdon', 'erstellt', 'datecreated'],
 		updated: ['updatedat', 'modified', 'modifiedat', 'geaendert', 'lastmodified'], website: ['url', 'web', 'homepage', 'www', 'site'], language: ['lang', 'sprache'],
 		loginname: ['login', 'username', 'user', 'userid', 'benutzer', 'benutzername', 'anmeldename', 'identifiant'], password: ['passwort', 'pw', 'pwd', 'pass', 'kennwort', 'motdepasse'],
-		accesslevel: ['access', 'level', 'accesscode', 'zugriff', 'zugriffsebene', 'zugriffsstufe', 'niveau'], expireson: ['expires', 'expiry', 'gultigbis', 'expiration', 'validuntil', 'gueltigbis', 'ablauf', 'ablaufdatum', 'enddate'],
+		accesslevel: ['access', 'level', 'accesscode', 'zugriff', 'zugriffsebene', 'zugriffsstufe', 'niveau'],
+			expireson: ['expires', 'expiry', 'gultigbis', 'expiration', 'validuntil', 'gueltigbis', 'ablauf', 'ablaufdatum', 'enddate'],
 		credit: ['creditlimit', 'kredit', 'kreditlimite', 'kreditlimit', 'limit'], since: ['customersince', 'kundeseit', 'seit', 'startdate'], note: ['notes', 'notiz', 'bemerkung']
 	};
 	function norm(s) {
@@ -295,7 +300,8 @@
 	function autoMap(quiet) {
 		if (!S.columns.length) return;
 		var pre = prefix(S.columns), used = {}, pairs = [];
-		S.columns.forEach(function (c) { if (!c.auto) S.headers.forEach(function (h, i) { var s = Math.max(score(c.name, pre, h, c.label), c.alias ? score(c.name, pre, h, c.alias) : 0); if (s >= 0.6) pairs.push([s, c, i]); }); });
+		S.columns.forEach(function (c) { if (!c.auto) S.headers.forEach(function (h,
+			i) { var s = Math.max(score(c.name, pre, h, c.label), c.alias ? score(c.name, pre, h, c.alias) : 0); if (s >= 0.6) pairs.push([s, c, i]); }); });
 		pairs.sort(function (a, b) { return b[0] - a[0]; });                       // best pairs first, each CSV column once
 		var done = {}, n = 0;
 		pairs.forEach(function (p) {
@@ -336,7 +342,8 @@
 			} else if (m.src === 'const') { setSource(col, 'const', m.value || '', m.fmt || '', false); n++; }
 			else if (m.src === 'nuid') { setSource(col, 'nuid', undefined, undefined, false); n++; }
 		});
-		['mode', 'key', 'decimal', 'empty'].forEach(function (k) { if (o[k] !== undefined && $('#imp' + k.charAt(0).toUpperCase() + k.slice(1))) $('#imp' + k.charAt(0).toUpperCase() + k.slice(1)).value = o[k]; });
+		['mode', 'key', 'decimal',
+			'empty'].forEach(function (k) { if (o[k] !== undefined && $('#imp' + k.charAt(0).toUpperCase() + k.slice(1))) $('#imp' + k.charAt(0).toUpperCase() + k.slice(1)).value = o[k]; });
 		if (o.on_error) $('#impOnError').value = o.on_error;
 		if (o.trim !== undefined) $('#impTrim').checked = o.trim !== '0';
 		if (o.audit !== undefined) $('#impAudit').checked = o.audit !== '0';
@@ -431,7 +438,8 @@
 			else if (S.table && S.builtFor !== JSON.stringify(S.headers)) {   // other columns (separator, header row): rebuild, keep what still fits
 				var keep = S.mapping, key = $('#impKey').value;
 				buildMapping();
-				Object.keys(keep).forEach(function (c) { var m = keep[c], i = m.src === 'csv' ? S.headers.indexOf(m.header) : -1; setSource(c, m.src === 'csv' ? (i >= 0 ? 'csv:' + i : '') : m.src, m.value, m.fmt, false); });
+				Object.keys(keep).forEach(function (c) { var m = keep[c],
+					i = m.src === 'csv' ? S.headers.indexOf(m.header) : -1; setSource(c, m.src === 'csv' ? (i >= 0 ? 'csv:' + i : '') : m.src, m.value, m.fmt, false); });
 				if (key) $('#impKey').value = key;
 			}
 		}

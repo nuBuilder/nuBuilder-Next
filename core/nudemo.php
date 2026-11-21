@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Demo mode (0.8.140), like nuBuilder's – but with real users:
+ * Demo mode, like nuBuilder's – but with real users:
  *   $nuConfigDemoUser = "demo";                       login name or user id; several separated by commas (e.g. one per role)
  *   $nuConfigDemoSavingAllowedIds = "form1,form2";    nuBuilder's setting: forms (id or code) where saving is still allowed
  * Demo users are ordinary zzzzsys_user rows (login name, password, access level). They log in like anybody – or with
@@ -27,25 +27,28 @@ final class NuDemo
 	/** Posts that only read (page => actions); every other post of a demo session is refused. */
 	private const READ_POSTS = [
 		'procedures'     => ['run'],
-		'pivot'          => ['fields', 'run', 'values', 'drill'],   // pivot of a form list: reads only (0.8.1151)
-		'calendar'       => ['events'],                             // calendars: reading entries (0.8.1165); moving stays refused
-		'codecheck'      => ['check'],      // syntax check of the code editors: parses only (0.8.781)
-		'projects'       => ['candidates', 'suggest', 'work'],   // projects: Add dialog, Suggest related, Working on (session only) (0.8.1035)
-		'dataexport'     => ['tables', 'columns', 'preview', 'count', 'check'],   // data export: the editor's lookups, nothing stored (0.8.758)
+		'pivot'          => ['fields', 'run', 'values', 'drill'],   // pivot of a form list: reads only
+		'calendar'       => ['events'],                             // calendars: reading entries; moving stays refused
+		'codecheck'      => ['check'],      // syntax check of the code editors: parses only
+		'projects'       => ['candidates', 'suggest', 'work'],   // projects: Add dialog, Suggest related, Working on (session only)
+		'dataexport'     => ['tables', 'columns', 'preview', 'count', 'check'],   // data export: the editor's lookups, nothing stored
 		'pwpolicy'       => ['test'],
-		'translations'   => ['ai_prompt', 'ai_check'],   // translations: the AI prompt and the preview of a pasted answer – nothing stored (0.8.754)               // password policy: check a typed password, nothing stored (0.8.745)
-		'user'           => ['effective', 'perm_of'],   // user form: effective rights of the levels entered (0.8.589), another user's permission items (0.8.649)
-		'notifications'  => ['state', 'readall', 'count'],   // own read / hidden state (the session only), number of recipients          // runs a procedure: only with "Demo access", and it cannot write (NuPhp::procedure, NuDB)
-		'prompts'        => ['build', 'context'],   // prompt generator: builds the text, the AI context file (0.8.991), saves nothing
+		'translations'   => ['ai_prompt', 'ai_check'],
+			// translations: the AI prompt and the preview of a pasted answer – nothing stored               // password policy: check a typed password, nothing stored
+		'user'           => ['effective', 'perm_of'],   // user form: effective rights of the levels entered, another user's permission items
+		'notifications'  => ['state', 'readall', 'count'],
+			// own read / hidden state (the session only), number of recipients          // runs a procedure: only with "Demo access", and it cannot write (NuPhp::procedure, NuDB)
+		'prompts'        => ['build', 'context'],   // prompt generator: builds the text, the AI context file, saves nothing
 		'builder'        => ['prompt'],
-		'formai'         => ['prompt', 'check', 'context'],   // form with AI (0.8.403): copy the prompt, check an answer       // page forms (0.8.387): "Copy AI prompt" only reads
+		'formai'         => ['prompt', 'check', 'context'],   // form with AI: copy the prompt, check an answer       // page forms: "Copy AI prompt" only reads
 		'emailtemplates' => ['preview'],      // renders a template with a record
-		'reportai'       => ['prompt', 'check', 'preview', 'context'],   // reports with AI (0.8.1097): nothing is written
+		'reportai'       => ['prompt', 'check', 'preview', 'context'],   // reports with AI: nothing is written
 		'reportdesigner' => ['preview', 'fields'],   // report designer: PDF preview of the layout, field list of the data source
 		'sqlbuilder'     => ['preview'],      // SQL builder: runs the SELECT (NuDB lets only reading statements through)
 		'impersonate'    => ['stop'],
-		'themes'         => ['pick', 'draft'],   // themes (0.8.632): own pick kept in the session, preview values in the session
-		'sidebar'        => ['toggle', 'clear', 'fav', 'used', 'forget', 'pin', 'hide', 'unhide'],   // 0.8.652: hide a tile (start page tile menu)   // side bar (0.8.460): on / off, recently used and ☆ – kept in the session for demo visitors
+		'themes'         => ['pick', 'draft'],   // themes: own pick kept in the session, preview values in the session
+		'sidebar'        => ['toggle', 'clear', 'fav', 'used', 'forget', 'pin', 'hide', 'unhide'],
+			// hide a tile (start page tile menu)   // side bar: on / off, recently used and ☆ – kept in the session for demo visitors
 		'tutorial'       => ['done', 'undo', 'hide', 'show', 'reset'],   // own progress – kept in the session for demo users         // the globeadmin acting as the demo user goes back
 	];
 
@@ -83,7 +86,7 @@ final class NuDemo
 	}
 
 	/**
-	 * nuBuilder's demo globeadmin (0.8.341): $nuConfigIsDemo = true with $nuConfigDemoDBGlobeadminUsername / …Password – that login
+	 * nuBuilder's demo globeadmin: $nuConfigIsDemo = true with $nuConfigDemoDBGlobeadminUsername / …Password – that login
 	 * opens a read-only demo session as the globeadmin, as in nuBuilder. @return array{0: string, 1: string}|null [name, password]
 	 */
 	public static function gaDemo(): ?array
@@ -186,7 +189,7 @@ final class NuDemo
 		return in_array($formId, $ids, true) || ($formCode !== '' && in_array($formCode, $ids, true));
 	}
 
-	/** Saves in the allowed forms per visitor (IP address) and hour, and for all demo visitors together (0.8.341). */
+	/** Saves in the allowed forms per visitor (IP address) and hour, and for all demo visitors together. */
 	public const SAVES_PER_HOUR = 10;
 	public const SAVES_PER_HOUR_ALL = 100;
 
@@ -220,7 +223,7 @@ final class NuDemo
 			return;
 		}
 		if ($jsonRoute) return;                                                  // formapi / builderapi / formatapi decide per action
-		if ($page === 'home') {                                                  // start page: favourites only and the own view – kept in the session (0.8.420)
+		if ($page === 'home') {                                                  // start page: favourites only and the own view – kept in the session
 			$in = json_decode((string)file_get_contents('php://input'), true);
 			if (is_array($in) && in_array($in['action'] ?? '', ['view_me', 'view_me_clear'], true)) return;
 		}
@@ -287,7 +290,7 @@ final class NuDemo
 
 	/**
 	 * Does typed SQL of a demo session (SQL builder, dashboards) mention a hidden table – anywhere, not only after FROM / JOIN
-	 * (comma joins, STRAIGHT_JOIN, parentheses, sub-queries, schema names)? Every word outside strings and comments counts (0.8.341).
+	 * (comma joins, STRAIGHT_JOIN, parentheses, sub-queries, schema names)? Every word outside strings and comments counts.
 	 */
 	public static function touchesHidden(string $sql): bool
 	{
@@ -426,7 +429,7 @@ final class NuDemo
 	/** Settings whose value is a password or key. */
 	public static function secretSetting(string $name): bool
 	{
-		return NuSecurity::secretName($name);   // 0.8.827: one rule (this one missed passwd / passwort / totp / _hash)
+		return NuSecurity::secretName($name);   // one rule (this one missed passwd / passwort / totp / _hash)
 	}
 }
 

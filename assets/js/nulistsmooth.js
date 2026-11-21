@@ -1,5 +1,5 @@
 /* global nuBs */
-/* Lists refreshed in place (0.8.776, core/nulistview.php data-lv-smooth): a filter, the search, a sort title, a page, the page size or a
+/* Lists refreshed in place (core/nulistview.php data-lv-smooth): a filter, the search, a sort title, a page, the page size or a
    chip of a system list fetches the list page and swaps only its card – no page reload, so nothing flickers. The address follows
    (history.pushState), Back / Forward swap again. Anything unusual (another page, a view change, an error, a redirect elsewhere, a
    card without data-lv-smooth) falls back to a normal page load. After the swap the card's scripts run again: tooltips, searchable
@@ -32,7 +32,7 @@
 		document.dispatchEvent(new CustomEvent('nu:listrefresh', {detail: {card: root}}));
 	}
 
-	// column widths kept over sorting / paging / searching (0.8.1228): the rows of the new page would size the columns anew, so every sort
+	// column widths kept over sorting / paging / searching: the rows of the new page would size the columns anew, so every sort
 	// moved them. The widths as shown before the swap go onto the same columns of the new table as percentages – in the normal (auto)
 	// layout, so a column whose new content needs more still grows and the others give way. Not for widths dragged by hand (fixed layout,
 	// nuColResize) and not on phone cards (titles not shown).

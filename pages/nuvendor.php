@@ -3,48 +3,33 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Globeadmin only – System status (0.8.316; before: Admin tools, whose tools are tiles of the start page now): time zone, missing
+ * Globeadmin only – System status (before: Admin tools, whose tools are tiles of the start page now): time zone, missing
  * database tool / File Manager (where to copy them), storage engine (InnoDB), demo mode. Also opens phpMyAdmin / Adminer (app=PMA /
  * ADM / DB, optional table) – see core/nuvendor.php: POST (CSRF-checked in index.php) logs in and redirects. app=TFM (nuBuilder's
- * nuVendorLogin('TFM')) opens the File Manager page nuFiles since 0.8.479.
+ * nuVendorLogin('TFM')) opens the File Manager page nuFiles.
  */
 
-// admin rights (0.8.323): opening a tool needs its right, converting tables "System status: change", the page "System status: view"
-if (nu_is_post()) {
-	$reqApp = strtoupper((string)($_POST['app'] ?? ''));
-	if (nu_post('action') === 'db_primary' || in_array($reqApp, ['PMA', 'ADM', 'DB'], true)) NuAdmin::require('dbtool', 'change');
-	elseif ($reqApp === 'TFM') { NuAdmin::require('filemanager', 'change'); nu_redirect(NuFileManager::url()); }
-	else NuAdmin::require('status', 'change');
-} elseif ((string)($_GET['open'] ?? '') === '') {           // ?open=<token>: the database tool's own right, checked below (0.8.852)
-	NuAdmin::require('status', 'view');
-}
-// 0.8.852: opening a database tool in a new window by a one-time GET link. A POST with target=_blank loses its body in a window of
+// admin rights: opening a tool needs its right, converting tables "System status: change", the page "System status: view"
+NuVendorPage::post1(get_defined_vars());   // the POST actions (code review R7, nuvendorpage.php)
+// opening a database tool in a new window by a one-time GET link. A POST with target=_blank loses its body in a window of
 // an installed app (Chrome "Install" / home screen) – the new window showed System status instead of the tool. nuapp.js sends the
 // POST with fetch (open=link) and gets {url} = ?p=vendor&open=<token>; the token lives in this session for two minutes.
 $appReq = strtoupper((string)($_POST['app'] ?? ''));
-if (nu_is_post() && nu_post('open') === 'link' && in_array($appReq, ['PMA', 'ADM', 'DB'], true)) {
-	header('Content-Type: application/json; charset=utf-8');
-	$tok = bin2hex(random_bytes(16));
-	$_SESSION['nu_vendor_open'] = array_filter((array)($_SESSION['nu_vendor_open'] ?? []), static fn($x) => (int)($x['exp'] ?? 0) > time());
-	$_SESSION['nu_vendor_open'][$tok] = ['app' => $appReq, 'table' => (string)($_POST['table'] ?? ''), 'exp' => time() + 120];
-	$go = nu_url('vendor', ['open' => $tok]);
-	if (!NuSecurity::recentAuth() && empty(NuAuth::user()['demo'])) { $_SESSION['nu_reauth_next'] = NuAuth::validNext($go) ?? nu_url('home'); $go = nu_url('reauth'); }
-	exit(json_encode(['url' => $go]));
-}
+NuVendorPage::post2(get_defined_vars());   // the POST actions (code review R7, nuvendorpage.php)
 if (!nu_is_post() && ($tok = (string)($_GET['open'] ?? '')) !== '') {
-	$o = $_SESSION['nu_vendor_open'][$tok] ?? null;
+	$o = $_SESSION[NuSess::VENDOR_OPEN][$tok] ?? null;
 	if (!is_array($o) || (int)$o['exp'] < time() || !NuAdmin::can('dbtool', 'change')) {
-		unset($_SESSION['nu_vendor_open'][$tok]);
+		unset($_SESSION[NuSess::VENDOR_OPEN][$tok]);
 		nu_flash('danger', t('vendor_failed'));
 		nu_redirect(nu_url('vendor'));
 	}
 	NuSecurity::requireRecentAuth(nu_url('vendor', ['open' => $tok]));
-	// 0.8.853: not used up on the first call – an installed app's window may load the link twice (Chrome opens it again in an app
+	// not used up on the first call – an installed app's window may load the link twice (Chrome opens it again in an app
 	// window); it stays bound to this session and ends after its two minutes
 	$oa = $o['app'] === 'DB' ? NuVendor::primaryDb() : (string)$o['app'];
 	if (isset(NuVendor::APPS[$oa]) && NuVendor::available($oa)) {
 		try {
-			// 0.8.854: not a redirect but a page that moves on by itself – a navigation the app window started counts as coming from
+			// not a redirect but a page that moves on by itself – a navigation the app window started counts as coming from
 			// outside, and the browser then holds back the tool's SameSite=Strict cookie through a redirect ("Invalid session");
 			// a step started by our own page sends it
 			$to = NuVendor::launch($oa, (string)$o['table']);
@@ -62,52 +47,14 @@ if (!nu_is_post() && ($tok = (string)($_GET['open'] ?? '')) !== '') {
 	}
 	nu_redirect(nu_url('vendor'));
 }
-if (nu_is_post()) NuSecurity::requireRecentAuth(nu_url('vendor'));   // phpMyAdmin / File Manager / InnoDB: password confirmed recently (0.8.207)
-
-// demo mode: snapshot / reset of the tables of the allowed forms, reset interval (core/nudemodata.php, 0.8.341)
-if (nu_is_post() && in_array(nu_post('action'), ['demo_snapshot', 'demo_reset', 'demo_interval'], true)) {
-	$by = (string)(NuAuth::user()['login'] ?? '');
-	try {
-		switch (nu_post('action')) {
-			case 'demo_snapshot':
-				$info = NuDemoData::snapshot($by);
-				nu_flash('success', t('demo_snap_done', count($info['tables']), array_sum($info['tables'])));
-				break;
-			case 'demo_reset':
-				nu_flash('success', t('demo_reset_done', NuDemoData::reset($by)));
-				break;
-			case 'demo_interval':
-				$hrs = (int)nu_post('hours');
-				NuDemoData::saveSetting(['hours' => in_array($hrs, NuDemoData::HOURS, true) ? $hrs : 24] + NuDemoData::setting());
-				nu_flash('success', t('set_saved', 1));
-				break;
-		}
-	} catch (RuntimeException $e) {
-		nu_flash('danger', $e->getMessage());
-	}
-	nu_redirect(nu_url('vendor') . '#demodata');
-}
-
-// star in the ▾ menu of the Database tile / card: this tool becomes the default (0.8.284)
-if (nu_is_post() && nu_post('action') === 'db_primary') {
-	$pa = strtoupper(nu_post('app'));
-	$err = NuVendor::available($pa) ? NuVendor::setPrimaryDb($pa) : t('vendor_failed');
-	if ($err === '') nu_flash('success', t('vendor_db_default_saved', NuVendor::DB_TOOLS[$pa]));
-	else nu_flash('danger', t('vendor_db_default_failed') . ' ' . $err);
-	nu_redirect(nu_url(nu_post('back') === 'home' ? 'home' : 'vendor'));
-}
+['e' => $e]
+	= NuVendorPage::post3(get_defined_vars());   // the POST actions (code review R7, nuvendorpage.php)
 $app = strtoupper((string)($_POST['app'] ?? $_GET['app'] ?? ''));
-if ($app === 'DB') $app = NuVendor::primaryDb();            // the primary database tool ($nuConfigPrimaryDatabaseManagement, 0.8.282)
+if ($app === 'DB') $app = NuVendor::primaryDb();            // the primary database tool ($nuConfigPrimaryDatabaseManagement)
 $table = (string)($_POST['table'] ?? '');
 
-if (nu_is_post() && isset(NuVendor::APPS[$app]) && NuVendor::available($app)) {
-	try {
-		nu_redirect(NuVendor::launch($app, $table));
-	} catch (Throwable $e) {
-		error_log('nuBuilder Next vendor login: ' . $e->getMessage());
-		nu_flash('danger', t('vendor_failed') . (nu_debug() ? ' ' . $e->getMessage() : ''));
-	}
-}
+['e' => $e]
+	= NuVendorPage::post4(get_defined_vars());   // the POST actions (code review R7, nuvendorpage.php)
 
 $mysql = nu_db()->type === 'mysql';
 
@@ -142,7 +89,7 @@ nu_layout_start(t('status_title'), 'home');
 <?php if ($warnings === 0): ?><div class="alert alert-success" id="statusOk"><i class="bi bi-check-circle me-1"></i><?= h(t('status_all_ok')) ?></div><?php endif; ?>
 <div class="nuVendorFull">
 <?php if (!$mysql): ?><div class="alert alert-info" id="vendorMsInfo"><i class="bi bi-info-circle me-1"></i><?= h(t('vendor_mysql_only')) ?></div><?php endif; ?>
-<?php if (NuHomeHook::active()): // custom code on the start page (0.8.378) – information, not a warning ?>
+<?php if (NuHomeHook::active()): // custom code on the start page – information, not a warning ?>
 	<div class="alert alert-info d-flex flex-wrap align-items-center gap-2" id="statusHomeHook"><span class="flex-grow-1"><i class="bi bi-code-slash me-1"></i><?= h(t('secchk_chk_homehook_on')) ?></span>
 		<a class="btn btn-sm btn-outline-secondary text-nowrap" href="<?= h(nu_url('procedures', ['id' => (string)(NuHomeHook::procedure()['id'] ?? '')])) ?>"><?= h(t('hook_error_open')) ?></a></div>
 <?php endif; ?>
@@ -151,7 +98,7 @@ nu_layout_start(t('status_title'), 'home');
 		<a class="btn btn-sm btn-warning text-nowrap" href="<?= h(nu_url('configfile')) ?>"><i class="bi bi-filetype-php me-1"></i><?= h(t('cfg_title')) ?></a></div>
 <?php endif; ?>
 <?php
-// Database (0.8.282): the primary tool (phpMyAdmin or Adminer, $nuConfigPrimaryDatabaseManagement), ▾ = the other one; a card that
+// Database: the primary tool (phpMyAdmin or Adminer, $nuConfigPrimaryDatabaseManagement), ▾ = the other one; a card that
 // explains where to copy them when none is there.
 $dbTools = NuVendor::dbTools();
 ?>
@@ -187,7 +134,8 @@ $dbTools = NuVendor::dbTools();
 						<tbody><?php foreach ($engines as $e): ?><tr><td><code><?= h($e['name']) ?></code></td><td><?= h((string)$e['engine']) ?></td><td class="text-end"><?= h(number_format((int)$e['row_count'], 0, '.', "'")) ?></td></tr><?php endforeach; ?></tbody>
 					</table>
 				</div>
-				<form method="post" action="<?= h(nu_url('vendor')) ?>" data-confirm="<?= h(t('vendor_innodb_confirm', count($engines))) ?>" data-confirm-ok="<?= h(t('vendor_innodb_convert')) ?>" data-confirm-class="btn btn-primary">
+				<form method="post" action="<?= h(nu_url('vendor')) ?>" data-confirm="<?= h(t('vendor_innodb_confirm', count($engines))) ?>"
+					data-confirm-ok="<?= h(t('vendor_innodb_convert')) ?>" data-confirm-class="btn btn-primary">
 					<?= nu_csrf_field() ?><input type="hidden" name="action" value="innodb">
 					<button class="btn btn-warning btn-sm" type="submit"><i class="bi bi-arrow-repeat me-1"></i><?= h(t('vendor_innodb_convert')) ?></button>
 				</form>
@@ -226,15 +174,19 @@ $demoForms = trim((string)(nu_cfg('nuConfigDemoSavingAllowedIds') ?? ''));
 				<h3 class="h6 mt-3" id="demodata"><?= h(t('demo_data_title')) ?>
 					<?= nu_info_tip(t('demo_data_tip')) ?></h3>
 				<div class="small text-body-secondary mb-1"><?= h($dTables ? t('demo_data_tables', implode(', ', $dTables)) : t('demo_snap_no_tables')) ?></div>
-				<div class="small mb-2" id="demoSnapState"><?php if ($dInfo): ?><i class="bi bi-camera me-1"></i><?= h(t('demo_snap_info', date(nu_dfmt('d.m.Y H:i'), (int)$dInfo['created']), (string)$dInfo['by'], array_sum((array)$dInfo['tables']))) ?>
+				<div class="small mb-2"
+					id="demoSnapState"><?php if ($dInfo): ?><i class="bi bi-camera me-1"></i><?= h(t('demo_snap_info', date(nu_dfmt('d.m.Y H:i'), (int)$dInfo['created']), (string)$dInfo['by'], array_sum((array)$dInfo['tables']))) ?>
 					<?php if ((int)$dSet['last'] > 0): ?> · <?= h(t('demo_reset_last', date(nu_dfmt('d.m.Y H:i'), (int)$dSet['last']))) ?><?php endif; ?>
 					<?php else: ?><span class="text-warning-emphasis"><i class="bi bi-exclamation-triangle me-1"></i><?= h(t('demo_snap_none')) ?></span><?php endif; ?></div>
 				<?php if (empty(NuAuth::user()['demo'])): ?>
 				<div class="d-flex flex-wrap gap-2 align-items-center">
-					<form method="post" action="<?= h(nu_url('vendor')) ?>"<?= $dInfo ? ' data-confirm="' . h(t('demo_snap_confirm')) . '"' : '' ?>><?= nu_csrf_field() ?><input type="hidden" name="action" value="demo_snapshot">
+					<form method="post"
+						action="<?= h(nu_url('vendor')) ?>"<?= $dInfo ? ' data-confirm="' . h(t('demo_snap_confirm')) . '"' : '' ?>><?= nu_csrf_field() ?><input type="hidden"
+						name="action" value="demo_snapshot">
 						<button class="btn btn-sm btn-outline-secondary" type="submit"<?= $dTables ? '' : ' disabled' ?>><i class="bi bi-camera me-1"></i><?= h(t('demo_snap_take')) ?></button></form>
 					<?php if ($dInfo): ?>
-					<form method="post" action="<?= h(nu_url('vendor')) ?>" data-confirm="<?= h(t('demo_reset_confirm')) ?>" data-confirm-ok="<?= h(t('demo_reset_now')) ?>" data-confirm-class="btn btn-danger"><?= nu_csrf_field() ?><input type="hidden" name="action" value="demo_reset">
+					<form method="post" action="<?= h(nu_url('vendor')) ?>" data-confirm="<?= h(t('demo_reset_confirm')) ?>"
+						data-confirm-ok="<?= h(t('demo_reset_now')) ?>" data-confirm-class="btn btn-danger"><?= nu_csrf_field() ?><input type="hidden" name="action" value="demo_reset">
 						<button class="btn btn-sm btn-outline-danger" type="submit"><i class="bi bi-arrow-counterclockwise me-1"></i><?= h(t('demo_reset_now')) ?></button></form>
 					<?php endif; ?>
 					<form method="post" action="<?= h(nu_url('vendor')) ?>" class="d-flex gap-2 align-items-center"><?= nu_csrf_field() ?><input type="hidden" name="action" value="demo_interval">

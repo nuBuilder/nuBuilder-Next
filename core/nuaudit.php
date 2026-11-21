@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Audit trail (0.8.350): every change nuBuilder Next makes to the tables of forms, one row per changed column, in
+ * Audit trail: every change nuBuilder Next makes to the tables of forms, one row per changed column, in
  * zzzzsys_nunext_audit – who (user id, login, IP), when, action (insert / update / delete / clone / restore), source (form /
  * subform / import / restore / log = copied from the former log entries), table, record, form, parent record of a sub-form row,
  * column, old and new value. One save shares a change_id. Captured in NuRecord::save / delete (also sub-form rows) and the CSV
@@ -34,8 +34,7 @@ final class NuAudit
 		try {
 			$v = nu_setting_value(self::SETTING);
 			$d = is_string($v) ? json_decode($v, true) : null;
-		} catch (Throwable) {
-		}
+		} catch (Throwable $ig) { nu_ignored($ig); }
 		$on = is_array($d) && array_key_exists('on', $d) ? (bool)$d['on'] : (bool)nu_cfg('nuConfigLogRecordChanges');
 		return self::$settings = ['on' => $on, 'keep_days' => max(0, (int)($d['keep_days'] ?? 0)), 'exclude' => trim((string)($d['exclude'] ?? ''))];
 	}
@@ -85,7 +84,8 @@ final class NuAudit
 		if (count($t) < 2) return '';
 		$out = '<ul class="nav nav-tabs mb-3 nuTabsScroll">';   // review N2: one line, scrolls sideways on phones
 		foreach ($t as $k => [$ic, $lb]) {
-			$out .= '<li class="nav-item"><a class="nav-link' . ($k === $active ? ' active" aria-current="page' : '') . '" href="' . h(nu_url($k)) . '"><i class="bi ' . $ic . ' me-1"></i>' . h($lb) . '</a></li>';
+			$out .= '<li class="nav-item"><a class="nav-link' . ($k === $active ? ' active" aria-current="page' : '') . '" href="' . h(nu_url($k))
+				. '"><i class="bi ' . $ic . ' me-1"></i>' . h($lb) . '</a></li>';
 		}
 		return $out . '</ul>';
 	}
@@ -190,7 +190,7 @@ final class NuAudit
 
 	/**
 	 * Columns of a form and of its sub-forms that the signed-in user sees there: [table (lower case) => [column (lower case) => object]].
-	 * null = everything (globeadmin, or the audit trail's own right – the list shows all columns anyway). Security review 0.8.367:
+	 * null = everything (globeadmin, or the audit trail's own right – the list shows all columns anyway). Security review:
 	 * the history of a record showed hidden / admin-only fields and columns of other forms to whoever could open the form.
 	 */
 	public static function formColumns(NuFormMeta $meta): ?array
@@ -199,7 +199,8 @@ final class NuAudit
 		if (!$u || (($u['globeadmin'] ?? false) && empty($u['demo'])) || NuAcl::can(NuAcl::FORM_AUDIT)) return null;
 		$out = [];
 		$add = static function (NuFormMeta $m, string $table) use (&$out): void {
-			foreach ($m->objects as $o) if (!NuRecord::hiddenFor($o) && !NuFieldAccess::masked($o)) $out[strtolower($table)][strtolower((string)$o['sob_all_id'])] = $o;   // withheld / masked: not in the history (0.8.480)
+			foreach ($m->objects as $o) if (!NuRecord::hiddenFor($o)
+				&& !NuFieldAccess::masked($o)) $out[strtolower($table)][strtolower((string)$o['sob_all_id'])] = $o;   // withheld / masked: not in the history
 		};
 		$add($meta, $meta->table());
 		foreach ($meta->objects as $o) {
@@ -249,7 +250,8 @@ final class NuAudit
 		$ok = static fn(?string $v) => $v === null || (!str_contains($v, self::CUT) && $v !== '•••');
 		if ($a['source'] === 'log') return false;
 		if ($a['action'] === 'delete') return true;
-		return ($a['action'] === 'update' || ($a['action'] === 'restore' && $a['old_value'] !== null)) && $a['column_name'] !== '' && $a['old_value'] !== $a['new_value'] && $ok($a['old_value']) && $ok($a['new_value']);
+		return ($a['action'] === 'update' || ($a['action'] === 'restore' && $a['old_value'] !== null)) && $a['column_name'] !== ''
+			&& $a['old_value'] !== $a['new_value'] && $ok($a['old_value']) && $ok($a['new_value']);
 	}
 
 	/**
@@ -273,7 +275,7 @@ final class NuAudit
 		$pk = $columns ? NuRecord::column($columns, (string)self::keyOf($meta, $table)) : null;
 		if ($pk === null) throw new RuntimeException(t('aud_err_table'));
 		$rid = (string)$a['record_id'];
-		// the user must see the record and – for one value – see and change that field on the form (security review 0.8.367)
+		// the user must see the record and – for one value – see and change that field on the form (security review)
 		$main = strcasecmp($table, $meta->table()) === 0 ? $rid : (string)$a['parent_id'];
 		if ($main !== '' && NuRecord::load($meta, $main) !== null && !NuRecord::visible($meta, $main)) throw new RuntimeException(t('err_forbidden'));
 		$cols = self::formColumns($meta);
@@ -281,7 +283,8 @@ final class NuAudit
 			$o = $cols[strtolower($table)][strtolower((string)$a['column_name'])] ?? null;
 			if ($o === null || !NuFieldAccess::writable($o, false) || in_array((string)$o['sob_all_access'], ['1', '2', '4'], true)) throw new RuntimeException(t('err_forbidden'));
 		}
-		$ctx = ['source' => 'restore', 'action' => 'restore', 'form_id' => $formId, 'form_code' => (string)$a['form_code'], 'parent_table' => (string)$a['parent_table'], 'parent_id' => (string)$a['parent_id']];
+		$ctx = ['source' => 'restore', 'action' => 'restore', 'form_id' => $formId, 'form_code' => (string)$a['form_code'],
+			'parent_table' => (string)$a['parent_table'], 'parent_id' => (string)$a['parent_id']];
 		$exists = static fn() => (bool)$db->value('SELECT COUNT(*) FROM ' . NuDB::ident($table) . ' WHERE ' . NuDB::ident($pk) . ' = ?', [$rid]);
 
 		if ($a['action'] === 'delete') {
@@ -322,7 +325,7 @@ final class NuAudit
 		return t('aud_restored_value', $c);
 	}
 
-	// ================================================================= deleting (0.8.351)
+	// ================================================================= deleting
 
 	public const OLDER = [1, 2, 3, 6, 12];          // "older than" choices in months
 	private const BATCH = 5000;

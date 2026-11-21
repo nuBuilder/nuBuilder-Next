@@ -120,6 +120,7 @@ return [
 	'hf_empty' => 'empty',
 	'hf_empty_tip' => 'This tile page has no tiles – its access levels see nothing on it. Open it and add tiles, or use the default again.',
 	'form_blank_page' => 'Blank page (system)',
+	'uhome_empty_tab' => 'No buttons on this tab yet. Add them in design mode, or let the New form wizard add one for each new form (After creating → User Home).',
 	'nav_change_password' => 'Change password', 'nav_language' => 'Language', 'nav_theme' => 'Theme',
 	'nav_pin_off' => 'Keep the menu open on every page',
 	'nav_pin_on' => 'Menu stays open – click to unpin',
@@ -5550,7 +5551,7 @@ return [
 	'fm_setup_done' => 'The File Manager is set up.',
 	'fm_setup_failed' => 'The File Manager could not be set up.',
 	'fm_ask_admin' => 'Ask the globeadmin to set it up.',
-	// demo mode (0.8.140, core/nudemo.php)
+	// demo mode (core/nudemo.php)
 	'demo_not_available' => 'Not available in the demo.',
 	'demo_no_delete' => 'Deleting is not available in the demo.',
 	'demo_blocked_hint' => 'This would change data. In the demo everything can be looked at, but nothing is saved.',
@@ -6143,6 +6144,7 @@ return [
 	'rd_search' => 'Search',
 	'rd_no_fields' => 'The data source has no columns.',
 	'rd_fields_error' => 'The fields could not be read:',
+	'rd_canvas' => 'Report layout – the arrow keys move the selected objects',
 	'rd_criteria' => 'Launch form fields',
 	'rd_system' => 'Page and system',
 	'rd_images' => 'Images (files)',
@@ -6308,7 +6310,7 @@ return [
 	'sqb_empty' => 'Add a table from the list.',
 	'sqb_run_failed' => 'The query failed:',
 	'sqb_columns' => 'Columns',
-	// security check (0.8.207, Admin tools → Security check, core/nusecurity.php)
+	// security check (Admin tools → Security check, core/nusecurity.php)
 	'secchk_title' => 'Security check',
 	'ipa_title' => 'IP access',
 	'sso_title' => 'Single sign-on',

@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Self-test (0.8.361): integration checks of the installation from inside the application – ?p=selftest, only in developer mode
+ * Self-test: integration checks of the installation from inside the application – ?p=selftest, only in developer mode
  * (globeadmin + $nuConfigDevMode, NuHash::devMode()), never for demo visitors. Meant for development / test installations: the
  * form checks write records into the SAMPLE application (sample_customer, sample_order, sample_order_item) and delete them again,
  * also their audit rows; a notification to the globeadmin is created and deleted. Nothing else is changed.
@@ -25,7 +25,7 @@ final class NuSelfTest
 
 	/**
 	 * The results of the session as the FROM of the system list 'selftest' (NuListDefs): a derived table of SELECT … UNION ALL with
-	 * parameters – nothing is stored and nothing created in the database. 0.8.766: before, a TEMPORARY table – which failed where the
+	 * parameters – nothing is stored and nothing created in the database. before, a TEMPORARY table – which failed where the
 	 * database user lacks CREATE TEMPORARY TABLES (or MySQL refuses temporary tables in a transaction under GTID consistency).
 	 * @var array{0: string, 1: list<mixed>}
 	 */
@@ -39,11 +39,14 @@ final class NuSelfTest
 		$sel = [];
 		$params = [];
 		foreach (array_values($results) as $i => $r) {
-			$sel[] = 'SELECT ' . $int('?') . ' AS pos, ' . $txt('?') . ' AS grp, ' . $txt('?') . ' AS id, ' . $txt('?') . ' AS title, ' . $txt('?') . ' AS status, ' . $txt('?') . ' AS detail, ' . $int('?') . ' AS ms';
-			array_push($params, $i + 1, mb_substr((string)($r['group'] ?? ''), 0, 40), mb_substr((string)($r['id'] ?? ''), 0, 80), (string)($r['title'] ?? ''), mb_substr((string)($r['status'] ?? ''), 0, 10), (string)($r['detail'] ?? ''), (int)($r['ms'] ?? 0));
+			$sel[] = 'SELECT ' . $int('?') . ' AS pos, ' . $txt('?') . ' AS grp, ' . $txt('?') . ' AS id, ' . $txt('?') . ' AS title, ' . $txt('?')
+				. ' AS status, ' . $txt('?') . ' AS detail, ' . $int('?') . ' AS ms';
+			array_push($params, $i + 1, mb_substr((string)($r['group'] ?? ''), 0, 40), mb_substr((string)($r['id'] ?? ''), 0, 80), (string)($r['title'] ?? ''),
+				mb_substr((string)($r['status'] ?? ''), 0, 10), (string)($r['detail'] ?? ''), (int)($r['ms'] ?? 0));
 		}
 		if ($sel) self::$source = [' FROM (' . implode(' UNION ALL ', $sel) . ') s', $params];
-		else self::$source = [' FROM (SELECT 0 AS pos, \'\' AS grp, \'\' AS id, \'\' AS title, \'\' AS status, \'\' AS detail, 0 AS ms' . ($db->type === 'mysql' ? ' FROM DUAL' : '') . ' WHERE 1 = 0) s', []];   // no run yet: an empty list
+		else self::$source = [' FROM (SELECT 0 AS pos, \'\' AS grp, \'\' AS id, \'\' AS title, \'\' AS status, \'\' AS detail, 0 AS ms'
+			. ($db->type === 'mysql' ? ' FROM DUAL' : '') . ' WHERE 1 = 0) s', []];   // no run yet: an empty list
 	}
 
 	/** @return list<array{group: string, id: string, title: string, status: string, detail: string, ms: int}> */
@@ -90,7 +93,7 @@ final class NuSelfTest
 			['system', 'php', static function () use ($ok, $warn) {
 				$miss = array_values(array_filter(['pdo', 'mbstring', 'json', 'openssl', 'zip', 'gd', 'intl', 'curl'], static fn($e) => !extension_loaded($e)));
 				$v = 'PHP ' . PHP_VERSION;
-				$fix = NuSecurity::phpFixNote();               // 0.8.362: PHP2Shell
+				$fix = NuSecurity::phpFixNote();               // PHP2Shell
 				$d = $v . ($miss ? ' · ' . t('st_missing', implode(', ', $miss)) : '') . ($fix !== '' ? ' · ' . $fix : '');
 				return ($miss || $fix !== '') ? $warn($d) : $ok($v);
 			}],
@@ -138,7 +141,7 @@ final class NuSelfTest
 				return $red ? $warn(implode(' · ', $red)) : $ok();
 			}],
 			['system', 'mail', static function () use ($ok) {
-				return NuMail::configured() ? $ok() : ['skip', t('ntf_f_email_off')];   // not set up is no fault (0.8.704): nothing to check
+				return NuMail::configured() ? $ok() : ['skip', t('ntf_f_email_off')];   // not set up is no fault: nothing to check
 			}],
 			// ------------------------------------------------------------ data
 			['data', 'sample', static function () use ($ok, $fail) {
@@ -164,7 +167,7 @@ final class NuSelfTest
 			['data', 'report', static function () use ($ok, $warn, $fail) {
 				$r = NuReport::available() ? NuReport::load('sample_customers') : null;
 				if (!$r) return $warn(t('st_missing', 'sample_customers'));
-				if (NuReport::tcpdfDir() === null) return ['skip', t('rpt_err_tcpdf')];   // no PDF library on this installation (0.8.889: CI's SQL Server job)
+				if (NuReport::tcpdfDir() === null) return ['skip', t('rpt_err_tcpdf')];   // no PDF library on this installation (CI's SQL Server job)
 				$pdf = NuReport::pdf($r, []);
 				return str_starts_with($pdf, '%PDF') ? $ok(t('st_bytes', strlen($pdf))) : $fail(substr($pdf, 0, 80));
 			}],
@@ -192,7 +195,8 @@ final class NuSelfTest
 				if ($id === '') return ['skip', ''];
 				$m = NuFormMeta::load('samplecustomer');
 				// as the browser does: all values of the record, the changed ones listed in "edited"
-				$r = NuRecord::save($m, ['record_id' => $id, 'values' => ['cus_name' => 'Self-test customer (changed)', 'cus_phone' => '+41 00'] + (array)NuRecord::load($m, $id), 'edited' => ['cus_name', 'cus_phone']]);
+				$r = NuRecord::save($m,
+					['record_id' => $id, 'values' => ['cus_name' => 'Self-test customer (changed)', 'cus_phone' => '+41 00'] + (array)NuRecord::load($m, $id), 'edited' => ['cus_name', 'cus_phone']]);
 				$row = nu_db()->one('SELECT cus_name, cus_phone FROM sample_customer WHERE sample_customer_id = ?', [$id]);
 				return !empty($r['ok']) && $row && $row['cus_name'] === 'Self-test customer (changed)' ? $ok() : $fail(json_encode($r['errors'] ?? $row, JSON_UNESCAPED_UNICODE));
 			}],
@@ -202,7 +206,8 @@ final class NuSelfTest
 				if ($cust === '' || $prod === '') return ['skip', ''];
 				$m = NuFormMeta::load('sampleorder');
 				$row = static fn(string $pk, array $v, bool $del = false) => ['pk' => $pk, 'values' => $v, 'edited' => array_keys($v), 'deleted' => $del];
-				$r = NuRecord::save($m, ['record_id' => '-1', 'values' => ['ord_number' => self::MARK . random_int(10000, 99999), 'ord_sample_customer_id' => $cust, 'ord_date' => date('Y-m-d'), 'ord_status' => 'open'],
+				$r = NuRecord::save($m,
+					['record_id' => '-1', 'values' => ['ord_number' => self::MARK . random_int(10000, 99999), 'ord_sample_customer_id' => $cust, 'ord_date' => date('Y-m-d'), 'ord_status' => 'open'],
 					'edited' => [], 'subforms' => ['sample_items' => ['rows' => [$row('', ['ori_sample_product_id' => $prod, 'ori_qty' => '2', 'ori_price' => '10']),
 						$row('', ['ori_sample_product_id' => $prod, 'ori_qty' => '1', 'ori_price' => '5'])]]]]);
 				if (empty($r['ok'])) return $fail(json_encode($r['errors'] ?? $r, JSON_UNESCAPED_UNICODE));
@@ -214,7 +219,8 @@ final class NuSelfTest
 				$r2 = NuRecord::save($m, ['record_id' => $oid, 'values' => (array)NuRecord::load($m, $oid), 'edited' => [], 'subforms' => ['sample_items' => ['rows' => [
 					$row((string)$items[0]['id'], ['ori_qty' => '7']), $row((string)$items[1]['id'], [], true)]]]]);
 				$after = nu_db()->all('SELECT ori_qty FROM sample_order_item WHERE ori_sample_order_id = ?', [$oid]);
-				return !empty($r2['ok']) && count($after) === 1 && (float)$after[0]['ori_qty'] === 7.0 ? $ok(t('st_subform_ok')) : $fail(json_encode(empty($r2['ok']) ? ($r2['errors'] ?? $r2) : $after, JSON_UNESCAPED_UNICODE));
+				return !empty($r2['ok']) && count($after) === 1
+					&& (float)$after[0]['ori_qty'] === 7.0 ? $ok(t('st_subform_ok')) : $fail(json_encode(empty($r2['ok']) ? ($r2['errors'] ?? $r2) : $after, JSON_UNESCAPED_UNICODE));
 			}],
 			['forms', 'hash', static function () use ($ok, $fail) {
 				$id = self::$made['customers'][0] ?? '';
@@ -276,7 +282,7 @@ final class NuSelfTest
 				$after = NuNotify::summary()['unread'];
 				return $got && $after === $before - 1 ? $ok() : $fail('unread ' . $before . ' → ' . $after);
 			}],
-			['features', 'home_hook', static function () use ($ok, $fail) {        // start page hooks (0.8.378): the PHP functions and the merge, without a procedure
+			['features', 'home_hook', static function () use ($ok, $fail) {        // start page hooks: the PHP functions and the merge, without a procedure
 				$code = "nuHomeAddGroup('x_st', 'Self-test'); nuHomeAddTile('x_st_tile', ['group' => 'x_st', 'label' => 'Self-test', 'page' => 'help']); nuHomeSetBadge('x_st_tile', '1', 'info'); nuHomeHideTile('x_hidden');";
 				NuHomeHook::reset();
 				$r = NuPhp::isolated(static fn() => NuPhp::run($code, NuHash::plain(), 'selftest'));

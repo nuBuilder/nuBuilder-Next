@@ -8,9 +8,9 @@ defined('NU_ROOT') || exit;
  * Checks and backups: core/nuconfigfile.php.
  */
 
-// admin rights (0.8.323): the globeadmin, or a user whose admin role has the right (core/nuadmin.php)
+// admin rights: the globeadmin, or a user whose admin role has the right (core/nuadmin.php)
 NuAdmin::require('configfile', 'change');
-NuSecurity::requireRecentAuth(nu_url('configfile'));   // password again when the last confirmation is older than 15 minutes (0.8.207)
+NuSecurity::requireRecentAuth(nu_url('configfile'));   // password again when the last confirmation is older than 15 minutes
 
 $current  = NuConfigFile::read();
 $text     = $current;
@@ -20,65 +20,8 @@ $result   = null;                     // [type, message] of check / save
 $loaded   = '';                       // backup shown in the editor
 
 // "Switch on" buttons of other pages (NuConfigFile::enableButton): set one variable to true, back to that page
-if (nu_is_post() && nu_post('action') === 'enable' && isset(NuConfigFile::SWITCHES[nu_post('var')])) {
-	[$event, $done, $routes] = NuConfigFile::SWITCHES[nu_post('var')];
-	$back = in_array(nu_post('return'), $routes, true) ? nu_post('return') : $routes[0];
-	$err = NuConfigFile::setVariable(nu_post('var'), 'true');
-	if ($err === '') {
-		NuLog::write($event, 'nuconfig.php', '', ['$' . nu_post('var') => true]);
-		nu_flash('success', t($done));
-	} else {
-		nu_flash('danger', t('set_use_db_failed') . ' ' . $err);
-	}
-	$rid = nu_post('return_id');
-	$q = $rid !== '' && preg_match('/^[\w.-]{1,64}$/', $rid) ? ['id' => $rid] : [];
-	foreach (['f', 'r'] as $k) {                         // back to a form page (?p=form&f=…&r=…)
-		$v = (string)($_POST['return_q'][$k] ?? '');
-		if ($v !== '' && preg_match('/^[\w.-]{1,64}$/', $v)) $q[$k] = $v;
-	}
-	nu_redirect(nu_url($back, $q));
-}
-
-// "Generate key" (API clients page): $nuConfigSecretKey while it is empty
-if (nu_is_post() && nu_post('action') === 'secretkey') {
-	$err = NuConfigFile::setSecretKey(nu_post('key'));
-	if ($err === '') {
-		$sealed = NuSecret::sealPlain(nu_post('key'));     // secrets stored before the key existed (2FA, OAuth mail, SSO, webhooks, AI, SMTP copy): encrypt them now (0.8.1326)
-		NuLog::write('secret_key_set', 'nuconfig.php', '', ['length' => strlen(nu_post('key')), 'encrypted' => $sealed]);   // never the key itself
-		nu_flash('success', t('key_saved'));
-	} else {
-		nu_flash('danger', t('set_use_db_failed') . ' ' . $err);
-	}
-	nu_redirect(nu_url(nu_post('return') === 'securitycheck' ? 'securitycheck' : 'apiclients'));
-}
-
-// Save in the browser checks first (assets/js/nuconfigfile.js): JSON {ok, error, line} – nothing is written here
-if (nu_is_post() && nu_post('action') === 'precheck') {
-	header('Content-Type: application/json; charset=utf-8');
-	[$err, , $line] = NuConfigFile::check(str_replace("\r\n", "\n", (string)($_POST['content'] ?? ''))) + [1 => [], 2 => 0];
-	exit(json_encode(['ok' => $err === '', 'error' => $err, 'line' => (int)$line], JSON_UNESCAPED_UNICODE));
-}
-
-if (nu_is_post()) {
-	$action = nu_post('action');
-	$text   = str_replace("\r\n", "\n", (string)($_POST['content'] ?? ''));
-	$posted = (string)($_POST['hash'] ?? '');
-	if ($action === 'save') {
-		$err = NuConfigFile::save($text, $posted);
-		if ($err === '') {
-			nu_flash('success', t('cfg_saved'));
-			nu_redirect(nu_url('configfile'));
-		}
-		$result = ['danger', $err];
-	} else {
-		[$err] = NuConfigFile::check($text);
-		$result = $err === '' ? ['success', t('cfg_check_ok')] : ['danger', $err];
-	}
-	if (!hash_equals($hash, $posted)) $result = ['warning', t('cfg_err_changed')];   // the file changed meanwhile: keep the text, new base
-} elseif (is_string($_GET['backup'] ?? null) && ($b = NuConfigFile::backup((string)$_GET['backup'])) !== '') {
-	$text = $b;
-	$loaded = (string)$_GET['backup'];
-}
+['text' => $text, 'result' => $result, 'hash' => $hash, 'loaded' => $loaded]
+	= NuConfigfilePage::post(get_defined_vars());   // the POST actions (code review R7, nuconfigfilepage.php)
 $backups = NuConfigFile::backups();
 
 $head = '<link rel="stylesheet" href="' . nu_asset(NU_CODEMIRROR . '/codemirror.css') . '">';
@@ -115,13 +58,18 @@ nu_layout_start('nuconfig.php', 'home', ['container' => 'nuContainer', 'settings
 					title="<?= h(t('info')) ?>" aria-label="<?= h(t('info')) ?>"><i class="bi bi-info-circle"></i></button>
 				<button type="button" class="btn btn-link btn-sm p-0 lh-1 text-warning-emphasis" id="cfgWarnShow" hidden aria-controls="cfgWarn" aria-expanded="false"
 					title="<?= h(t('cfg_warn_show')) ?>" aria-label="<?= h(t('cfg_warn_show')) ?>"><i class="bi bi-exclamation-triangle"></i></button></h1>
-			<div class="nuTitleSub text-body-secondary small"><code class="text-break" title="<?= h(NuConfigFile::path()) ?>"><?= h(nu_short_path(NuConfigFile::path())) ?></code><input type="hidden" id="cfgPathFull" value="<?= h(NuConfigFile::path()) ?>"><button type="button" class="btn btn-link btn-sm p-0 ms-1 align-baseline" id="cfgPathCopy" data-nu-copy="#cfgPathFull" title="<?= h(t('copy')) ?>" aria-label="<?= h(t('copy')) ?>"><i class="bi bi-clipboard"></i></button><?php /* review N5 */ ?></div>
+			<div class="nuTitleSub text-body-secondary small"><code class="text-break"
+				title="<?= h(NuConfigFile::path()) ?>"><?= h(nu_short_path(NuConfigFile::path())) ?></code><input type="hidden" id="cfgPathFull"
+				value="<?= h(NuConfigFile::path()) ?>"><button type="button" class="btn btn-link btn-sm p-0 ms-1 align-baseline" id="cfgPathCopy"
+				data-nu-copy="#cfgPathFull" title="<?= h(t('copy')) ?>"
+				aria-label="<?= h(t('copy')) ?>"><i class="bi bi-clipboard"></i></button><?php /* review N5 */ ?></div>
 			<div class="collapse nuTitleSub text-body-secondary small" id="cfgHint"><?= h(t('cfg_hint', NuConfigFile::KEEP)) ?></div>
 			<div class="d-flex flex-wrap gap-2"><?= nu_back_button() ?>
 				<?php if ($writable): ?>
 					<button class="btn nuBtnAct nuBtnSave" type="submit" name="action" value="save" id="cfgSave" data-nu-save><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button>
 				<?php endif; ?>
-				<button class="btn btn-outline-secondary" type="submit" name="action" value="check" id="cfgCheck" title="<?= h(t('cfg_check_hint')) ?>"><i class="bi bi-shield-check me-1"></i><?= h(t('cfg_check')) ?></button>
+				<button class="btn btn-outline-secondary" type="submit" name="action" value="check" id="cfgCheck"
+					title="<?= h(t('cfg_check_hint')) ?>"><i class="bi bi-shield-check me-1"></i><?= h(t('cfg_check')) ?></button>
 				<div class="dropdown">
 					<button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false"<?= $backups ? '' : ' disabled' ?>>
 						<i class="bi bi-clock-history me-1"></i><?= h(t('cfg_backups')) ?></button>
@@ -134,14 +82,17 @@ nu_layout_start('nuconfig.php', 'home', ['container' => 'nuContainer', 'settings
 				</div>
 			</div>
 		</div>
-		<div class="alert alert-warning alert-dismissible small rounded-0 border-start-0 border-end-0 mb-0" id="cfgWarn"><i class="bi bi-exclamation-triangle me-1"></i><?= h(t('cfg_warning')) ?><button type="button" class="btn-close" id="cfgWarnHide" title="<?= h(t('scode_warn_hide')) ?>" aria-label="<?= h(t('scode_warn_hide')) ?>"></button></div>
+		<div class="alert alert-warning alert-dismissible small rounded-0 border-start-0 border-end-0 mb-0"
+			id="cfgWarn"><i class="bi bi-exclamation-triangle me-1"></i><?= h(t('cfg_warning')) ?><button type="button" class="btn-close" id="cfgWarnHide"
+			title="<?= h(t('scode_warn_hide')) ?>" aria-label="<?= h(t('scode_warn_hide')) ?>"></button></div>
 		<div class="alert alert-danger rounded-0 border-start-0 border-end-0 mb-0 text-break" id="cfgLive" role="alert" hidden></div>
 		<div class="cfgEditor">
 			<div class="d-flex flex-wrap gap-2 align-items-center px-3 py-2 border-bottom cfgToolbar">
 				<label class="form-label small fw-semibold mb-0" for="cfgContent">PHP</label>
-				<span class="cfgCodeTools d-flex gap-2 ms-3 me-auto"></span><?php // editor toolbar next to the label (0.8.592) ?>
+				<span class="cfgCodeTools d-flex gap-2 ms-3 me-auto"></span><?php // editor toolbar next to the label ?>
 				<?php if ($writable): ?>
-					<button type="button" class="btn btn-sm btn-outline-secondary" id="cfgInsertBtn" data-bs-toggle="modal" data-bs-target="#cfgInsert"><i class="bi bi-plus-square me-1"></i><?= h(t('cfg_ins_btn')) ?></button>
+					<button type="button" class="btn btn-sm btn-outline-secondary" id="cfgInsertBtn" data-bs-toggle="modal"
+						data-bs-target="#cfgInsert"><i class="bi bi-plus-square me-1"></i><?= h(t('cfg_ins_btn')) ?></button>
 				<?php endif; ?>
 			</div>
 			<textarea class="form-control font-monospace border-0 rounded-0 cfgCode" name="content" id="cfgContent" rows="28" spellcheck="false" aria-label="nuconfig.php"
@@ -149,7 +100,7 @@ nu_layout_start('nuconfig.php', 'home', ['container' => 'nuContainer', 'settings
 		</div>
 	</div>
 </form>
-<?php if ($writable):   // Insert variable (0.8.442): variables nuBuilder Next reads that the file does not set yet (NuConfigFile::catalog), and own ones ?>
+<?php if ($writable):   // Insert variable: variables nuBuilder Next reads that the file does not set yet (NuConfigFile::catalog), and own ones ?>
 <div class="modal fade" id="cfgInsert" tabindex="-1" aria-labelledby="cfgInsertTitle" aria-hidden="true"
 	 data-catalog="<?= h((string)json_encode(NuConfigFile::catalog(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>"
 	 data-commented="<?= h(t('cfg_ins_commented')) ?>" data-done="<?= h(t('cfg_ins_done')) ?>" data-none="<?= h(t('cfg_ins_none')) ?>"
@@ -168,7 +119,8 @@ nu_layout_start('nuconfig.php', 'home', ['container' => 'nuContainer', 'settings
 				<h3 class="h6 mt-4"><?= h(t('cfg_ins_other')) ?></h3>
 				<div class="row g-2 align-items-end" id="cfgInsOther">
 					<div class="col-sm-5"><label class="form-label small mb-1" for="cfgInsName"><?= h(t('cfg_ins_name')) ?></label>
-						<div class="input-group input-group-sm"><span class="input-group-text">$</span><input class="form-control font-monospace" id="cfgInsName" value="nuConfig" autocomplete="off" spellcheck="false"></div></div>
+						<div class="input-group input-group-sm"><span class="input-group-text">$</span><input class="form-control font-monospace" id="cfgInsName"
+							value="nuConfig" autocomplete="off" spellcheck="false"></div></div>
 					<div class="col-sm-3"><label class="form-label small mb-1" for="cfgInsType"><?= h(t('cfg_ins_type')) ?></label>
 						<select class="form-select form-select-sm" id="cfgInsType">
 							<option value="text"><?= h(t('cfg_ins_text')) ?></option><option value="number"><?= h(t('cfg_ins_number')) ?></option>

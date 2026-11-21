@@ -1,5 +1,5 @@
 /* global nuBs */
-/* Reports with AI (0.8.1097, core/nureportspec.php): the dialogue #raiDlg on the report page and in the report designer –
+/* Reports with AI (core/nureportspec.php): the dialogue #raiDlg on the report page and in the report designer –
    describe → copy the prompt (+ context file) → paste the answer → check (plan) → preview PDF → apply. Posts to ?p=reportai&id=. */
 (function () {
 	'use strict';
@@ -52,7 +52,7 @@
 			return copy(r.text).then(function () { say(M.fai_copied); ansEl.focus(); }, function () { $('raiPromptBox').open = true; say(M.fai_copy_failed, true); });
 		}).catch(function () { say('?', true); });
 	});
-	// "Ask AI" (0.8.1099, assets/js/nuaiask.js): the same prompt goes to a configured AI service, its answer into the answer box
+	// "Ask AI" (assets/js/nuaiask.js): the same prompt goes to a configured AI service, its answer into the answer box
 	if (window.NuAiAsk && $('raiAsk')) window.NuAiAsk.mount($('raiAsk'), {
 		prompt: function () {
 			if (!reqEl.value.trim()) { reqEl.classList.add('is-invalid'); reqEl.focus(); return ''; }

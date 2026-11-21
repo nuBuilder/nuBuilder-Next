@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Branding per installation (0.8.297, Admin tools → Branding): own logo (light / dark mode), accent colour, title next to the logo,
+ * Branding per installation (Admin tools → Branding): own logo (light / dark mode), accent colour, title next to the logo,
  * logo as browser icon, environment label ("TEST") with its colour.
  *   - settings: one JSON row 'branding' in zzzzsys_nunext_setting;
  *   - logos: nuBuilder's file table zzzzsys_file (ids / codes nunext_logo and nunext_logo_dark) – they travel with backups and the
@@ -25,8 +25,8 @@ final class NuBranding
 	public const DEFAULTS = ['accent' => '', 'logo' => false, 'logo_dark' => false, 'show_title' => false, 'favicon' => false, 'logo_show' => 'all',
 		'env_label' => '', 'env_color' => '#dc3545', 'title' => '', 'title_phone' => '', 'show_title_phone' => true, 'pwa' => true, 'rev' => ''];
 	public const ENV_LEN = 20;
-	public const TITLE_LEN = 100;   // own title of the application (0.8.736), '' = $nuConfigTitle
-	/** Where the logo shows (0.8.630): all = top bar and sign-in pages, login = sign-in pages only, none = nowhere. */
+	public const TITLE_LEN = 100;   // own title of the application, '' = $nuConfigTitle
+	/** Where the logo shows: all = top bar and sign-in pages, login = sign-in pages only, none = nowhere. */
 	public const LOGO_SHOW = ['all', 'login', 'none'];
 
 	private static ?array $cache = null;
@@ -58,7 +58,7 @@ final class NuBranding
 		$out['env_color'] = self::hex($out['env_color']) ?: self::DEFAULTS['env_color'];
 		$out['env_label'] = mb_substr(trim($out['env_label']), 0, self::ENV_LEN);
 		$out['title'] = mb_substr(trim($out['title']), 0, self::TITLE_LEN);
-		$out['title_phone'] = mb_substr(trim((string)$out['title_phone']), 0, self::TITLE_LEN);   // phones (0.8.996), '' = no title there
+		$out['title_phone'] = mb_substr(trim((string)$out['title_phone']), 0, self::TITLE_LEN);   // phones, '' = no title there
 		$out['show_title_phone'] = (bool)$out['show_title_phone'];
 		if (!in_array($out['logo_show'], self::LOGO_SHOW, true)) $out['logo_show'] = 'all';
 		return self::$cache = $out;
@@ -112,13 +112,14 @@ final class NuBranding
 		$title = nu_app_title();
 		$cls = 'nu-brand nu-brand-own' . ($size === 'lg' ? ' nu-brand-lg' : '');
 		$img = $b['logo_dark']
-			? '<img class="nu-brand-light" src="' . h(self::logoUrl(false)) . '" alt="' . h($title) . '"><img class="nu-brand-dark" src="' . h(self::logoUrl(true)) . '" alt="' . h($title) . '">'   // one of the two is shown: both carry the name (0.8.368)
+			? '<img class="nu-brand-light" src="' . h(self::logoUrl(false)) . '" alt="' . h($title) . '"><img class="nu-brand-dark" src="'
+				. h(self::logoUrl(true)) . '" alt="' . h($title) . '">'   // one of the two is shown: both carry the name
 			: '<img src="' . h(self::logoUrl(false)) . '" alt="' . h($title) . '">';
 		$text = $size === '' ? self::titleHtml() : '';
 		return '<span class="' . $cls . '">' . $img . '</span>' . $text;
 	}
 
-	/** Is the logo shown in the top bar ('') or on the sign-in pages ('lg')? (0.8.630) */
+	/** Is the logo shown in the top bar ('') or on the sign-in pages ('lg')? */
 	public static function logoShown(string $size = ''): bool
 	{
 		$w = self::get()['logo_show'];
@@ -133,15 +134,15 @@ final class NuBranding
 	}
 
 	/**
-	 * The title of the top bar (0.8.996): the title on wider screens while "show title" is on, the phone title below 576 px while
-	 * "show the title on phones" is on (0.8.997) – an empty phone title shows nothing there (CSS .nuTitleDesk / .nuTitlePhone in nuapp.css)
+	 * The title of the top bar: the title on wider screens while "show title" is on, the phone title below 576 px while
+	 * "show the title on phones" is on – an empty phone title shows nothing there (CSS .nuTitleDesk / .nuTitlePhone in nuapp.css)
 	 */
 	public static function titleHtml(): string
 	{
 		$b = self::get();
 		$desk = nu_app_title(true);
 		$out = $b['show_title'] && $desk !== '' ? '<span class="nu-brand-title nuTitleDesk">' . h($desk) . '</span>' : '';
-		// phones: own switch "Show the title on phones" (0.8.997)
+		// phones: own switch "Show the title on phones"
 		if ($b['show_title_phone'] && $b['title_phone'] !== '') $out .= '<span class="nu-brand-title nuTitlePhone">' . h($b['title_phone']) . '</span>';
 		return $out;
 	}
@@ -268,10 +269,10 @@ final class NuBranding
 		$new['favicon'] = !empty($in['favicon']);
 		$new['logo_show'] = in_array((string)($in['logo_show'] ?? 'all'), self::LOGO_SHOW, true) ? (string)$in['logo_show'] : 'all';
 		if (!self::envFromConfig()) $new['env_label'] = $label;
-		if (array_key_exists('title', $in)) $new['title'] = mb_substr(trim((string)$in['title']), 0, self::TITLE_LEN);   // 0.8.736
-		if (array_key_exists('pwa', $in)) $new['pwa'] = !empty($in['pwa']);   // installable app (0.8.1136)
-		if (array_key_exists('show_title_phone', $in)) $new['show_title_phone'] = !empty($in['show_title_phone']);   // 0.8.997
-		if (array_key_exists('title_phone', $in)) $new['title_phone'] = mb_substr(trim((string)$in['title_phone']), 0, self::TITLE_LEN);   // 0.8.996
+		if (array_key_exists('title', $in)) $new['title'] = mb_substr(trim((string)$in['title']), 0, self::TITLE_LEN);
+		if (array_key_exists('pwa', $in)) $new['pwa'] = !empty($in['pwa']);   // installable app
+		if (array_key_exists('show_title_phone', $in)) $new['show_title_phone'] = !empty($in['show_title_phone']);
+		if (array_key_exists('title_phone', $in)) $new['title_phone'] = mb_substr(trim((string)$in['title_phone']), 0, self::TITLE_LEN);
 		$new['env_color'] = $envColor;
 		if ($accent !== '' && self::contrast($accent, '#ffffff') < 3) $warn[] = t('brand_warn_light');
 
@@ -293,7 +294,7 @@ final class NuBranding
 		return [[], $warn];
 	}
 
-	/** The logo no longer in the top bar (0.8.734, right-click on it): "everywhere" → "only on the sign-in pages". @return bool changed */
+	/** The logo no longer in the top bar (right-click on it): "everywhere" → "only on the sign-in pages". @return bool changed */
 	public static function hideTopLogo(): bool
 	{
 		$b = self::get();
@@ -324,7 +325,7 @@ final class NuBranding
 		NuLog::write('branding_reset', 'zzzzsys_nunext_setting', self::SETTING);
 	}
 
-	/** CSS of an accent colour (Bootstrap's primary in all its uses, --nu-accent, --nu-on-accent, tab line) – Branding and themes (0.8.632). */
+	/** CSS of an accent colour (Bootstrap's primary in all its uses, --nu-accent, --nu-on-accent, tab line) – Branding and themes. */
 	public static function accentCss(string $c): string
 	{
 		$rgb = implode(', ', self::rgb($c));
@@ -365,7 +366,7 @@ final class NuBranding
 
 	// ------------------------------------------------------------------ public route ?p=brand
 
-	/** Bytes of the own (light) logo, null when there is none (0.8.1136: icon of the installable app). */
+	/** Bytes of the own (light) logo, null when there is none (icon of the installable app). */
 	public static function logoBytes(): ?string
 	{
 		if (!self::get()['logo']) return null;
@@ -393,7 +394,7 @@ final class NuBranding
 		$b = self::get();
 		$id = $a === 'logodark' && $b['logo_dark'] ? self::FILE_DARK : self::FILE_LIGHT;
 		$row = null;
-		try { if ($b['logo'] && nu_db()->tableExists(NuFile::TABLE)) $row = nu_db()->one('SELECT sfi_json FROM zzzzsys_file WHERE zzzzsys_file_id = ?', [$id]); } catch (Throwable) {}
+		try { if ($b['logo'] && nu_db()->tableExists(NuFile::TABLE)) $row = nu_db()->one('SELECT sfi_json FROM zzzzsys_file WHERE zzzzsys_file_id = ?', [$id]); } catch (Throwable $ig) { nu_ignored($ig); }
 		$info = $row ? NuFile::info((string)$row['sfi_json']) : [];
 		if (!$info || !preg_match('#^data:(image/[\w.+-]+)(;base64)?,#', $info['url'], $m) || !in_array($m[1], self::TYPES, true)) {
 			// the logo was deleted (e.g. in the Files form): nuBuilder Next's own logo instead of a broken image

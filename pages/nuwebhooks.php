@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Webhooks (0.8.715, core/nuwebhook.php): list · ?tab=calls the calls · ?id=new | ?id=<webhook> edit · ?call=<id> one call with its
+ * Webhooks (core/nuwebhook.php): list · ?tab=calls the calls · ?id=new | ?id=<webhook> edit · ?call=<id> one call with its
  * attempts. Admin right "webhooks" (full access: record data leaves the server). The secret is shown once after create / New secret.
  */
 NuAdmin::require('webhooks');
@@ -22,52 +22,22 @@ $errors = [];
 $test = null;
 
 // ------------------------------------------------------------------ actions
-if (nu_is_post()) {
-	$action = nu_post('action');
-	if ($action === 'settings') {
-		NuWebhook::setSettings(nu_check('allow_private') === '1');
-		nu_flash('success', t('saved'));
-		nu_redirect(nu_url('webhooks'));
-	}
-	if ($call && $action === 'resend') {
-		$r = NuWebhook::resend($callId);
-		nu_flash($r && $r['ok'] ? 'success' : 'warning', $r && $r['ok'] ? t('wh_test_ok', $r['code'], $r['ms']) : t('wh_test_fail', (string)($r['error'] ?? '')));
-		nu_redirect(nu_url('webhooks', ['call' => $callId]));
-	}
-	if ($action === 'save') {
-		$in = ['name' => nu_post('name'), 'active' => nu_check('active') === '1', 'forms' => (array)($_POST['forms'] ?? []), 'events' => (array)($_POST['events'] ?? []),
-			'url' => nu_post('url'), 'fields' => nu_post('fields'), 'template' => nu_post('template'), 'new_secret' => nu_post('new_secret') === '1'];
-		[$newId, $errors, $secret] = NuWebhook::save($in, $hook ? $id : '');
-		if (!$errors) {
-			if ($secret !== null) $_SESSION['nu_wh_secret'] = ['id' => $newId, 'secret' => $secret];
-			if (nu_post('do_test') === '1') {                       // "Send test": save, then one sample call now
-				$r = NuWebhook::test((array)NuWebhook::get($newId));
-				$_SESSION['nu_wh_test'] = ['id' => $newId] + $r;
-			} else {
-				nu_flash('success', t('saved'));
-			}
-			nu_redirect(nu_url('webhooks', ['id' => $newId]));
-		}
-		nu_flash('danger', t('err_check_form'));
-	}
-	if ($hook && $action === 'delete') {
-		NuWebhook::delete($id);
-		nu_flash('success', t('wh_deleted', $hook['name']));
-		nu_redirect(nu_url('webhooks'));
-	}
-}
+['call' => $call, 'callId' => $callId, 'errors' => $errors, 'hook' => $hook, 'id' => $id]
+	= NuWebhooksPage::post(get_defined_vars());   // the POST actions (code review R7, nuwebhookspage.php)
 
-$secret = $_SESSION['nu_wh_secret'] ?? null;
+$secret = $_SESSION[NuSess::WEBHOOK_SECRET] ?? null;
 if ($secret && (string)$secret['id'] !== $id) $secret = null;
-unset($_SESSION['nu_wh_secret']);                                   // shown once
-$test = $_SESSION['nu_wh_test'] ?? null;
+unset($_SESSION[NuSess::WEBHOOK_SECRET]);                                   // shown once
+$test = $_SESSION[NuSess::WEBHOOK_TEST] ?? null;
 if ($test && (string)$test['id'] !== $id) $test = null;
-unset($_SESSION['nu_wh_test']);
+unset($_SESSION[NuSess::WEBHOOK_TEST]);
 
 $tabs = static function (string $cur): string {
 	return '<ul class="nav nav-tabs mb-3" id="whTabs">'
-		. '<li class="nav-item"><a class="nav-link' . ($cur === '' ? ' active" aria-current="page' : '') . '" href="' . h(nu_url('webhooks')) . '"><i class="bi bi-broadcast me-1"></i>' . h(t('wh_title')) . '</a></li>'
-		. '<li class="nav-item"><a class="nav-link' . ($cur === 'calls' ? ' active" aria-current="page' : '') . '" href="' . h(nu_url('webhooks', ['tab' => 'calls'])) . '" id="whTabCalls"><i class="bi bi-list-ul me-1"></i>' . h(t('wh_calls')) . '</a></li></ul>';
+		. '<li class="nav-item"><a class="nav-link' . ($cur === '' ? ' active" aria-current="page' : '') . '" href="' . h(nu_url('webhooks'))
+			. '"><i class="bi bi-broadcast me-1"></i>' . h(t('wh_title')) . '</a></li>'
+		. '<li class="nav-item"><a class="nav-link' . ($cur === 'calls' ? ' active" aria-current="page' : '') . '" href="'
+			. h(nu_url('webhooks', ['tab' => 'calls'])) . '" id="whTabCalls"><i class="bi bi-list-ul me-1"></i>' . h(t('wh_calls')) . '</a></li></ul>';
 };
 $crumbs = static fn(array $items) => NuListView::crumbs(array_merge([[t('wh_title'), nu_url('webhooks')]], $items));
 
@@ -77,7 +47,9 @@ if ($id === '' && $callId === '') {
 	nu_layout_start(t('wh_title'), 'home', ['head' => NuListView::head() . nu_ts_head()]);
 	echo NuListView::crumbs([[t('wh_title')]]) . $tabs($tab);
 	if (!function_exists('curl_init')) echo '<div class="alert alert-warning small">' . h(t('wh_err_curl')) . '</div>';
-	if ((string)nu_cfg('nuConfigSecretKey') === '') echo '<p class="small text-body-secondary nuKeyHint mb-2"><i class="bi bi-key me-1"></i>' . h(t('wh_no_key')) . ' <a href="' . h(nu_url('securitycheck')) . '">' . h(t('secchk_title')) . '</a></p>';   // review M11: once in the Security check, a quiet line here
+	if ((string)nu_cfg('nuConfigSecretKey') === '') echo '<p class="small text-body-secondary nuKeyHint mb-2"><i class="bi bi-key me-1"></i>'
+		. h(t('wh_no_key')) . ' <a href="' . h(nu_url('securitycheck')) . '">' . h(t('secchk_title'))
+		. '</a></p>';   // review M11: once in the Security check, a quiet line here
 	echo NuListView::card($st, $tab === 'calls' ? ['title_extra' => NuListView::infoTip(t('wh_calls_tip'))] : [
 		'title_extra' => NuListView::infoTip(t('wh_hint')),
 		'buttons' => '<a class="btn nuAddBtn" href="' . h(nu_url('webhooks', ['id' => 'new'])) . '" id="whNew"><i class="bi bi-plus-lg me-1"></i>' . h(t('add')) . '</a>',
@@ -113,7 +85,8 @@ if ($call) {
 	nu_layout_start(t('wh_title'), 'home', ['container' => 'container']);
 	echo $crumbs([[t('wh_calls'), nu_url('webhooks', ['tab' => 'calls'])], [t('wh_call_title')]]); ?>
 	<div class="nuTitleBar nuRecHead mb-3">
-		<h1 class="h4 mb-0"><i class="bi bi-send me-2"></i><?= h(($d['name'] ?? '?') . ' · ' . t('wh_ev_' . $call['event'])) ?> <span class="badge <?= $stCls[(string)$call['status']] ?? 'text-bg-secondary' ?> align-middle" id="whCallStatus"><?= h(t('wh_st_' . $call['status'])) ?></span></h1>
+		<h1 class="h4 mb-0"><i class="bi bi-send me-2"></i><?= h(($d['name'] ?? '?') . ' · ' . t('wh_ev_' . $call['event'])) ?> <span class="badge <?= $stCls[(string)$call['status']] ?? 'text-bg-secondary' ?> align-middle"
+			id="whCallStatus"><?= h(t('wh_st_' . $call['status'])) ?></span></h1>
 		<div class="d-flex flex-wrap gap-2">
 			<a class="btn nuBtnAct" href="<?= h(nu_url('webhooks', ['tab' => 'calls'])) ?>"><i class="bi bi-arrow-left me-1"></i><?= h(t('back')) ?></a>
 			<?php if ($d && NuAdmin::can('webhooks', 'change')): ?>
@@ -140,7 +113,8 @@ if ($call) {
 			<div class="card shadow-sm mt-4"><div class="card-body">
 				<h2 class="h6"><?= h(t('wh_attempts')) ?></h2>
 				<?php if (!$tries): ?><p class="small text-body-secondary mb-0"><?= h(t('wh_none_tries')) ?></p><?php else: ?>
-				<table class="table nu-table table-sm small mb-0" id="whTries"><thead><tr><th>#</th><th><?= h(t('wh_time')) ?></th><th><?= h(t('wh_answer')) ?></th><th class="text-end"><?= h(t('wh_ms')) ?></th></tr></thead><tbody>
+				<table class="table nu-table table-sm small mb-0"
+					id="whTries"><thead><tr><th>#</th><th><?= h(t('wh_time')) ?></th><th><?= h(t('wh_answer')) ?></th><th class="text-end"><?= h(t('wh_ms')) ?></th></tr></thead><tbody>
 				<?php foreach ($tries as $tr): ?>
 					<tr><td><?= (int)$tr['attempt'] ?></td><td class="text-nowrap"><?= h($dt($tr['tried_at'])) ?></td>
 						<td class="text-break"><?= (int)$tr['http_code'] ? '<span class="badge ' . ((int)$tr['http_code'] < 300 ? 'text-bg-success' : 'text-bg-danger') . '">' . (int)$tr['http_code'] . '</span> ' : '' ?><?= h((string)$tr['error'] !== 'HTTP ' . (int)$tr['http_code'] ? (string)$tr['error'] : '') ?>
@@ -180,7 +154,8 @@ echo $crumbs([[$title]]); ?>
 		<button class="btn nuBtnAct" type="submit" form="whForm" name="do_test" value="1" id="whTest" title="<?= h(t('wh_test_tip')) ?>"><i class="bi bi-send me-1"></i><?= h(t('wh_test')) ?></button>
 		<?php if ($hook): ?>
 			<a class="btn nuBtnAct" href="<?= h(nu_url('webhooks', ['tab' => 'calls', 'wh' => $id])) ?>" id="whCallsOf"><i class="bi bi-list-ul me-1"></i><?= h(t('wh_calls')) ?></a>
-			<form method="post" action="<?= h(nu_url('webhooks', ['id' => $id])) ?>" data-confirm="<?= h(t('wh_delete_confirm', $hook['name'])) ?>" data-confirm-ok="<?= h(t('delete')) ?>" data-confirm-class="btn btn-danger">
+			<form method="post" action="<?= h(nu_url('webhooks', ['id' => $id])) ?>" data-confirm="<?= h(t('wh_delete_confirm', $hook['name'])) ?>"
+				data-confirm-ok="<?= h(t('delete')) ?>" data-confirm-class="btn btn-danger">
 				<?= nu_csrf_field() ?><input type="hidden" name="action" value="delete">
 				<button class="btn nuBtnAct nuBtnDel" type="submit" id="whDelete"><i class="bi bi-trash me-1"></i><?= h(t('delete')) ?></button></form>
 		<?php endif; ?>
@@ -191,7 +166,8 @@ echo $crumbs([[$title]]); ?>
 		<h2 class="h6 text-success"><i class="bi bi-shield-lock me-1"></i><?= h(t('wh_secret')) ?></h2>
 		<p class="small mb-2"><?= h(t('wh_secret_once')) ?></p>
 		<div class="input-group input-group-sm"><input class="form-control font-monospace" id="whSecret" readonly value="<?= h((string)$secret['secret']) ?>">
-			<button class="btn btn-outline-secondary" type="button" id="whSecretCopy" data-copy="#whSecret" title="<?= h(t('copy')) ?>" aria-label="<?= h(t('copy')) ?>"><i class="bi bi-clipboard"></i></button></div>
+			<button class="btn btn-outline-secondary" type="button" id="whSecretCopy" data-copy="#whSecret" title="<?= h(t('copy')) ?>"
+				aria-label="<?= h(t('copy')) ?>"><i class="bi bi-clipboard"></i></button></div>
 	</div></div>
 <?php endif; ?>
 <?php if ($test): ?>
@@ -211,7 +187,8 @@ echo $crumbs([[$title]]); ?>
 			<label class="form-check-label" for="whActive"><?= h(t('wh_on')) ?></label></div></div>
 		<div class="col-12"><label class="form-label" for="whForms"><?= h(t('wh_forms')) ?></label>
 			<select class="form-select nuListTomSelect<?= $inv('forms') ?>" id="whForms" name="forms[]" multiple>
-				<?php foreach ($formOpts as $fid => $f): ?><option value="<?= h((string)$fid) ?>" data-sub="<?= h($f['description']) ?>"<?= in_array((string)$fid, $selForms, true) ? ' selected' : '' ?>><?= h($f['code']) ?></option><?php endforeach; ?>
+				<?php foreach ($formOpts as $fid => $f): ?><option value="<?= h((string)$fid) ?>"
+					data-sub="<?= h($f['description']) ?>"<?= in_array((string)$fid, $selForms, true) ? ' selected' : '' ?>><?= h($f['code']) ?></option><?php endforeach; ?>
 			</select><?= $err('forms') ?></div>
 		<div class="col-12"><span class="form-label d-block"><?= h(t('wh_events')) ?></span>
 			<?php foreach (NuWebhook::EVENTS as $e): ?><div class="form-check form-check-inline">
@@ -226,7 +203,8 @@ echo $crumbs([[$title]]); ?>
 		<div class="col-12"><label class="form-label" for="whFields"><?= h(t('wh_fields')) ?></label><?= $tip(t('wh_fields_tip')) ?>
 			<input class="form-control font-monospace" id="whFields" name="fields" maxlength="2000" placeholder="<?= h(t('wh_fields_ph')) ?>" value="<?= h($v('fields')) ?>"></div>
 		<div class="col-12"><label class="form-label" for="whTemplate"><?= h(t('wh_template')) ?></label><?= $tip(t('wh_template_tip')) ?>
-			<textarea class="form-control font-monospace<?= $inv('template') ?>" id="whTemplate" name="template" rows="7" spellcheck="false" placeholder="<?= h(t('wh_template_ph')) ?>"><?= h($v('template')) ?></textarea><?= $err('template') ?>
+			<textarea class="form-control font-monospace<?= $inv('template') ?>" id="whTemplate" name="template" rows="7" spellcheck="false"
+				placeholder="<?= h(t('wh_template_ph')) ?>"><?= h($v('template')) ?></textarea><?= $err('template') ?>
 			<div class="form-text"><?= h(t('wh_vars')) ?> <?php foreach (NuWebhook::VARS as $var): ?><code class="me-1">#<?= $var ?>#</code><?php endforeach; ?><code>#&lt;column&gt;#</code></div></div>
 	</div></div>
 </form>

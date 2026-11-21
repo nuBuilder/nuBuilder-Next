@@ -1,4 +1,4 @@
-/* Validation rules of a form (0.8.812) – the browser side of core/form/nurules.php (NuFormRules): the same rules, checked while typing
+/* Validation rules of a form – the browser side of core/form/nurules.php (NuFormRules): the same rules, checked while typing
    (fields of failed error rules get .is-invalid + the message as tooltip) and before a save. The server checks again – it decides.
    Data: window.nuNext.rules {rules, kinds, sub, today, texts}. API used by nuruntime.js: window.nuNextRules.check() / askWarnings(). */
 (function () {
@@ -34,7 +34,7 @@
 		return rows;
 	}
 
-	/** A hash variable (0.8.814): a form property / hash cookie of the page first (nuGetProperty), else the value the server sent. */
+	/** A hash variable: a form property / hash cookie of the page first (nuGetProperty), else the value the server sent. */
 	function hv(name) {
 		if (typeof window.nuGetProperty === 'function') {
 			try { var p = window.nuGetProperty(name); if (p !== undefined && p !== null) return String(p); } catch (e) { /* ignore */ }
@@ -48,7 +48,7 @@
 	function rx(p) { try { return new RegExp(p, 'iu'); } catch (e) { return null; } }
 	function leaf(it, vals, kinds, counts) {
 		var f = String(it.f), isCount = f.indexOf('count:') === 0;
-		var hm = !isCount && /^#([A-Za-z_][A-Za-z0-9_]*)#$/.exec(f);   // a hash variable on the left (0.8.815)
+		var hm = !isCount && /^#([A-Za-z_][A-Za-z0-9_]*)#$/.exec(f);   // a hash variable on the left
 		var a = isCount ? String(counts[f.slice(6)] || 0) : (hm ? String(hv(hm[1]) || '').trim() : String(vals[f] == null ? '' : vals[f]).trim());
 		var kind = isCount ? 'number' : (kinds[f] || 'text'), o = it.o, v = it.v;
 		var empty = a === '' || (kind === 'checkbox' && a === '0');
@@ -127,7 +127,8 @@
 	// live marks: fields named by failed error rules, once the user has touched the form
 	var marked = [];
 	function live() {
-		marked.forEach(function (e) { e.classList.remove('is-invalid', 'nuRuleBad'); e.removeAttribute('data-nu-rule-msg'); if (e.getAttribute('data-nu-rule-title') !== null) { e.title = e.getAttribute('data-nu-rule-title'); e.removeAttribute('data-nu-rule-title'); } });
+		marked.forEach(function (e) { e.classList.remove('is-invalid',
+			'nuRuleBad'); e.removeAttribute('data-nu-rule-msg'); if (e.getAttribute('data-nu-rule-title') !== null) { e.title = e.getAttribute('data-nu-rule-title'); e.removeAttribute('data-nu-rule-title'); } });
 		marked = [];
 		var res = check();
 		res.errors.concat(res.warnings).forEach(function (x) {

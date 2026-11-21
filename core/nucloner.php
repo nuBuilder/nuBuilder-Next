@@ -47,7 +47,7 @@ final class NuCloner
 		$this->o  = $options + ['dest' => '', 'code' => '', 'description' => '', 'tabs' => [], 'objects' => true, 'subforms' => false, 'subform_ids' => [],
 			'iframes' => false, 'iframe_ids' => [], 'access' => false, 'dump' => false, 'new_pks' => true, 'replace' => false, 'notes' => '', 'target' => ''];
 		if (!$this->o['dump']) { $this->o['new_pks'] = true; $this->o['replace'] = false; }   // keeping keys would collide with the source
-		// SQL of the dump (0.8.794): for MySQL / MariaDB or for SQL Server – default the database this runs on
+		// SQL of the dump: for MySQL / MariaDB or for SQL Server – default the database this runs on
 		$this->o['target'] = in_array($this->o['target'], ['mysql', 'sqlsrv'], true) ? $this->o['target'] : ($db->type === 'sqlsrv' ? 'sqlsrv' : 'mysql');
 		if ($this->o['target'] === 'sqlsrv') $this->o['replace'] = false;
 		$this->hasSelect = $db->tableExists('zzzzsys_select') && $db->tableExists('zzzzsys_select_clause');
@@ -57,7 +57,7 @@ final class NuCloner
 
 	/** Tabs (with object count), subform and iframe objects of a form. */
 	/**
-	 * Can this form be copied? null = yes, else the reason (0.8.811): it must be a row of zzzzsys_form (nu_forms() also lists the rights of
+	 * Can this form be copied? null = yes, else the reason: it must be a row of zzzzsys_form (nu_forms() also lists the rights of
 	 * nuBuilder Next's own pages), and a built-in page form (File Manager, NuPage::BUILTIN) has its code inside nuBuilder Next – a copy
 	 * would point to a folder that does not exist.
 	 */
@@ -178,7 +178,7 @@ final class NuCloner
 	}
 
 	/**
-	 * A string literal of the dump's database (0.8.794) – not the connection's quote(), so a dump for the other kind is right too.
+	 * A string literal of the dump's database – not the connection's quote(), so a dump for the other kind is right too.
 	 * MySQL: backslash and quote escaped (also with NO_BACKSLASH_ESCAPES off, the default); SQL Server: N'…' (Unicode), '' for a quote.
 	 */
 	public static function literal(string $v, string $target): string
@@ -193,7 +193,7 @@ final class NuCloner
 		$this->sql[] = '-- nuBuilder Next cloner – SQL dump';
 		$tgt = $this->o['target'] === 'sqlsrv' ? 'Microsoft SQL Server (T-SQL)' : 'MySQL / MariaDB';
 		$this->sql[] = '-- For: ' . $tgt . ' – run it on a database of this kind';
-		$this->sql[] = '-- Created: ' . date('Y-m-d H:i:s') . ' · nuBuilder Next ' . NU_VERSION . ' · read from a ' . ($this->db->type === 'sqlsrv' ? 'SQL Server' : 'MySQL / MariaDB') . ' database';
+		$this->sql[] = '-- Created: ' . date('Y-m-d H:i:s') . ' · nuBuilder Next ' . NU_VERSION . ' · read from a ' . ($this->db->label()) . ' database';
 		$this->sql[] = '-- Form: ' . $f['sfo_code'] . ' – ' . $f['sfo_description'] . ' · table ' . $f['sfo_table'] . ' · type ' . $f['sfo_type'];
 		$this->sql[] = '-- New primary keys: ' . ($this->o['new_pks'] ? 'yes' : 'no (same ids as the source)');
 		if (trim((string)$this->o['notes']) !== '') foreach (preg_split('/\R/', trim((string)$this->o['notes'])) as $l) $this->sql[] = '-- Notes: ' . $l;
@@ -211,12 +211,14 @@ final class NuCloner
 		if ($description !== null) $row['sfo_description'] = $description;
 		$this->write('zzzzsys_form', $row, (string)$row['sfo_code']);
 		$this->cloned[$f1] = $f2;
-		// page form (0.8.387): its settings row goes along, the files do not
+		// page form: its settings row goes along, the files do not
 		if ((string)$row['sfo_type'] === 'page' && $this->db->tableExists(NuPage::TABLE)
 			&& ($pg = $this->db->one('SELECT * FROM ' . NuPage::TABLE . ' WHERE zzzzsys_nunext_page_id = ?', [$f1]))) {
 			$pg['zzzzsys_nunext_page_id'] = $f2;
 			$this->write(NuPage::TABLE, $pg);
-			$this->warnings[] = t('page_copy_files', NuPage::shownFolder((string)$this->db->value('SELECT sfo_code FROM zzzzsys_form WHERE zzzzsys_form_id = ?', [$f1])), NuPage::shownFolder((string)$row['sfo_code']));
+			$this->warnings[] = t('page_copy_files',
+				NuPage::shownFolder((string)$this->db->value('SELECT sfo_code FROM zzzzsys_form WHERE zzzzsys_form_id = ?', [$f1])),
+				NuPage::shownFolder((string)$row['sfo_code']));
 		}
 
 		foreach ($this->db->all('SELECT * FROM zzzzsys_browse WHERE sbr_zzzzsys_form_id = ? ORDER BY sbr_order', [$f1]) as $b) {

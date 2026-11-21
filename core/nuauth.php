@@ -32,7 +32,7 @@ final class NuAuth
 	}
 
 	/**
-	 * nuBuilder's $nuUseMd5PasswordHash (0.8.336): true = passwords are stored as md5 and never converted – nuBuilder then accepts md5
+	 * nuBuilder's $nuUseMd5PasswordHash: true = passwords are stored as md5 and never converted – nuBuilder then accepts md5
 	 * only, so a bcrypt hash written here would lock the user out of nuBuilder. Insecure: the Security check shows it in red.
 	 */
 	public static function md5Storage(): bool
@@ -64,14 +64,14 @@ final class NuAuth
 		if ($login === '' || $password === '') return 'login_err_empty';
 
 		// rate limit in the database (failed logins of the last 15 minutes per name, name + address and address – see NuSecurity),
-		// so a client without cookies cannot reset it (before 0.8.207 the counter lived in the PHP session)
+		// so a client without cookies cannot reset it (not in the PHP session)
 		if (NuSecurity::loginBlocked($login)) {
 			password_hash($password, PASSWORD_DEFAULT);           // same time as a real check
 			NuLog::write('login_locked', '', '', ['login' => $login] + ($byHash ? ['via' => 'url'] : []), ['id' => '', 'login' => $login]);
 			return 'login_err_locked';
 		}
 
-		// database not set up yet (0.8.645, NuDbState): only the globeadmin of nuconfig.php can sign in – he is sent to the set-up
+		// database not set up yet (NuDbState): only the globeadmin of nuconfig.php can sign in – he is sent to the set-up
 		if (!NuDbState::ready() && !hash_equals((string)nu_cfg('nuConfigDBGlobeadminUsername'), $login)) {
 			password_hash($password, PASSWORD_DEFAULT);
 			return 'login_not_ready';
@@ -87,14 +87,14 @@ final class NuAuth
 	}
 
 	/**
-	 * nuBuilder's global hooks of the login (0.8.462, gap analysis B5): nu_startup after every login (also by link, demo button,
+	 * nuBuilder's global hooks of the login (gap analysis B5): nu_startup after every login (also by link, demo button,
 	 * second factor) – a text in its $error ends the new session and is shown instead (nuBuilder: nuDie($error)); the shared login
 	 * from nuBuilder does not run it again (nuBuilder did). @return string|null null = logged in, otherwise the message
 	 */
 	private static function startupHook(): ?string
 	{
-		if (empty($_SESSION['nu_auth']['globeadmin']) && !NuSchema::present()) {   // not set up yet: only the globeadmin (0.8.462, B2)
-			unset($_SESSION['nu_auth']);
+		if (empty($_SESSION[NuSess::AUTH]['globeadmin']) && !NuSchema::present()) {   // not set up yet: only the globeadmin (B2)
+			unset($_SESSION[NuSess::AUTH]);
 			self::$user = null;
 			self::$loaded = false;
 			return t('login_not_ready');
@@ -109,13 +109,13 @@ final class NuAuth
 		$msg = NuPhp::$error !== '' ? NuPhp::$error : (string)(NuPhp::$errors[0]['message'] ?? t('login_err_invalid'));
 		$u = self::user();
 		NuLog::write('login_refused', '', '', ['hook' => 'nu_startup', 'message' => mb_substr($msg, 0, 300)], $u ? ['id' => (string)$u['id'], 'login' => (string)$u['login']] : null);
-		unset($_SESSION['nu_auth']);
+		unset($_SESSION[NuSess::AUTH]);
 		self::$user = null;
 		self::$loaded = false;
 		return $msg;
 	}
 
-	/** nu_invalid_login after a failed login (0.8.462): #LOGIN_NAME# = the name typed; a text in $error is shown instead of the usual message. */
+	/** nu_invalid_login after a failed login: #LOGIN_NAME# = the name typed; a text in $error is shown instead of the usual message. */
 	private static function invalidLoginHook(string $login): ?string
 	{
 		NuPhp::reset();
@@ -124,7 +124,7 @@ final class NuAuth
 	}
 
 	/**
-	 * nuBuilder's single-use login token (index.php?u=<login name or user id>&p=<token>, core/nulogintoken.php, 0.8.339).
+	 * nuBuilder's single-use login token (index.php?u=<login name or user id>&p=<token>, core/nulogintoken.php).
 	 * Like nuBuilder no second factor; the token is replaced at once. @return string|null  null = logged in, otherwise a translation key
 	 */
 	public static function loginToken(string $user, string $token): ?string
@@ -151,7 +151,8 @@ final class NuAuth
 		if (nu_is_expired($row['sus_expires_on'])) return $fail('login_err_expired');
 		$accessId = (string)$row['sus_zzzzsys_access_id'];
 		if ($accessId === '' || !NuAcl::levelExists($accessId)) return $fail('login_err_no_access');
-		if (!NuIpAccess::allowsLogin(['id' => (string)$row['zzzzsys_user_id'], 'globeadmin' => false, 'login' => (string)$row['sus_login_name']], 'token')) return $fail('login_err_ip');   // before the token is used up (0.8.722)
+		if (!NuIpAccess::allowsLogin(['id' => (string)$row['zzzzsys_user_id'], 'globeadmin' => false, 'login' => (string)$row['sus_login_name']],
+			'token')) return $fail('login_err_ip');   // before the token is used up
 		if (!NuLoginToken::rotate($row)) return $fail('login_err_invalid');                                 // used by a second click at the same moment
 		self::applyLanguage((string)$row['sus_language'], (string)$row['zzzzsys_user_id'], true);
 		$auth = ['id' => (string)$row['zzzzsys_user_id'], 'globeadmin' => false, 'fp' => self::fingerprint((string)$row['sus_login_password']), 'login' => (string)$row['sus_login_name']];
@@ -161,7 +162,7 @@ final class NuAuth
 	}
 
 	/**
-	 * Password not accepted for this user (0.8.863): an access level in the SSO setting "SSO only", or nuBuilder Forte's
+	 * Password not accepted for this user: an access level in the SSO setting "SSO only", or nuBuilder Forte's
 	 * $nuConfigLogonMode = 'sso' with the login name not in $nuConfigSsoOnlyExcept. Only while single sign-on is ready – a broken set-up
 	 * never locks everyone out.
 	 */
@@ -176,7 +177,7 @@ final class NuAuth
 	}
 
 	/**
-	 * Sign-in through single sign-on (0.8.863, core/nusso.php): the provider has checked the person – no own second factor and no password
+	 * Sign-in through single sign-on (core/nusso.php): the provider has checked the person – no own second factor and no password
 	 * policy; expiry, access level and IP access as for every sign-in. Never the globeadmin. @return string|null null = signed in, else a text key
 	 */
 	public static function loginSso(array $row): ?string
@@ -203,7 +204,7 @@ final class NuAuth
 	}
 
 	/**
-	 * Sign-in with a passkey alone (0.8.877, Security setting passkey_login): NuPasskey::verify() checked the passkey with user
+	 * Sign-in with a passkey alone (Security setting passkey_login): NuPasskey::verify() checked the passkey with user
 	 * verification (PIN, fingerprint …), so it counts as both factors – no second factor, no password policy, no forced password
 	 * change; the same refusals as a password sign-in (locked, expired, API service user, no access level, SSO only, IP access).
 	 * The session counts as confirmed (password confirmation for dangerous actions starts now). @return string|null null = signed in
@@ -245,7 +246,7 @@ final class NuAuth
 	/**
 	 * Password hash for nuBuilder's auto login (index.php?u=<login>&p=<hash>[&e=<expiry>]): HMAC-SHA256 of the stored password hash
 	 * with $nuConfigSecretKey – the stored hash itself never leaves the server, and the link stops working when the password changes.
-	 * Since 0.8.207 a link can expire (e = Unix time, signed) and all links of a user can be revoked (epoch in sus_json
+	 * Since a link can expire (e = Unix time, signed) and all links of a user can be revoked (epoch in sus_json
 	 * NUNEXT_AUTOLOGIN_EPOCH, raised by "Revoke links"). Links without e and epoch 0 have the format of older versions.
 	 */
 	public static function urlHash(string $storedHash, int $expires = 0, int $epoch = 0): string
@@ -273,13 +274,13 @@ final class NuAuth
 	public static function setNext(string $url): void
 	{
 		$url = self::validNext($url);
-		if ($url !== null) $_SESSION['nu_login_next'] = $url;
+		if ($url !== null) $_SESSION[NuSess::LOGIN_NEXT] = $url;
 	}
 
 	/** index.php?p=<page>… of this installation, or null (no other host, no login / logout page, no auto-login link). */
 	public static function validNext(string $url): ?string
 	{
-		if (self::validAppNext($url)) return $url;            // a page of an own app that uses nuexternal.php (0.8.1273)
+		if (self::validAppNext($url)) return $url;            // a page of an own app that uses nuexternal.php
 		if (strlen($url) > 2000 || !preg_match('~^index\.php\?[^\s\\\\]*$~', $url) || str_contains($url, '//')) return null;
 		parse_str((string)substr($url, 10), $q);
 		$p = $q['p'] ?? null;
@@ -321,8 +322,8 @@ final class NuAuth
 
 	public static function takeNext(): string
 	{
-		$n = (string)($_SESSION['nu_login_next'] ?? '');
-		unset($_SESSION['nu_login_next']);
+		$n = (string)($_SESSION[NuSess::LOGIN_NEXT] ?? '');
+		unset($_SESSION[NuSess::LOGIN_NEXT]);
 		return $n !== '' ? $n : nu_url('home');
 	}
 
@@ -334,7 +335,7 @@ final class NuAuth
 		$adminName = (string)nu_cfg('nuConfigDBGlobeadminUsername');
 		$adminPass = (string)nu_cfg('nuConfigDBGlobeadminPassword');
 
-		// nuBuilder's demo globeadmin ($nuConfigIsDemo, 0.8.341): read-only demo session as the globeadmin – the real globeadmin wins
+		// nuBuilder's demo globeadmin ($nuConfigIsDemo): read-only demo session as the globeadmin – the real globeadmin wins
 		$ga = $byHash ? null : NuDemo::gaDemo();
 		if ($ga && hash_equals($ga[0], $login) && hash_equals($ga[1], $password) && !($adminName !== '' && hash_equals($adminName, $login) && hash_equals($adminPass, $password))) {
 			self::applyLanguage(null, '', true);
@@ -346,9 +347,9 @@ final class NuAuth
 		// globeadmin first, exactly like nuBuilder
 		if ($adminName !== '' && hash_equals($adminName, $login)) {
 			if ($byHash || !hash_equals($adminPass, $password)) return 'login_err_invalid';   // no auto login for the globeadmin
-			if (in_array($adminPass, ['nu', 'globeadmin', 'admin', 'password', '1234', '12345678'], true) || strlen($adminPass) < 8) $_SESSION['nu_weak_admin'] = 1;
-			NuPwPolicy::onGaLogin($adminPass);                  // password policy (0.8.745): reminders only – the password lives in nuconfig.php
-			// language: one picked on the sign-in page, else nuBuilder's default language (Setup → set_language, as nuBuilder does) – 0.8.312
+			if (in_array($adminPass, ['nu', 'globeadmin', 'admin', 'password', '1234', '12345678'], true) || strlen($adminPass) < 8) $_SESSION[NuSess::WEAK_ADMIN] = 1;
+			NuPwPolicy::onGaLogin($adminPass);                  // password policy: reminders only – the password lives in nuconfig.php
+			// language: one picked on the sign-in page, else nuBuilder's default language (Setup → set_language, as nuBuilder does)
 			self::applyLanguage(null, '', true);
 			return self::afterPassword(['id' => 'globeadmin', 'globeadmin' => true, 'fp' => self::adminFingerprint(), 'login' => $adminName],
 				(bool)nu_cfg('nuConfig2FAAdmin') && !self::safe2faIp('globeadmin'), (string)(nu_cfg('nuConfigGlobeadminEmail') ?: NuMail::settings()['from']));
@@ -380,13 +381,14 @@ final class NuAuth
 		if ($legacy && !NuSecurity::get('md5_login') && !self::md5Storage()) return 'login_err_md5';   // md5 storage: md5 is the format     // Admin tools → Security check: md5 refused
 
 		if (nu_is_expired($row['sus_expires_on'])) return 'login_err_expired';
-		if (!$byHash && !NuDemo::isDemoUser((string)$row['zzzzsys_user_id'])) NuPwPolicy::onLogin((string)$row['zzzzsys_user_id'], $password, (string)$row['sus_login_password']);   // password policy (0.8.745): leaked / expired → forced change
+		if (!$byHash && !NuDemo::isDemoUser((string)$row['zzzzsys_user_id'])) NuPwPolicy::onLogin((string)$row['zzzzsys_user_id'], $password,
+			(string)$row['sus_login_password']);   // password policy: leaked / expired → forced change
 
 		$accessId = (string)$row['sus_zzzzsys_access_id'];
 		$access   = NuAcl::level($accessId);
 		if (!$access) return 'login_err_no_access';
 		if (!NuDemo::isDemoUser((string)$row['zzzzsys_user_id']) && self::ssoOnly((string)$row['zzzzsys_user_id'], $accessId, (string)$row['sus_login_name'])) {
-			return 'login_err_sso_only';                    // single sign-on only (0.8.863): the password is refused, the globeadmin is never asked
+			return 'login_err_sso_only';                    // single sign-on only: the password is refused, the globeadmin is never asked
 		}
 
 		$hash = (string)$row['sus_login_password'];
@@ -399,7 +401,7 @@ final class NuAuth
 
 		$need2fa = (bool)nu_cfg('nuConfig2FAUser') && self::levels2fa((string)$access['sal_use_2fa'] === '1', (string)$row['zzzzsys_user_id'])
 			&& !NuDemo::isDemoUser((string)$row['zzzzsys_user_id'])     // demo users: no second factor
-			&& !self::safe2faIp('user', (string)$row['sus_login_name']);  // $nuConfig2FASafeIPAddresses (0.8.958)
+			&& !self::safe2faIp('user', (string)$row['sus_login_name']);  // $nuConfig2FASafeIPAddresses
 		return self::afterPassword(['id' => (string)$row['zzzzsys_user_id'], 'globeadmin' => false, 'fp' => self::fingerprint($hash), 'login' => (string)$row['sus_login_name']],
 			$need2fa, (string)$row['sus_email']);
 	}
@@ -458,7 +460,7 @@ final class NuAuth
 		return true;
 	}
 
-	/** Two-factor login required: by the main access level or by any active additional level (0.8.585, NuUserAccess). */
+	/** Two-factor login required: by the main access level or by any active additional level (NuUserAccess). */
 	public static function levels2fa(bool $main, string $userId): bool
 	{
 		if ($main) return true;
@@ -471,11 +473,11 @@ final class NuAuth
 	/** Password was correct: log in now, or ask for the second factor. */
 	private static function afterPassword(array $auth, bool $need2fa, string $email): ?string
 	{
-		if (!NuIpAccess::allowsLogin($auth, self::$byUrl ? 'url' : '')) return 'login_err_ip';   // IP access (0.8.722): before the second factor
+		if (!NuIpAccess::allowsLogin($auth, self::$byUrl ? 'url' : '')) return 'login_err_ip';   // IP access: before the second factor
 		if ($need2fa && !NuTwoFA::trustedDevice($auth['id'])) {
 			session_regenerate_id(true);
-			unset($_SESSION['nu_auth']);
-			$_SESSION['nu_2fa'] = ['auth' => $auth, 'email' => $email, 'since' => time(), 'sent' => 0, 'fails' => 0];
+			unset($_SESSION[NuSess::AUTH]);
+			$_SESSION[NuSess::TWOFA] = ['auth' => $auth, 'email' => $email, 'since' => time(), 'sent' => 0, 'fails' => 0];
 			self::$loaded = false;
 			return '2fa';
 		}
@@ -487,10 +489,10 @@ final class NuAuth
 	/** Pending second-factor login, or null (expired pendings are dropped). */
 	public static function pending(): ?array
 	{
-		$p = $_SESSION['nu_2fa'] ?? null;
+		$p = $_SESSION[NuSess::TWOFA] ?? null;
 		if (!$p) return null;
 		if (time() - (int)$p['since'] > self::PENDING_TTL) {
-			unset($_SESSION['nu_2fa']);
+			unset($_SESSION[NuSess::TWOFA]);
 			return null;
 		}
 		return $p;
@@ -498,15 +500,15 @@ final class NuAuth
 
 	public static function updatePending(array $p): void
 	{
-		$_SESSION['nu_2fa'] = $p;
+		$_SESSION[NuSess::TWOFA] = $p;
 	}
 
-	/** Second factor confirmed: turn the pending login into a session. @return string|null message of nu_startup when it refused (0.8.462) */
+	/** Second factor confirmed: turn the pending login into a session. @return string|null message of nu_startup when it refused */
 	public static function completePending(string $method, bool $trustDevice): ?string
 	{
 		$p = self::pending();
 		if (!$p) return null;
-		unset($_SESSION['nu_2fa']);
+		unset($_SESSION[NuSess::TWOFA]);
 		if ($trustDevice) NuTwoFA::trustDevice($p['auth']['id']);
 		self::start($p['auth']);
 		NuLog::write('login', '', '', ['2fa' => $method], $p['auth']);
@@ -544,13 +546,13 @@ final class NuAuth
 
 	/** Session of another login without password (globeadmin acting as a user, and back) – NuImpersonate only. */
 	/**
-	 * Command line only (0.8.889, php nucron.php selftest): the run acts as the globeadmin of nuconfig.php – no PHP session, no cookie,
+	 * Command line only (php nucron.php selftest): the run acts as the globeadmin of nuconfig.php – no PHP session, no cookie,
 	 * nothing logged as a sign-in. Refused outside the CLI.
 	 */
 	public static function cliGlobeadmin(): void
 	{
 		if (PHP_SAPI !== 'cli') throw new LogicException('cliGlobeadmin is for the command line only');
-		$_SESSION['nu_auth'] = ['id' => 'globeadmin', 'globeadmin' => true, 'fp' => self::adminFingerprint(), 'login' => (string)nu_cfg('nuConfigDBGlobeadminUsername'),
+		$_SESSION[NuSess::AUTH] = ['id' => 'globeadmin', 'globeadmin' => true, 'fp' => self::adminFingerprint(), 'login' => (string)nu_cfg('nuConfigDBGlobeadminUsername'),
 			'via' => 'cli', 'since' => time(), 'last' => time(), 'inst' => NuSecurity::installId()];
 		self::$loaded = false;
 		self::$user = null;
@@ -565,12 +567,12 @@ final class NuAuth
 
 	private static function start(array $data): void
 	{
-		if (!empty($data['globeadmin']) && NuDbState::ready()) {   // the globeadmin's first sign-in sets up the own tables (0.8.462, B2) – not before the database is set up (0.8.645)
+		if (!empty($data['globeadmin']) && NuDbState::ready()) {   // the globeadmin's first sign-in sets up the own tables (B2) – not before the database is set up
 			NuSchema::allow();
 			NuSchema::ensure();
 		}
 		session_regenerate_id(true);
-		$_SESSION['nu_auth'] = $data + ['since' => time(), 'last' => time(), 'inst' => NuSecurity::installId()];
+		$_SESSION[NuSess::AUTH] = $data + ['since' => time(), 'last' => time(), 'inst' => NuSecurity::installId()];
 		self::$loaded = false;
 	}
 
@@ -591,7 +593,7 @@ final class NuAuth
 	}
 
 	/**
-	 * Language after the sign-in (0.8.312 / 0.8.314). Language: the user's (sus_language), else one picked on the sign-in page, else
+	 * Language after the sign-in. Language: the user's (sus_language), else one picked on the sign-in page, else
 	 * nuBuilder's default (Setup → Language). English variant: the user's (sus_json NUNEXT_LANG_VARIANT), else one picked on the
 	 * sign-in page, else the installation's default variant, else the browser's (en-US / en-AU / en-GB …).
 	 * $userWins = false (nuBuilder session adopted): a language already in the session stays.
@@ -600,10 +602,10 @@ final class NuAuth
 	{
 		$browser = nu_lang_browser();
 		$browserVar = $browser !== null ? nu_lang_variant_of($browser[1]) : null;
-		// a language left in the session by the user before (logout keeps it for the sign-in page) is not "picked" (0.8.1205)
-		$picked = isset($_SESSION['nu_lang']) && empty($_SESSION['nu_lang_carried']);
-		unset($_SESSION['nu_lang_carried']);
-		// the globeadmin (no user row): the language he chose last (setting lang_ga, written by ?p=lang) – 0.8.1205
+		// a language left in the session by the user before (logout keeps it for the sign-in page) is not "picked"
+		$picked = isset($_SESSION[NuSess::LANG]) && empty($_SESSION[NuSess::LANG_CARRIED]);
+		unset($_SESSION[NuSess::LANG_CARRIED]);
+		// the globeadmin (no user row): the language he chose last (setting lang_ga, written by ?p=lang)
 		if ($susLanguage === null && $userId === '') {
 			$ga = self::gaLanguage();
 			if ($ga !== null && ($userWins || !$picked)) { nu_set_lang($ga); return; }
@@ -615,14 +617,14 @@ final class NuAuth
 		$lang = nu_lang();
 		if (!isset(NU_LANG_VARIANT_DEFAULT[$lang])) return;
 		$uv = $userId !== '' ? (string)NuUserJson::get($userId, 'NUNEXT_LANG_VARIANT') : '';
-		if (isset(NU_LANG_VARIANTS[$uv]) && NU_LANG_VARIANTS[$uv][0] === $lang && ($userWins || !isset($_SESSION['nu_lang_variant']))) { nu_set_lang($uv); return; }
-		if (isset($_SESSION['nu_lang_variant'])) return;      // picked on the sign-in page
+		if (isset(NU_LANG_VARIANTS[$uv]) && NU_LANG_VARIANTS[$uv][0] === $lang && ($userWins || !isset($_SESSION[NuSess::LANG_VARIANT]))) { nu_set_lang($uv); return; }
+		if (isset($_SESSION[NuSess::LANG_VARIANT])) return;      // picked on the sign-in page
 		$dv = NuSetupWizard::defaultVariant($lang);
 		if ($dv !== null) { nu_set_lang($dv); return; }
 		if ($browserVar !== null && NU_LANG_VARIANTS[$browserVar][0] === $lang) nu_set_lang($browserVar);
 	}
 
-	/** The globeadmin's language (choice code: de, en-GB …) from the setting lang_ga, null = none stored yet (0.8.1205). */
+	/** The globeadmin's language (choice code: de, en-GB …) from the setting lang_ga, null = none stored yet. */
 	public const LANG_GA = 'lang_ga';
 
 	public static function gaLanguage(): ?string
@@ -635,12 +637,12 @@ final class NuAuth
 	public static function logout(): void
 	{
 		NuSessions::forget();
-		$lang = $_SESSION['nu_lang'] ?? null;
-		$var = $_SESSION['nu_lang_variant'] ?? null;
+		$lang = $_SESSION[NuSess::LANG] ?? null;
+		$var = $_SESSION[NuSess::LANG_VARIANT] ?? null;
 		$_SESSION = [];
 		session_regenerate_id(true);
-		// the sign-in page stays in this language, but it does not count as picked for the next sign-in (0.8.1205)
-		if ($lang) { $_SESSION['nu_lang'] = $lang; $_SESSION['nu_lang_carried'] = 1; if ($var) $_SESSION['nu_lang_variant'] = $var; }
+		// the sign-in page stays in this language, but it does not count as picked for the next sign-in
+		if ($lang) { $_SESSION[NuSess::LANG] = $lang; $_SESSION[NuSess::LANG_CARRIED] = 1; if ($var) $_SESSION[NuSess::LANG_VARIANT] = $var; }
 		self::$user   = null;
 		self::$loaded = true;
 	}
@@ -649,7 +651,7 @@ final class NuAuth
 	public static function currentRaw(): array
 	{
 		if (self::$user) return ['id' => self::$user['id'], 'login' => self::$user['login']];
-		$a = $_SESSION['nu_auth'] ?? ($_SESSION['nu_2fa']['auth'] ?? null);
+		$a = $_SESSION[NuSess::AUTH] ?? ($_SESSION[NuSess::TWOFA]['auth'] ?? null);
 		return $a ? ['id' => (string)$a['id'], 'login' => (string)($a['login'] ?? '')] : ['id' => '', 'login' => ''];
 	}
 
@@ -660,7 +662,7 @@ final class NuAuth
 	 * or re-passworded account (also when changed in nuBuilder) is logged out immediately.
 	 */
 	/**
-	 * Unique user code (0.8.626): the user (id, name) that already has $code – trimmed, case-insensitive, empty codes never clash –
+	 * Unique user code: the user (id, name) that already has $code – trimmed, case-insensitive, empty codes never clash –
 	 * or null. nuBuilder Forte does not check it and the column has no unique index (existing duplicates stay until a user is saved).
 	 * @return array{id: string, name: string}|null
 	 */
@@ -676,15 +678,15 @@ final class NuAuth
 	{
 		if (self::$loaded) return self::$user;
 		self::$loaded = true;
-		if (NuInstall::needed()) return self::$user = null;   // no nuconfig.php yet: the installer (its theme menu asked here and stopped the page, 0.8.693)
+		if (NuInstall::needed()) return self::$user = null;   // no nuconfig.php yet: the installer (its theme menu asked here and stopped the page)
 
-		$s = $_SESSION['nu_auth'] ?? null;
-		if (!$s && nu_cfg('nuConfigSharedLogin') && !isset($_SESSION['nu_2fa'])) {
+		$s = $_SESSION[NuSess::AUTH] ?? null;
+		if (!$s && nu_cfg('nuConfigSharedLogin') && !isset($_SESSION[NuSess::TWOFA])) {
 			$s = NuSharedLogin::adopt();
 			if ($s) {
 				self::start($s);
 				self::$loaded = true;
-				$s = $_SESSION['nu_auth'];
+				$s = $_SESSION[NuSess::AUTH];
 			}
 		}
 		if (!$s) return null;
@@ -755,7 +757,8 @@ final class NuAuth
 				'display'         => $full !== '' ? $full : ((string)$row['sus_name'] !== '' ? (string)$row['sus_name'] : (string)$row['sus_login_name']),
 				'access_id'       => (string)$row['sus_zzzzsys_access_id'],
 				'email'           => (string)$row['sus_email'],
-				'change_password' => (string)$row['sus_change_password'] === '1' && !in_array($s['via'] ?? '', ['nubuilder', 'impersonated', 'sso', 'passkey'], true),   // single sign-on: the provider owns the password (0.8.863); passkey: no password used (0.8.877)
+				'change_password' => (string)$row['sus_change_password'] === '1' && !in_array($s['via'] ?? '', ['nubuilder', 'impersonated', 'sso', 'passkey'], true),
+					// single sign-on: the provider owns the password; passkey: no password used
 			];
 			// demo mode (core/nudemo.php): a demo user sees everything the globeadmin sees – read only from here on
 			if (NuDemo::isDemoUser((string)$row['zzzzsys_user_id'])) {
@@ -767,7 +770,7 @@ final class NuAuth
 		}
 
 		$user['via'] = (string)($s['via'] ?? '');
-		if (!NuIpAccess::allowsRequest($user, $user['via'])) {   // IP access (0.8.722): a session from an address its levels do not allow ends
+		if (!NuIpAccess::allowsRequest($user, $user['via'])) {   // IP access: a session from an address its levels do not allow ends
 			if (NuImpersonate::active()) NuLog::write('impersonate_end', 'zzzzsys_user', (string)$s['id'], ['reason' => 'ip']);
 			self::logout();
 			nu_flash('warning', t('login_err_ip'));
@@ -779,12 +782,12 @@ final class NuAuth
 			nu_flash('warning', t('login_session_ended'));
 			return null;
 		}
-		if (!defined('NU_PASSIVE')) $_SESSION['nu_auth']['last'] = time();   // the bell's check does not count as activity (0.8.357)
+		if (!defined('NU_PASSIVE')) $_SESSION[NuSess::AUTH]['last'] = time();   // the bell's check does not count as activity
 		return self::$user = $user;
 	}
 
 	/**
-	 * A user's whole row of zzzzsys_user (null when there is none), read once per request (performance review, 0.8.1341: one page read the
+	 * A user's whole row of zzzzsys_user (null when there is none), read once per request (performance review: one page read the
 	 * signed-in user's row up to seven times – whole, and column by column: language, team, department, access level, sus_json).
 	 * A write to the table through NuDB drops it (NuMemo).
 	 */
@@ -794,7 +797,7 @@ final class NuAuth
 		return NuMemo::get('user:' . $userId, ['zzzzsys_user'], static fn(): ?array => nu_db()->one('SELECT * FROM zzzzsys_user WHERE zzzzsys_user_id = ?', [$userId]));
 	}
 
-	/** Is there a row of zzzzsys_user with this id? (NuMemo, code review R6, 0.8.1351) */
+	/** Is there a row of zzzzsys_user with this id? (NuMemo, code review R6) */
 	public static function userExists(string $userId): bool
 	{
 		return self::userRow($userId) !== null;
@@ -817,21 +820,23 @@ final class NuAuth
 	/** Call after the current user's hash was changed elsewhere in this request (keeps the session valid). */
 	public static function refreshFingerprint(string $newHash): void
 	{
-		if (isset($_SESSION['nu_auth'])) $_SESSION['nu_auth']['fp'] = self::fingerprint($newHash);
+		if (isset($_SESSION[NuSess::AUTH])) $_SESSION[NuSess::AUTH]['fp'] = self::fingerprint($newHash);
 		self::$loaded = false;
 	}
 
 	/**
-	 * nuBuilder's hook nu_check_password_policy (0.8.462, gap analysis B5) for a new password: the procedure gets $newPassword,
+	 * nuBuilder's hook nu_check_password_policy (gap analysis B5) for a new password: the procedure gets $newPassword,
 	 * $newPasswordCheck, $will (all the new password), $userId and $check = true, as in nuBuilder's password procedures; it refuses
 	 * with $check = false (its nuDisplayError text is shown) or an error. @return string|null null = accepted, otherwise the message
 	 */
 	public static function passwordPolicy(string $new, string $userId, array $ctx = []): ?string
 	{
-		// nuBuilder Next's password policy first (0.8.745, NuPwPolicy – Settings → Sign-in & security → Password policy), then nuBuilder Forte's hook
+		// nuBuilder Next's password policy first (NuPwPolicy – Settings → Sign-in & security → Password policy), then nuBuilder Forte's hook
 		if ($userId !== '' && !isset($ctx['login'])) {
 			try { $r = self::userRow($userId); } catch (Throwable) { $r = null; }
-			if ($r) $ctx += ['login' => (string)$r['sus_login_name'], 'name' => trim((string)($r['sus_first_name'] ?? '') . ' ' . (string)($r['sus_last_name'] ?? '') . ' ' . (string)$r['sus_name']), 'email' => (string)$r['sus_email']];
+			if ($r) $ctx += ['login' => (string)$r['sus_login_name'],
+				'name' => trim((string)($r['sus_first_name'] ?? '') . ' ' . (string)($r['sus_last_name'] ?? '') . ' ' . (string)$r['sus_name']),
+				'email' => (string)$r['sus_email']];
 		}
 		$v = NuPwPolicy::violations($new, $ctx);
 		if ($v) return NuPwPolicy::message($v);
@@ -853,11 +858,11 @@ final class NuAuth
 		[$ok] = self::verifyPassword($current, $hash);
 		if (!$ok) return 'pw_err_current';
 		if (hash_equals($current, $new)) return 'pw_err_same';
-		if (($policy = self::passwordPolicy($new, (string)$u['id'])) !== null) return $policy;   // nu_check_password_policy (0.8.462)
+		if (($policy = self::passwordPolicy($new, (string)$u['id'])) !== null) return $policy;   // nu_check_password_policy
 
 		$newHash = self::hash($new);
 		$db->update('zzzzsys_user', ['sus_login_password' => $newHash, 'sus_change_password' => '0'], 'zzzzsys_user_id', $u['id']);
-		$_SESSION['nu_auth']['fp'] = self::fingerprint($newHash);
+		$_SESSION[NuSess::AUTH]['fp'] = self::fingerprint($newHash);
 		session_regenerate_id(true);
 		self::$loaded = false;
 		NuLog::write('password_changed', 'zzzzsys_user', $u['id']);
@@ -883,7 +888,7 @@ final class NuSharedLogin
 		return substr($safe, 0, 128);
 	}
 
-	/** Reads nuBuilder's $_SESSION['nubuilder_session_data'] without locking or changing it. */
+	/** Reads nuBuilder's $_SESSION[NuSess::FORTE_DATA] without locking or changing it. */
 	private static function readNuBuilderSession(): ?array
 	{
 		$name = self::sessionName();
@@ -899,12 +904,11 @@ final class NuSharedLogin
 		try {
 			session_name($name);
 			session_id($id);
-			@session_start(['read_and_close' => true, 'use_cookies' => false, 'use_only_cookies' => false]);
-			$data = $_SESSION['nubuilder_session_data'] ?? null;
+			@session_start(['read_and_close' => true, 'use_cookies' => false]);   // the id set above wins; use_only_cookies is deprecated in PHP 8.4
+			$data = $_SESSION[NuSess::FORTE_DATA] ?? null;
 		} finally {
 			$_SESSION = [];
 			nu_ini_set('session.use_cookies', '1');            // session_start options persist as ini values
-			nu_ini_set('session.use_only_cookies', '1');
 			session_name($ownName);
 			session_id($ownId);
 			@session_start();
@@ -1012,7 +1016,7 @@ final class NuUserJson
 	public const CHANGED = 'NUNEXT_CHANGED';
 
 	/**
-	 * Created / last changed stamp (0.8.759): sus_json NUNEXT_CREATED / NUNEXT_CHANGED = {t: 'Y-m-d H:i:s', by: login, via}. Called by every
+	 * Created / last changed stamp: sus_json NUNEXT_CREATED / NUNEXT_CHANGED = {t: 'Y-m-d H:i:s', by: login, via}. Called by every
 	 * write path of nuBuilder Next (user form, My account, import, REST API). A user from before (or made in nuBuilder Forte) gets the
 	 * created stamp from the log's user_created row on the next change, when the log still has it.
 	 */
@@ -1062,6 +1066,6 @@ final class NuUserJson
 	public static function passwordChanged(string $userId, string $source): void
 	{
 		try { self::setMany($userId, ['PASSWORD_CHANGED_TIME' => time(), 'PASSWORD_CHANGED_SOURCE' => $source]); }
-		catch (Throwable) { /* best effort – the password itself is saved */ }
+		catch (Throwable $ig) { nu_ignored($ig, 'best effort – the password itself is saved'); }
 	}
 }

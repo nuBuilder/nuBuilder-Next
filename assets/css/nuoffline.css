@@ -1,4 +1,4 @@
-/* page shown by the installed app when the server cannot be reached (0.8.1136, NuPwa) – stands alone, no Bootstrap */
+/* page shown by the installed app when the server cannot be reached (NuPwa) – stands alone, no Bootstrap */
 :root { --bg: #f3f5f8; --fg: #1d2330; --muted: #5d6675; --btn: #2f6fd6; --btn-fg: #fff; color-scheme: light; }
 @media (prefers-color-scheme: dark) { :root { --bg: #15181d; --fg: #e4e7ec; --muted: #a2a9b4; --btn: #6ea8fe; --btn-fg: #0b1220; color-scheme: dark; } }
 html, body { margin: 0; height: 100%; }

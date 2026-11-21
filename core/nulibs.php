@@ -3,18 +3,18 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Library packs (0.8.405): the six libraries nuBuilder Next does not ship in its package – TCPDF, PHPMailer, TinyMCE, phpMyAdmin
+ * Library packs: the six libraries nuBuilder Next does not ship in its package – TCPDF, PHPMailer, TinyMCE, phpMyAdmin
  * (nuBuilder's "nudb" with its config), Adminer, Tiny File Manager – come as signed zips of their own.
  *
  *   Pack       nunext-lib-<slot>-<version>.zip: nunext-lib.json at the root (format nunext-lib-1, name = slot, version, title,
  *              built, files {rel: {sha256, size}}, signature) + the library below lib/. Signature: Ed25519 (the key of
  *              nunext.zip, NuUpdate::SIGN_PUBLIC) over payload() = "nunext-lib|<slot>|<version>|sha256(sorted 'rel sha256 size' lines)".
- *   Folders    vendor/packs/<dir>-<version>/ (0.8.409; dir = SLOTS[..]['dir'], e.g. nudb-5.2.3) – versions side by side; the active
+ *   Folders    vendor/packs/<dir>-<version>/ (dir = SLOTS[..]['dir'], e.g. nudb-5.2.3) – versions side by side; the active
  *              one is in vendor/packs/nunext-libs.php ("<?php exit; ?>" + JSON: slot => {active, prev, source, at, by}). vendor/packs/
  *              itself is deny-all (.htaccess written on first use); the browser packs (TinyMCE, phpMyAdmin, Uppy) get an
  *              allow .htaccess, the others (TCPDF, PHPMailer, Adminer, PhpSpreadsheet) a deny-all one. The active version plus KEEP older ones stay
  *              (roll back). An update of nuBuilder Next never touches vendor/packs/ (NuUpdate::isProtected).
- *              Packs of 0.8.405–0.8.408 stay where they are (third_party/<dir>-<version>/, third_party/nunext-libs.php) and are read
+ *              Packs of stay where they are (third_party/<dir>-<version>/, third_party/nunext-libs.php) and are read
  *              as an old place for a slot that has no pack in vendor/packs/ yet – until the upgrade baseline moves.
  *   Sources    zips in _update/ (and _install/ while installing), an upload on the update page, the GitHub release with the
  *              tag "libraries" of the update repository (asset libraries.json = signed index {format nunext-libs-1, built,
@@ -35,7 +35,7 @@ final class NuLibs
 	public const TAG = 'libraries';
 	public const PACKS = 'vendor/packs';                 // = NU_PACKS (also used without core/nuapp.php: dev/libpack.php)
 	public const STATE = self::PACKS . '/nunext-libs.php';
-	public const LEGACY = 'third_party';                // packs of 0.8.405–0.8.408 (old place)
+	public const LEGACY = 'third_party';                // packs of (old place)
 	/** .htaccess of a browser pack inside the deny-all vendor/packs/ */
 	public const ALLOW = "# nuBuilder Next – library pack opened by the browser (vendor/packs/ itself is closed)\n<IfModule mod_authz_core.c>\n\tRequire all granted\n</IfModule>\n<IfModule !mod_authz_core.c>\n\tOrder allow,deny\n\tAllow from all\n</IfModule>\n";
 	public const SETTING = 'github_libs';
@@ -55,16 +55,18 @@ final class NuLibs
 		'tcpdf'           => ['title' => 'TCPDF', 'url' => 'https://github.com/tecnickcom/TCPDF', 'dir' => 'tcpdf', 'web' => false, 'entry' => ['tcpdf.php', 'vendor/tecnickcom/tcpdf/tcpdf.php'], 'rec' => true, 'use' => 'pdf'],
 		'phpmailer'       => ['title' => 'PHPMailer', 'url' => 'https://github.com/PHPMailer/PHPMailer', 'dir' => 'phpmailer', 'web' => false, 'entry' => ['PHPMailer.php', 'src/PHPMailer.php'], 'rec' => true, 'use' => 'mail'],
 		'tinymce'         => ['title' => 'TinyMCE', 'url' => 'https://github.com/tinymce/tinymce', 'dir' => 'tinymce', 'web' => true, 'entry' => ['tinymce.min.js'], 'rec' => true, 'use' => 'wysiwyg'],
-		'phpmyadmin'      => ['title' => 'phpMyAdmin', 'url' => 'https://github.com/phpmyadmin/phpmyadmin', 'dir' => 'nudb', 'web' => true, 'entry' => ['index.php'], 'rec' => false, 'use' => 'db', 'db' => 'mysql'],   // 0.8.744: not offered on SQL Server (Adminer is)
+		'phpmyadmin'      => ['title' => 'phpMyAdmin', 'url' => 'https://github.com/phpmyadmin/phpmyadmin', 'dir' => 'nudb', 'web' => true, 'entry' => ['index.php'], 'rec' => false, 'use' => 'db', 'db' => 'mysql'],
+			// not offered on SQL Server (Adminer is)
 		'adminer'         => ['title' => 'Adminer', 'url' => 'https://github.com/vrana/adminer', 'dir' => 'adminer', 'web' => false, 'entry' => ['adminer.php', 'adminer-*.php'], 'rec' => false, 'use' => 'db'],
-		// nuBuilder's Uppy (0.8.459): file objects with target "File System" upload with it (uppy.min.js / .css + locales/)
+		// nuBuilder's Uppy: file objects with target "File System" upload with it (uppy.min.js / .css + locales/)
 		'uppy'            => ['title' => 'Uppy', 'url' => 'https://github.com/transloadit/uppy', 'dir' => 'uppy', 'web' => true, 'entry' => ['uppy.min.js'], 'rec' => false, 'use' => 'upload'],
-		// PhpSpreadsheet (0.8.755): reading Excel / OpenDocument files (CSV import, nuNextReadSpreadsheet) – built by dev/pss_assemble.py, PHP 8.2+
+		// PhpSpreadsheet: reading Excel / OpenDocument files (CSV import, nuNextReadSpreadsheet) – built by dev/pss_assemble.py, PHP 8.2+
 		'phpspreadsheet'  => ['title' => 'PhpSpreadsheet', 'url' => 'https://github.com/PHPOffice/PhpSpreadsheet', 'dir' => 'phpspreadsheet', 'web' => false, 'entry' => ['autoload.php'], 'rec' => false, 'use' => 'spreadsheet', 'php' => '8.2.0'],
 	];
 	/** NuSecurity::libraries() name => slot */
-	public const BY_NAME = ['TCPDF' => 'tcpdf', 'PHPMailer' => 'phpmailer', 'TinyMCE' => 'tinymce', 'phpMyAdmin' => 'phpmyadmin', 'Adminer' => 'adminer', 'Uppy' => 'uppy', 'PhpSpreadsheet' => 'phpspreadsheet'];
-	/** Slots that were removed (slot => folder name): their packs are deleted by retire() – Tiny File Manager since 0.8.479 (nuFiles). */
+	public const BY_NAME = ['TCPDF' => 'tcpdf', 'PHPMailer' => 'phpmailer', 'TinyMCE' => 'tinymce', 'phpMyAdmin' => 'phpmyadmin', 'Adminer' => 'adminer',
+		'Uppy' => 'uppy', 'PhpSpreadsheet' => 'phpspreadsheet'];
+	/** Slots that were removed (slot => folder name): their packs are deleted by retire – Tiny File Manager (nuFiles). */
 	public const RETIRED = ['tinyfilemanager' => 'tinyfilemanager'];
 
 	private static ?array $state = null;
@@ -81,7 +83,7 @@ final class NuLibs
 		return self::SLOTS[$slot] ?? null;
 	}
 
-	/** The PHP version a slot needs and this server lacks: the error text, '' = fine (0.8.755: PhpSpreadsheet 5 needs 8.2). */
+	/** The PHP version a slot needs and this server lacks: the error text, '' = fine (PhpSpreadsheet 5 needs 8.2). */
 	public static function phpProblem(string $slot): string
 	{
 		$need = (string)(self::SLOTS[$slot]['php'] ?? '');
@@ -126,7 +128,7 @@ final class NuLibs
 		return self::$state ??= self::readState(self::$root . '/' . self::STATE);
 	}
 
-	/** State of the packs of 0.8.405–0.8.408 in third_party/ (read only). */
+	/** State of the packs of in third_party/ (read only). */
 	private static function legacyState(): array
 	{
 		return self::$legacy ??= self::readState(self::$root . '/' . self::LEGACY . '/nunext-libs.php');
@@ -169,7 +171,7 @@ final class NuLibs
 		return self::hasEntry($slot, $d) ? [$d, $v] : null;
 	}
 
-	/** Pack of 0.8.405–0.8.408 in third_party/ – only for a slot without an entry in vendor/packs/nunext-libs.php. */
+	/** Pack of in third_party/ – only for a slot without an entry in vendor/packs/nunext-libs.php. */
 	private static function legacy(string $slot): ?array
 	{
 		if (!isset(self::SLOTS[$slot]) || isset(self::state()[$slot])) return null;
@@ -190,7 +192,7 @@ final class NuLibs
 		return (string)((self::current($slot) ?? self::legacy($slot))[1] ?? '');
 	}
 
-	/** Is the pack in use an old one in third_party/ (installed by 0.8.405–0.8.408)? */
+	/** Is the pack in use an old one in third_party/ (installed by)? */
 	public static function isLegacy(string $slot): bool
 	{
 		return self::current($slot) === null && self::legacy($slot) !== null;
@@ -220,7 +222,7 @@ final class NuLibs
 		return is_file(NU_ROOT . '/' . NU_TINYMCE . '/tinymce.min.js') ? NU_TINYMCE : '';
 	}
 
-	/** Uppy's folder for the browser (relative to nuBuilder Next, 0.8.459): the library pack; '' = not installed. */
+	/** Uppy's folder for the browser (relative to nuBuilder Next): the library pack; '' = not installed. */
 	public static function uppy(): string
 	{
 		return self::webPath('uppy');
@@ -456,7 +458,7 @@ final class NuLibs
 	}
 
 	/**
-	 * Installed versions of $slot other than the active one (0.8.1065) – what "Remove older versions" offers, newest first.
+	 * Installed versions of $slot other than the active one – what "Remove older versions" offers, newest first.
 	 * @return list<array{version: string, prev: bool, size: int, at: string}>
 	 */
 	public static function older(string $slot): array
@@ -474,7 +476,7 @@ final class NuLibs
 	}
 
 	/**
-	 * Removes the given older versions of $slot (0.8.1065); never the active one. Removing the previous version ends rolling back
+	 * Removes the given older versions of $slot; never the active one. Removing the previous version ends rolling back
 	 * (prev is cleared). @return list<string> the versions removed
 	 */
 	public static function removeOlder(string $slot, array $versions): array
@@ -493,7 +495,7 @@ final class NuLibs
 	}
 
 	/**
-	 * Deletes every pack of a RETIRED slot – vendor/packs/<dir>-*, third_party/<dir>-* (packs of 0.8.405–0.8.408) – and its entry in
+	 * Deletes every pack of a RETIRED slot – vendor/packs/<dir>-*, third_party/<dir>-* (packs of 0.8.405) – and its entry in
 	 * nunext-libs.php (readState() skips unknown slots, so saving the state drops it). @return list<string> removed folders
 	 */
 	public static function retire(string $slot): array
@@ -569,10 +571,9 @@ final class NuLibs
 		$s = ['repo' => '', 'checked_at' => 0, 'built' => '', 'libs' => [], 'error' => ''];
 		try {
 			NuSchema::ensure();
-			$v = nu_setting_value(self::SETTING);
-			$j = is_string($v) ? json_decode($v, true) : null;
-			if (is_array($j)) $s = array_merge($s, array_intersect_key($j, $s));
-		} catch (Throwable) { /* none */ }
+			$j = nu_setting_json(self::SETTING);
+			if ($j) $s = array_merge($s, array_intersect_key($j, $s));
+		} catch (Throwable $ig) { nu_ignored($ig, 'none'); }
 		if (!is_array($s['libs'])) $s['libs'] = [];
 		return $s;
 	}
@@ -611,13 +612,13 @@ final class NuLibs
 		return $out;
 	}
 
-	/** The project (source repository) of a pack's library on GitHub ('' when unknown, 0.8.892) – Update → Libraries, icon after the name. */
+	/** The project (source repository) of a pack's library on GitHub ('' when unknown) – Update → Libraries, icon after the name. */
 	public static function projectUrl(string $slot): string
 	{
 		return NuLibraries::projectUrl(self::SLOTS[$slot] ?? []);
 	}
 
-	/** The GitHub page of the packs: the release with the tag "libraries" of the repository ('' for an invalid one, 0.8.891). */
+	/** The GitHub page of the packs: the release with the tag "libraries" of the repository ('' for an invalid one). */
 	public static function ghReleaseUrl(string $repo): string
 	{
 		return NuGitHub::validRepo($repo) ? 'https://github.com/' . $repo . '/releases/tag/' . self::TAG : '';
@@ -655,7 +656,7 @@ final class NuLibs
 			$s['error'] = mb_substr($e->getMessage(), 0, 300);
 		}
 		if ($save) {
-			try { self::ghSave($s); } catch (Throwable) { /* shown anyway */ }
+			try { self::ghSave($s); } catch (Throwable $ig) { nu_ignored($ig, 'shown anyway'); }
 		}
 		return $s;
 	}
@@ -663,7 +664,8 @@ final class NuLibs
 	/** Downloads a pack of the GitHub index into _update/ – kept only when its size, sha256 and signature are right. @return string file */
 	public static function download(array $entry): string
 	{
-		if (!NuGitHub::hostAllowed((string)($entry['url'] ?? '')) || !self::isPackName((string)($entry['file'] ?? ''))) throw new RuntimeException(t('gh_err_host', (string)parse_url((string)($entry['url'] ?? ''), PHP_URL_HOST)));
+		if (!NuGitHub::hostAllowed((string)($entry['url'] ?? ''))
+			|| !self::isPackName((string)($entry['file'] ?? ''))) throw new RuntimeException(t('gh_err_host', (string)parse_url((string)($entry['url'] ?? ''), PHP_URL_HOST)));
 		$dir = NuUpdate::folderDir();
 		$dest = $dir . '/' . $entry['file'];
 		$tmp = $dir . '/.download-' . bin2hex(random_bytes(6)) . '.part';
@@ -699,7 +701,7 @@ final class NuLibs
 			foreach ($out[$l['name']] as $x) if ($x['ok'] && $x['version'] === $l['version']) continue 2;     // already here
 			$out[$l['name']][] = ['version' => $l['version'], 'where' => 'github', 'entry' => $l, 'ok' => true, 'errors' => []];
 		}
-		foreach ($out as $slot => &$cands) {                          // a PHP the library does not run on: nothing to install (0.8.755)
+		foreach ($out as $slot => &$cands) {                          // a PHP the library does not run on: nothing to install
 			if (($pp = self::phpProblem($slot)) === '') continue;
 			foreach ($cands as &$c) { $c['ok'] = false; $c['errors'] = [$pp]; }
 			unset($c);
@@ -730,7 +732,7 @@ final class NuLibs
 	 * One row per slot for the update page / installer: in use (version, where from), installed packs, roll back target, safe
 	 * version state, best candidate. @return array slot => array
 	 */
-	/** Is the slot of use on this database type? phpMyAdmin is MySQL / MariaDB only (0.8.744). */
+	/** Is the slot of use on this database type? phpMyAdmin is MySQL / MariaDB only. */
 	public static function forDb(string $slot, string $dbType): bool
 	{
 		$need = self::SLOTS[$slot]['db'] ?? '';
@@ -753,7 +755,8 @@ final class NuLibs
 			$l = $sec[$slot] ?? ['version' => '', 'path' => '', 'min' => '', 'status' => 'missing', 'note' => '', 'local' => ''];
 			$act = self::activeVersion($slot);
 			$nb = $installer ? '' : NuBuilderLib::path();
-			$from = $act !== '' ? 'pack' : ((string)$l['path'] === '' ? '' : ($nb !== '' && str_starts_with((string)$l['path'], $nb . '/') && !str_starts_with((string)$l['path'], NU_ROOT . '/') ? 'nubuilder' : 'manual'));
+			$from = $act !== '' ? 'pack' : ((string)$l['path'] === '' ? '' : ($nb !== '' && str_starts_with((string)$l['path'], $nb . '/')
+				&& !str_starts_with((string)$l['path'], NU_ROOT . '/') ? 'nubuilder' : 'manual'));
 			$best = null;
 			foreach ($avail[$slot] as $c) if ($c['ok']) { $best = $c; break; }
 			$cur = $act !== '' ? $act : (string)$l['version'];
@@ -769,7 +772,7 @@ final class NuLibs
 		return $out;
 	}
 
-	// ================================================================== versions nuBuilder Next needs (0.8.406)
+	// ================================================================== versions nuBuilder Next needs
 
 	/**
 	 * What a nuBuilder Next version needs: slot => {min, needed} – of a package (manifest "requires_libs", written by dev/release.py from
@@ -829,7 +832,7 @@ final class NuLibs
 
 	/** Quick check of the library in use. @return array{0: string, 1: string} status ok|warn|fail, text */
 	/**
-	 * A source map comment at the end of a .js / .css file whose map is not delivered (0.8.574): removed while installing (updates and
+	 * A source map comment at the end of a .js / .css file whose map is not delivered: removed while installing (updates and
 	 * library packs – after the checksum check) and kept out of the package. Browsers' developer tools would load the map and the strict
 	 * Content-Security-Policy reports a blocked request. Only the last 400 bytes are looked at. @param callable(string): bool $hasFile
 	 * @return ?string the changed content, null when nothing to change
@@ -965,9 +968,9 @@ final class NuLibs
 		return preg_match('/Uppy v?([0-9]+\.[0-9]+\.[0-9]+)/', $src, $m) ? $m[1] : '';
 	}
 
-	/** Sources of the packs next to the project (0.8.410): <parent of nuBuilder Next>/libsrc/<slot>/ – outside the project and the web. */
+	/** Sources of the packs next to the project: <parent of nuBuilder Next>/libsrc/<slot>/ – outside the project and the web. */
 	public const LIBSRC = 'libsrc';
-	/** Inside nuBuilder Next (0.8.412): for hosts whose open_basedir allows only the web folder – closed for the web (deny-all .htaccess). */
+	/** Inside nuBuilder Next: for hosts whose open_basedir allows only the web folder – closed for the web (deny-all .htaccess). */
 	public const LIBSRC_IN = '_libsrc';
 
 	/** ../libsrc/<slot>/ when it exists (phpMyAdmin also ../libsrc/nudb/; capitals do not matter: PHPMailer = phpmailer), '' = not there. */
@@ -976,7 +979,7 @@ final class NuLibs
 		$want = array_unique([$slot, self::SLOTS[$slot]['dir']]);
 		foreach (self::libsrcBases($root) as $base) {
 			foreach ($want as $name) if (@is_dir("$base/$name")) return "$base/$name";
-			foreach (@scandir($base) ?: [] as $e) {                // other spelling (0.8.411)
+			foreach (@scandir($base) ?: [] as $e) {                // other spelling
 				if ($e[0] !== '.' && in_array(strtolower($e), $want, true) && @is_dir("$base/$e")) return "$base/$e";
 			}
 		}
@@ -984,7 +987,7 @@ final class NuLibs
 	}
 
 	/**
-	 * Folders with sources, in this order: ../libsrc/ next to nuBuilder Next (when PHP may read it), _libsrc/ inside it (0.8.412, for
+	 * Folders with sources, in this order: ../libsrc/ next to nuBuilder Next (when PHP may read it), _libsrc/ inside it (for
 	 * hosts whose open_basedir allows only the web folder – closed for the web with a deny-all .htaccess as soon as it is used).
 	 * @return list<string>
 	 */
@@ -1002,7 +1005,7 @@ final class NuLibs
 	}
 
 	/**
-	 * Why ../libsrc/ cannot be read (0.8.411): '' = fine or simply not there; otherwise the open_basedir list of the host (PHP then sees no
+	 * Why ../libsrc/ cannot be read: '' = fine or simply not there; otherwise the open_basedir list of the host (PHP then sees no
 	 * folder outside the allowed ones – is_dir() just says false).
 	 */
 	public static function libsrcBlocked(?string $root = null): string

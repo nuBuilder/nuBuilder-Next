@@ -4,12 +4,12 @@ defined('NU_ROOT') || exit;
 
 /* Compatibility check (globeadmin): nu… functions used by the application's JavaScript and PHP, and nuBuilder Next's support. */
 
-// admin rights (0.8.323): the globeadmin, or a user whose admin role has the right (core/nuadmin.php)
+// admin rights: the globeadmin, or a user whose admin role has the right (core/nuadmin.php)
 NuAdmin::require('compat', 'view');            // the scan (POST) only reads
 
 $withSystem = ($_GET['sys'] ?? '') === '1';
 $all        = ($_GET['all'] ?? '') === '1';
-$res        = NuCompat::scan($withSystem);   // links to the form builder open in a new tab (0.8.579)
+$res        = NuCompat::scan($withSystem);   // links to the form builder open in a new tab
 $nb         = ['js' => NuCompat::nuBuilderFunctions('js'), 'php' => NuCompat::nuBuilderFunctions('php')];
 $forms      = nu_forms();
 
@@ -34,8 +34,10 @@ nu_layout_start(t('compat_title'), 'home');
 	<div class="d-flex flex-wrap gap-3 align-items-center"><?= nu_back_button() ?>
 	<form method="get" action="index.php" class="d-flex flex-wrap gap-3 align-items-center">
 		<input type="hidden" name="p" value="compat">
-		<div class="form-check form-switch mb-0"><input class="form-check-input js-autosubmit" type="checkbox" role="switch" id="c_all" name="all" value="1"<?= $all ? ' checked' : '' ?>><label class="form-check-label small" for="c_all"><?= h(t('compat_show_all')) ?></label></div>
-		<div class="form-check form-switch mb-0"><input class="form-check-input js-autosubmit" type="checkbox" role="switch" id="c_sys" name="sys" value="1"<?= $withSystem ? ' checked' : '' ?>><label class="form-check-label small" for="c_sys"><?= h(t('compat_system')) ?></label></div>
+		<div class="form-check form-switch mb-0"><input class="form-check-input js-autosubmit" type="checkbox" role="switch" id="c_all" name="all"
+			value="1"<?= $all ? ' checked' : '' ?>><label class="form-check-label small" for="c_all"><?= h(t('compat_show_all')) ?></label></div>
+		<div class="form-check form-switch mb-0"><input class="form-check-input js-autosubmit" type="checkbox" role="switch" id="c_sys" name="sys"
+			value="1"<?= $withSystem ? ' checked' : '' ?>><label class="form-check-label small" for="c_sys"><?= h(t('compat_system')) ?></label></div>
 	</form></div>
 </div>
 
@@ -52,10 +54,11 @@ nu_layout_start(t('compat_title'), 'home');
 			<span class="badge text-bg-warning compatBdg"><?= $count('stub') ?> <?= h(t('compat_stub')) ?></span>
 			<span class="badge bg-secondary-subtle text-secondary-emphasis compatBdg"><?= $count('custom') ?> <?= h(t('compat_custom')) ?></span>
 			<span class="badge text-bg-success compatBdg"><?= $count('ok') ?> <?= h(t('compat_ok')) ?></span>
-			<?php /* phones (0.8.1086, the owner picked mockup C): one quiet line of counters on its own row instead of the badges */ ?>
+			<?php /* phones (the owner picked mockup C): one quiet line of counters on its own row instead of the badges */ ?>
 			<div class="compatDots small text-body-secondary">
 				<?php foreach (['missing' => ['danger', 'compat_missing'], 'stub' => ['warning', 'compat_stub'], 'custom' => ['secondary', 'compat_custom'], 'ok' => ['success', 'compat_ok']] as $st => [$col, $lk]): $n = $count($st); ?>
-					<span class="compatDot<?= $n && $st !== 'ok' ? ' compatDotOn text-' . $col . '-emphasis' : '' ?>" data-st="<?= h($st) ?>"><i class="bg-<?= $col ?>" aria-hidden="true"></i><b><?= $n ?></b> <?= h(t($lk)) ?></span>
+					<span class="compatDot<?= $n && $st !== 'ok' ? ' compatDotOn text-' . $col . '-emphasis' : '' ?>"
+						data-st="<?= h($st) ?>"><i class="bg-<?= $col ?>" aria-hidden="true"></i><b><?= $n ?></b> <?= h(t($lk)) ?></span>
 				<?php endforeach; ?>
 			</div>
 		</div>
@@ -77,19 +80,21 @@ nu_layout_start(t('compat_title'), 'home');
 								$label = $forms[$fid]['code'] ?? $fid;
 								$links[] = isset($forms[$fid]) && !str_starts_with($fid, 'nu') ? '<a href="' . h(nu_url('builder', ['f' => $fid])) . '" target="_blank" rel="noopener">' . h($label) . '</a>' : h($label);
 							}
-							// procedures: open in a new tab (0.8.693)
+							// procedures: open in a new tab
 							$canProc = NuAcl::can(NuAcl::FORM_PROCEDURE);
 							$procUrl = static fn(string $pid) => nu_url('procedures', ['id' => $pid]);
 							foreach (array_slice(array_unique(array_values($r['procs'] ?? [])), 0, 6) as $pid) {
 								$w = (string)array_search($pid, $r['procs'], true);
 								$label = preg_replace('/^Procedure( JS)? · /', '', $w);
-								$links[] = $canProc ? '<a class="nuCompatProc" href="' . h($procUrl($pid)) . '" target="_blank" rel="noopener"><i class="bi bi-filetype-php me-1" aria-hidden="true"></i>' . h($label) . '</a>' : h($label);
+								$links[] = $canProc ? '<a class="nuCompatProc" href="' . h($procUrl($pid))
+									. '" target="_blank" rel="noopener"><i class="bi bi-filetype-php me-1" aria-hidden="true"></i>' . h($label) . '</a>' : h($label);
 							}
 							echo implode(', ', $links);
 							?>
 							<details class="d-inline ms-1"><summary class="text-body-secondary"><?= count($r['where']) ?> <?= h(t(count($r['where']) === 1 ? 'compat_place' : 'compat_places')) ?></summary>
-								<ul class="mb-0 ps-3"><?php foreach (array_slice($r['where'], 0, 40) as $w): $pid = $r['procs'][$w] ?? ''; $wu = (string)($r['urls'][$w] ?? '');   // 0.8.1331: every place opens its code
-									if ($pid !== '' && !$canProc) $wu = ''; ?><li><?php if ($wu !== ''): ?><a href="<?= h($wu) ?>" target="_blank" rel="noopener" class="nuCompatPlace"><?= h($w) ?></a><?php else: ?><?= h($w) ?><?php endif; ?></li><?php endforeach; ?></ul></details>
+								<ul class="mb-0 ps-3"><?php foreach (array_slice($r['where'], 0, 40) as $w): $pid = $r['procs'][$w] ?? ''; $wu = (string)($r['urls'][$w] ?? '');   // every place opens its code
+									if ($pid !== '' && !$canProc) $wu = ''; ?><li><?php if ($wu !== ''): ?><a href="<?= h($wu) ?>" target="_blank" rel="noopener"
+										class="nuCompatPlace"><?= h($w) ?></a><?php else: ?><?= h($w) ?><?php endif; ?></li><?php endforeach; ?></ul></details>
 						</td>
 					</tr>
 				<?php endforeach; ?>
@@ -99,26 +104,29 @@ nu_layout_start(t('compat_title'), 'home');
 		</div>
 	</div>
 <?php endforeach; ?>
-<?php $fnd = NuCompat::findings($withSystem); // nuBuilder 4.9 features of the compatibility report (0.8.382) ?>
+<?php $fnd = NuCompat::findings($withSystem); // nuBuilder 4.9 features of the compatibility report ?>
 <div class="card shadow-sm mb-4" id="compat_findings">
 	<div class="card-header d-flex flex-wrap gap-2 align-items-center">
 		<span class="fw-semibold me-auto"><i class="bi bi-list-check me-1"></i><?= h(t('compat_f_title')) ?><?= NuListView::infoTip(t('compat_f_tip')) ?></span>
 		<?php $open = count(array_filter(array_keys($fnd), static fn($id) => (NuCompat::SINCE[$id] ?? null) === null && !in_array($id, NuCompat::PREP, true))); ?>
 		<span class="badge <?= $open ? 'text-bg-danger' : 'text-bg-success' ?>"><?= h(t('compat_f_open', $open)) ?></span>
 	</div>
-	<?php // 0.8.1330: only the features not supported yet (and preparation points) are shown; the supported ones fold away below
+	<?php // only the features not supported yet (and preparation points) are shown; the supported ones fold away below
 	$fRow = static function (string $id, array $places) use ($forms): string {
 		$since = NuCompat::SINCE[$id] ?? null;
 		$prep = in_array($id, NuCompat::PREP, true);
 		$links = [];
-		foreach ($places as $pl) { $fid = $pl['form']; if ($fid !== '' && isset($forms[$fid]) && !in_array($fid, $links, true)) $links[$fid] = !str_starts_with($fid, 'nu') ? '<a href="' . h(nu_url('builder', ['f' => $fid])) . '" target="_blank" rel="noopener">' . h($forms[$fid]['code']) . '</a>' : h($forms[$fid]['code']); }
+		foreach ($places as $pl) { $fid = $pl['form']; if ($fid !== '' && isset($forms[$fid]) && !in_array($fid, $links, true)) $links[$fid] = !str_starts_with($fid, 'nu') ? '<a href="'
+			. h(nu_url('builder', ['f' => $fid])) . '" target="_blank" rel="noopener">' . h($forms[$fid]['code']) . '</a>' : h($forms[$fid]['code']); }
 		$li = '';
 		foreach (array_slice($places, 0, 60) as $pl) $li .= '<li>' . h($pl['where']) . ($pl['detail'] !== '' ? ' – <code class="text-break">' . h($pl['detail']) . '</code>' : '') . '</li>';
 		return '<tr class="compat-' . ($since ? 'ok' : ($prep ? 'prep' : 'missing')) . '" data-finding="' . h($id) . '"><td><code>' . h($id) . '</code></td>'
 			. '<td class="small">' . h(t('compat_f_' . strtolower($id))) . '</td><td>'
-			. ($since ? '<span class="badge text-bg-success">' . h(t('compat_f_since', $since)) . '</span>' : ($prep ? '<span class="badge text-bg-secondary">' . h(t('compat_f_prep')) . '</span>' : '<span class="badge text-bg-danger">' . h(t('compat_f_not_yet')) . '</span>'))
+			. ($since ? '<span class="badge text-bg-success">' . h(t('compat_f_since', $since))
+				. '</span>' : ($prep ? '<span class="badge text-bg-secondary">' . h(t('compat_f_prep')) . '</span>' : '<span class="badge text-bg-danger">' . h(t('compat_f_not_yet')) . '</span>'))
 			. '</td><td class="small">' . implode(', ', array_slice($links, 0, 6))
-			. '<details class="d-inline ms-1"><summary class="text-body-secondary">' . count($places) . ' ' . h(t(count($places) === 1 ? 'compat_place' : 'compat_places')) . '</summary><ul class="mb-0 ps-3">' . $li . '</ul></details></td></tr>';
+			. '<details class="d-inline ms-1"><summary class="text-body-secondary">' . count($places) . ' '
+				. h(t(count($places) === 1 ? 'compat_place' : 'compat_places')) . '</summary><ul class="mb-0 ps-3">' . $li . '</ul></details></td></tr>';
 	};
 	$fHead = '<thead><tr><th>ID</th><th>' . h(t('compat_f_feature')) . '</th><th>' . h(t('compat_status')) . '</th><th>' . h(t('compat_where')) . '</th></tr></thead>';
 	$fOpen = array_filter($fnd, static fn($id) => (NuCompat::SINCE[$id] ?? null) === null, ARRAY_FILTER_USE_KEY);
@@ -129,7 +137,8 @@ nu_layout_start(t('compat_title'), 'home');
 			<tbody>
 			<?php foreach ($fOpen as $id => $places) echo $fRow((string)$id, $places); ?>
 			<?php if (!$fnd): ?><tr><td colspan="4" class="text-center text-success py-4"><i class="bi bi-check-circle me-1"></i><?= h(t('compat_f_none')) ?></td></tr>
-			<?php elseif (!$fOpen): ?><tr><td colspan="4" class="text-center text-success py-4" id="compatFAllOk"><i class="bi bi-check-circle me-1"></i><?= h(t('compat_f_all_supported')) ?></td></tr><?php endif; ?>
+			<?php elseif (!$fOpen): ?><tr><td colspan="4" class="text-center text-success py-4"
+				id="compatFAllOk"><i class="bi bi-check-circle me-1"></i><?= h(t('compat_f_all_supported')) ?></td></tr><?php endif; ?>
 			</tbody>
 		</table>
 	</div>
@@ -145,7 +154,7 @@ nu_layout_start(t('compat_title'), 'home');
 	</details>
 	<?php endif; ?>
 </div>
-<?php // MySQL-only SQL (0.8.791): only while nuBuilder Next runs on SQL Server (developer mode: ?mssql=1 shows it on MySQL too, for tests)
+<?php // MySQL-only SQL: only while nuBuilder Next runs on SQL Server (developer mode: ?mssql=1 shows it on MySQL too, for tests)
 if (nu_db()->type === 'sqlsrv' || (NuHash::devMode() && isset($_GET['mssql']))):
 	$ms = NuCompat::mssqlScan($withSystem); $msN = array_sum(array_map('count', $ms));
 	$canProc = NuAcl::can(NuAcl::FORM_PROCEDURE); ?>
@@ -167,8 +176,11 @@ if (nu_db()->type === 'sqlsrv' || (NuHash::devMode() && isset($_GET['mssql']))):
 						<?php $links = [];
 						foreach ($places as $pl) {
 							$fid = $pl['form'];
-							if ($pl['proc'] !== '' && $canProc) $links[$pl['where']] = '<a class="nuCompatProc" href="' . h(nu_url('procedures', ['id' => $pl['proc']])) . '" target="_blank" rel="noopener"><i class="bi bi-filetype-php me-1" aria-hidden="true"></i>' . h(preg_replace('/^Procedure( JS)? · /', '', $pl['where'])) . '</a>';
-							elseif ($fid !== '' && isset($forms[$fid]) && !str_starts_with($fid, 'nu')) $links[$fid] = '<a href="' . h(nu_url('builder', ['f' => $fid])) . '" target="_blank" rel="noopener">' . h($forms[$fid]['code']) . '</a>';
+							if ($pl['proc'] !== '' && $canProc) $links[$pl['where']] = '<a class="nuCompatProc" href="' . h(nu_url('procedures', ['id' => $pl['proc']]))
+								. '" target="_blank" rel="noopener"><i class="bi bi-filetype-php me-1" aria-hidden="true"></i>'
+								. h(preg_replace('/^Procedure( JS)? · /', '', $pl['where'])) . '</a>';
+							elseif ($fid !== '' && isset($forms[$fid]) && !str_starts_with($fid, 'nu')) $links[$fid] = '<a href="' . h(nu_url('builder', ['f' => $fid]))
+								. '" target="_blank" rel="noopener">' . h($forms[$fid]['code']) . '</a>';
 						}
 						echo implode(', ', array_slice($links, 0, 6)); ?>
 						<details class="d-inline ms-1"><summary class="text-body-secondary"><?= count($places) ?> <?= h(t(count($places) === 1 ? 'compat_place' : 'compat_places')) ?></summary>
@@ -182,7 +194,7 @@ if (nu_db()->type === 'sqlsrv' || (NuHash::devMode() && isset($_GET['mssql']))):
 	</div>
 </div>
 <?php endif; ?>
-<?php $unq = NuCompat::unquotedHash($withSystem); // hash variables outside quotes (0.8.207) ?>
+<?php $unq = NuCompat::unquotedHash($withSystem); // hash variables outside quotes ?>
 <div class="card shadow-sm mb-4" id="compat_hash">
 	<div class="card-header d-flex flex-wrap gap-2 align-items-center">
 		<span class="fw-semibold me-auto"><i class="bi bi-shield-exclamation me-1"></i><?= h(t('compat_hash_title')) ?>
@@ -195,7 +207,8 @@ if (nu_db()->type === 'sqlsrv' || (NuHash::devMode() && isset($_GET['mssql']))):
 			<tbody>
 			<?php foreach ($unq as $u): $fid = $u['form']; ?>
 				<tr>
-					<td class="small"><?php if ($fid !== '' && isset($forms[$fid]) && !str_starts_with($fid, 'nu')): ?><a href="<?= h(nu_url('builder', ['f' => $fid])) ?>" target="_blank" rel="noopener"><?= h($u['where']) ?></a><?php else: ?><?= h($u['where']) ?><?php endif; ?></td>
+					<td class="small"><?php if ($fid !== '' && isset($forms[$fid]) && !str_starts_with($fid, 'nu')): ?><a href="<?= h(nu_url('builder', ['f' => $fid])) ?>"
+						target="_blank" rel="noopener"><?= h($u['where']) ?></a><?php else: ?><?= h($u['where']) ?><?php endif; ?></td>
 					<td><span class="badge bg-secondary-subtle text-secondary-emphasis"><?= h(strtoupper($u['lang'])) ?></span></td>
 					<td><?php foreach ($u['vars'] as $vn): ?><code class="me-2">#<?= h($vn) ?>#</code><?php endforeach; ?></td>
 				</tr>

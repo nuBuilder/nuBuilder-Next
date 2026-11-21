@@ -24,7 +24,7 @@ final class NuInstall
 	/*
 	 * Setting 'db_origin' (zzzzsys_nunext_setting, step 0014): 'nunext' = set up by the installer on an empty database, 'legacy' =
 	 * nuBuilder Next was installed before 0.8.380, 'nubuilder' = set up on an existing nuBuilder Forte database. Existing nuBuilder
-	 * Forte databases are allowed (0.8.1008): the installer and the sign-in page ask for a backup first (backupNeeded()).
+	 * Forte databases are allowed: the installer and the sign-in page ask for a backup first (backupNeeded()).
 	 */
 	public const ORIGIN = 'db_origin';
 
@@ -61,7 +61,7 @@ final class NuInstall
 
 	/**
 	 * A nuBuilder Forte database that nuBuilder Next has not set up yet (nuconfig.php written by hand): the sign-in page asks for a
-	 * backup before the globeadmin's first sign-in adds the own tables (0.8.1008).
+	 * backup before the globeadmin's first sign-in adds the own tables.
 	 */
 	public static function backupNeeded(): bool
 	{
@@ -113,7 +113,7 @@ final class NuInstall
 	}
 
 	/**
-	 * Request from the server itself to PHP's built-in web server (php -S, development). Since 0.8.207 every other server asks for
+	 * Request from the server itself to PHP's built-in web server (php -S, development). Since every other server asks for
 	 * the token: a reverse proxy on the same host that sends no X-Forwarded-For would make every visitor look local.
 	 */
 	public static function isLocal(): bool
@@ -169,7 +169,7 @@ final class NuInstall
 		$https = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
 		$cfgDir = dirname(self::configPath());
 		return [
-			// 5th element (0.8.1047): passed, but with a note to read – shown outside the folded list of passed checks
+			// 5th element: passed, but with a note to read – shown outside the folded list of passed checks
 			['PHP ≥ 8.1', PHP_VERSION_ID >= 80100, PHP_VERSION . (PHP_VERSION_ID < 80200 ? ' – ' . t('secchk_php_old') : '') . (NuSecurity::phpFixNote() !== '' ? ' – ' . NuSecurity::phpFixNote() : ''), true,
 				PHP_VERSION_ID < 80200 || NuSecurity::phpFixNote() !== ''],
 			['PDO MySQL / MariaDB', extension_loaded('pdo_mysql'), extension_loaded('pdo_mysql') ? 'ok' : t('ins_missing'), false],
@@ -177,7 +177,7 @@ final class NuInstall
 			['mbstring', extension_loaded('mbstring'), extension_loaded('mbstring') ? 'ok' : t('ins_missing'), true],
 			['openssl', extension_loaded('openssl'), extension_loaded('openssl') ? 'ok' : t('ins_missing'), true],
 			['zip', class_exists('ZipArchive'), class_exists('ZipArchive') ? 'ok' : t('ins_zip_hint'), false],
-			['sodium', function_exists('sodium_crypto_sign_verify_detached'), function_exists('sodium_crypto_sign_verify_detached') ? 'ok' : t('ins_sodium_hint'), false],   // signatures of packs / updates (0.8.788)
+			['sodium', function_exists('sodium_crypto_sign_verify_detached'), function_exists('sodium_crypto_sign_verify_detached') ? 'ok' : t('ins_sodium_hint'), false],   // signatures of packs / updates
 			[t('ins_writable'), is_writable($cfgDir), is_writable($cfgDir) ? 'ok' : t('ins_writable_hint'), false],
 			['HTTPS', $https, $https ? 'ok' : t('ins_https_hint'), false],
 		];
@@ -271,7 +271,7 @@ final class NuInstall
 		return $n;
 	}
 
-	/** Runs SQL text statement by statement (0.8.628: a .sql.gz / .zip read with dumpSql()). @return int statements */
+	/** Runs SQL text statement by statement (a .sql.gz / .zip read with dumpSql()). @return int statements */
 	public static function importSql(NuDB $db, string $sql, string $name = 'SQL'): int
 	{
 		nu_time_limit(600);
@@ -294,7 +294,7 @@ final class NuInstall
 		return NuSqlImport::split($sql);
 	}
 
-	// ------------------------------------------------------------------ nubuilder4.sql of any 4.x version (0.8.384)
+	// ------------------------------------------------------------------ nubuilder4.sql of any 4.x version
 
 	/** Largest dump the installer reads (unpacked). nuBuilder 4.9's nubuilder4.sql has about 1 MB. */
 	public const DUMP_MAX = 64 * 1024 * 1024;
@@ -358,7 +358,7 @@ final class NuInstall
 	 * Checks a nubuilder4.sql before it runs: only nuBuilder's own tables (zzzzsys_…) are created, filled, changed or dropped, besides
 	 * SET, transactions, LOCK TABLES and nuBuilder 4.5's views. Refused: other tables, other databases (USE, CREATE / DROP DATABASE),
 	 * users and rights, files (INTO OUTFILE, LOAD DATA), triggers, routines, events and an explicit DEFINER.
-	 * $anyTable (0.8.628, Reset database in developer mode): tables of the application too (a complete dump of a nuBuilder database);
+	 * $anyTable (Reset database in developer mode): tables of the application too (a complete dump of a nuBuilder database);
 	 * the other rules stay. @return array{ok: bool, error: string, tables: int, forms: int, users: int, app: int}
 	 */
 	public static function checkDump(string|iterable $sql, bool $anyTable = false, bool $needCore = true): array
@@ -388,7 +388,7 @@ final class NuInstall
 			if (preg_match('/^(ALTER\s+TABLE|DROP\s+TABLE(\s+IF\s+EXISTS)?|DROP\s+VIEW(\s+IF\s+EXISTS)?)\s+' . $tbl . '(\s|$)/i', $s)) continue;
 			// nuBuilder 4.5: zzzzsys_object_list / zzzzsys_report_data / zzzzsys_run_list as views (upgradeTo49 replaces them as 4.9 does)
 			if (preg_match('/^CREATE\s+(OR\s+REPLACE\s+)?(ALGORITHM\s*=\s*\w+\s+)?(SQL\s+SECURITY\s+(DEFINER|INVOKER)\s+)?VIEW\s+' . $tbl . '\s+AS\s+SELECT\b/i', $s)) continue;
-			// a complete dump (0.8.1031): views of the application, routines, triggers, events and MariaDB sequences – as nuBuilder Next's
+			// a complete dump: views of the application, routines, triggers, events and MariaDB sequences – as nuBuilder Next's
 			// own backups write them (without DEFINER, refused above)
 			if ($anyTable) {
 				if (preg_match('/^CREATE\s+(OR\s+REPLACE\s+)?(ALGORITHM\s*=\s*\w+\s+)?(SQL\s+SECURITY\s+(DEFINER|INVOKER)\s+)?VIEW\s+' . $tbl . '\s+AS\s+(SELECT|WITH|\()/i', $s)) continue;
@@ -624,7 +624,7 @@ final class NuInstall
 			. '$nuConfigDBUser						= ' . $x((string)$db['user']) . ";\n"
 			. '$nuConfigDBPassword					= ' . $x((string)$db['password']) . ";\n"
 			. ($db['type'] === 'sqlsrv' ? '$nuConfigDBTrustServerCertificate	= ' . (!empty($db['trust']) ? 'true' : 'false') . ";\n" : '');
-		// the line that sets it (0.8.789: not the mention in the header comment – that cut the comment and left the type in it)
+		// the line that sets it (not the mention in the header comment – that cut the comment and left the type in it)
 		$start = preg_match('/^\$nuConfigDBType\s*=/m', $tpl, $mm, PREG_OFFSET_CAPTURE) ? (int)$mm[0][1] : false;
 		$end = strpos($tpl, "}\n", (int)strpos($tpl, '} else {')) + 2;
 		if ($start === false || $end <= $start) throw new RuntimeException('nuconfig-sample.php: database block not found');

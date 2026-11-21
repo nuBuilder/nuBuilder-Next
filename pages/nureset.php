@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /* Sets a new password from a reset link (Forgot password: 1 hour; administrator's reset: NuPwReset::HOURS; welcome e-mail: $nuConfigWelcomeLinkHours),
-   single use. After a reset (not after the welcome link) the user gets a confirmation e-mail and every other session ends (0.8.901). */
+   single use. After a reset (not after the welcome link) the user gets a confirmation e-mail and every other session ends. */
 
 $uid   = (string)($_GET['u'] ?? '');
 $token = (string)($_GET['t'] ?? '');
@@ -22,28 +22,8 @@ if (!$row || !$user || nu_is_expired($user['sus_expires_on'])) {
 $min    = NuPwPolicy::minLength();
 $errors = [];
 
-if (nu_is_post()) {
-	$new     = (string)($_POST['new'] ?? '');
-	$confirm = (string)($_POST['confirm'] ?? '');
-	if (mb_strlen($new) < $min)  $errors['new'] = t('pw_err_min', $min);
-	elseif (strlen($new) > 72)   $errors['new'] = t('err_too_long', 72);
-	if ($new !== $confirm)       $errors['confirm'] = t('pw_err_confirm');
-	if (!$errors && ($policy = NuAuth::passwordPolicy($new, $uid)) !== null) $errors['new'] = $policy;   // nu_check_password_policy (0.8.462)
-
-	if (!$errors) {
-		nu_db()->update('zzzzsys_user', ['sus_login_password' => NuAuth::hash($new), 'sus_change_password' => '0'], 'zzzzsys_user_id', $uid);
-		NuToken::deleteFor('pw_reset', $uid);
-		NuUserJson::passwordChanged($uid, 'reset');
-		NuLog::write('password_reset', 'zzzzsys_user', $uid, ['via' => (string)($row['data'] ?? '') ?: 'welcome'], ['id' => $uid, 'login' => (string)$user['sus_login_name']]);
-		NuPwReset::endSessions($uid);                       // the new hash ends them anyway – their rows go too
-		if (in_array((string)($row['data'] ?? ''), ['forgot', NuPwReset::DATA], true)) {
-			$full = nu_db()->one('SELECT * FROM zzzzsys_user WHERE zzzzsys_user_id = ?', [$uid]);
-			if ($full) NuPwReset::confirm($full);
-		}
-		nu_flash('success', t('reset_done'));
-		nu_redirect(nu_url('login'));
-	}
-}
+['errors' => $errors, 'uid' => $uid, 'user' => $user]
+	= NuResetPage::post(get_defined_vars());   // the POST actions (code review R7, nuresetpage.php)
 
 nu_center_start(t('reset_title'), t('reset_subtitle', (string)$user['sus_login_name']), 'bi-key');
 ?>

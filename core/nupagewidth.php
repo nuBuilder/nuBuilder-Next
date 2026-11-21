@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Page width (0.8.1226, the owner: A1 · B1 · C1 · D1 · E1). The width of the content of the app pages (main#main with nuContainer,
+ * Page width (the owner: A1 · B1 · C1 · D1 · E1). The width of the content of the app pages (main#main with nuContainer,
  * nuFormContainer, container, container-xl – not the full-width tool pages) can be widened:
  *  - per device: the user menu's "Page width" (localStorage nunext-page-width, applied by assets/js/nutheme.js before the first paint)
  *  - default for everyone: Settings → Look (setting row page_width {w}), sent as <html data-nu-pw> by nu_head()

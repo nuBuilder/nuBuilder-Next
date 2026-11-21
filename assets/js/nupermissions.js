@@ -17,7 +17,7 @@
 	});
 })();
 
-/* Users that have the item (0.8.687): search and Active / Archived / All. */
+/* Users that have the item: search and Active / Archived / All. */
 (function () {
 	'use strict';
 	var ul = document.getElementById('permUserList'), q = document.getElementById('permUserSearch'), st = document.getElementById('permUserState');
@@ -35,7 +35,7 @@
 	if (st) st.addEventListener('change', apply);
 })();
 
-/* Type of the item (0.8.773): plain or Data import – the settings box of the chosen type, tables as a searchable multi-select. */
+/* Type of the item: plain or Data import – the settings box of the chosen type, tables as a searchable multi-select. */
 (function () {
 	'use strict';
 	var choice = document.getElementById('permTypeChoice');

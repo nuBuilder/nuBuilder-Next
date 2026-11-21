@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * nuBuilder Forte's nuOnProcessObjects() (Before Edit) and nuOnProcessBrowseRows() (Before Browse) (0.8.958).
+ * nuBuilder Forte's nuOnProcessObjects() (Before Edit) and nuOnProcessBrowseRows() (Before Browse).
  *
  * A form's Before Edit / Before Browse code may declare one of these functions. Forte does not call it: it takes the function's
  * body out of the code (nuExtractFunctionBody) and runs that body with $f = the form object, so the code changes

@@ -292,7 +292,8 @@
 			folders[r.folder] = true;
 			if (r.folder !== lastFolder) {
 				lastFolder = r.folder;
-				list.appendChild(el('div', {class: 'list-group-item bg-body-tertiary py-1 fw-semibold text-body-secondary apgFolderHead'}, [el('i', {class: 'bi bi-folder2 me-1'}), r.folder || t('apg_no_folder')]));
+				list.appendChild(el('div', {class: 'list-group-item bg-body-tertiary py-1 fw-semibold text-body-secondary apgFolderHead'},
+					[el('i', {class: 'bi bi-folder2 me-1'}), r.folder || t('apg_no_folder')]));
 			}
 			var b = el('button', {type: 'button', class: 'list-group-item list-group-item-action apgItem' + (r.id === state.current ? ' active' : ''), 'data-id': r.id}, [
 				el('span', {class: 'badge apgMeth ' + (BADGE[r.method] || 'text-bg-secondary'), text: r.method}),

@@ -1,5 +1,5 @@
 /*
- * nuBuilder Next dashboards (0.8.298): renders every element with data-nu-dashboard="CODE" – on the start page and in HTML objects of
+ * nuBuilder Next dashboards: renders every element with data-nu-dashboard="CODE" – on the start page and in HTML objects of
  * forms – and nuNextDashboard('CODE', 'element_id') / nuNextDashboardRefresh(['CODE']) for form code. Data: ?p=dashboardapi (JSON).
  * KPI tiles, ApexCharts charts (loaded on first use; its CSS comes as a file – the strict CSP allows no injected <style>) and tables.
  */
@@ -182,6 +182,14 @@
 		}
 	}
 
+	// a column name of the query as a title: "cus_name" → "Name", "order_total" → "Order total"; aliases with capitals or spaces stay
+	function colTitle(n) {
+		const s = String(n);
+		if (!/^[a-z][a-z0-9_]*$/.test(s)) return s;
+		const t = s.replace(/^[a-z]{2,4}_(?=[a-z])/, '').replace(/_/g, ' ').trim();
+		return t ? t.charAt(0).toUpperCase() + t.slice(1) : s;
+	}
+
 	function render(c, data, M) {
 		const w = c.w, o = w.opt;
 		if (c.chart) { try { c.chart.destroy(); } catch (e) { /* ignore */ } c.chart = null; }
@@ -208,23 +216,24 @@
 			c.body.appendChild(box);
 			return;
 		}
-		if (w.type === 'calendar') {                                    // calendar (0.8.1165): events worked out by the server (NuCalendar::fromRows)
+		if (w.type === 'calendar') {                                    // calendar: events worked out by the server (NuCalendar::fromRows)
 			const host = el('div', 'nuCalHost nuDashCal');
 			c.body.appendChild(host);
-			if (window.NuCalendar) window.NuCalendar.mount(host, { f: '', key: 'dash-' + w.id, rows: data.events || [], view: 'month', height: o.height > 300 ? o.height : 'auto', link: w.row_link || '', newTab: !!o.new_tab });
+			if (window.NuCalendar) window.NuCalendar.mount(host,
+				{ f: '', key: 'dash-' + w.id, rows: data.events || [], view: 'month', height: o.height > 300 ? o.height : 'auto', link: w.row_link || '', newTab: !!o.new_tab });
 			if (data.more) c.body.appendChild(el('div', 'small text-body-secondary mt-1', M.more));
 			return;
 		}
 		if (w.type === 'table') {
 			const wrap = el('div', 'table-responsive nuDashTable');
 			const t = el('table', 'table table-sm nu-table mb-0'), th = el('thead'), tr = el('tr');
-			// a column nu_record_id (0.8.682): hidden; with a form link each row opens its record (new tab with the widget's option)
+			// a column nu_record_id: hidden; with a form link each row opens its record (new tab with the widget's option)
 			const rid = cols.findIndex((n) => String(n).toLowerCase() === 'nu_record_id');
 			const open = (id, newTab) => {
 				const href = w.row_link.replace('__NU_RID__', encodeURIComponent(id));
 				if (newTab) window.open(href, '_blank', 'noopener'); else window.location.href = href;
 			};
-			cols.forEach((n, i) => { if (i !== rid) tr.appendChild(el('th', typeof rows[0][i] === 'number' ? 'text-end' : '', n)); });
+			cols.forEach((n, i) => { if (i !== rid) tr.appendChild(el('th', typeof rows[0][i] === 'number' ? 'text-end' : '', colTitle(n))); });
 			th.appendChild(tr); t.appendChild(th);
 			const tb = el('tbody');
 			rows.forEach((r) => {
@@ -234,7 +243,7 @@
 				r.forEach((v, i) => {
 					if (i === rid) return;
 					const td = el('td', typeof v === 'number' ? 'text-end' : '', typeof v === 'number' && i !== first ? fmt(v, o) : (v === null ? '' : v));
-					td.setAttribute('data-nu-label', String(cols[i]));          // the column title on phones (cards, review F2)
+					td.setAttribute('data-nu-label', colTitle(cols[i]));          // the column title on phones (cards, review F2)
 					row.appendChild(td);
 				});
 				const id = rid >= 0 && r[rid] !== null ? String(r[rid]) : '';
@@ -273,11 +282,16 @@
 			else { opts.series = rows.map((r) => num(r[1]) || 0); opts.labels = rows.map((r) => String(r[0] === null ? '' : r[0])); }
 			if (kind === 'radial') opts.plotOptions = { radialBar: { dataLabels: { value: { formatter: (v) => fmt(v, Object.assign({}, o, { format: 'percent' })) } } } };
 		} else {
-			opts.series = cols.slice(1).map((n, i) => ({ name: n, data: rows.map((r) => num(r[i + 1])) }));
+			opts.series = cols.slice(1).map((n, i) => ({ name: colTitle(n), data: rows.map((r) => num(r[i + 1])) }));
 			opts.xaxis = { categories: rows.map((r) => (r[0] === null ? '' : String(r[0]))) };
 			if (kind === 'barh') opts.xaxis.labels = { formatter: afmt };
 			else opts.yaxis = { labels: { formatter: afmt } };
 			if (kind === 'line' || kind === 'area') opts.stroke = { curve: 'smooth', width: 2 };
+			// phones: a line over many days – about six labels without rotation, dates as day.month (the 30 labels overlapped)
+			if ((kind === 'line' || kind === 'area') && rows.length > 8 && window.innerWidth < 576) {
+				opts.xaxis.tickAmount = 6;
+				opts.xaxis.labels = { rotate: 0, hideOverlappingLabels: true, formatter: (v) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(v)); return m ? m[3] + '.' + m[2] + '.' : v; } };
+			}
 			if (cols.length < 2) opts.series = [{ name: w.title, data: rows.map((r) => num(r[0])) }];
 			// small whole numbers (counts): one tick per unit, no repeated labels like 0 1 1 2 2
 			const all = [].concat(...opts.series.map((x) => x.data)).filter((v) => v !== null);

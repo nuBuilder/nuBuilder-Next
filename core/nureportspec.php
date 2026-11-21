@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Reports with AI (0.8.1097): a short description of a report layout – format "nunext-report-1", sizes in mm – that an AI chat can write
+ * Reports with AI: a short description of a report layout – format "nunext-report-1", sizes in mm – that an AI chat can write
  * and change. It is converted to and from nuBuilder Forte's layout JSON (sre_layout: positions in px, 4 px = 1 mm), so the stored report
  * stays Forte's. Copy / paste as Form with AI (no API key): prompt() → the user's chat → parse() → check() (errors, warnings, plan) →
  * preview → apply(). Before a layout is replaced the old one is kept as a version (zzzzsys_nunext_report_version) – restore() puts it back.
@@ -269,19 +269,7 @@ final class NuReportSpec
 	/** The JSON of an answer (a ```json block or the first { … }). @return array|string the description, or the error text */
 	public static function parse(string $answer): array|string
 	{
-		$a = trim($answer);
-		if ($a === '') return t('fai_err_no_json');
-		if (preg_match('/```(?:json)?\s*(\{.*\})\s*```/s', $a, $m)) $a = $m[1];
-		else {
-			$s = strpos($a, '{');
-			$e = strrpos($a, '}');
-			if ($s === false || $e === false || $e < $s) return t('fai_err_no_json');
-			$a = substr($a, $s, $e - $s + 1);
-		}
-		$a = (string)preg_replace('~^\s*//.*$~m', '', $a);
-		$j = json_decode($a, true);
-		if (!is_array($j)) return t('fai_err_json', json_last_error_msg());
-		return $j;
+		return NuAiContext::answerJson($answer);
 	}
 
 	/** May this user let the AI write the query? (rights on the SQL builder are admin-equivalent; never in demo mode) */
@@ -648,7 +636,8 @@ TXT;
 		$md .= "## Report format\n\n```\n" . self::formatHelp() . "\n```\n\n";
 		$md .= "## Data source\n\n" . NuReport::sourceLabel($src) . "\n\n";
 		$types = [];
-		if (str_starts_with($src, 'TABLE:')) { try { foreach (nu_db()->columns(substr($src, 6)) as $name => $c) $types[(string)$name] = (string)($c['type'] ?? ''); } catch (Throwable) {} }
+		if (str_starts_with($src,
+			'TABLE:')) { try { foreach (nu_db()->columns(substr($src, 6)) as $name => $c) $types[(string)$name] = (string)($c['type'] ?? ''); } catch (Throwable $ig) { nu_ignored($ig); } }
 		foreach ($ctx['columns'] as $c) $md .= '- `' . $c . '`' . (($types[$c] ?? '') !== '' ? ' – ' . $types[$c] : '') . "\n";
 		if ($ctx['criteria']) $md .= "\nCriteria fields of the launch form: " . implode(', ', array_map(static fn($c) => "`$c`", $ctx['criteria'])) . "\n";
 		if (str_starts_with($src, 'SQL:') && ($q = NuSqlSelect::load(substr($src, 4)))) $md .= "\nThe query:\n\n```sql\n" . trim((string)$q['sse_sql']) . "\n```\n";
@@ -693,7 +682,7 @@ TXT;
 		foreach ($keys as $k) $msg[$k] = t($k);
 		$data = ['url' => nu_url('reportai', ['id' => (string)$report['zzzzsys_report_id']]), 'csrf' => nu_csrf_token(), 'msg' => $msg, 'open' => $open, 'objects' => $n];
 		$tables = '';
-		if ($canSql) { try { foreach (NuFormSpec::appTables() as $tb) $tables .= '<option value="' . h($tb) . '">' . h($tb) . '</option>'; } catch (Throwable) {} }
+		if ($canSql) { try { foreach (NuFormSpec::appTables() as $tb) $tables .= '<option value="' . h($tb) . '">' . h($tb) . '</option>'; } catch (Throwable $ig) { nu_ignored($ig); } }
 		$tip = static fn(string $k) => nu_info_tip(t($k));
 		$title = t($n ? 'rai_title_change' : 'rai_title_new');
 		ob_start(); ?>

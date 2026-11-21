@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Reports with AI (0.8.1097, core/nureportspec.php): ?p=reportai&id=<report id> – the POST actions of the dialogue on the report
+ * Reports with AI (core/nureportspec.php): ?p=reportai&id=<report id> – the POST actions of the dialogue on the report
  * page and in the report designer (assets/js/nureportai.js):
  *   prompt   request, allow_sql, tables[]     → {ok, text}                      the prompt to copy
  *   context  samples                          → a Markdown file                 to attach to the chat

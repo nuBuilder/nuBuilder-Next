@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Recycle bin for records (0.8.1325): a form can keep its deleted records for n days (sfo_json nunext.recycle {days}, design mode →
+ * Recycle bin for records: a form can keep its deleted records for n days (sfo_json nunext.recycle {days}, design mode →
  * Data). The delete stays a real DELETE in the application's table – nuBuilder Forte keeps working on the same data – and a copy of the
  * row and its sub-form rows goes into zzzzsys_nunext_recycle (JSON) in the same transaction. Restore puts the rows back with their keys
  * (only while the key is free; columns that no longer exist are left out, new columns get their defaults).
@@ -90,11 +90,10 @@ final class NuRecycle
 		}
 		$u = NuAuth::user();
 		$id = nu_id();
-		$fmt = $db->type === 'sqlsrv' ? 'Y-m-d\TH:i:s' : 'Y-m-d H:i:s';
 		$db->insert(self::TABLE, ['zzzzsys_nunext_recycle_id' => $id, 'form_id' => $meta->id, 'form_code' => mb_substr($meta->code(), 0, 100),
 			'table_name' => mb_substr($meta->table(), 0, 100), 'record_id' => mb_substr($recordId, 0, 100), 'title' => mb_substr(self::title($meta, $row, $recordId), 0, 300),
 			'data' => $json, 'sub_rows' => $n, 'deleted_by' => mb_substr((string)($u['id'] ?? ''), 0, 25), 'deleted_by_name' => mb_substr((string)($u['name'] ?? $u['login'] ?? ''), 0, 100),
-			'deleted_at' => date($fmt), 'expires_at' => date($fmt, time() + $days * 86400)]);
+			'deleted_at' => $db->stamp(), 'expires_at' => $db->stamp(time() + $days * 86400)]);
 		return $id;
 	}
 
@@ -238,6 +237,6 @@ final class NuRecycle
 	{
 		$db = nu_db();
 		if (!$db->tableExists(self::TABLE)) return 0;
-		return $db->run('DELETE FROM ' . self::TABLE . ' WHERE expires_at < ?', [date($db->type === 'sqlsrv' ? 'Y-m-d\TH:i:s' : 'Y-m-d H:i:s')])->rowCount();
+		return $db->run('DELETE FROM ' . self::TABLE . ' WHERE expires_at < ?', [$db->stamp()])->rowCount();
 	}
 }

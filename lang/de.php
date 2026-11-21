@@ -120,6 +120,7 @@ return [
 	'hf_empty' => 'leer',
 	'hf_empty_tip' => 'Diese Kachelseite hat keine Kacheln – ihre Zugriffsstufen sehen darauf nichts. Öffnen und Kacheln hinzufügen oder wieder den Standard verwenden.',
 	'form_blank_page' => 'Leere Seite (System)',
+	'uhome_empty_tab' => 'Auf diesem Tab gibt es noch keine Schaltflächen. Füge sie im Gestaltungsmodus hinzu oder lass den Assistenten „Neues Formular“ für jedes neue Formular eine anlegen (Nach dem Erstellen → User Home).',
 	'nav_change_password' => 'Passwort ändern', 'nav_language' => 'Sprache', 'nav_theme' => 'Darstellung',
 	'nav_pin_off' => 'Menü auf allen Seiten offen halten',
 	'nav_pin_on' => 'Menü bleibt offen – klicken zum Lösen',
@@ -5559,7 +5560,7 @@ return [
 	'fm_setup_done' => 'Der Datei-Manager ist eingerichtet.',
 	'fm_setup_failed' => 'Der Datei-Manager konnte nicht eingerichtet werden.',
 	'fm_ask_admin' => 'Den Globeadmin bitten, ihn einzurichten.',
-	// Demo-Modus (0.8.140, core/nudemo.php)
+	// Demo-Modus (core/nudemo.php)
 	'demo_not_available' => 'In der Demo nicht verfügbar.',
 	'demo_no_delete' => 'Löschen ist in der Demo nicht verfügbar.',
 	'demo_blocked_hint' => 'Das würde Daten ändern. In der Demo lässt sich alles ansehen, aber nichts wird gespeichert.',
@@ -6152,6 +6153,7 @@ return [
 	'rd_search' => 'Suchen',
 	'rd_no_fields' => 'Die Datenquelle hat keine Spalten.',
 	'rd_fields_error' => 'Die Felder konnten nicht gelesen werden:',
+	'rd_canvas' => 'Berichtslayout – die Pfeiltasten verschieben die gewählten Objekte',
 	'rd_criteria' => 'Felder des Startformulars',
 	'rd_system' => 'Seite und System',
 	'rd_images' => 'Bilder (Dateien)',
@@ -6317,7 +6319,7 @@ return [
 	'sqb_empty' => 'Eine Tabelle aus der Liste hinzufügen.',
 	'sqb_run_failed' => 'Die Abfrage ist fehlgeschlagen:',
 	'sqb_columns' => 'Spalten',
-	// security check (0.8.207, Admin tools → Security check, core/nusecurity.php)
+	// security check (Admin tools → Security check, core/nusecurity.php)
 	'secchk_title' => 'Sicherheitsprüfung',
 	'ipa_title' => 'IP-Zugriff',
 	'sso_title' => 'Single Sign-on',

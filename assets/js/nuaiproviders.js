@@ -1,4 +1,4 @@
-/* AI providers (0.8.1099, pages/nuaiproviders.php): placeholders follow the kind, "Fetch models" fills the model list, the access
+/* AI providers (pages/nuaiproviders.php): placeholders follow the kind, "Fetch models" fills the model list, the access
    choice shows its fields. */
 (function () {
 	'use strict';

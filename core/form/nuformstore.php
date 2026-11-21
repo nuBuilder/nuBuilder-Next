@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * The form builder's actions on a draft (0.8.386): the same rules as the live code in pages/nubuilderapi.php, applied to the draft's
+ * The form builder's actions on a draft: the same rules as the live code in pages/nubuilderapi.php, applied to the draft's
  * snapshot (NuFormSnapshot format) instead of nuBuilder's tables. New rows hold what the live code inserts, so publishing writes
  * what the live builder would have written. Every change ends with commit() = NuFormDraft::save()
  * (rev check, undo list).
@@ -53,7 +53,7 @@ final class NuDraftStore
 	}
 
 	/**
-	 * Changed values only – as NuDB::update() on nuBuilder's tables (NULL and '' count as the same, 0.8.364): a value that is not
+	 * Changed values only – as NuDB::update on nuBuilder's tables (NULL and '' count as the same): a value that is not
 	 * really different keeps what the row has, so publishing writes the same as the live builder.
 	 */
 	private static function set(array $row, array $fields): array
@@ -83,7 +83,7 @@ final class NuDraftStore
 		return $i === null ? null : ($this->snap['php'][$i]['sph_php'] ?? null);
 	}
 
-	/** nb_upsert_php() semantics: an existing row gets the code (or null), a new row only when there is code. */
+	/** NuBuilderApi::upsertPhp() semantics: an existing row gets the code (or null), a new row only when there is code. */
 	public function upsertPhp(string $id, ?string $code): void
 	{
 		$code = ($code !== null && trim($code) !== '') ? $code : null;
@@ -101,12 +101,12 @@ final class NuDraftStore
 			throw new RuntimeException(t('builder_err_code_taken'));
 		}
 		if ($layout !== null) $fields['sfo_json'] = NuFormMeta::mergeNunextJson($this->snap['form']['sfo_json'] ?? null, ['layout' => $layout === 'absolute' ? null : $layout]);
-		if ($tags) $fields['sfo_json'] = NuFormMeta::mergeNunextJson($fields['sfo_json'] ?? ($this->snap['form']['sfo_json'] ?? null), $tags);   // department / team (0.8.1020)
+		if ($tags) $fields['sfo_json'] = NuFormMeta::mergeNunextJson($fields['sfo_json'] ?? ($this->snap['form']['sfo_json'] ?? null), $tags);   // department / team
 		$this->snap['form'] = self::set($this->snap['form'], $fields);
 		if ($php !== null) foreach ($hooks as $h) if (array_key_exists($h, $php)) $this->upsertPhp($this->formId . '_' . $h, $php[$h] === null ? null : (string)$php[$h]);
 	}
 
-	/** Validation rules (0.8.812): sfo_json nunext.rules of the draft (already cleaned by NuFormRules::clean). */
+	/** Validation rules: sfo_json nunext.rules of the draft (already cleaned by NuFormRules::clean). */
 	public function rulesSave(array $rules): void
 	{
 		$this->snap['form'] = self::set($this->snap['form'], ['sfo_json' => NuFormMeta::mergeNunextJson($this->snap['form']['sfo_json'] ?? null, ['rules' => $rules ?: null])]);
@@ -117,11 +117,11 @@ final class NuDraftStore
 	{
 		$existing = $objectId !== '' ? $this->object($objectId) : null;
 		if ($objectId !== '' && !$existing) throw new RuntimeException(t('record_not_found'));
-		if (isset($fields['sob_all_id'])) $fields['sob_all_id'] = trim((string)$fields['sob_all_id']);   // spaces at the ends (0.8.536)
+		if (isset($fields['sob_all_id'])) $fields['sob_all_id'] = trim((string)$fields['sob_all_id']);   // spaces at the ends
 		$type = (string)($fields['sob_all_type'] ?? $existing['sob_all_type'] ?? '');
 		$fid = (string)($fields['sob_all_id'] ?? $existing['sob_all_id'] ?? '');
 		if (!in_array($type, NuFormDraft::TYPES, true)) throw new RuntimeException(t('builder_err_type'));
-		if ($fid !== (string)($existing['sob_all_id'] ?? "\0") && !preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $fid)) throw new RuntimeException(t('builder_err_id'));   // kept Forte ids (0.8.1165)
+		if ($fid !== (string)($existing['sob_all_id'] ?? "\0") && !preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $fid)) throw new RuntimeException(t('builder_err_id'));   // kept Forte ids
 		foreach ($this->snap['objects'] as $o) if ((string)$o['sob_all_id'] === $fid && (string)$o['zzzzsys_object_id'] !== $objectId) throw new RuntimeException(t('builder_err_id_taken', $fid));
 		if (isset($fields['sob_all_zzzzsys_tab_id']) && $fields['sob_all_zzzzsys_tab_id'] !== null && $this->find('tabs', 'zzzzsys_tab_id', (string)$fields['sob_all_zzzzsys_tab_id']) === null) {
 			throw new RuntimeException(t('builder_err_tab'));
@@ -129,42 +129,7 @@ final class NuDraftStore
 		if ($grid !== null) {
 			$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($existing['sob_all_json'] ?? null, NuResponsive::gridKeys($grid, $type));
 		}
-		if (array_key_exists('nunext_help', $fields)) {            // user help page of the field (0.8.1023): sob_all_json nunext.help
-			$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($fields['sob_all_json'] ?? $existing['sob_all_json'] ?? null, ['help' => NuUserHelp::cleanCode($fields['nunext_help'])]);
-			unset($fields['nunext_help']);
-		}
-		if (array_key_exists('nunext_calendar', $fields)) {        // calendar object (0.8.1165): sob_all_json nunext.calendar of an HTML object
-			$cc = is_string($fields['nunext_calendar']) ? json_decode($fields['nunext_calendar'], true) : $fields['nunext_calendar'];
-			$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($fields['sob_all_json'] ?? $existing['sob_all_json'] ?? null, ['calendar' => is_array($cc) ? NuCalendar::cleanObject($cc) : null]);
-			unset($fields['nunext_calendar']);
-		}
-		if (array_key_exists('nunext_suggest', $fields)) {         // suggestions while typing (0.8.1212): sob_all_json nunext.suggest of a text input
-			$sg = NuSuggest::clean($fields['nunext_suggest']);
-			if ($sg && ($sp = NuSuggest::problem($sg)) !== null) throw new RuntimeException($sp);
-			$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($fields['sob_all_json'] ?? $existing['sob_all_json'] ?? null, ['suggest' => $sg]);
-			unset($fields['nunext_suggest']);
-		}
-		if (array_key_exists('nunext_fit', $fields)) {             // grid sub-form: fit columns to the width (0.8.1141): sob_all_json nunext.fit
-			$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($fields['sob_all_json'] ?? $existing['sob_all_json'] ?? null, ['fit' => !empty($fields['nunext_fit']) && $fields['nunext_fit'] !== '0' ? true : null]);
-			unset($fields['nunext_fit']);
-		}
-		if (array_key_exists('nunext_phone_table', $fields)) {     // grid sub-form on phones (usability review G15): rows as cards unless nunext.phone = 'table'
-			$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($fields['sob_all_json'] ?? $existing['sob_all_json'] ?? null, ['phone' => !empty($fields['nunext_phone_table']) && $fields['nunext_phone_table'] !== '0' ? 'table' : null]);
-			unset($fields['nunext_phone_table']);
-		}
-		if (array_key_exists('nunext_run_pivot', $fields)) {       // run object that shows a saved pivot (0.8.1156)
-			$pv = NuRender::cleanRunPivot($fields['nunext_run_pivot']);
-			$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($fields['sob_all_json'] ?? $existing['sob_all_json'] ?? null, ['pivot' => $pv]);
-			if ($pv) { $fields['sob_run_type'] = ''; $fields['sob_run_zzzzsys_form_id'] = ''; }
-			unset($fields['nunext_run_pivot']);
-		}
-		if (array_key_exists('nunext_run_url', $fields)) {         // run object of type URL (0.8.830): kept in sob_all_json nunext.url
-			$ru = $fields['nunext_run_url'] === null ? null : trim((string)$fields['nunext_run_url']);
-			if ($ru !== null && $ru !== '' && NuRender::cleanRunUrl($ru) === null) throw new RuntimeException(t('builder_err_run_url'));
-			$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($fields['sob_all_json'] ?? $existing['sob_all_json'] ?? null, ['url' => $ru === '' ? null : $ru]);
-			if ($ru !== null && $ru !== '') { $fields['sob_run_type'] = ''; $fields['sob_run_zzzzsys_form_id'] = ''; }
-			unset($fields['nunext_run_url']);
-		}
+		$fields = NuFormMeta::objectNunextFields($fields, $existing ?: null);
 		$fields = array_intersect_key($fields, nu_db()->columns('zzzzsys_object') ?: $fields);
 		if ($existing) {
 			$i = (int)$this->find('objects', 'zzzzsys_object_id', $objectId);
@@ -187,9 +152,10 @@ final class NuDraftStore
 			$old = array_map(static fn($r) => [(string)$r['sev_event'], (string)$r['sev_javascript']], $mine);
 			$key = static fn(array $l) => json_encode(array_map(static fn($x) => $x[0] . "\n" . $x[1], $l));
 			$sort = static function (array $l) { usort($l, static fn($a, $b) => strcmp($a[0] . $a[1], $b[0] . $b[1])); return $l; };
-			if ($key($sort($old)) !== $key($sort($new))) {       // unchanged events keep their rows (and ids) – as live (0.8.366)
+			if ($key($sort($old)) !== $key($sort($new))) {       // unchanged events keep their rows (and ids) – as live
 				$this->snap['events'] = array_values(array_filter($this->snap['events'] ?? [], static fn($r) => (string)$r['sev_zzzzsys_object_id'] !== $objectId));
-				foreach ($new as [$ev, $js]) $this->snap['events'][] = self::row('zzzzsys_event', ['zzzzsys_event_id' => nu_id(), 'sev_zzzzsys_object_id' => $objectId, 'sev_event' => $ev, 'sev_javascript' => $js]);
+				foreach ($new as [$ev, $js]) $this->snap['events'][] = self::row('zzzzsys_event',
+					['zzzzsys_event_id' => nu_id(), 'sev_zzzzsys_object_id' => $objectId, 'sev_event' => $ev, 'sev_javascript' => $js]);
 			}
 		}
 		if ($hasLookupPhp) $this->upsertPhp($objectId . '_AB', $lookupPhp);
@@ -197,7 +163,7 @@ final class NuDraftStore
 		return $objectId;
 	}
 
-	/** Column proposal for an object without a column in the form's table (nb_missing_column() on the draft). */
+	/** Column proposal for an object without a column in the form's table (NuBuilderApi::missingColumn() on the draft). */
 	public function missingColumn(string $objectId): ?array
 	{
 		$table = trim((string)($this->snap['form']['sfo_table'] ?? ''));
@@ -211,13 +177,13 @@ final class NuDraftStore
 		return ['name' => (string)$o['sob_all_id'], 'type' => $proposal[0], 'length' => $proposal[1], 'table' => $table];
 	}
 
-	/** The sub-form's link column gets an index (shared and harmless – as live, 0.8.366). */
+	/** The sub-form's link column gets an index (shared and harmless – as live). */
 	public function subformIndex(string $objectId): void
 	{
 		$o = $this->object($objectId);
 		if (!$o || $o['sob_all_type'] !== 'subform') return;
 		$table = (string)(nu_form((string)($o['sob_subform_zzzzsys_form_id'] ?? ''))['table'] ?? '');
-		$fk = trim((string)($o['sob_subform_foreign_key'] ?? ''));   // a new sub-form object of a draft has neither yet (0.8.679)
+		$fk = trim((string)($o['sob_subform_foreign_key'] ?? ''));   // a new sub-form object of a draft has neither yet
 		if (trim($table) === '' || $fk === '') return;
 		try { NuDDL::ensureIndex($table, $fk); } catch (Throwable $e) { error_log('nuBuilder Next index: ' . $e->getMessage()); }
 	}
@@ -258,7 +224,8 @@ final class NuDraftStore
 			$tabs[] = $i !== null ? self::set($this->snap['tabs'][$i], $data) : self::row('zzzzsys_tab', ['zzzzsys_tab_id' => nu_id(), 'syt_zzzzsys_form_id' => $this->formId] + $data);
 		}
 		$keep = array_map(static fn($t) => (string)$t['zzzzsys_tab_id'], $tabs);
-		foreach ($this->snap['objects'] as $i => $o) if (!in_array((string)($o['sob_all_zzzzsys_tab_id'] ?? ''), $keep, true)) $this->snap['objects'][$i] = self::set($o, ['sob_all_zzzzsys_tab_id' => $keep[0]]);
+		foreach ($this->snap['objects'] as $i => $o) if (!in_array((string)($o['sob_all_zzzzsys_tab_id'] ?? ''), $keep, true)) $this->snap['objects'][$i] = self::set($o,
+			['sob_all_zzzzsys_tab_id' => $keep[0]]);
 		$this->snap['tabs'] = $tabs;
 		$this->meta = null;
 	}
@@ -276,7 +243,7 @@ final class NuDraftStore
 			$defFilter = in_array(strtolower(trim($data['sbr_display'])), NuFormMeta::DEFAULT_FILTERS[$this->formId] ?? [], true);
 			$data['sbr_json'] = NuFormMeta::mergeNunextJson($i !== null ? ($this->snap['browse'][$i]['sbr_json'] ?? null) : null, ['filter' => !empty($c['filter']) ? true : ($defFilter ? false : null)]);
 			if (array_key_exists('badge', $c)) $data['sbr_json'] = NuFormMeta::mergeNunextJson($data['sbr_json'], ['badge' => NuFormMeta::cleanBadge($c['badge'])]);
-			if (array_key_exists('action', $c)) $data['sbr_json'] = NuFormMeta::mergeNunextJson($data['sbr_json'], ['action' => NuFormMeta::cleanAction($c['action'])]);   // On click (0.8.872)
+			if (array_key_exists('action', $c)) $data['sbr_json'] = NuFormMeta::mergeNunextJson($data['sbr_json'], ['action' => NuFormMeta::cleanAction($c['action'])]);   // On click
 					if (array_key_exists('total', $c)) $data['sbr_json'] = NuFormMeta::mergeNunextJson($data['sbr_json'], ['total' => NuFormMeta::cleanTotal($c['total'])]);   // column total
 					if (array_key_exists('group', $c)) $data['sbr_json'] = NuFormMeta::mergeNunextJson($data['sbr_json'], ['group' => !empty($c['group']) ? true : null]);   // group the list by this column
 			if (trim($data['sbr_display']) === '') continue;
@@ -303,7 +270,7 @@ final class NuDraftStore
 		$this->meta = null;
 	}
 
-	/** The builder view of the draft (nb_state() of pages/nubuilderapi.php) + the draft's info. */
+	/** The builder view of the draft (NuBuilderApi::state() of pages/nubuilderapi.php) + the draft's info. */
 	public function state(array $hooks): array
 	{
 		$meta = $this->meta();

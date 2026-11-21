@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Function list for the code editors (0.8.593, assets/js/nu/nucodetools.js – Insert menu and suggestions while typing):
+ * Function list for the code editors (assets/js/nu/nucodetools.js – Insert menu and suggestions while typing):
  * GET ?p=fnlist&lang=php|js → the entries of docs/nunext-functions.json (NuFnRef) with the help link of each.
  * Signed-in users only (the editors are for designers / admins; the reference itself is not secret). Cached by the browser for 10 minutes.
  */

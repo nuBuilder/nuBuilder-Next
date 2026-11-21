@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Status of a form (0.8.808) – the column zzzzsys_form.sfo_status (shared with nuBuilder Forte):
+ * Status of a form – the column zzzzsys_form.sfo_status (shared with nuBuilder Forte):
  *   0 Draft      – designers only until published (core/form/nuformdraft.php)
  *   1 Active     – also empty / NULL
  *   2 Maintenance – nuBuilder Forte's "Disabled": users cannot open the form; the globeadmin and form designers (save right on nuform) can
@@ -59,8 +59,7 @@ final class NuFormStatus
 			$v = nu_setting_value(self::KEY);
 			$d = is_string($v) ? json_decode($v, true) : null;
 			if (is_array($d)) foreach ($d as $fid => $c) if (is_array($c)) $out[(string)$fid] = self::cleanInfo($c);
-		} catch (Throwable) {
-		}
+		} catch (Throwable $ig) { nu_ignored($ig); }
 		return self::$info = $out;
 	}
 

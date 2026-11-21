@@ -3,13 +3,13 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Row details of form lists (0.8.1027, extended 0.8.1316): a ▸ at the start of a row (or Space / → on a focused row) folds a strip open below it with
+ * Row details of form lists (extended): a ▸ at the start of a row (or Space / → on a focused row) folds a strip open below it with
  *  - the columns of the list that are hidden (width 0) or whose text is cut – read from the row itself in the browser,
- *  - related lists as tabs (0.8.1316): sub-forms of the record and child tables ("t:<table>.<column>" = rows of <table> whose <column>
+ *  - related lists as tabs: sub-forms of the record and child tables ("t:<table>.<column>" = rows of <table> whose <column>
  *    holds the record's id), each up to ROWS rows, loaded through formapi action "details" {list},
- *  - a detail form (0.8.1316): any form shown read only in a frame with the row's record (?p=form&f=&r=&iframe=1&rdv=1 – its rights,
+ *  - a detail form: any form shown read only in a frame with the row's record (?p=form&f=&r=&iframe=1&rdv=1 – its rights,
  *    field access and code apply as when it is opened).
- * Settings in sfo_json nunext.details {cols, own, subs: [ids], form, mode one|many} – the key sub of 0.8.1027 is read as the first list;
+ * Settings in sfo_json nunext.details {cols, own, subs: [ids], form, mode one|many} – the key sub of is read as the first list;
  * nuBuilder Forte ignores them; design mode → Browse list, the list's side pane → Columns.
  * The rows are read with the rights of opening the record: view right on the form (formapi checks it), field data access of the
  * sub-form's objects (withheld / hidden columns left out, masked ones masked), lookups and selects shown by their texts. A child
@@ -19,7 +19,7 @@ defined('NU_ROOT') || exit;
 final class NuRowDetails
 {
 	/** Session key of candidates(): child-table columns found in the catalogue, per table (ten minutes). */
-	public const FOUND = 'nu_rd_found';
+	public const FOUND = NuSess::ROW_DETAILS_FOUND;
 
 	public const ROWS = 10;
 	private const TYPES = ['input', 'select', 'textarea', 'lookup'];
@@ -129,14 +129,15 @@ final class NuRowDetails
 	public static function candidates(NuFormMeta $meta): array
 	{
 		$out = [];
-		foreach ($meta->objects as $o) if ($o['sob_all_type'] === 'subform') $out[(string)$o['sob_all_id']] = (trim(strip_tags((string)$o['sob_all_label'])) ?: (string)$o['sob_all_id']) . ' (' . t('rd_kind_sub') . ')';
+		foreach ($meta->objects as $o) if ($o['sob_all_type'] === 'subform') $out[(string)$o['sob_all_id']] = (trim(strip_tags((string)$o['sob_all_label'])) ?: (string)$o['sob_all_id'])
+			. ' (' . t('rd_kind_sub') . ')';
 		$table = $meta->table(); $pk = $meta->primaryKey();
 		if ($table === '' || $pk === '' || !preg_match('~^[\w$]+$~', $table)) return array_map(null, array_keys($out), array_values($out));
 		$db = nu_db(); $found = [];
 		// a column named like the primary key, or ending in _<primary key> (ord_sample_customer_id for sample_customer_id)
 		$like = '%\\_' . str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $pk);
 		$likeMs = '%!_' . str_replace(['!', '%', '_', '['], ['!!', '!%', '!_', '!['], $pk);
-		// The catalogue is asked once in ten minutes per table (kept in the session, 0.8.1341): every list page a designer opened ran two
+		// The catalogue is asked once in ten minutes per table (kept in the session): every list page a designer opened ran two
 		// catalogue statements, one of them over the columns of ALL tables of the database. A table change made through nuBuilder Next
 		// in this session drops it (NuDB::noteWrite).
 		$ck = strtolower($table . '|' . $pk);
@@ -145,13 +146,16 @@ final class NuRowDetails
 		if (is_array($kept) && (int)($kept['t'] ?? 0) > time() - 600 && is_array($kept['f'] ?? null)) $found = $kept['f'];
 		else try {
 			if ($db->type === 'mysql') {
-				foreach ($db->all('SELECT TABLE_NAME AS t, COLUMN_NAME AS c FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA = DATABASE() AND REFERENCED_TABLE_NAME = ?', [$table]) as $r) $found[] = [(string)$r['t'], (string)$r['c']];
-				foreach ($db->all('SELECT TABLE_NAME AS t, COLUMN_NAME AS c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (COLUMN_NAME = ? OR COLUMN_NAME LIKE ?)', [$pk, $like]) as $r) $found[] = [(string)$r['t'], (string)$r['c']];
+				foreach ($db->all('SELECT TABLE_NAME AS t, COLUMN_NAME AS c FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA = DATABASE() AND REFERENCED_TABLE_NAME = ?', [$table]) as $r) $found[] = [(string)$r['t'],
+					(string)$r['c']];
+				foreach ($db->all('SELECT TABLE_NAME AS t, COLUMN_NAME AS c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (COLUMN_NAME = ? OR COLUMN_NAME LIKE ?)', [$pk, $like]) as $r) $found[] = [(string)$r['t'],
+					(string)$r['c']];
 			} elseif ($db->type === 'sqlsrv') {
-				foreach ($db->all("SELECT TABLE_NAME AS t, COLUMN_NAME AS c FROM INFORMATION_SCHEMA.COLUMNS WHERE COLUMN_NAME = ? OR COLUMN_NAME LIKE ? ESCAPE '!'", [$pk, $likeMs]) as $r) $found[] = [(string)$r['t'], (string)$r['c']];
+				foreach ($db->all("SELECT TABLE_NAME AS t, COLUMN_NAME AS c FROM INFORMATION_SCHEMA.COLUMNS WHERE COLUMN_NAME = ? OR COLUMN_NAME LIKE ? ESCAPE '!'", [$pk, $likeMs]) as $r) $found[] = [(string)$r['t'],
+					(string)$r['c']];
 			}
 			if ($live) $_SESSION[self::FOUND][$ck] = ['t' => time(), 'f' => $found];
-		} catch (Throwable) { /* catalogue not readable: sub-forms only */ }
+		} catch (Throwable $ig) { nu_ignored($ig, 'catalogue not readable: sub-forms only'); }
 		$subTables = [];
 		foreach ($meta->objects as $o) if ($o['sob_all_type'] === 'subform' && ($sm = NuFormMeta::load((string)$o['sob_subform_zzzzsys_form_id']))) $subTables[strtolower($sm->table())] = true;
 		foreach ($found as [$t, $c]) {
@@ -218,7 +222,7 @@ final class NuRowDetails
 			$show[(string)$n] = $c;
 			if (count($show) >= self::COLS) break;
 		}
-		$q = static fn(string $n): string => $db->type === 'sqlsrv' ? '[' . NuDB::ident($n) . ']' : ($db->type === 'mysql' ? '`' . NuDB::ident($n) . '`' : '"' . NuDB::ident($n) . '"');
+		$q = static fn(string $n): string => $db->quoteName($n);
 		$t = $q($table); $l = $q($link);
 		$total = (int)$db->value("SELECT COUNT(*) FROM $t WHERE $l = ?", [$recordId]);
 		$first = (string)array_key_first($show);

@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Form builder of a page form (form type "page", 0.8.387): form fields (description, code, group, status) and the page settings
+ * Form builder of a page form (form type "page"): form fields (description, code, group, status) and the page settings
  * (open mode, iframe height, settings JSON, CSP, notes), folder status, Create from template, Copy AI prompt, Delete.
  * Included by pages/nubuilder.php ($meta = the live form, $canSave, $canDeleteForm). Not a route of its own.
  */
@@ -14,64 +14,13 @@ $canDeleteForm = (bool)($canDeleteForm ?? false);
 $formId = $meta->id;
 $errors = [];
 
-if (nu_is_post()) {
-	$action = nu_post('action');
-	if ($action === 'prompt') {                       // "Copy AI prompt": the text as JSON
-		header('Content-Type: application/json; charset=utf-8');
-		echo json_encode(['ok' => true, 'text' => NuPage::aiPrompt($meta)], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-		exit;
-	}
-	if (!$canSave) NuAcl::require(NuAcl::FORM_FORM, 'save');
-	if ($action === 'template') {
-		$r = NuPage::createFromTemplate($meta->code());
-		nu_flash($r['ok'] ? 'success' : 'warning', $r['message']);
-		nu_redirect(nu_url('builder', ['f' => $formId]));
-	}
-	// draft and versions of the page files (0.8.599, NuPageVersion)
-	$verAct = ['draft_create' => 'createDraft', 'draft_publish' => 'publish', 'draft_discard' => 'discard'];
-	if (isset($verAct[$action]) || $action === 'version_restore') {
-		$r = $action === 'version_restore' ? NuPageVersion::restore($meta->code(), nu_post('version')) : NuPageVersion::{$verAct[$action]}($meta->code());
-		nu_flash($r['ok'] ? 'success' : 'warning', $r['message']);
-		nu_redirect(nu_url('builder', ['f' => $formId]) . '#pgDraft');
-	}
-	if ($action === 'delete') {
-		if (!$canDeleteForm) { http_response_code(403); nu_fatal(t('builder_delete_globeadmin'), '', true); }
-		NuPage::deleteForm($meta);
-		nu_flash('success', t('page_deleted', $meta->code()));
-		nu_redirect(nu_url('forms'));
-	}
-	if ($action === 'save') {
-		$db = nu_db();
-		$desc = nu_post('description');
-		$code = nu_post('code');
-		$status = in_array(nu_post('status'), ['0', '1', '3'], true) ? nu_post('status') : '1';
-		$group = nu_post('group');
-		if ($desc === '') $errors['description'] = t('err_required');
-		nu_maxlen($errors, 'description', $desc, 300);
-		if (!NuPage::validCode($code)) $errors['code'] = t('page_err_code', $code);
-		elseif ($code !== $meta->code() && (int)$db->value('SELECT COUNT(*) FROM zzzzsys_form WHERE sfo_code = ? AND zzzzsys_form_id <> ?', [$code, $formId])) $errors['code'] = t('builder_err_code_taken');
-		nu_maxlen($errors, 'group', $group, 100);
-		$pageIn = ['open_mode' => nu_post('open_mode'), 'iframe_height' => nu_post('iframe_height'), 'settings' => (string)($_POST['settings'] ?? ''),
-			'csp' => nu_post('csp'), 'note' => (string)($_POST['note'] ?? '')];
-		if (!$errors) $errors = NuPage::save($formId, $pageIn);
-		if (!$errors) {
-			$row = ['sfo_description' => $desc, 'sfo_code' => $code, 'sfo_status' => $status, 'sfo_group' => $group !== '' ? $group : null,
-				'sfo_breadcrumb_title' => '|' . $desc];
-			$old = array_intersect_key($meta->form, $row);
-			$db->update('zzzzsys_form', $row, 'zzzzsys_form_id', $formId);
-			NuFormMeta::forget($formId);
-			NuLog::write('form_saved', $code, $formId, NuLog::diff($old, $row));
-			nu_flash('success', t('saved'), true);
-			if ($code !== $meta->code()) nu_flash('warning', t('page_code_renamed', NuPage::shownFolder($meta->code()), NuPage::shownFolder($code)));
-			nu_redirect(nu_url('builder', ['f' => $formId]));
-		}
-	}
-}
+['meta' => $meta, 'canSave' => $canSave, 'formId' => $formId, 'canDeleteForm' => $canDeleteForm, 'errors' => $errors]
+	= NuBuilderPagePage::post(get_defined_vars());   // the POST actions (code review R7, nubuilderpagepage.php)
 
 $s = NuPage::settings($formId);
-$keys = NuPage::settingKeys($meta->code());          // keys the page reads (0.8.391)
+$keys = NuPage::settingKeys($meta->code());          // keys the page reads
 $example = NuPage::settingsExample($meta->code());   // settings.example.json of the page folder
-$fromKeys = NuPage::settingsFromKeys($keys['keys']); // a settings JSON from the keys the page reads (0.8.394)
+$fromKeys = NuPage::settingsFromKeys($keys['keys']); // a settings JSON from the keys the page reads
 $v = static fn(string $k, string $def) => array_key_exists($k, $_POST) && nu_is_post() ? (string)$_POST[$k] : $def;
 $info = NuPage::fileInfo($meta->code());
 $ro = !$canSave;
@@ -89,9 +38,11 @@ nu_layout_start($meta->description() . ' · ' . t('builder_title'), 'forms', ['h
 		<?= nu_back_button(null, nu_url('forms')) ?>
 		<?php if (!$ro): ?><button class="btn nuBtnAct nuBtnSave" type="submit" form="pgForm" data-nu-save id="pgSave"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button><?php endif; ?>
 		<a class="btn nuBtnAct pgNeedsSaved" href="<?= h($openUrl) ?>" target="_blank" rel="noopener" id="pgOpen"><i class="bi bi-box-arrow-up-right me-1"></i><?= h(t('page_open')) ?></a>
-		<button class="btn nuBtnAct pgNeedsSaved" type="button" id="pgPrompt" data-done="<?= h(t('page_prompt_copied')) ?>" data-fail="<?= h(t('page_prompt_failed')) ?>"><i class="bi bi-robot me-1"></i><?= h(t('page_prompt')) ?></button>
+		<button class="btn nuBtnAct pgNeedsSaved" type="button" id="pgPrompt" data-done="<?= h(t('page_prompt_copied')) ?>"
+			data-fail="<?= h(t('page_prompt_failed')) ?>"><i class="bi bi-robot me-1"></i><?= h(t('page_prompt')) ?></button>
 		<?php if ($canDeleteForm): ?>
-			<form method="post" class="d-inline" data-confirm="<?= h(t('page_delete_confirm', NuPage::shownFolder($meta->code()))) ?>" data-confirm-ok="<?= h(t('builder_delete_form')) ?>" data-confirm-class="btn btn-danger">
+			<form method="post" class="d-inline" data-confirm="<?= h(t('page_delete_confirm', NuPage::shownFolder($meta->code()))) ?>"
+				data-confirm-ok="<?= h(t('builder_delete_form')) ?>" data-confirm-class="btn btn-danger">
 				<?= nu_csrf_field() ?><input type="hidden" name="action" value="delete">
 				<button class="btn nuBtnAct nuBtnDel" type="submit"><i class="bi bi-trash me-1"></i><?= h(t('builder_delete_form')) ?></button>
 			</form>
@@ -109,19 +60,22 @@ nu_layout_start($meta->description() . ' · ' . t('builder_title'), 'forms', ['h
 				<div class="row g-3">
 					<div class="col-md-7">
 						<label class="form-label" for="pg_desc"><?= h(t('builder_description')) ?> <span class="text-danger">*</span></label>
-						<input class="form-control<?= nu_invalid($errors, 'description') ?>" id="pg_desc" name="description" maxlength="300" required value="<?= h($v('description', $meta->description())) ?>"<?= $ro ? ' readonly' : '' ?>>
+						<input class="form-control<?= nu_invalid($errors, 'description') ?>" id="pg_desc" name="description" maxlength="300" required
+							value="<?= h($v('description', $meta->description())) ?>"<?= $ro ? ' readonly' : '' ?>>
 						<?= nu_feedback($errors, 'description') ?>
 					</div>
 					<div class="col-md-5">
 						<label class="form-label" for="pg_code"><?= h(t('builder_code')) ?> <span class="text-danger">*</span><?= nu_unique_mark(true) ?></label><?= $tip(t('page_code_tip')) ?>
 						<input class="form-control font-monospace<?= nu_invalid($errors, 'code') ?>" id="pg_code" name="code" maxlength="64" required spellcheck="false" autocomplete="off"
-							pattern="[A-Za-z0-9][A-Za-z0-9_\-]{0,63}" value="<?= h($v('code', $meta->code())) ?>" data-old="<?= h($meta->code()) ?>" data-warn="<?= h(t('page_code_rename_hint')) ?>"<?= $ro ? ' readonly' : '' ?>>
+							pattern="[A-Za-z0-9][A-Za-z0-9_\-]{0,63}" value="<?= h($v('code', $meta->code())) ?>" data-old="<?= h($meta->code()) ?>"
+								data-warn="<?= h(t('page_code_rename_hint')) ?>"<?= $ro ? ' readonly' : '' ?>>
 						<?= nu_feedback($errors, 'code') ?>
 						<div class="form-text text-warning-emphasis d-none" id="pgCodeWarn"></div>
 					</div>
 					<div class="col-md-6">
 						<label class="form-label" for="pg_group"><?= h(t('builder_group')) ?></label>
-						<input class="form-control<?= nu_invalid($errors, 'group') ?>" id="pg_group" name="group" maxlength="100" value="<?= h($v('group', (string)($meta->form['sfo_group'] ?? ''))) ?>"<?= $ro ? ' readonly' : '' ?>>
+						<input class="form-control<?= nu_invalid($errors, 'group') ?>" id="pg_group" name="group" maxlength="100"
+							value="<?= h($v('group', (string)($meta->form['sfo_group'] ?? ''))) ?>"<?= $ro ? ' readonly' : '' ?>>
 					</div>
 					<div class="col-md-6">
 						<label class="form-label" for="pg_status"><?= h(t('builder_status')) ?></label>
@@ -141,33 +95,41 @@ nu_layout_start($meta->description() . ' · ' . t('builder_title'), 'forms', ['h
 					</div>
 					<div class="col-md-6 pgIframeOnly">
 						<label class="form-label" for="pg_height"><?= h(t('page_iframe_height')) ?></label><?= $tip(t('page_iframe_height_tip')) ?>
-						<input class="form-control font-monospace<?= nu_invalid($errors, 'iframe_height') ?>" id="pg_height" name="iframe_height" maxlength="10" value="<?= h($v('iframe_height', $s['iframe_height'])) ?>"<?= $ro ? ' readonly' : '' ?>>
+						<input class="form-control font-monospace<?= nu_invalid($errors, 'iframe_height') ?>" id="pg_height" name="iframe_height" maxlength="10"
+							value="<?= h($v('iframe_height', $s['iframe_height'])) ?>"<?= $ro ? ' readonly' : '' ?>>
 						<?= nu_feedback($errors, 'iframe_height') ?>
 					</div>
 					<div class="col-12">
 						<div class="d-flex align-items-end gap-2 mb-1">
 							<label class="form-label mb-0 me-auto" for="pg_settings"><?= h(t('page_settings_json')) ?></label><?= $tip(t('page_settings_tip')) ?>
-							<?php if (!$ro): // examples of the settings JSON (0.8.394): from this page's keys, its settings.example.json, built-in samples ?>
+							<?php if (!$ro): // examples of the settings JSON: from this page's keys, its settings.example.json, built-in samples ?>
 							<div class="dropdown" id="pgExamples" data-confirm-text="<?= h(t('page_example_confirm')) ?>">
-								<button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" id="pgExamplesBtn"><i class="bi bi-file-earmark-code me-1"></i><?= h(t('page_examples')) ?></button>
+								<button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false"
+									id="pgExamplesBtn"><i class="bi bi-file-earmark-code me-1"></i><?= h(t('page_examples')) ?></button>
 								<ul class="dropdown-menu dropdown-menu-end nuPgExamples">
-									<?php if ($fromKeys !== ''): ?><li><button class="dropdown-item" type="button" data-example="<?= h($fromKeys) ?>" id="pgExampleKeys"><span class="d-block"><?= h(t('page_example_keys')) ?></span><small class="text-body-secondary"><?= h(t('page_example_keys_sub')) ?></small></button></li><?php endif; ?>
-									<?php if ($example !== ''): ?><li><button class="dropdown-item" type="button" data-example="<?= h($example) ?>" id="pgExample"><span class="d-block"><?= h(t('page_example')) ?></span><small class="text-body-secondary">settings.example.json</small></button></li><?php endif; ?>
+									<?php if ($fromKeys !== ''): ?><li><button class="dropdown-item" type="button" data-example="<?= h($fromKeys) ?>"
+										id="pgExampleKeys"><span class="d-block"><?= h(t('page_example_keys')) ?></span><small class="text-body-secondary"><?= h(t('page_example_keys_sub')) ?></small></button></li><?php endif; ?>
+									<?php if ($example !== ''): ?><li><button class="dropdown-item" type="button" data-example="<?= h($example) ?>"
+										id="pgExample"><span class="d-block"><?= h(t('page_example')) ?></span><small class="text-body-secondary">settings.example.json</small></button></li><?php endif; ?>
 									<?php if ($fromKeys !== '' || $example !== ''): ?><li><hr class="dropdown-divider"></li><?php endif; ?>
 									<li><h6 class="dropdown-header"><?= h(t('page_examples_samples')) ?></h6></li>
 									<?php foreach (NuPage::SETTING_SAMPLES as $lk => [$json, $read]): ?>
-										<li><button class="dropdown-item pgSample" type="button" data-example="<?= h((string)json_encode(json_decode($json), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)) ?>"><span class="d-block"><?= h(t($lk)) ?></span><small class="text-body-secondary font-monospace"><?= h($read) ?></small></button></li>
+										<li><button class="dropdown-item pgSample" type="button"
+											data-example="<?= h((string)json_encode(json_decode($json), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)) ?>"><span class="d-block"><?= h(t($lk)) ?></span><small class="text-body-secondary font-monospace"><?= h($read) ?></small></button></li>
 									<?php endforeach; ?>
 								</ul>
 							</div>
 							<?php endif; ?>
-							<?php if (!$ro): ?><button class="btn btn-sm btn-outline-secondary" type="button" id="pgPretty" data-bad="<?= h(t('page_err_json', '')) ?>"><i class="bi bi-braces me-1"></i><?= h(t('page_pretty')) ?></button><?php endif; ?>
+							<?php if (!$ro): ?><button class="btn btn-sm btn-outline-secondary" type="button" id="pgPretty"
+								data-bad="<?= h(t('page_err_json', '')) ?>"><i class="bi bi-braces me-1"></i><?= h(t('page_pretty')) ?></button><?php endif; ?>
 						</div>
-						<textarea class="form-control font-monospace<?= nu_invalid($errors, 'settings') ?>" id="pg_settings" name="settings" rows="10" spellcheck="false"<?= $ro ? ' readonly' : '' ?>><?= h($v('settings', $s['settings'])) ?></textarea>
+						<textarea class="form-control font-monospace<?= nu_invalid($errors, 'settings') ?>" id="pg_settings" name="settings" rows="10"
+							spellcheck="false"<?= $ro ? ' readonly' : '' ?>><?= h($v('settings', $s['settings'])) ?></textarea>
 						<?= nu_feedback($errors, 'settings') ?>
 						<div class="invalid-feedback" id="pgJsonError"></div>
-						<?php if ($info['exists']): // keys the page reads with $nu->setting() (0.8.391) ?>
-						<div class="mt-2 small" id="pgKeys" data-all="<?= $keys['all'] ? '1' : '0' ?>" data-set="<?= h(t('page_keys_set')) ?>" data-unset="<?= h(t('page_keys_unset')) ?>" data-unused="<?= h(t('page_keys_unused', '%s')) ?>">
+						<?php if ($info['exists']): // keys the page reads with $nu->setting() ?>
+						<div class="mt-2 small" id="pgKeys" data-all="<?= $keys['all'] ? '1' : '0' ?>" data-set="<?= h(t('page_keys_set')) ?>"
+							data-unset="<?= h(t('page_keys_unset')) ?>" data-unused="<?= h(t('page_keys_unused', '%s')) ?>">
 							<div class="fw-semibold mb-1"><?= h(t('page_keys_title')) ?></div>
 							<?php if (!$keys['keys']): ?>
 								<div class="text-body-secondary" id="pgKeysNone"><?= h(t('page_keys_none')) ?></div>
@@ -193,7 +155,8 @@ nu_layout_start($meta->description() . ' · ' . t('builder_title'), 'forms', ['h
 					</div>
 					<div class="col-12">
 						<label class="form-label" for="pg_csp"><?= h(t('page_csp')) ?></label><?= $tip(t('page_csp_tip')) ?>
-						<input class="form-control font-monospace<?= nu_invalid($errors, 'csp') ?>" id="pg_csp" name="csp" maxlength="2000" spellcheck="false" placeholder="script-src 'self' https://cdn.example.org" value="<?= h($v('csp', $s['csp'])) ?>"<?= $ro ? ' readonly' : '' ?>>
+						<input class="form-control font-monospace<?= nu_invalid($errors, 'csp') ?>" id="pg_csp" name="csp" maxlength="2000" spellcheck="false"
+							placeholder="script-src 'self' https://cdn.example.org" value="<?= h($v('csp', $s['csp'])) ?>"<?= $ro ? ' readonly' : '' ?>>
 						<?= nu_feedback($errors, 'csp') ?>
 					</div>
 					<div class="col-12">
@@ -222,7 +185,7 @@ nu_layout_start($meta->description() . ' · ' . t('builder_title'), 'forms', ['h
 						<li class="text-danger" id="pgNoGuard"><i class="bi bi-shield-exclamation me-1"></i><?= h(t('page_file_no_guard')) ?> <code><?= h(NuPage::GUARD) ?></code></li>
 					<?php endif; ?>
 					<li><i class="bi bi-key me-1"></i><?= h(t('page_secrets', $info['secrets'] ? t('yes') : t('no'))) ?></li>
-					<?php if ($info['exists']): $scan = NuPage::scan($meta->code()); $apiIssues = NuPage::check($scan, NuPage::apiInfo()); // API versions (0.8.388) ?>
+					<?php if ($info['exists']): $scan = NuPage::scan($meta->code()); $apiIssues = NuPage::check($scan, NuPage::apiInfo()); // API versions ?>
 						<li id="pgApi"><i class="bi bi-plug me-1"></i><?= h($scan['declared'] !== null ? t('page_api_declared', (string)$scan['declared'], implode(', ', NuPage::API_SUPPORTED)) : t('page_api_none', implode(', ', NuPage::API_SUPPORTED))) ?></li>
 						<?php if ($apiIssues): foreach ($apiIssues as $i): ?>
 							<li class="<?= $i['level'] === 'error' ? 'text-danger' : 'text-warning-emphasis' ?> pgApiIssue"><i class="bi <?= $i['level'] === 'error' ? 'bi-x-circle' : 'bi-exclamation-triangle' ?> me-1"></i><?= h($i['text']) ?></li>
@@ -241,7 +204,7 @@ nu_layout_start($meta->description() . ' · ' . t('builder_title'), 'forms', ['h
 				<?php endif; ?>
 			</div>
 		</div>
-		<?php if ($info['exists'] && NuPageVersion::available($meta->code())): // draft and versions (0.8.599)
+		<?php if ($info['exists'] && NuPageVersion::available($meta->code())): // draft and versions
 			$pc = $meta->code();
 			$hasDraft = NuPageVersion::hasDraft($pc);
 			$diff = $hasDraft ? NuPageVersion::diff($pc) : null;
@@ -275,7 +238,8 @@ nu_layout_start($meta->description() . ' · ' . t('builder_title'), 'forms', ['h
 						</ul>
 					<?php endif; ?>
 					<div class="d-flex flex-wrap gap-2">
-						<a class="btn nuBtnAct" href="<?= h(nu_url('page', ['f' => $pc, 'nudraft' => '1'])) ?>" target="_blank" rel="noopener" id="pgDraftOpen"><i class="bi bi-box-arrow-up-right me-1"></i><?= h(t('page_draft_open')) ?></a>
+						<a class="btn nuBtnAct" href="<?= h(nu_url('page', ['f' => $pc, 'nudraft' => '1'])) ?>" target="_blank" rel="noopener"
+							id="pgDraftOpen"><i class="bi bi-box-arrow-up-right me-1"></i><?= h(t('page_draft_open')) ?></a>
 						<?php if ($canWrite): ?>
 							<form method="post" data-confirm="<?= h(t('page_draft_publish_confirm')) ?>" data-confirm-ok="<?= h(t('page_draft_publish')) ?>">
 								<?= nu_csrf_field() ?><input type="hidden" name="action" value="draft_publish">

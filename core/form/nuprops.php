@@ -10,7 +10,7 @@ defined('NU_ROOT') || exit;
  * procedures, BS/AS …) are "locked": the browser cannot override them in later requests of that page or of forms opened
  * from it. Values set in JavaScript stay browser values, as in nuBuilder (hash values are escaped either way).
  *
- *   $_SESSION['nu_ps'][key] = ['p' => [name => value], 'l' => [name => true], 't' => time]
+ *   $_SESSION[NuSess::PROPS][key] = ['p' => [name => value], 'l' => [name => true], 't' => time]
  */
 final class NuProps
 {
@@ -21,7 +21,7 @@ final class NuProps
 	public static function load(?string $key): array
 	{
 		$key = (string)$key;
-		$s = preg_match('/^[a-f0-9]{16}$/', $key) ? ($_SESSION['nu_ps'][$key] ?? null) : null;
+		$s = preg_match('/^[a-f0-9]{16}$/', $key) ? ($_SESSION[NuSess::PROPS][$key] ?? null) : null;
 		return is_array($s) ? [(array)$s['p'], (array)$s['l']] : [[], []];
 	}
 
@@ -29,11 +29,11 @@ final class NuProps
 	public static function create(array $props, array $locked = [], array $caller = []): string
 	{
 		$key = bin2hex(random_bytes(8));
-		$_SESSION['nu_ps'][$key] = ['p' => self::clean($props), 'l' => array_intersect_key($locked, $props), 't' => time()];
-		if ($caller !== []) $_SESSION['nu_ps'][$key]['c'] = self::clean($caller);
-		if (count($_SESSION['nu_ps']) > self::MAX) {
-			uasort($_SESSION['nu_ps'], static fn($a, $b) => $a['t'] <=> $b['t']);
-			$_SESSION['nu_ps'] = array_slice($_SESSION['nu_ps'], -self::MAX, null, true);
+		$_SESSION[NuSess::PROPS][$key] = ['p' => self::clean($props), 'l' => array_intersect_key($locked, $props), 't' => time()];
+		if ($caller !== []) $_SESSION[NuSess::PROPS][$key]['c'] = self::clean($caller);
+		if (count($_SESSION[NuSess::PROPS]) > self::MAX) {
+			uasort($_SESSION[NuSess::PROPS], static fn($a, $b) => $a['t'] <=> $b['t']);
+			$_SESSION[NuSess::PROPS] = array_slice($_SESSION[NuSess::PROPS], -self::MAX, null, true);
 		}
 		return $key;
 	}
@@ -42,12 +42,12 @@ final class NuProps
 	public static function lock(?string $key, array $phpProps): void
 	{
 		$key = (string)$key;
-		if ($phpProps === [] || !isset($_SESSION['nu_ps'][$key])) return;
+		if ($phpProps === [] || !isset($_SESSION[NuSess::PROPS][$key])) return;
 		foreach (self::clean($phpProps) as $k => $v) {
-			$_SESSION['nu_ps'][$key]['p'][$k] = $v;
-			$_SESSION['nu_ps'][$key]['l'][$k] = true;
+			$_SESSION[NuSess::PROPS][$key]['p'][$k] = $v;
+			$_SESSION[NuSess::PROPS][$key]['l'][$k] = true;
 		}
-		$_SESSION['nu_ps'][$key]['t'] = time();
+		$_SESSION[NuSess::PROPS][$key]['t'] = time();
 	}
 
 	/** Properties of a request: stored values + values sent by the browser; locked names keep the stored value. */
@@ -62,12 +62,12 @@ final class NuProps
 	public static function forget(?string $key, array $names): void
 	{
 		$key = (string)$key;
-		if (!isset($_SESSION['nu_ps'][$key])) return;
-		foreach ($names as $n) unset($_SESSION['nu_ps'][$key]['p'][$n], $_SESSION['nu_ps'][$key]['l'][$n]);
+		if (!isset($_SESSION[NuSess::PROPS][$key])) return;
+		foreach ($names as $n) unset($_SESSION[NuSess::PROPS][$key]['p'][$n], $_SESSION[NuSess::PROPS][$key]['l'][$n]);
 	}
 
 	/** A copy of a scope with the browser's current values (navigation to another form); $caller = the fields of the edit form it
-	 *  is opened from (nuBuilder Forte's nuHashFromEditForm: hash variables of the opened form, below its own values – 0.8.976). */
+	 *  is opened from (nuBuilder Forte's nuHashFromEditForm: hash variables of the opened form, below its own values). */
 	public static function fork(?string $key, mixed $client, mixed $caller = null): string
 	{
 		[, $l] = self::load($key);
@@ -79,7 +79,7 @@ final class NuProps
 	public static function caller(?string $key): array
 	{
 		$key = (string)$key;
-		$s = preg_match('/^[a-f0-9]{16}$/', $key) ? ($_SESSION['nu_ps'][$key] ?? null) : null;
+		$s = preg_match('/^[a-f0-9]{16}$/', $key) ? ($_SESSION[NuSess::PROPS][$key] ?? null) : null;
 		return is_array($s) && is_array($s['c'] ?? null) ? $s['c'] : [];
 	}
 
@@ -88,7 +88,7 @@ final class NuProps
 		return array_keys(self::load($key)[1]);
 	}
 
-	public const MAX_NAMES = 200;      // properties per scope / hash cookies per session (0.8.207: the session stays small)
+	public const MAX_NAMES = 200;      // properties per scope / hash cookies per session (the session stays small)
 	public const MAX_VALUE = 65536;    // bytes per value
 
 	/** Valid names, scalar values (arrays / objects as JSON, like nuBuilder's hash); at most MAX_NAMES, values cut at MAX_VALUE. */
@@ -118,7 +118,7 @@ final class NuHashCookies
 	public static function all(): array
 	{
 		if (self::$cache !== null) return self::$cache;
-		$own = is_array($_SESSION['nu_hashcookies'] ?? null) ? $_SESSION['nu_hashcookies'] : [];
+		$own = is_array($_SESSION[NuSess::HASH_COOKIES] ?? null) ? $_SESSION[NuSess::HASH_COOKIES] : [];
 		$nb  = self::nuBuilderRow();
 		return self::$cache = $nb !== null ? array_merge($own, $nb) : $own;
 	}
@@ -131,17 +131,17 @@ final class NuHashCookies
 	public static function set(string $name, mixed $value): void
 	{
 		if (!preg_match('/^\w{1,100}$/', $name)) return;
-		if (!isset($_SESSION['nu_hashcookies'][$name]) && count((array)($_SESSION['nu_hashcookies'] ?? [])) >= NuProps::MAX_NAMES) return;
+		if (!isset($_SESSION[NuSess::HASH_COOKIES][$name]) && count((array)($_SESSION[NuSess::HASH_COOKIES] ?? [])) >= NuProps::MAX_NAMES) return;
 		$value = is_scalar($value) || $value === null ? $value : json_encode($value, JSON_UNESCAPED_UNICODE);
 		if (is_string($value) && strlen($value) > NuProps::MAX_VALUE) $value = mb_strcut($value, 0, NuProps::MAX_VALUE);
-		$_SESSION['nu_hashcookies'][$name] = $value;
+		$_SESSION[NuSess::HASH_COOKIES][$name] = $value;
 		self::writeNuBuilder(static function (array $j) use ($name, $value) { $j[$name] = $value; return $j; });
 		self::$cache = null;
 	}
 
 	public static function delete(string $name): void
 	{
-		unset($_SESSION['nu_hashcookies'][$name]);
+		unset($_SESSION[NuSess::HASH_COOKIES][$name]);
 		self::writeNuBuilder(static function (array $j) use ($name) { unset($j[$name]); return $j; });
 		self::$cache = null;
 	}
@@ -149,7 +149,7 @@ final class NuHashCookies
 	/** nuBuilder's session id when the user logged in through nuBuilder (shared login), else null. */
 	public static function nuBuilderSession(): ?string
 	{
-		$a = $_SESSION['nu_auth'] ?? null;
+		$a = $_SESSION[NuSess::AUTH] ?? null;
 		return is_array($a) && ($a['via'] ?? '') === 'nubuilder' && (string)($a['nb_session'] ?? '') !== '' ? (string)$a['nb_session'] : null;
 	}
 

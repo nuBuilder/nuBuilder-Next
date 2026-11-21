@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Allowlist HTML cleaner (0.8.400) – for formatted notification texts (TinyMCE) and anything else where users send HTML that other
+ * Allowlist HTML cleaner – for formatted notification texts (TinyMCE) and anything else where users send HTML that other
  * users see. Only the tags of TAGS stay, without attributes except a checked href on <a>; dangerous elements are dropped with their
  * content, other unknown elements are unwrapped (their text stays). Links get target="_blank" rel="noopener noreferrer".
  */
@@ -17,6 +17,12 @@ final class NuHtmlClean
 
 	public static function clean(string $html): string
 	{
+		return self::through($html, self::walk(...));
+	}
+
+	/** Parses $html as a fragment, lets $walk clean the tree and returns the cleaned HTML (shared by clean() and doc(), code review D5). */
+	private static function through(string $html, Closure $walk): string
+	{
 		if (trim($html) === '') return '';
 		$dom = new DOMDocument();
 		$prev = libxml_use_internal_errors(true);
@@ -26,7 +32,7 @@ final class NuHtmlClean
 		$root = null;
 		foreach ($dom->getElementsByTagName('div') as $d) { if ($d->getAttribute('id') === 'nuCleanRoot') { $root = $d; break; } }
 		if (!$root) return h(strip_tags($html));
-		self::walk($root);
+		$walk($root);
 		$out = '';
 		foreach ($root->childNodes as $c) $out .= $dom->saveHTML($c);
 		return trim($out);
@@ -84,12 +90,12 @@ final class NuHtmlClean
 		return trim((string)preg_replace("~\n{3,}~", "\n\n", $s));
 	}
 
-	/** Elements a list cell or column title may hold (0.8.945, nuBuilder Forte draws them as HTML): icons, badges, simple formatting, links, images. */
+	/** Elements a list cell or column title may hold (nuBuilder Forte draws them as HTML): icons, badges, simple formatting, links, images. */
 	public const CELL_TAGS = ['i', 'span', 'b', 'strong', 'em', 'u', 's', 'small', 'sub', 'sup', 'mark', 'br', 'img', 'a', 'div', 'p', 'code', 'kbd', 'abbr', 'del', 'ins'];
 	private const CELL_ATTRS = ['class', 'title', 'style', 'alt', 'width', 'height', 'aria-hidden', 'aria-label', 'role'];
 
 	/**
-	 * A list cell value or column title as safe HTML (0.8.945): plain text stays escaped text; a value with tags or entities keeps the
+	 * A list cell value or column title as safe HTML: plain text stays escaped text; a value with tags or entities keeps the
 	 * elements of CELL_TAGS with class / title / a checked style, <a href> (safeHref or a relative path, target _blank / _self) and
 	 * <img src> (http(s), data:image, a relative path) – scripts, event attributes and everything else are removed.
 	 */
@@ -110,7 +116,7 @@ final class NuHtmlClean
 		return $out;
 	}
 
-	/** Text of a cell value / title for attributes, labels and exports (0.8.945): tags removed only when it looks like HTML. */
+	/** Text of a cell value / title for attributes, labels and exports: tags removed only when it looks like HTML. */
 	public static function cellText(string $v): string
 	{
 		return self::looksHtml($v) ? trim(html_entity_decode(strip_tags($v), ENT_QUOTES | ENT_HTML5, 'UTF-8')) : $v;
@@ -183,7 +189,7 @@ final class NuHtmlClean
 		return $st;
 	}
 
-	// ------------------------------------------------------------------ user help pages (0.8.1023, core/nuuserhelp.php)
+	// ------------------------------------------------------------------ user help pages (core/nuuserhelp.php)
 
 	/** Elements a user help page may hold (TinyMCE output): text, headings, lists, tables, images, links, code. */
 	public const DOC_TAGS = ['p', 'br', 'b', 'strong', 'i', 'em', 'u', 's', 'strike', 'del', 'ins', 'sub', 'sup', 'small', 'mark', 'kbd', 'code', 'pre', 'abbr',
@@ -198,19 +204,7 @@ final class NuHtmlClean
 	 */
 	public static function doc(string $html): string
 	{
-		if (trim($html) === '') return '';
-		$dom = new DOMDocument();
-		$prev = libxml_use_internal_errors(true);
-		$dom->loadHTML('<?xml encoding="utf-8"?><div id="nuCleanRoot">' . $html . '</div>', LIBXML_NONET | LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
-		libxml_clear_errors();
-		libxml_use_internal_errors($prev);
-		$root = null;
-		foreach ($dom->getElementsByTagName('div') as $d) { if ($d->getAttribute('id') === 'nuCleanRoot') { $root = $d; break; } }
-		if (!$root) return h(strip_tags($html));
-		self::walkDoc($root);
-		$out = '';
-		foreach ($root->childNodes as $c) $out .= $dom->saveHTML($c);
-		return trim($out);
+		return self::through($html, self::walkDoc(...));
 	}
 
 	private static function walkDoc(DOMNode $node): void

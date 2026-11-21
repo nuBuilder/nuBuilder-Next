@@ -13,7 +13,7 @@ if ($action === 'stop') {
 	nu_redirect($back);
 }
 if ($action === 'start') {
-	$roleId = nu_post('role');                              // test an admin role (0.8.1318)
+	$roleId = nu_post('role');                              // test an admin role
 	$from = $roleId !== '' ? nu_url('adminroles', ['id' => $roleId]) : nu_url('user', ['id' => nu_post('id')]);
 	if (nu_post('mode') === 'full') NuSecurity::requireRecentAuth($from);   // full access: password confirmed recently
 	if ($roleId !== '' && nu_post('id') === '') { nu_flash('warning', t('imp_test_pick_user')); nu_redirect($from); }

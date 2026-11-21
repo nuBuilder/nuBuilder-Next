@@ -16,8 +16,8 @@ defined('NU_ROOT') || exit;
  */
 final class NuSample
 {
-	public const VERSION = 25;   // what each version changed: CHANGES (shown on the Sample data page, 0.8.1256)
-	/** Change history of the sample, newest first (English, like the changelog; shown on the Sample data page – 0.8.1256). Add a line with every new VERSION. */
+	public const VERSION = 25;   // what each version changed: CHANGES (shown on the Sample data page)
+	/** Change history of the sample, newest first (English, like the changelog; shown on the Sample data page). Add a line with every new VERSION. */
 	public const CHANGES = [
 		25 => 'Customers: the phone mask matches the stored numbers (+1 555 110 2000).',
 		24 => 'Three shared pivots of the orders list.',
@@ -72,8 +72,8 @@ final class NuSample
 
 	/** System tables with sample rows: table => primary key. Children first (removal order). */
 	private const SYSTEM = [
-		'zzzzsys_nunext_widget' => 'zzzzsys_nunext_widget_id', 'zzzzsys_nunext_dashboard' => 'zzzzsys_nunext_dashboard_id',   // dashboards (0.8.299)
-		'zzzzsys_nunext_list_view' => 'zzzzsys_nunext_list_view_id',                                                              // start pages of users (0.8.425)
+		'zzzzsys_nunext_widget' => 'zzzzsys_nunext_widget_id', 'zzzzsys_nunext_dashboard' => 'zzzzsys_nunext_dashboard_id',   // dashboards
+		'zzzzsys_nunext_list_view' => 'zzzzsys_nunext_list_view_id',                                                              // start pages of users
 		'zzzzsys_user_permission' => 'zzzzsys_user_permission_id', 'zzzzsys_permission_item' => 'zzzzsys_permission_item_id',
 		'zzzzsys_event' => 'zzzzsys_event_id', 'zzzzsys_object' => 'zzzzsys_object_id', 'zzzzsys_browse' => 'zzzzsys_browse_id',
 		'zzzzsys_tab' => 'zzzzsys_tab_id', 'zzzzsys_access_form' => 'zzzzsys_access_form_id', 'zzzzsys_access_php' => 'zzzzsys_access_php_id',
@@ -86,7 +86,7 @@ final class NuSample
 
 	/** Data tables, in creation order (removed in reverse). */
 	private const TABLES = ['sample_customer', 'sample_product', 'sample_order', 'sample_order_item', 'sample_all', 'sample_all_line'];
-	/** Link columns of the sample tables (sub-forms, lookups) – indexed (0.8.366). */
+	/** Link columns of the sample tables (sub-forms, lookups) – indexed. */
 	private const INDEXES = ['sample_order_item' => ['ori_sample_order_id', 'ori_sample_product_id'], 'sample_order' => ['ord_sample_customer_id'], 'sample_all_line' => ['sal_sample_all_id']];
 
 	/** Indexes on the link columns (also for a sample application installed before 0.8.366 – called on every install / refresh). */
@@ -100,16 +100,12 @@ final class NuSample
 	/** Sample version inside an update package (0 = not found). */
 	public static function versionInZip(string $zipFile, string $prefix): int
 	{
-		if (!class_exists('ZipArchive')) return 0;
-		$z = new ZipArchive();
-		if ($z->open($zipFile) !== true) return 0;
-		$src = $z->getFromName($prefix . 'core/nusample.php');
-		$z->close();
-		return is_string($src) && preg_match('/public const VERSION = (\d+);/', $src, $m) ? (int)$m[1] : 0;
+		$src = nu_zip_entry($zipFile, $prefix . 'core/nusample.php');
+		return $src !== null && preg_match('/public const VERSION = (\d+);/', $src, $m) ? (int)$m[1] : 0;
 	}
 
 	/**
-	 * Installed? and which version – the one statement the start page's tile badge needs (0.8.1341: it called status(), eight
+	 * Installed? and which version – the one statement the start page's tile badge needs (it called status(), eight
 	 * statements counting the sample's rows, on every view of the start page). @return array{installed: bool, version: int, current: int}
 	 */
 	public static function versionInfo(): array
@@ -141,7 +137,8 @@ final class NuSample
 	public static function blockingUsers(): array
 	{
 		$db = nu_db();
-		return array_column($db->all('SELECT sus_login_name FROM zzzzsys_user WHERE ' . self::isSample('sus_zzzzsys_access_id') . ' AND NOT ' . self::isSample('zzzzsys_user_id') . ' ORDER BY sus_login_name'), 'sus_login_name');
+		return array_column($db->all('SELECT sus_login_name FROM zzzzsys_user WHERE ' . self::isSample('sus_zzzzsys_access_id') . ' AND NOT ' . self::isSample('zzzzsys_user_id') . ' ORDER BY sus_login_name'),
+			'sus_login_name');
 	}
 
 	/** SQL condition "column starts with sample_" (no LIKE: "_" is a wildcard and escaping differs per database). */
@@ -185,8 +182,8 @@ final class NuSample
 				}
 			});
 		} catch (Throwable $e) {
-			foreach (array_reverse($created) as $t) { try { NuDDL::dropTable($t); } catch (Throwable) {} }
-			try { self::deleteRows(); } catch (Throwable) {}
+			foreach (array_reverse($created) as $t) { try { NuDDL::dropTable($t); } catch (Throwable $ig) { nu_ignored($ig); } }
+			try { self::deleteRows(); } catch (Throwable $ig) { nu_ignored($ig); }
 			throw $e;
 		}
 		NuLog::write('sample_installed', 'sample', '', ['version' => self::VERSION]);
@@ -281,7 +278,9 @@ final class NuSample
 		// ------------------------------------------------------------ formats, picture, procedures, snippets, template
 		foreach (self::formats() as $f) $add('zzzzsys_format', $f);
 		$add('zzzzsys_file', ['zzzzsys_file_id' => 'sample_file_logo', 'sfi_code' => 'sample_logo', 'sfi_description' => 'Sample logo (SVG)', 'sfi_group' => 'sample',
-			'sfi_system' => '0', 'sfi_json' => json_encode(['file' => base64_encode('data:image/svg+xml;base64,' . base64_encode(self::logoSvg())), 'name' => 'sample_logo.svg', 'size' => strlen(self::logoSvg()), 'type' => 'image/svg+xml'])]);
+			'sfi_system' => '0',
+				'sfi_json' => json_encode(['file' => base64_encode('data:image/svg+xml;base64,' . base64_encode(self::logoSvg())), 'name' => 'sample_logo.svg',
+					'size' => strlen(self::logoSvg()), 'type' => 'image/svg+xml'])]);
 		foreach (self::procedures() as $p) $add('zzzzsys_php', $p);
 		foreach (self::snippets() as $s) $add('zzzzsys_code_snippet', $s);
 		foreach (self::reports() as [$t, $r]) $add($t, $r);
@@ -330,7 +329,8 @@ final class NuSample
 		foreach ($f['objects'] as $o) {
 			if (in_array($o['type'], ['subform', 'word', 'html', 'run', 'image', 'contentbox', 'display'], true)) continue;
 			if (($o['target'] ?? '0') === '1') continue;   // Uppy upload (file system): no column
-			$type = NuDDL::typeForObject(['sob_all_type' => $o['type'], 'sob_input_type' => $o['input'] ?? '', 'sob_input_format' => $o['format'] ?? '', 'sob_select_multiple' => !empty($o['multiple']) ? '1' : '0']);
+			$type = NuDDL::typeForObject(['sob_all_type' => $o['type'], 'sob_input_type' => $o['input'] ?? '', 'sob_input_format' => $o['format'] ?? '',
+				'sob_select_multiple' => !empty($o['multiple']) ? '1' : '0']);
 			if ($type) $cols[] = ['name' => $o['id'], 'type' => $type[0], 'length' => $type[1]];
 		}
 		return $cols;
@@ -374,7 +374,9 @@ final class NuSample
 		$ev = 0;
 		foreach ($f['objects'] as $n => $o) {
 			$tab = (int)($o['tab'] ?? 0);
-			$h = (int)($o['h'] ?? match ($o['type']) { 'textarea', 'editor' => 70, 'subform' => 220, 'html' => 60, 'chart' => 240, 'image' => 64, 'run' => ($o['method'] ?? 'b') === 'i' ? 260 : 30, 'contentbox' => 120, default => 22 });
+			$h = (int)($o['h']
+				?? match ($o['type']) { 'textarea', 'editor' => 70, 'subform' => 220, 'html' => 60, 'chart' => 240, 'image' => 64,
+					'run' => ($o['method'] ?? 'b') === 'i' ? 260 : 30, 'contentbox' => 120, default => 22 });
 			$w = (int)($o['w'] ?? match ($o['type']) { 'subform' => 600, 'textarea', 'editor', 'html', 'chart' => 400, 'run' => ($o['method'] ?? 'b') === 'i' ? 600 : 160, 'image' => 64, default => 220 });
 			$y = $o['top'] ?? ($top[$tab] ?? 20);
 			$top[$tab] = max($top[$tab] ?? 20, $y + $h + 14);
@@ -389,17 +391,21 @@ final class NuSample
 				'sob_all_event' => !empty($o['events']) ? '1' : '0', 'sob_all_style_type' => $o['style_type'] ?? '', 'sob_all_style' => $o['style'] ?? '',
 				'sob_input_type' => $o['type'] === 'input' ? ($o['input'] ?? 'text') : null, 'sob_input_format' => $o['format'] ?? '',
 				'sob_input_count' => $o['count'] ?? null, 'sob_input_javascript' => $o['scroll'] ?? null, 'sob_input_datalist' => $o['datalist'] ?? null,
-				'sob_input_attribute' => $o['attribute'] ?? null, 'sob_input_icon' => null, 'sob_input_file_target' => $o['type'] === 'input' && ($o['input'] ?? '') === 'file' ? (string)($o['target'] ?? '0') : null,
+				'sob_input_attribute' => $o['attribute'] ?? null, 'sob_input_icon' => null, 'sob_input_file_target' => $o['type'] === 'input'
+					&& ($o['input'] ?? '') === 'file' ? (string)($o['target'] ?? '0') : null,
 				'sob_select_multiple' => $o['type'] === 'select' ? (!empty($o['multiple']) ? '1' : '0') : null, 'sob_select_2' => $o['type'] === 'select' ? (!empty($o['select2']) ? '1' : '0') : null,
 				'sob_select_sql' => $o['options'] ?? null,
 				'sob_display_sql' => $o['sql'] ?? null,
 				'sob_calc_formula' => $o['formula'] ?? null, 'sob_calc_format' => $o['type'] === 'calc' ? ($o['format'] ?? '') : null,
-				'sob_lookup_zzzzsys_form_id' => isset($o['lookup_form']) ? self::fid($o['lookup_form']) : null, 'sob_lookup_code' => $o['lookup_code'] ?? null, 'sob_lookup_description' => $o['lookup_desc'] ?? null,
-				'sob_lookup_description_width' => isset($o['lookup_form']) ? (string)($o['lookup_width'] ?? 200) : null, 'sob_lookup_autocomplete' => isset($o['lookup_form']) ? (!empty($o['autocomplete']) ? '1' : '0') : null,
+				'sob_lookup_zzzzsys_form_id' => isset($o['lookup_form']) ? self::fid($o['lookup_form']) : null, 'sob_lookup_code' => $o['lookup_code'] ?? null,
+					'sob_lookup_description' => $o['lookup_desc'] ?? null,
+				'sob_lookup_description_width' => isset($o['lookup_form']) ? (string)($o['lookup_width'] ?? 200) : null,
+					'sob_lookup_autocomplete' => isset($o['lookup_form']) ? (!empty($o['autocomplete']) ? '1' : '0') : null,
 				'sob_lookup_table' => $o['lookup_form'] ?? null,
 				'sob_subform_zzzzsys_form_id' => isset($o['subform']) ? self::fid($o['subform']) : null, 'sob_subform_foreign_key' => $o['foreign_key'] ?? null, 'sob_subform_table' => $o['subform'] ?? null,
 				'sob_subform_add' => isset($o['subform']) ? '1' : null, 'sob_subform_delete' => isset($o['subform']) ? '1' : null, 'sob_subform_type' => isset($o['subform']) ? ($o['sf_type'] ?? 'g') : null,
-				'sob_run_zzzzsys_form_id' => isset($o['run']) ? (($o['run_type'] ?? 'F') === 'F' ? self::fid($o['run']) : $o['run']) : null, 'sob_run_method' => isset($o['run']) ? ($o['method'] ?? 'b') : null, 'sob_run_target' => isset($o['run']) ? ($o['target'] ?? '0') : null,
+				'sob_run_zzzzsys_form_id' => isset($o['run']) ? (($o['run_type'] ?? 'F') === 'F' ? self::fid($o['run']) : $o['run']) : null,
+					'sob_run_method' => isset($o['run']) ? ($o['method'] ?? 'b') : null, 'sob_run_target' => isset($o['run']) ? ($o['target'] ?? '0') : null,
 				'sob_run_type' => isset($o['run']) ? ($o['run_type'] ?? 'F') : null, 'sob_run_id' => $o['run_id'] ?? null, 'sob_run_filter' => $o['run_filter'] ?? null,
 				'sob_html_code' => $o['html'] ?? null, 'sob_image_zzzzsys_file_id' => $o['file'] ?? null,
 				'sob_html_chart_type' => $o['chart'] ?? null, 'sob_html_javascript' => $o['chart_data'] ?? null, 'sob_html_title' => $o['chart_title'] ?? null,
@@ -460,7 +466,7 @@ final class NuSample
 					['type' => 'word', 'id' => 'home_reportword', 'label' => 'Reports (PDF) and Excel', 'left' => 20, 'top' => 656, 'w' => 760, 'style_type' => 'Class', 'style' => 'sampleSection'],
 					['type' => 'run', 'id' => 'home_rpt_customers', 'label' => 'Customer list', 'run' => 'sample_rpt_customers', 'run_type' => 'R', 'left' => 20, 'top' => 684, 'w' => 180, 'h' => 120, 'style_type' => 'Class', 'style' => 'sampleTile'],
 					['type' => 'run', 'id' => 'home_rpt_orders', 'label' => 'Orders by customer', 'run' => 'sample_rpt_orders', 'run_type' => 'R', 'left' => 216, 'top' => 684, 'w' => 180, 'h' => 120, 'style_type' => 'Class', 'style' => 'sampleTile'],
-					// Excel export (0.8.756): procedures that send a download – built-in writer and PhpSpreadsheet (library pack)
+					// Excel export: procedures that send a download – built-in writer and PhpSpreadsheet (library pack)
 					['type' => 'run', 'id' => 'home_xlsx', 'label' => 'Orders to Excel', 'run' => 'sample_proc_xlsx', 'run_type' => 'P', 'left' => 412, 'top' => 684, 'w' => 180, 'h' => 120, 'style_type' => 'Class', 'style' => 'sampleTile'],
 					['type' => 'run', 'id' => 'home_xlsx_pss', 'label' => 'Excel with chart', 'run' => 'sample_proc_xlsx_pss', 'run_type' => 'P', 'left' => 608, 'top' => 684, 'w' => 180, 'h' => 120, 'style_type' => 'Class', 'style' => 'sampleTile'],
 					['type' => 'word', 'id' => 'home_dashword', 'label' => 'Dashboard (nuBuilder Next)', 'left' => 20, 'top' => 828, 'w' => 760, 'style_type' => 'Class', 'style' => 'sampleSection'],
@@ -468,7 +474,7 @@ final class NuSample
 						'events' => ['onchange' => "// a launch form's field as criterion: the dashboard reads #home_country# again\nif (window.nuNextDashboardRefresh) nuNextDashboardRefresh('sample_country');"]],
 					['type' => 'html', 'id' => 'home_dashboard', 'label' => '', 'left' => 20, 'top' => 900, 'w' => 900, 'h' => 560,
 						'html' => '<div data-nu-dashboard="sample_country"></div>'],
-					// what to look at (0.8.691): which lists show badges, filters, links and dashboards – nuForm() opens the list (also in nuBuilder Forte)
+					// what to look at: which lists show badges, filters, links and dashboards – nuForm() opens the list (also in nuBuilder Forte)
 					['type' => 'word', 'id' => 'home_lookword', 'label' => 'What to look at', 'left' => 20, 'top' => 1484, 'w' => 760, 'style_type' => 'Class', 'style' => 'sampleSection'],
 					['type' => 'html', 'id' => 'home_look', 'label' => '', 'left' => 20, 'top' => 1512, 'w' => 900, 'h' => 250,
 						'html' => '<div class="sampleNote sampleLook"><ul>'
@@ -478,7 +484,8 @@ final class NuSample
 							. '<li><a href="#" onclick="nuForm(\'sampleall\', \'\'); return false;">All objects</a>: the <b>Select</b> and <b>Checkbox</b> columns as labelled badges instead of raw values (b → Option B, 1 → ✓).</li>'
 							. '<li><b>Dashboards</b>: above on this page (with the country as criterion), on the start pages of <code>sample_sales</code> and <code>sample_manager</code>, and on the customer form.</li>'
 							. '</ul><p>Open a list with <i>Design</i> to see how it is made. Badges, filters and dashboards are nuBuilder Next features – nuBuilder Forte shows the same lists without them.</p></div>'],
-					['type' => 'input', 'input' => 'button', 'id' => 'home_colour', 'label' => 'Set hash cookie sample_colour', 'left' => 20, 'top' => 604, 'w' => 260, 'style_type' => 'Class', 'style' => 'sampleButton',
+					['type' => 'input', 'input' => 'button', 'id' => 'home_colour', 'label' => 'Set hash cookie sample_colour', 'left' => 20, 'top' => 604, 'w' => 260,
+						'style_type' => 'Class', 'style' => 'sampleButton',
 						'events' => ['onclick' => "var c = ['red', 'green', 'blue'][Math.floor(Math.random() * 3)];\nnuSetProperty('sample_colour', c, true).then(function () {\n\tnuMessage(['Global hash cookie sample_colour = ' + nuGetProperty('sample_colour'), 'It is now replaced in every form until you log out.']);\n});"]],
 				],
 				'php' => ['BE' => <<<'PHP'
@@ -528,7 +535,8 @@ PHP],
 				'breadcrumb' => '#pro_name#|New product',
 				'create' => [['name' => 'pro_code', 'type' => 'text', 'length' => '20'], ['name' => 'pro_name', 'type' => 'text', 'length' => '100'],
 					['name' => 'pro_category', 'type' => 'text', 'length' => '30'], ['name' => 'pro_price', 'type' => 'decimal', 'length' => '15,2'], ['name' => 'pro_active', 'type' => 'bool', 'length' => '']],
-				'browse' => [['Code', 'pro_code', 'l', '', 90], ['Product', 'pro_name', 'l', '', 240], ['Category', 'pro_category', 'l', '', 130, ['filter' => true]], ['Price', 'pro_price', 'r', "N|USD 1,000.00", 120],
+				'browse' => [['Code', 'pro_code', 'l', '', 90], ['Product', 'pro_name', 'l', '', 240], ['Category', 'pro_category', 'l', '', 130, ['filter' => true]],
+					['Price', 'pro_price', 'r', "N|USD 1,000.00", 120],
 					// design mode → the column → Show as badge, with two colour rules (no code)
 					['Active', "CASE WHEN pro_active = 1 THEN 'yes' ELSE 'no' END", 'c', '', 80, ['badge' => [['equals' => 'yes', 'label' => 'Active', 'bg' => '#d1e7dd', 'color' => '#0f5132'], ['default' => true, 'label' => 'Inactive', 'bg' => '#e2e3e5', 'color' => '#41464b']]]]],
 				'objects' => [
@@ -550,7 +558,8 @@ PHP],
 				'browse' => [['Number', 'ord_number', 'l', '', 100], ['Date', 'ord_date', 'l', 'D|dd.mm.yyyy', 110], ['Customer', 'cus_name', 'l', '', 220, ['filter' => true]],
 					// status: filter + badge with one colour per value (design mode, no code)
 					['Status', 'ord_status', 'l', '', 110, ['filter' => true, 'badge' => [['equals' => 'new', 'label' => 'New', 'bg' => '#cfe2ff', 'color' => '#084298'],
-						['equals' => 'confirmed', 'label' => 'Confirmed', 'bg' => '#e0cffc', 'color' => '#3d0a91'], ['equals' => 'shipped', 'label' => 'Shipped', 'bg' => '#ffe5d0', 'color' => '#984c0c', 'icon' => 'truck'],
+						['equals' => 'confirmed', 'label' => 'Confirmed', 'bg' => '#e0cffc', 'color' => '#3d0a91'],
+							['equals' => 'shipped', 'label' => 'Shipped', 'bg' => '#ffe5d0', 'color' => '#984c0c', 'icon' => 'truck'],
 						['equals' => 'paid', 'label' => 'Paid', 'bg' => '#d1e7dd', 'color' => '#0f5132', 'icon' => 'check-circle']]]],
 					['Total', 'ord_total', 'r', "N|USD 1,000.00", 130], ['Customer id', 'ord_sample_customer_id', 'l', '', 0]],   // width 0: hidden, read by the list's JavaScript
 				'browse_js' => "// the customer name opens the customer (column 2; its id is in the hidden column 5) – nuForm works in nuBuilder Forte too\nnuBrowseLoop([2], function (cell) {\n  var row = cell.id.split('_')[1], id = $('#nucell_' + row + '_5').text().trim(), name = $(cell).text().trim();\n  if (!id || !name) return;\n  var a = $('<a href=\"#\" class=\"sampleCustomerLink\"></a>').text(name).attr('title', 'Open the customer');\n  a.on('click', function (e) { e.preventDefault(); e.stopPropagation(); nuForm('samplecustomer', id); });\n  $(cell).empty().append(a);\n});",
@@ -610,7 +619,8 @@ PHP,
 				'create' => [['name' => 'ori_sample_order_id', 'type' => 'id', 'length' => ''], ['name' => 'ori_sample_product_id', 'type' => 'id', 'length' => ''],
 					['name' => 'ori_qty', 'type' => 'decimal', 'length' => '15,2'], ['name' => 'ori_price', 'type' => 'decimal', 'length' => '15,2']],
 				'objects' => [
-					['type' => 'lookup', 'id' => 'ori_sample_product_id', 'label' => 'Product', 'w' => 90, 'lookup_form' => 'sample_product', 'lookup_code' => 'pro_code', 'lookup_desc' => 'pro_name', 'lookup_width' => 180, 'left' => 10, 'top' => 10,
+					['type' => 'lookup', 'id' => 'ori_sample_product_id', 'label' => 'Product', 'w' => 90, 'lookup_form' => 'sample_product', 'lookup_code' => 'pro_code',
+						'lookup_desc' => 'pro_name', 'lookup_width' => 180, 'left' => 10, 'top' => 10,
 						'oid' => 'sampleorilookup', 'ab' => "// After Browse: price and quantity of the chosen product go into the same subform row (#ROW#)\n\$p = nuLookupRecord();\nnuSetFormValue('#ROW#ori_price', \$p->pro_price ?? '');\nnuSetFormValue('#ROW#ori_qty', '1');"],
 					['type' => 'input', 'input' => 'nuNumber', 'id' => 'ori_qty', 'label' => 'Qty', 'w' => 70, 'format' => 'N|1,000', 'align' => 'right', 'left' => 300, 'top' => 10],
 					['type' => 'input', 'input' => 'nuNumber', 'id' => 'ori_price', 'label' => 'Price', 'w' => 110, 'format' => 'N|1,000.00', 'align' => 'right', 'left' => 380, 'top' => 10],
@@ -626,7 +636,9 @@ PHP,
 		return [
 			'id' => 'sample_all', 'type' => 'browseedit', 'table' => 'sample_all', 'desc' => 'Sample: all objects', 'layout' => null,
 			'breadcrumb' => '#all_text#|New record', 'tabs' => ['Inputs', 'Numbers & dates', 'Choices', 'Display', 'Run', 'Subform', 'Access', 'Charts', 'Miscellaneous', 'Upload'],
-			'browse' => [['Text', 'all_text', 'l', '', 200], ['Number', 'all_nunumber', 'r', "N|USD 1,000.00", 120], ['Date', 'all_nudate', 'l', 'D|dd.mm.yyyy', 110], ['Select', 'all_select', 'l', '', 120, ['badge' => [['equals' => 'a', 'label' => 'Option A', 'bg' => '#cfe2ff', 'color' => '#084298'], ['equals' => 'b', 'label' => 'Option B', 'bg' => '#d1e7dd', 'color' => '#0f5132'], ['equals' => 'c', 'label' => 'Option C', 'bg' => '#fff3cd', 'color' => '#664d03']]]],
+			'browse' => [['Text', 'all_text', 'l', '', 200], ['Number', 'all_nunumber', 'r', "N|USD 1,000.00", 120],
+				['Date', 'all_nudate', 'l', 'D|dd.mm.yyyy', 110],
+				['Select', 'all_select', 'l', '', 120, ['badge' => [['equals' => 'a', 'label' => 'Option A', 'bg' => '#cfe2ff', 'color' => '#084298'], ['equals' => 'b', 'label' => 'Option B', 'bg' => '#d1e7dd', 'color' => '#0f5132'], ['equals' => 'c', 'label' => 'Option C', 'bg' => '#fff3cd', 'color' => '#664d03']]]],
 				['Checkbox', 'all_checkbox', 'c', '', 80, ['badge' => [['equals' => '1', 'label' => '✓', 'title' => 'ticked', 'bg' => '#d1e7dd', 'color' => '#0f5132'], ['default' => true, 'label' => '–', 'title' => 'not ticked', 'bg' => '#f8f9fa', 'color' => '#6c757d']]]]],
 			'objects' => [
 				// --- Inputs
@@ -727,7 +739,7 @@ PHP,
 					'chart_title' => 'Orders per status (database)'],
 				['tab' => 7, 'type' => 'chart', 'id' => 'all_chart_team', 'label' => '', 'left' => 20, 'top' => 310, 'w' => 660, 'h' => 200, 'chart' => 'bhs',
 					'chart_data' => "[['Team', 'Done', 'Open'], ['Sales', 8, 3], ['Support', 5, 6], ['Admin', 2, 1]]", 'chart_title' => 'Tasks per team (array in the object, stacked)', 'chart_h' => 'Tasks'],
-				// --- Upload: nuBuilder's file object with target "File System" (Uppy, 0.8.506)
+				// --- Upload: nuBuilder's file object with target "File System" (Uppy)
 				['tab' => 9, 'type' => 'html', 'id' => 'all_upload_intro', 'label' => '', 'left' => 20, 'top' => 20, 'w' => 660, 'h' => 150,
 					'html' => '<div class="alert alert-secondary mb-0 py-2"><b>Upload to the server</b> – a <i>File</i> object with <i>File target</i> = <b>File System</b>: '
 						. 'the files go into a folder on the server, not into the record. nuBuilder Forte\'s procedure <code>nu_upload_file_template</code> stores them in '
@@ -792,9 +804,11 @@ PHP],
 			['P200', 'Office licence', 'Software', 149], ['P201', 'Antivirus (1 year)', 'Software', 39.5], ['P300', 'Installation per hour', 'Service', 140],
 			['P301', 'Support package', 'Service', 990], ['P400', 'nuBuilder workshop', 'Training', 1800]];
 		foreach ($products as $n => [$code, $name, $cat, $price]) {
-			$out[] = ['sample_product', ['sample_product_id' => 'sample_pro_' . ($n + 1), 'pro_code' => $code, 'pro_name' => $name, 'pro_category' => $cat, 'pro_price' => $price, 'pro_active' => $code !== 'P201']];
+			$out[] = ['sample_product',
+				['sample_product_id' => 'sample_pro_' . ($n + 1), 'pro_code' => $code, 'pro_name' => $name, 'pro_category' => $cat, 'pro_price' => $price, 'pro_active' => $code !== 'P201']];
 		}
-		$orders = [[1, 'confirmed', [[1, 2], [2, 2], [6, 3]]], [2, 'shipped', [[4, 10]]], [6, 'paid', [[1, 5], [3, 5], [7, 1]]], [4, 'new', [[8, 1]]], [9, 'confirmed', [[2, 4], [5, 4]]], [1, 'paid', [[6, 8]]]];
+		$orders = [[1, 'confirmed', [[1, 2], [2, 2], [6, 3]]], [2, 'shipped', [[4, 10]]], [6, 'paid', [[1, 5], [3, 5], [7, 1]]], [4, 'new', [[8, 1]]],
+			[9, 'confirmed', [[2, 4], [5, 4]]], [1, 'paid', [[6, 8]]]];
 		$it = 0;
 		foreach ($orders as $n => [$cus, $status, $items]) {
 			$oid = 'sample_ord_' . ($n + 1);
@@ -802,7 +816,8 @@ PHP],
 			foreach ($items as [$pro, $qty]) {
 				$price = (float)$products[$pro - 1][3];
 				$total += $price * $qty;
-				$out[] = ['sample_order_item', ['sample_order_item_id' => 'sample_ori_' . (++$it), 'ori_sample_order_id' => $oid, 'ori_sample_product_id' => 'sample_pro_' . $pro, 'ori_qty' => $qty, 'ori_price' => $price]];
+				$out[] = ['sample_order_item',
+					['sample_order_item_id' => 'sample_ori_' . (++$it), 'ori_sample_order_id' => $oid, 'ori_sample_product_id' => 'sample_pro_' . $pro, 'ori_qty' => $qty, 'ori_price' => $price]];
 			}
 			$out[] = ['sample_order', ['sample_order_id' => $oid, 'ord_number' => 'S-' . (1001 + $n), 'ord_sample_customer_id' => sprintf('sample_cus_%02d', $cus),
 				'ord_date' => date('Y-m-d', strtotime('-' . (60 - $n * 9) . ' days')), 'ord_status' => $status, 'ord_total' => round($total, 2), 'ord_note' => null]];
@@ -810,12 +825,16 @@ PHP],
 		$out[] = ['sample_all', ['sample_all_id' => 'sample_all_1', 'all_text' => 'First sample record', 'all_autonumber' => 1001, 'all_datalist' => 'Banana', 'all_mask' => 'AB12 3456 7890 1',
 			'all_email' => 'anna@example.com', 'all_url' => 'https://www.nubuilder.cloud', 'all_tel' => '+1 555 123 4567', 'all_color' => '#2f6fd6', 'all_checkbox' => 1, 'all_scroll' => 'Medium',
 			'all_number' => 42, 'all_nunumber' => 1234.5, 'all_nunumber_eur' => -99.95, 'all_percent' => 12.5, 'all_calc' => 1134.55, 'all_range' => 30,
-			'all_nudate' => date('Y-m-d'), 'all_nudate_long' => date('Y-m-d'), 'all_nudatetime' => date('Y-m-d H:i:00'), 'all_date' => date('Y-m-d'), 'all_datetime' => date('Y-m-d 08:30:00'), 'all_time' => '13:45:00',
+			'all_nudate' => date('Y-m-d'), 'all_nudate_long' => date('Y-m-d'), 'all_nudatetime' => date('Y-m-d H:i:00'), 'all_date' => date('Y-m-d'),
+				'all_datetime' => date('Y-m-d 08:30:00'), 'all_time' => '13:45:00',
 			'all_month' => date('Y-m'), 'all_week' => date('o-\WW'),
-			'all_select' => 'b', 'all_select_sql' => 'sample_cus_02', 'all_select_multi' => json_encode(['red', 'blue']), 'all_select2' => 'P101', 'all_lookup' => 'sample_cus_01', 'all_lookup_auto' => 'sample_pro_2',
+			'all_select' => 'b', 'all_select_sql' => 'sample_cus_02', 'all_select_multi' => json_encode(['red', 'blue']), 'all_select2' => 'P101',
+				'all_lookup' => 'sample_cus_01', 'all_lookup_auto' => 'sample_pro_2',
 			'all_textarea' => "Line 1\nLine 2", 'all_editor' => '<p>Some <b>formatted</b> text.</p>', 'all_styled' => 'Styled text',
 			'all_readonly' => 'Cannot be changed', 'all_hidden' => 'Hidden value', 'all_admin_only' => 'Only the globeadmin sees this', 'all_unique' => 'unique-1']];
-		$out[] = ['sample_all', ['sample_all_id' => 'sample_all_2', 'all_text' => 'Second sample record', 'all_autonumber' => 1002, 'all_nunumber' => -500, 'all_nudate' => date('Y-m-d', strtotime('-1 year')), 'all_select' => 'c', 'all_unique' => 'unique-2']];
+		$out[] = ['sample_all',
+			['sample_all_id' => 'sample_all_2', 'all_text' => 'Second sample record', 'all_autonumber' => 1002, 'all_nunumber' => -500,
+				'all_nudate' => date('Y-m-d', strtotime('-1 year')), 'all_select' => 'c', 'all_unique' => 'unique-2']];
 		foreach ([['First line', 3, 1], ['Second line', 1, 0]] as $n => [$t, $q, $d]) {
 			$out[] = ['sample_all_line', ['sample_all_line_id' => 'sample_sal_' . ($n + 1), 'sal_sample_all_id' => 'sample_all_1', 'sal_text' => $t, 'sal_qty' => $q, 'sal_done' => $d]];
 		}
@@ -823,7 +842,7 @@ PHP],
 	}
 
 	/**
-	 * Start pages of users (0.8.425) – three ways to build one; sample_viewer and sample_secure keep the automatic page (their forms and
+	 * Start pages of users – three ways to build one; sample_viewer and sample_secure keep the automatic page (their forms and
 	 * reports). Only access levels of the sample set: the default for all access levels ("*") would change the start page of real users.
 	 *   sample_sales   "Sales desk": cards, favourites row, a new-order tile (record -1), a report, a group only for the permission item
 	 *                  sample_discount (Dario has it)
@@ -905,7 +924,7 @@ PHP],
 		return $rows;
 	}
 
-	/** Pivots of the orders list for everyone (0.8.1155; columns: 1 Date, 2 Customer, 3 Status, 4 Total). */
+	/** Pivots of the orders list for everyone (columns: 1 Date, 2 Customer, 3 Status, 4 Total). */
 	private static function pivots(): array
 	{
 		$p = [
@@ -925,7 +944,7 @@ PHP],
 	}
 
 	/**
-	 * Four dashboards (0.8.299): sample_sales and sample_products on the start page of the sample access levels, sample_customer on the
+	 * Four dashboards: sample_sales and sample_products on the start page of the sample access levels, sample_customer on the
 	 * customer form (tab Statistics, #RECORD_ID#), sample_country on the start form (launch form field #home_country# as criterion).
 	 * SQL that runs on MySQL and SQL Server.
 	 */
@@ -1045,7 +1064,7 @@ if (function_exists('nuDashboardData')) {
     nuDashboardData($rows);
 }
 PHP),
-			// Excel export (0.8.756): the built-in writer (no library needed) and PhpSpreadsheet (library pack) – both send a download
+			// Excel export: the built-in writer (no library needed) and PhpSpreadsheet (library pack) – both send a download
 			$p('sample_proc_xlsx', 'sample_xlsx', 'Sample: orders to Excel (built-in NuXlsx)', 'window', <<<'PHP'
 // Orders as an Excel file with nuBuilder Next's own writer NuXlsx – no library needed (Help → Function reference → Excel export).
 // Run it from a button or tile: the browser downloads the file.
@@ -1208,7 +1227,8 @@ PHP),
 				'height' => 20, 'backgroundColor' => '#FFFFFF', 'borderColor' => '#000000', 'borderWidth' => '0', 'fontColor' => '#000000', 'fontFamily' => 'Helvetica',
 				'fontSize' => '10', 'fontWeight' => '', 'format' => '', 'textAlign' => 'left', 'minRows' => 0, 'maxRows' => 0, 'zIndex' => 1];
 		};
-		$sec = static fn(string $label, int $h, array $objs = [], int $break = 0) => ['id' => '', 'top' => 0, 'height' => $h, 'label' => $label, 'page_break' => $break, 'margins' => 0, 'color' => '#FFFFFF', 'objects' => $objs];
+		$sec = static fn(string $label, int $h, array $objs = [], int $break = 0) => ['id' => '', 'top' => 0, 'height' => $h, 'label' => $label,
+			'page_break' => $break, 'margins' => 0, 'color' => '#FFFFFF', 'objects' => $objs];
 		$layout = static function (array $detail, array $rh, array $ph, array $groups, array $rf) use ($sec, $o): string {
 			$g = [
 				['sortField' => 'Detail', 'sortBy' => 'a', 'sections' => [$sec('Detail', 24, $detail)]],
@@ -1230,9 +1250,11 @@ PHP),
 				$head([['Code', 60, 100], ['Name', 170, 330], ['Since', 510, 110], ['Credit', 630, 150, 'right']]),
 				[['cus_country', [$o('field', 'cus_country', 60, 6, 720, ['fontWeight' => 'b', 'backgroundColor' => '#E8EEF7'])],
 					[$o('label', 'Total', 170, 4, 300, ['fontColor' => '#336699']), $o('field', 'SUM(cus_credit)', 630, 4, 150, ['format' => $money, 'textAlign' => 'right', 'fontColor' => '#336699'])]]],
-				[$line(4, '#000000'), $o('label', 'Grand total', 60, 10, 300, ['fontWeight' => 'b']), $o('field', 'SUM(cus_credit)', 630, 10, 150, ['format' => $money, 'textAlign' => 'right', 'fontWeight' => 'b'])]
+				[$line(4, '#000000'), $o('label', 'Grand total', 60, 10, 300, ['fontWeight' => 'b']),
+					$o('field', 'SUM(cus_credit)', 630, 10, 150, ['format' => $money, 'textAlign' => 'right', 'fontWeight' => 'b'])]
 			)]];
-		$rows[] = ['zzzzsys_select', ['zzzzsys_select_id' => 'sample_sql_orders', 'sse_code' => 'sample_orders', 'sse_description' => 'Sample: orders with their customer', 'sse_edit' => '0', 'sse_system' => null,
+		$rows[] = ['zzzzsys_select',
+			['zzzzsys_select_id' => 'sample_sql_orders', 'sse_code' => 'sample_orders', 'sse_description' => 'Sample: orders with their customer', 'sse_edit' => '0', 'sse_system' => null,
 			'sse_json' => (string)json_encode(['tables' => [
 				['id' => 'boxsamplec', 'position' => ['top' => 20, 'left' => 20], 'tablename' => 'sample_customer', 'alias' => '', 'checkall' => false, 'checkboxes' => [false, true, true, false, false, true, false, false, false, false]],
 				['id' => 'boxsampleo', 'position' => ['top' => 20, 'left' => 320], 'tablename' => 'sample_order', 'alias' => '', 'checkall' => false, 'checkboxes' => [false, true, false, true, true, true, false, false, false, false, false]],
@@ -1254,7 +1276,9 @@ ORDER BY
     sample_order.ord_date
 
 "]];
-		$rows[] = ['zzzzsys_select_clause', ['zzzzsys_select_clause_id' => 'sample_sqc_1', 'ssc_zzzzsys_select_id' => 'sample_sql_orders', 'ssc_type' => '3', 'ssc_field' => 'sample_order.ord_date', 'ssc_clause' => '', 'ssc_sort' => '', 'ssc_order' => '10']];
+		$rows[] = ['zzzzsys_select_clause',
+			['zzzzsys_select_clause_id' => 'sample_sqc_1', 'ssc_zzzzsys_select_id' => 'sample_sql_orders', 'ssc_type' => '3',
+				'ssc_field' => 'sample_order.ord_date', 'ssc_clause' => '', 'ssc_sort' => '', 'ssc_order' => '10']];
 		$rows[] = ['zzzzsys_report', ['zzzzsys_report_id' => 'sample_rpt_orders', 'sre_code' => 'sample_orders', 'sre_description' => 'Sample: orders by customer', 'sre_group' => 'sample',
 			'sre_zzzzsys_php_id' => 'SQL:sample_sql_orders', 'sre_zzzzsys_form_id' => null, 'sre_layout' => $layout(
 				[$o('field', 'ord_number', 60, 2, 110), $o('field', 'ord_date', 180, 2, 120, ['format' => 'D|dd.mm.yyyy']), $o('field', 'ord_status', 310, 2, 200), $o('field', 'ord_total', 630, 2, 150, ['format' => $money, 'textAlign' => 'right'])],
@@ -1269,10 +1293,11 @@ ORDER BY
 
 	private static function snippets(): array
 	{
-		// cot_scope (0.8.714): nuBuilder Forte's "Selectable in" – JavaScript 0 Forms / Custom Code, PHP 3 Procedures/PHP, SQL 2
+		// cot_scope: nuBuilder Forte's "Selectable in" – JavaScript 0 Forms / Custom Code, PHP 3 Procedures/PHP, SQL 2
 		$s = static fn(string $id, string $code, string $lang, string $desc, string $src) => [
 			'zzzzsys_code_snippet_id' => $id, 'cot_code' => $code, 'cot_description' => $desc, 'cot_group' => 'sample', 'cot_url' => '',
-			'cot_source_code' => $src, 'cot_language' => $lang, 'cot_scope' => json_encode([['JavaScript' => '0', 'PHP' => '3', 'SQL' => '2'][$lang] ?? '0']), 'cot_template' => '0', 'cot_updated_on' => date('Y-m-d H:i:s')];
+			'cot_source_code' => $src, 'cot_language' => $lang, 'cot_scope' => json_encode([['JavaScript' => '0', 'PHP' => '3', 'SQL' => '2'][$lang] ?? '0']),
+				'cot_template' => '0', 'cot_updated_on' => date('Y-m-d H:i:s')];
 		return [
 			$s('sample_snip_js', 'sample_js_new_record', 'JavaScript', 'Sample: default values on a new record', "if (nuIsNewRecord()) {\n\tnuSetValue('field_id', 'value');\n}"),
 			$s('sample_snip_php', 'sample_php_error', 'PHP', 'Sample: stop saving with a message (Before Save)', "if ('#field_id#' === '') {\n\tnuDisplayError('Please fill in field_id.');\n}"),
@@ -1298,14 +1323,16 @@ ORDER BY
 		$rows = [];
 		$af = 0; $ap = 0;
 		foreach ($levels as $code => [$desc, $rights, $procs, $twofa]) {
-			$rows[] = ['zzzzsys_access', ['zzzzsys_access_id' => $code, 'sal_code' => $code, 'sal_description' => $desc, 'sal_group' => 'sample', 'sal_zzzzsys_form_id' => self::fid(self::HOME), 'sal_use_2fa' => $twofa]];
+			$rows[] = ['zzzzsys_access',
+				['zzzzsys_access_id' => $code, 'sal_code' => $code, 'sal_description' => $desc, 'sal_group' => 'sample', 'sal_zzzzsys_form_id' => self::fid(self::HOME), 'sal_use_2fa' => $twofa]];
 			foreach ($rights as $form => [$add, $save, $del, $clone, $new, $print]) {
 				$rows[] = ['zzzzsys_access_form', ['zzzzsys_access_form_id' => 'sample_af_' . (++$af), 'slf_zzzzsys_access_id' => $code, 'slf_zzzzsys_form_id' => self::fid($form),
 					'slf_add_button' => (string)$add, 'slf_save_button' => (string)$save, 'slf_delete_button' => (string)$del, 'slf_clone_button' => (string)$clone,
 					'slf_new_button' => (string)$new, 'slf_print_button' => (string)$print]];
 			}
 			foreach ($procs as $p) $rows[] = ['zzzzsys_access_php', ['zzzzsys_access_php_id' => 'sample_ap_' . (++$ap), 'slp_zzzzsys_access_id' => $code, 'slp_zzzzsys_php_id' => $p]];
-			foreach (['sample_rpt_customers', 'sample_rpt_orders'] as $rp) $rows[] = ['zzzzsys_access_report', ['zzzzsys_access_report_id' => 'sample_ar_' . (++$ap), 'sre_zzzzsys_access_id' => $code, 'sre_zzzzsys_report_id' => $rp]];
+			foreach (['sample_rpt_customers', 'sample_rpt_orders'] as $rp) $rows[] = ['zzzzsys_access_report',
+				['zzzzsys_access_report_id' => 'sample_ar_' . (++$ap), 'sre_zzzzsys_access_id' => $code, 'sre_zzzzsys_report_id' => $rp]];
 		}
 		$u = static fn(string $login, string $first, string $last, string $access, string $lang, array $more = []) => $more + [
 			'zzzzsys_user_id' => $login, 'sus_zzzzsys_access_id' => $access, 'sus_language' => $lang, 'sus_name' => $first . ' ' . $last,
@@ -1325,9 +1352,11 @@ ORDER BY
 			$rows[] = ['zzzzsys_permission_item', ['zzzzsys_permission_item_id' => 'sample_pi_' . substr($ident, 7), 'pme_ident' => $ident, 'pme_group' => 'sample', 'pme_description' => $desc]];
 		}
 		$up = 0;
-		foreach (['sample_ben' => ['sample_export'], 'sample_carla' => array_keys($items), 'sample_dario' => ['sample_order_status', 'sample_discount'], 'sample_eva' => ['sample_export']] as $user => $idents) {
+		foreach (['sample_ben' => ['sample_export'], 'sample_carla' => array_keys($items), 'sample_dario' => ['sample_order_status', 'sample_discount'],
+			'sample_eva' => ['sample_export']] as $user => $idents) {
 			foreach ($idents as $ident) {
-				$rows[] = ['zzzzsys_user_permission', ['zzzzsys_user_permission_id' => 'sample_up_' . (++$up), 'upe_zzzzsys_user_id' => $user, 'upe_ident' => 'sample_pi_' . substr($ident, 7), 'upe_active' => '1']];
+				$rows[] = ['zzzzsys_user_permission',
+					['zzzzsys_user_permission_id' => 'sample_up_' . (++$up), 'upe_zzzzsys_user_id' => $user, 'upe_ident' => 'sample_pi_' . substr($ident, 7), 'upe_active' => '1']];
 			}
 		}
 		return [$rows, $users];

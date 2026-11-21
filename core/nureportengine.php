@@ -85,7 +85,7 @@ final class NuReportEngine
 		$top = $this->section($row, 2, 0, $top);                                // page header
 		$value = [];
 		foreach ($this->groups as $g => $f) {                                   // first group headers
-			$top = $this->section($row, 3 + $g, 0, $top, false, true);            // nothing but headers printed yet: no page break before them (0.8.1098)
+			$top = $this->section($row, 3 + $g, 0, $top, false, true);            // nothing but headers printed yet: no page break before them
 			$value[$f] = $row[$f] ?? null;
 		}
 		$first = true;
@@ -113,15 +113,16 @@ final class NuReportEngine
 		$this->section($last, 1, 1, $top);                                       // report footer
 	}
 
-	/** MySQL-like ORDER BY: NULL first, numbers as numbers, text case-insensitive. */
-	private static function compare(mixed $a, mixed $b): int
+	/** MySQL-like ORDER BY: NULL first, numbers as numbers, text case-insensitive (also the order of NuReportXlsx). */
+	public static function compare(mixed $a, mixed $b): int
 	{
 		if ($a === null || $b === null) return ($a === null ? 0 : 1) - ($b === null ? 0 : 1);
 		if (is_numeric($a) && is_numeric($b)) return (float)$a <=> (float)$b;
 		return strcmp(mb_strtolower((string)$a), mb_strtolower((string)$b));
 	}
 
-	private static function same(mixed $a, mixed $b): bool
+	/** Same group value: NULL only equals NULL / '', numbers as numbers, text case-insensitive (also NuReportXlsx). */
+	public static function same(mixed $a, mixed $b): bool
 	{
 		if ($a === null || $b === null) return $a === $b || (string)$a === (string)$b;
 		return is_numeric($a) && is_numeric($b) ? (float)$a == (float)$b : mb_strtolower((string)$a) === mb_strtolower((string)$b);
@@ -156,7 +157,7 @@ final class NuReportEngine
 			$n = 0;
 			$seen = false;                                                     // a value that is not NULL (SQL SUM() of none is NULL)
 			foreach ($this->rows as $r) {
-				// nuBuilder: WHERE <group field> = '<value>' – a NULL group value is '', a NULL row never matches (0.8.462)
+				// nuBuilder: WHERE <group field> = '<value>' – a NULL group value is '', a NULL row never matches
 				foreach ($filter as $f => $v) if (($r[$f] ?? null) === null || !self::same($r[$f], $v ?? '')) continue 2;
 				$n++;
 				if (($r[$args[0]] ?? null) !== null) $seen = true;
@@ -243,7 +244,7 @@ final class NuReportEngine
 		}
 	}
 
-	/** The content type of a field or label (0.8.874): its own contentType, else the report's "Fields contain HTML" switch. */
+	/** The content type of a field or label: its own contentType, else the report's "Fields contain HTML" switch. */
 	public function contentKind(object $O): string
 	{
 		$ct = (string)($O->contentType ?? '');
@@ -258,7 +259,7 @@ final class NuReportEngine
 	}
 
 	/**
-	 * HTML that TCPDF may print without reaching other places (0.8.874): <link> (TCPDF reads its style sheet), <script> and the like go;
+	 * HTML that TCPDF may print without reaching other places: <link> (TCPDF reads its style sheet), <script> and the like go;
 	 * <img> keeps data: URLs, http(s) addresses and paths of the web server's folder (as in nuBuilder Forte: photos per row), but no
 	 * other scheme (phar:, file: …) and no "..", one src only; links only http(s), mailto, #.
 	 */
@@ -285,7 +286,7 @@ final class NuReportEngine
 	}
 
 	/**
-	 * <img src> with a path of the web server ("/photos/1.jpg", "photos/1.jpg") → the file's full path (0.8.1062): TCPDF 6 found such
+	 * <img src> with a path of the web server ("/photos/1.jpg", "photos/1.jpg") → the file's full path: TCPDF 6 found such
 	 * files by itself, TCPDF 7 leaves them out. Looked for below the web root, nuBuilder Next's and nuBuilder Forte's folder
 	 * (NuReport::tcpdfAllowedPaths – nothing outside them, no ".."); other addresses and files not found stay as they are.
 	 */
@@ -373,7 +374,7 @@ final class NuReportEngine
 	}
 
 	/**
-	 * An HTML field or label (0.8.874): the part of the rendered HTML that belongs to this page – its lines are row numbers of the
+	 * An HTML field or label: the part of the rendered HTML that belongs to this page – its lines are row numbers of the
 	 * object (row height = the object's height); the HTML is moved up by the rows printed before and clipped to the rows of this part.
 	 */
 	private function printHtml(object $c, object $O, float $top, float $border): void
@@ -505,7 +506,7 @@ final class NuReportSection
 		$text = $O->objectType === 'field' ? $this->engine->fieldValue($O, $this->row, $this->group) : (string)$O->fieldName;
 		$kind = $this->engine->contentKind($O);
 		if ($kind !== 'text' && trim($text) !== '' && str_replace(["\r\n", "\r", "\n", "\t"], ' ', $text) !== 'KEEP EXACT HEIGHT') {
-			// HTML / Markdown (0.8.874): as many rows as the rendered HTML is high; the rows are numbers, the HTML travels in ->html
+			// HTML / Markdown: as many rows as the rendered HTML is high; the rows are numbers, the HTML travels in ->html
 			$html = NuReportEngine::contentHtml($text, $kind);
 			$rowH = (float)$O->height;
 			$n = $stopGrow || $rowH <= 0 ? 1 : max(1, (int)ceil($this->engine->htmlHeight($O, $html) / $rowH - 1e-6));

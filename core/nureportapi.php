@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Reports through the REST API (0.8.340) – core/nuapi.php routes, scope reports:run:
+ * Reports through the REST API – core/nuapi.php routes, scope reports:run:
  *   GET  /v1/reports                     reports the service user may run, with the hash variables they use
  *   POST /v1/reports/{id|code}/run       {params, filename, expires_minutes, max_downloads, url, email, async}
  *                                        → 201 {url, expires_at, max_downloads, size, sha256, emailed …}
@@ -45,12 +45,14 @@ final class NuReportApi
 		try {
 			if ($kind === 'PROCEDURE') $text .= (string)$db->value('SELECT sph_php FROM zzzzsys_php WHERE zzzzsys_php_id = ?', [$id]);
 			if ($kind === 'SQL' && $db->tableExists('zzzzsys_select')) $text .= (string)$db->value('SELECT sse_sql FROM zzzzsys_select WHERE zzzzsys_select_id = ?', [$id]);
-		} catch (Throwable) {
-		}
+		} catch (Throwable $ig) { nu_ignored($ig); }
 		preg_match_all('/#([A-Za-z_][\w]{0,63})#/', $text, $m);
 		$system = array_change_key_case(NuReport::runHash($r, NuHash::plain()), CASE_LOWER);
 		$out = [];
-		foreach (array_unique($m[1]) as $p) if (!isset($system[strtolower($p)]) && !in_array(strtolower($p), ['table_id', 'user_id', 'record_id', 'form_id', 'page', 'pages', 'description', 'code', 'year', 'month', 'day', 'hour', 'hour24', 'minute', 'second'], true)) $out[] = $p;
+		foreach (array_unique($m[1]) as $p) if (!isset($system[strtolower($p)])
+			&& !in_array(strtolower($p),
+				['table_id', 'user_id', 'record_id', 'form_id', 'page', 'pages', 'description', 'code', 'year', 'month', 'day', 'hour', 'hour24', 'minute', 'second'],
+				true)) $out[] = $p;
 		sort($out);
 		return $out;
 	}
@@ -151,7 +153,8 @@ final class NuReportApi
 	{
 		$file = bin2hex(random_bytes(16));
 		if (@file_put_contents(self::dir() . '/api-report-' . $file . '.pdf', $pdf, LOCK_EX) === false) throw new RuntimeException('The PDF could not be stored (temp folder not writable).');
-		$data = json_encode(['f' => $file, 'n' => $name, 'm' => $max, 'r' => mb_substr((string)$r['sre_code'], 0, 40), 'i' => (string)$r['zzzzsys_report_id']], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+		$data = json_encode(['f' => $file, 'n' => $name, 'm' => $max, 'r' => mb_substr((string)$r['sre_code'], 0, 40), 'i' => (string)$r['zzzzsys_report_id']],
+			JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 		$token = NuToken::create(self::KIND, '', $minutes * 60, bin2hex(random_bytes(24)), (string)$data);
 		$exp = time() + $minutes * 60;
 		return ['url' => nu_base_url() . '/index.php?' . http_build_query(['p' => 'reportfile', 't' => $token]),

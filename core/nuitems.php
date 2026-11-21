@@ -24,7 +24,7 @@ final class NuItem
 			. 'itm_css ' . $T('text', '100') . ' NULL, itm_icon ' . $T('text', '100') . ' NULL, itm_language ' . $T('text', '25') . ' NULL, '
 			. 'itm_parent_id ' . $T('id') . ' NULL, itm_active ' . $T('text', '1') . " NULL DEFAULT '1', itm_created_on " . $T('datetime') . ' NULL, '
 			. 'itm_updated_on ' . $T('datetime') . ' NULL, itm_access_level ' . $T('text', '2000') . ' NULL, itm_json ' . $T('longtext') . ' NULL)'
-			. ($db->type === 'mysql' ? NuDDL::mysqlTableOptions() : ''));
+			. $db->tableOptions());
 	}
 
 	/** @return array{0: ?string, 1: array} [id, errors] */
@@ -50,7 +50,7 @@ final class NuItem
 		if ($errors) return [null, $errors];
 
 		// nuBuilder (nuitem_AS): nuBuilder's own items ("nu…") keep no timestamps
-		$now = $db->type === 'sqlsrv' ? date('Y-m-d\TH:i:s') : date('Y-m-d H:i:s');
+		$now = $db->stamp();
 		$cols = $db->columns('zzzzsys_item');
 		if ($id !== '') {
 			if (!str_starts_with($id, 'nu') && isset($cols['itm_updated_on'])) $row['itm_updated_on'] = $now;

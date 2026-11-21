@@ -1,4 +1,4 @@
-/* nuBuilder Next – the only place that talks to Bootstrap's JavaScript (0.8.244). Every page script uses nuBs.* instead of
+/* nuBuilder Next – the only place that talks to Bootstrap's JavaScript. Every page script uses nuBs.* instead of
  * bootstrap.Modal / Tooltip / … directly, so a later Bootstrap version (6: ES modules only, no window.bootstrap) changes this file only.
  * Loaded right after bootstrap.bundle.min.js (core/nulayout.php, login, installer, print list).
  *

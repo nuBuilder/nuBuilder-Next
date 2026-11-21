@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * System info (0.8.1237, the owner picked variation 1 of the canvas "System info dialog"): user menu → "System info…" (globeadmin and
+ * System info (the owner picked variation 1 of the canvas "System info dialog"): user menu → "System info…" (globeadmin and
  * admin right update) opens a dialog with nuBuilder Next, server, database – from the JSON route ?p=sysinfo (pages/nusysinfo.php) –
  * and the browser (assets/js/nusysinfo.js). "Copy for support" copies everything as text. Never shown: passwords, keys, the
  * database host or user.
@@ -37,9 +37,10 @@ final class NuSysInfo
 		try {
 			$g = NuGitHub::settings();
 			$lv = (string)($g['latest']['version'] ?? '');
-			if ($lv !== '') $rows[] = [t('si_github'), $lv . ' · ' . (version_compare($lv, NU_VERSION, '>') ? t('si_newer') : t('si_uptodate')) . ($g['checked_at'] ? ' · ' . date(nu_dfmt('d.m.Y H:i'), (int)$g['checked_at']) : ''),
+			if ($lv !== '') $rows[] = [t('si_github'), $lv . ' · ' . (version_compare($lv, NU_VERSION, '>') ? t('si_newer') : t('si_uptodate'))
+				. ($g['checked_at'] ? ' · ' . date(nu_dfmt('d.m.Y H:i'), (int)$g['checked_at']) : ''),
 				version_compare($lv, NU_VERSION, '>') ? 'warn' : 'ok'];
-		} catch (Throwable) { /* no GitHub setting */ }
+		} catch (Throwable $ig) { nu_ignored($ig, 'no GitHub setting'); }
 		$rows[] = [t('si_devmode'), t(NuHash::devMode() ? 'sh_on' : 'sh_off'), ''];
 		$f = self::forteVersion();
 		if ($f !== '') $rows[] = ['nuBuilder Forte', $f, ''];
@@ -101,7 +102,7 @@ final class NuSysInfo
 			$rows[] = [t('si_db_server'), $db->type, ''];
 		}
 		$steps = 0;
-		try { if ($db->tableExists(NuMigrate::TABLE)) $steps = (int)$db->value('SELECT COUNT(*) FROM ' . NuMigrate::TABLE); } catch (Throwable) { /* none */ }
+		try { if ($db->tableExists(NuMigrate::TABLE)) $steps = (int)$db->value('SELECT COUNT(*) FROM ' . NuMigrate::TABLE); } catch (Throwable $ig) { nu_ignored($ig, 'none'); }
 		$rows[] = [t('si_own_tables'), t('si_own_tables_v', NuSchema::VERSION, $steps), ''];
 		return $rows;
 	}

@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Validation rules of a form (0.8.812) – checked on the server before Before Save, and the same rules in the browser while typing
+ * Validation rules of a form – checked on the server before Before Save, and the same rules in the browser while typing
  * (assets/js/nu/nurules.js; the server stays the authority).
  *
  * Stored with the form: zzzzsys_form.sfo_json → "nunext": {"rules": [...]} (nuBuilder Forte ignores the "nunext" key) – so rules go
@@ -12,8 +12,8 @@ defined('NU_ROOT') || exit;
  * rule  = {id, on, name, kind: error|warn, scope: "" (record) | <sub-form object id> (every row), when: cond|null, check: cond,
  *          msg, field (object marked), levels: [access ids] (only for), perm: permission item code (only for)}
  * cond  = {op: and|or, items: [cond | leaf], expr?: "text the user typed"}
- * leaf  = {f: field | "count:<sub-form id>" | "#HASH_NAME#" (0.8.815: a hash variable on the left), o: operator, v: value | [a, b] | {f: other field} | {h: hash variable} | "today"}
- * Hash variables (0.8.814): #NAME# – form properties / hash cookies, user, access level, record (NuHash::forForm, as in Before Save).
+ * leaf  = {f: field | "count:<sub-form id>" | "#HASH_NAME#" (a hash variable on the left), o: operator, v: value | [a, b] | {f: other field} | {h: hash variable} | "today"}
+ * Hash variables: #NAME# – form properties / hash cookies, user, access level, record (NuHash::forForm, as in Before Save).
  * The rule fails when "when" holds (or is missing) and "check" does not: check = what must be true.
  */
 final class NuFormRules
@@ -139,7 +139,8 @@ final class NuFormRules
 			if (!in_array($o, self::OPS, true)) return t('vr_err_op', $o);
 			$v = $it['v'] ?? null;
 			if (is_array($v) && isset($v['f']) && !isset($known[(string)$v['f']])) return t('vr_err_field', (string)$v['f']);
-			foreach (is_array($v) && !isset($v['f']) && !isset($v['h']) ? $v : [$v] as $x) if (is_array($x) && isset($x['h']) && !preg_match(self::HASH_NAME, (string)$x['h'])) return t('vr_err_syntax', '#' . (string)$x['h'] . '#');
+			foreach (is_array($v) && !isset($v['f']) && !isset($v['h']) ? $v : [$v] as $x) if (is_array($x) && isset($x['h'])
+				&& !preg_match(self::HASH_NAME, (string)$x['h'])) return t('vr_err_syntax', '#' . (string)$x['h'] . '#');
 			if ($o === 'between' && (!is_array($v) || count($v) !== 2 || isset($v['f']) || isset($v['h']))) return t('vr_err_between');
 			if ($o === 'regex' && @preg_match(self::regex((string)$v), '') === false) return t('vr_err_regex', (string)$v);
 		}
@@ -219,7 +220,7 @@ final class NuFormRules
 			$p++;
 			return isset($x['items']) ? $x : ['op' => 'and', 'items' => [$x]];
 		}
-		// left side: a field, COUNT(sub-form) or a hash variable #NAME# (0.8.815)
+		// left side: a field, COUNT(sub-form) or a hash variable #NAME#
 		if (($t[$p][0] ?? '') === 'h') $t[$p] = ['w', '#' . $t[$p][1] . '#'];
 		if (($t[$p][0] ?? '') !== 'w') throw new RuntimeException(t('vr_err_syntax', (string)($t[$p][1] ?? '')));
 		$f = (string)$t[$p][1];
@@ -286,7 +287,8 @@ final class NuFormRules
 		if (trim((string)($c['expr'] ?? '')) !== '') return (string)$c['expr'];
 		$sym = ['eq' => '=', 'ne' => '!=', 'lt' => '<', 'gt' => '>', 'le' => '<=', 'ge' => '>=', 'contains' => 'CONTAINS', 'ncontains' => 'NOT CONTAINS', 'starts' => 'STARTS WITH',
 			'ends' => 'ENDS WITH', 'regex' => 'MATCHES', 'before' => 'BEFORE', 'after' => 'AFTER'];
-		$val = static fn($v) => is_array($v) && isset($v['h']) ? '#' . (string)$v['h'] . '#' : (is_array($v) && isset($v['f']) ? (string)$v['f'] : ($v === 'today' ? 'TODAY' : (is_numeric($v) ? (string)$v : "'" . str_replace(['\\', "'"], ['\\\\', "\\'"], (string)$v) . "'")));
+		$val = static fn($v) => is_array($v) && isset($v['h']) ? '#' . (string)$v['h']
+			. '#' : (is_array($v) && isset($v['f']) ? (string)$v['f'] : ($v === 'today' ? 'TODAY' : (is_numeric($v) ? (string)$v : "'" . str_replace(['\\', "'"], ['\\\\', "\\'"], (string)$v) . "'")));
 		$parts = [];
 		foreach ($c['items'] ?? [] as $it) {
 			if (isset($it['items'])) { $parts[] = '(' . self::text($it) . ')'; continue; }

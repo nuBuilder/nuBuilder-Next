@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Preview of the database changes of an update (0.8.346) – update page ("Check package") and the dry run of the unattended update.
+ * Preview of the database changes of an update – update page ("Check package") and the dry run of the unattended update.
  * Sources:
  *   install/db_changes.json of the package (dev/db_changes.php, written by dev/release.py): its database steps with the tables they
  *     touch (NuMigrate::CHANGES) → the steps this database has not applied yet; its own table definitions (NuSchema) → new tables /
@@ -24,15 +24,8 @@ final class NuDbChanges
 
 	public static function fromZip(string $zipFile, string $prefix): ?array
 	{
-		if (!class_exists('ZipArchive')) return null;
-		$z = new ZipArchive();
-		if ($z->open($zipFile) !== true) return null;
-		try {
-			$j = $z->getFromName($prefix . self::FILE);
-			return $j === false ? null : self::parse($j);
-		} finally {
-			$z->close();
-		}
+		$j = nu_zip_entry($zipFile, $prefix . self::FILE);
+		return $j === null ? null : self::parse($j);
 	}
 
 	/**
@@ -87,7 +80,7 @@ final class NuDbChanges
 			}
 			foreach ($cmp['changed'] as $c) {
 				// a type that could shorten data (usually: the database has a LARGER type than nuBuilder 4.9) is not changed unless the
-				// globeadmin ticks it under "Database structure" – so it is no change of this update, only listed apart (0.8.348)
+				// globeadmin ticks it under "Database structure" – so it is no change of this update, only listed apart
 				if (!$c['safe']) { $kept[] = $c['table'] . '.' . $c['column'] . ': ' . $c['actual'] . ' (' . $c['expected'] . ')'; continue; }
 				$items[] = ['table' => $c['table'], 'kind' => 'type', 'what' => t('upd_dbc_type', $c['column'], $c['actual'], $c['expected']),
 					'sql' => array_filter([NuSchemaCheck::sqlFor($expected, $c['key'], $c)]), 'step' => '', 'risky' => false];

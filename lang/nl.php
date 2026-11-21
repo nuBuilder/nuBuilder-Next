@@ -152,6 +152,7 @@ return [
 	'hf_empty' => 'leeg',
 	'hf_empty_tip' => 'Deze tegelpagina heeft geen tegels – de toegangsniveaus zien er niets op. Open haar en voeg tegels toe, of gebruik weer de standaard.',
 	'form_blank_page' => 'Lege pagina (systeem)',
+	'uhome_empty_tab' => 'Nog geen knoppen op dit tabblad. Voeg ze toe in de ontwerpmodus, of laat de wizard Nieuw formulier er één toevoegen voor elk nieuw formulier (Na het maken → User Home).',
 	'nav_users' => 'Gebruikers',
 	'nav_access' => 'Toegangsniveaus',
 	'nav_logout' => 'Afmelden',
@@ -7022,6 +7023,7 @@ return [
 	'rd_search' => 'Zoeken',
 	'rd_no_fields' => 'De gegevensbron heeft geen kolommen.',
 	'rd_fields_error' => 'De velden konden niet worden gelezen:',
+	'rd_canvas' => 'Rapportindeling – de pijltjestoetsen verplaatsen de gekozen objecten',
 	'rd_criteria' => 'Velden van het startformulier',
 	'rd_system' => 'Pagina en systeem',
 	'rd_images' => 'Afbeeldingen (bestanden)',
@@ -7187,7 +7189,7 @@ return [
 	'sqb_empty' => 'Voeg een tabel uit de lijst toe.',
 	'sqb_run_failed' => 'De query is mislukt:',
 	'sqb_columns' => 'Kolommen',
-	// security check (0.8.207, Admin tools → Security check, core/nusecurity.php)
+	// security check (Admin tools → Security check, core/nusecurity.php)
 	'secchk_title' => 'Beveiligingscontrole',
 	'ipa_title' => 'IP-toegang',
 	'sso_title' => 'Single sign-on (SSO)',

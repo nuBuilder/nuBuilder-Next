@@ -188,8 +188,10 @@ final class NuFnRef
 		$h = '<article class="nuFn" id="' . h(self::anchor($lang, $n)) . '" data-nu-fn="' . h(strtolower($n)) . '">'
 			. '<header class="nuFnHead"><h5 class="nuFnName">' . h($n) . '</h5>' . $badge
 			. '<a class="nuFnLink" href="#' . h(self::anchor($lang, $n)) . '" title="Link" aria-label="Link to ' . h($n) . '"><i class="bi bi-link-45deg"></i></a>'
-			// where the application calls it (0.8.1172, the code search) – only for those who may search
-			. ($kind === 'fn' && self::$search ? '<a class="nuFnUsed" href="' . h(nu_url('codesearch', ['q' => $n, 'w' => '1', 'go' => '1', 'drafts' => '1', 'pages' => '1', 'lang' => [$lang]])) . '" target="_blank" rel="noopener" title="Where used" aria-label="Where ' . h($n) . ' is used"><i class="bi bi-search"></i></a>' : '')
+			// where the application calls it (the code search) – only for those who may search
+			. ($kind === 'fn' && self::$search ? '<a class="nuFnUsed" href="'
+				. h(nu_url('codesearch', ['q' => $n, 'w' => '1', 'go' => '1', 'drafts' => '1', 'pages' => '1', 'lang' => [$lang]]))
+				. '" target="_blank" rel="noopener" title="Where used" aria-label="Where ' . h($n) . ' is used"><i class="bi bi-search"></i></a>' : '')
 			. '</header>'
 			. '<pre class="nuFnSig"><code>' . self::sigHtml((string)$it['s'], $n) . '</code></pre>'
 			. '<dl class="nuFnSpec">';
@@ -219,7 +221,7 @@ final class NuFnRef
 			$out = $lang === 'js' && str_contains((string)($it['e'] ?? ''), 'console.log(') ? 'console.log()' : 'Result';
 			$h .= '<div class="nuFnBlock nuFnOut"><div class="nuFnBlockHead"><span>' . h($out) . '</span></div><pre class="nuFnCode"><code>' . h((string)$it['x']) . '</code></pre></div>';
 		}
-		// "a": functions named by hand come first, "h": a section of the Guide (id of docs/pages) – 0.8.689
+		// "a": functions named by hand come first, "h": a section of the Guide (id of docs/pages)
 		$names = array_column($group, 'n');
 		$see = array_values(array_unique(array_merge(array_filter((array)($it['a'] ?? []), static fn($x) => in_array($x, $names, true)), self::related($n, $group))));
 		$links = array_map(static fn($x) => '<a href="#' . h(self::anchor($lang, $x)) . '">' . h($x) . '</a>', array_slice($see, 0, 5));

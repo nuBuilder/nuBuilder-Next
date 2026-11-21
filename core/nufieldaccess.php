@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Field data access (0.8.480, handover spec 04): server-enforced modes per object, with rules per access level, user, permission item,
+ * Field data access (handover spec 04): server-enforced modes per object, with rules per access level, user, permission item,
  * team or department (NuSubject – the most specific rule wins, a tie goes to the more open mode). Rules and the default mode live in
  * zzzzsys_nunext_object_access; nuBuilder's zzzzsys_object gets no column (sob_all_access is set to the nearest nuBuilder value).
  *
@@ -35,7 +35,7 @@ final class NuFieldAccess
 		self::$all = null;
 	}
 
-	/** Every rule of the table, read once per request (0.8.1343: was one statement per form – a record page with sub-forms read several). */
+	/** Every rule of the table, read once per request (was one statement per form – a record page with sub-forms read several). */
 	private static ?array $all = null;
 
 	/** Rules of the objects of a form. @return array<string, list<array>> */

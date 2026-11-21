@@ -3,14 +3,14 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Tutorial (0.8.328): a step-by-step introduction for the globeadmin and users with an admin role – pages/nututorial.php.
+ * Tutorial: a step-by-step introduction for the globeadmin and users with an admin role – pages/nututorial.php.
  *
  * - Text (English, like the documentation): docs/nunext-tutorial.htm – <article class="tut-chapter"> with <section class="tut-lesson">
  *   (see the comment at the top of that file). Lessons a user with an admin role has no right for are left out (data-right).
  * - Progress per reader: the globeadmin in zzzzsys_nunext_setting (id tutorial_ga), other users in their sus_json (NUNEXT_TUTORIAL),
  *   demo users in the session only. {done: [lesson ids], hidden: bool, track: '' | basic | advanced} – "hidden" hides the start page
- *   banner, "track" is the reader's choice (0.8.622).
- * - Three tracks (0.8.622 / 0.8.635): basic = the essentials, advanced = every lesson, forte = what is different from nuBuilder Forte and
+ *   banner, "track" is the reader's choice.
+ * - Three tracks: basic = the essentials, advanced = every lesson, forte = what is different from nuBuilder Forte and
  *   what is new (chapters with data-track="forte" only – they are in no other track). A lesson or chapter with data-level="advanced" is in
  *   the advanced track only; the reader chooses on first opening (choice screen) and switches any time. Progress is shared.
  */
@@ -19,8 +19,8 @@ final class NuTutorial
 	public const FILE = 'docs/nunext-tutorial.htm';
 	private const SETTING = 'tutorial_ga';
 	private const JSON_KEY = 'NUNEXT_TUTORIAL';
-	private const SESSION = 'nu_tutorial';
-	public const TRACKS = ['basic', 'advanced', 'forte'];   // forte (0.8.635): "Coming from nuBuilder Forte" – only chapters with data-track="forte"
+	private const SESSION = NuSess::TUTORIAL;
+	public const TRACKS = ['basic', 'advanced', 'forte'];   // forte: "Coming from nuBuilder Forte" – only chapters with data-track="forte"
 
 	/** @var array<string, list<array<string, mixed>>> chapters per track */
 	private static array $chapters = [];
@@ -194,7 +194,7 @@ final class NuTutorial
 	/**
 	 * The lesson ids of a track in reading order. The start page (tile badge, banner) needs nothing else of the tutorial – they are kept
 	 * in the session for ten minutes, so that page no longer parses the tutorial file on every view (a tenth of its time; performance
-	 * review, 0.8.1341). The key holds the file's time and the reader, so an update or another user reads the file again.
+	 * review). The key holds the file's time and the reader, so an update or another user reads the file again.
 	 * @return list<string>
 	 */
 	public static function ids(?string $track = null): array
@@ -204,10 +204,10 @@ final class NuTutorial
 		$u = NuAuth::user() ?? [];
 		$key = NU_VERSION . '|' . (string)@filemtime(NU_ROOT . '/' . self::FILE) . '|' . (string)($u['id'] ?? '') . '|' . (string)($u['access_id'] ?? '');
 		$live = session_status() === PHP_SESSION_ACTIVE;
-		$c = $live ? ($_SESSION['nu_tut_ids'][$track] ?? null) : null;
+		$c = $live ? ($_SESSION[NuSess::TUT_IDS][$track] ?? null) : null;
 		if (is_array($c) && ($c['k'] ?? '') === $key && (int)($c['t'] ?? 0) > time() - 600 && is_array($c['ids'] ?? null)) return $c['ids'];
 		$ids = array_map('strval', array_keys(self::order($track)));
-		if ($live) $_SESSION['nu_tut_ids'][$track] = ['k' => $key, 't' => time(), 'ids' => $ids];
+		if ($live) $_SESSION[NuSess::TUT_IDS][$track] = ['k' => $key, 't' => time(), 'ids' => $ids];
 		return $ids;
 	}
 

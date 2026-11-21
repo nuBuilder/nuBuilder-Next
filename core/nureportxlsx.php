@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Reports as Excel files (0.8.1324): the same data, sort order, groups and totals as the PDF, in two sheets –
+ * Reports as Excel files: the same data, sort order, groups and totals as the PDF, in two sheets –
  *   "Report": the lines of the report header, a title row (page header labels above the detail fields), per group a header row and,
  *             when the layout has a group footer, a total row (SUM / AVERAGE of the footer), the grand total of the report footer;
  *   "Data":   every column of the data source, one row per record, autofilter.
@@ -32,7 +32,7 @@ final class NuReportXlsx
 			usort($idx, static function ($a, $b) use ($rows, $groups, $lay) {
 				foreach ($groups as $g) {
 					$f = (string)$lay->groups[$g]->sortField;
-					$c = self::compare($rows[$a][$f] ?? null, $rows[$b][$f] ?? null);
+					$c = NuReportEngine::compare($rows[$a][$f] ?? null, $rows[$b][$f] ?? null);
 					if ($c !== 0) return $lay->groups[$g]->sortBy === 'd' ? -$c : $c;
 				}
 				return $a <=> $b;
@@ -109,7 +109,8 @@ final class NuReportXlsx
 			}
 			$style = ['bold' => true, 'border' => 'thin', 'bg' => '#F6F7F9'];
 			$out = [];
-			foreach ($cells as $i => $v) $out[] = $v instanceof NuXlsxCell ? NuXlsx::cell($v->value, $v->style + $style) : NuXlsx::cell($v, $style + ['align' => isset($fields[$i]) ? self::align($fields[$i]) : 'left']);
+			foreach ($cells as $i => $v) $out[] = $v instanceof NuXlsxCell ? NuXlsx::cell($v->value, $v->style + $style) : NuXlsx::cell($v,
+				$style + ['align' => isset($fields[$i]) ? self::align($fields[$i]) : 'left']);
 			$s->row($out);
 		};
 
@@ -117,7 +118,7 @@ final class NuReportXlsx
 			$changed = null;
 			foreach ($groups as $lv => $g) {
 				$f = (string)$lay->groups[$g]->sortField;
-				if (!isset($open[$lv]) || !self::same($open[$lv][0], $row[$f] ?? null)) { $changed = $lv; break; }
+				if (!isset($open[$lv]) || !NuReportEngine::same($open[$lv][0], $row[$f] ?? null)) { $changed = $lv; break; }
 			}
 			if ($changed !== null) {
 				for ($lv = count($groups) - 1; $lv >= $changed; $lv--) {
@@ -309,20 +310,6 @@ final class NuReportXlsx
 	private static function plain(mixed $v): string
 	{
 		return NuReportEngine::stripFormatting((string)($v ?? ''))[0];
-	}
-
-	/** As the PDF (NuReportEngine): NULL first, numbers as numbers, text case-insensitive. */
-	private static function compare(mixed $a, mixed $b): int
-	{
-		if ($a === null || $b === null) return ($a === null ? 0 : 1) - ($b === null ? 0 : 1);
-		if (is_numeric($a) && is_numeric($b)) return (float)$a <=> (float)$b;
-		return strcmp(mb_strtolower((string)$a), mb_strtolower((string)$b));
-	}
-
-	private static function same(mixed $a, mixed $b): bool
-	{
-		if ($a === null || $b === null) return $a === $b || (string)$a === (string)$b;
-		return is_numeric($a) && is_numeric($b) ? (float)$a == (float)$b : mb_strtolower((string)$a) === mb_strtolower((string)$b);
 	}
 
 	/** Sends the workbook as a download and ends the request. */

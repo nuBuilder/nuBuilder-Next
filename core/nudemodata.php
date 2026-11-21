@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Demo data reset (0.8.341): visitors of a public demo may save in the forms of $nuConfigDemoSavingAllowedIds – this puts the tables of
+ * Demo data reset: visitors of a public demo may save in the forms of $nuConfigDemoSavingAllowedIds – this puts the tables of
  * those forms (and of their sub-forms) back to a snapshot the globeadmin took (System status → Demo mode).
  *   Snapshot: <backup folder>/demo-snapshot.json (protected folder) – rows per table; binary values as {"b64": …}.
  *   Reset:    every N hours by the housekeeping (nucron.php or now and then a page view; setting 'demo_reset' {hours, last}), or "Reset now".
@@ -131,7 +131,8 @@ final class NuDemoData
 	{
 		$db = nu_db();
 		NuSchema::ensure();
-		$row = ['setting_value' => json_encode(['hours' => (int)$s['hours'], 'last' => (int)$s['last']]), 'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => (string)(NuAuth::user()['login'] ?? 'housekeeping')];
+		$row = ['setting_value' => json_encode(['hours' => (int)$s['hours'], 'last' => (int)$s['last']]), 'updated_at' => date('Y-m-d H:i:s'),
+			'updated_by' => (string)(NuAuth::user()['login'] ?? 'housekeeping')];
 		NuDemo::permitted(static function () use ($db, $row): void {
 			nu_setting_save(self::SETTING, $row, $db);
 		});

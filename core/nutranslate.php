@@ -12,7 +12,7 @@ defined('NU_ROOT') || exit;
  * through nuTranslate() in PHP and JavaScript. nuBuilder Next's own screens use lang/*.php instead.
  *
  * Reader's language: globeadmin → zzzzsys_setup.set_language, user → zzzzsys_user.sus_language (nuBuilder);
- * when empty English, as in nuBuilder (the nuBuilder Next menu language does not decide, since 0.8.179).
+ * when empty English, as in nuBuilder (the nuBuilder Next menu language does not decide).
  */
 final class NuTranslate
 {
@@ -45,8 +45,7 @@ final class NuTranslate
 			} elseif ($u) {
 				$l = (string)(NuAuth::userRow((string)$u['id'])['sus_language'] ?? '');
 			}
-		} catch (Throwable) {
-		}
+		} catch (Throwable $ig) { nu_ignored($ig); }
 		$l = trim($l);
 		if (strcasecmp($l, 'English') === 0) $l = '';
 		return self::$lang = $l;
@@ -68,8 +67,7 @@ final class NuTranslate
 					if ($e !== '' && !isset($d[$e]) && (string)$r['trl_translation'] !== '') $d[$e] = (string)$r['trl_translation'];
 				}
 			}
-		} catch (Throwable) {
-		}
+		} catch (Throwable $ig) { nu_ignored($ig); }
 		return self::$dict[$lang] = $d;
 	}
 
@@ -109,7 +107,7 @@ final class NuTranslate
 		$T = static fn(string $t, string $l = '') => NuDDL::sqlType($t, $l);
 		$db->run('CREATE TABLE zzzzsys_translate (zzzzsys_translate_id ' . $T('id') . ' NOT NULL PRIMARY KEY, trl_language ' . $T('text', '20') . ' NULL, '
 			. 'trl_english ' . $T('text', '500') . ' NULL, trl_translation ' . $T('text', '500') . ' NULL, trl_json ' . $T('longtext') . ' NULL)'
-			. ($db->type === 'mysql' ? NuDDL::mysqlTableOptions() : ''));
+			. $db->tableOptions());
 	}
 
 	/** Languages to offer: zzzzsys_setup.set_languages_included plus the ones in use (without English). */
@@ -120,8 +118,7 @@ final class NuTranslate
 		if (is_array($inc)) foreach ($inc as $x) if (is_string($x) && trim($x) !== '') $l[] = trim($x);
 		try {
 			foreach (nu_db()->all("SELECT DISTINCT trl_language FROM zzzzsys_translate WHERE trl_language IS NOT NULL AND trl_language <> ''") as $r) $l[] = (string)$r['trl_language'];
-		} catch (Throwable) {
-		}
+		} catch (Throwable $ig) { nu_ignored($ig); }
 		$l = array_values(array_unique(array_filter($l, static fn($x) => strcasecmp($x, 'English') !== 0)));
 		sort($l, SORT_NATURAL | SORT_FLAG_CASE);
 		return $l;
@@ -139,7 +136,8 @@ final class NuTranslate
 		nu_maxlen($errors, 'trl_language', $row['trl_language'], 20);
 		nu_maxlen($errors, 'trl_english', $row['trl_english'], 500);
 		nu_maxlen($errors, 'trl_translation', $row['trl_translation'], 500);
-		if (!isset($errors['trl_english']) && $db->value("SELECT COUNT(*) FROM zzzzsys_translate WHERE trl_language = ? AND trl_english = ? AND zzzzsys_translate_id <> ? AND zzzzsys_translate_id NOT LIKE 'nu%'",
+		if (!isset($errors['trl_english'])
+			&& $db->value("SELECT COUNT(*) FROM zzzzsys_translate WHERE trl_language = ? AND trl_english = ? AND zzzzsys_translate_id <> ? AND zzzzsys_translate_id NOT LIKE 'nu%'",
 			[$row['trl_language'], $row['trl_english'], $id])) $errors['trl_english'] = t('trl_err_duplicate');
 		if ($errors) return [null, $errors];
 		if ($id !== '') {
@@ -152,7 +150,7 @@ final class NuTranslate
 		return [$id, []];
 	}
 
-	// ------------------------------------------------------------------ texts of the forms, missing translations, AI round trip (0.8.754)
+	// ------------------------------------------------------------------ texts of the forms, missing translations, AI round trip
 
 	/** Kinds of texts: where a text was found. */
 	public const KINDS = ['form', 'tab', 'label', 'column', 'option', 'code'];
@@ -169,8 +167,7 @@ final class NuTranslate
 		try {
 			foreach (nu_db()->all("SELECT DISTINCT trl_language FROM zzzzsys_translate WHERE trl_language IS NOT NULL AND trl_language <> '' AND zzzzsys_translate_id NOT LIKE 'nu%'") as $r) $l[] = trim((string)$r['trl_language']);
 			foreach (nu_db()->all("SELECT DISTINCT sus_language FROM zzzzsys_user WHERE sus_language IS NOT NULL AND sus_language <> ''") as $r) $l[] = trim((string)$r['sus_language']);
-		} catch (Throwable) {
-		}
+		} catch (Throwable $ig) { nu_ignored($ig); }
 		$l = array_values(array_filter($l, static fn($x) => $x !== '' && strcasecmp($x, 'English') !== 0));
 		foreach (NuLanguages::installed() as $code) {
 			$name = NU_LANGS[$code][1] ?? '';
@@ -211,7 +208,7 @@ final class NuTranslate
 	/** Texts of a static select (nuBuilder's "v|t|v|t", lines, or a JSON list); [] for SQL options. */
 	public static function optionTexts(string $src): array
 	{
-		// only a list written into the object (pipe list or JSON – NuSelectSource, 0.8.879); SQL, SHOW TABLES and %LANGUAGES% are not
+		// only a list written into the object (pipe list or JSON – NuSelectSource); SQL, SHOW TABLES and %LANGUAGES% are not
 		return NuSelectSource::isFixed($src) ? array_map(static fn($o) => (string)$o[1], NuSelectSource::options($src)) : [];
 	}
 
@@ -282,7 +279,8 @@ final class NuTranslate
 				foreach ($db->all("SELECT sev_zzzzsys_object_id, sev_javascript FROM zzzzsys_event WHERE sev_zzzzsys_object_id IN ($oin)", $oc) as $e) {
 					foreach (self::codeStrings($e['sev_javascript']) as $x) $add($x, $objIds[(string)$e['sev_zzzzsys_object_id']] ?? '', 'code');
 				}
-				foreach ($db->all("SELECT zzzzsys_php_id, sph_php FROM zzzzsys_php WHERE zzzzsys_php_id IN (" . implode(',', array_fill(0, count($oc), '?')) . ")", array_map(static fn($x) => $x . '_AB', $oc)) as $ph) {
+				foreach ($db->all("SELECT zzzzsys_php_id, sph_php FROM zzzzsys_php WHERE zzzzsys_php_id IN (" . implode(',', array_fill(0, count($oc), '?')) . ")",
+					array_map(static fn($x) => $x . '_AB', $oc)) as $ph) {
 					foreach (self::codeStrings($ph['sph_php']) as $x) $add($x, ($objIds[substr((string)$ph['zzzzsys_php_id'], 0, -3)] ?? '') . ' · PHP', 'code');
 				}
 			}

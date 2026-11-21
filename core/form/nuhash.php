@@ -15,7 +15,7 @@ final class NuHash
 	public static array $caller = [];
 
 	/**
-	 * nuBuilder Forte's request state in nuHash() (0.8.984): its browser sends the breadcrumb (nuFORM.getCurrent()) with every request and
+	 * nuBuilder Forte's request state in nuHash(): its browser sends the breadcrumb (nuFORM.getCurrent()) with every request and
 	 * nuHash() holds its keys as text (arrays as ''); a page hook gets a new breadcrumb's defaults, a procedure the open page's. Below the
 	 * fields and properties, above hash cookies. Set by pages/nuform.php (list state) and pages/nuformapi.php (the browser's crumb).
 	 */
@@ -54,16 +54,16 @@ final class NuHash
 			'USER_ID' => $u['id'], 'LOGIN_NAME' => $u['login'], 'USER_LOGIN' => $u['login'], 'USER_NAME' => $u['display'], 'USER_EMAIL' => $u['email'],
 			'SESSION_ID' => self::sessionId(),
 			'GLOBAL_ACCESS' => $u['globeadmin'] ? '1' : '0', 'ACCESS_LEVEL_ID' => $u['access_id'],
-			'USER_GROUP_ID' => $u['access_id'],   // nuBuilder's name of the access level id (nuGetUserAccess, 0.8.581)
+			'USER_GROUP_ID' => $u['access_id'],   // nuBuilder's name of the access level id (nuGetUserAccess)
 			'ACCESS_LEVEL_CODE' => '', 'ACCESS_LEVEL_GROUP' => '', 'USER_LANGUAGE' => nu_lang_to_db(nu_lang()),
 			'USER_CODE' => '', 'USER_DEPARTMENT' => '', 'USER_TEAM' => '', 'USER_POSITION' => '',
 			'USER_ADDITIONAL1' => '', 'USER_ADDITIONAL2' => '', 'USER_FIRST_NAME' => '', 'USER_LAST_NAME' => '',
 			// nuBuilder: home form, language as stored (German, English …), developer mode (globeadmin + $nuConfigDevMode), permission items
 			'HOME_ID' => $u['globeadmin'] ? 'nuhome' : '', 'LANGUAGE' => nu_lang_to_db(nu_lang()),
 			'DEV_MODE' => self::devMode() ? '1' : '0', 'USER_PERMISSIONS' => '',
-			// main + active additional access levels, quoted for IN (…) (0.8.867); '' (matches nothing) for the globeadmin
+			// main + active additional access levels, quoted for IN (…); '' (matches nothing) for the globeadmin
 			'ACCESS_LEVEL_IDS' => self::idList($u['globeadmin'] ? [] : NuUserAccess::levels($u)),
-			'USER_A11Y' => false,                 // nuBuilder Forte: the user's accessibility features switch (0.8.984)
+			'USER_A11Y' => false,                 // nuBuilder Forte: the user's accessibility features switch
 		];
 		$db = nu_db();
 		if (!$u['globeadmin']) {
@@ -79,9 +79,9 @@ final class NuHash
 			$h['HOME_ID']            = (string)($acc['sal_zzzzsys_form_id'] ?? '');
 			if (trim((string)($row['sus_language'] ?? '')) !== '') $h['LANGUAGE'] = (string)$row['sus_language'];
 			$h['USER_PERMISSIONS']   = implode(', ', self::permissions((string)$u['id']));
-			if (array_key_exists('sus_name', $row)) $h['USER_NAME'] = (string)$row['sus_name'];   // nuBuilder: sus_name, not first + last name (0.8.462)
+			if (array_key_exists('sus_name', $row)) $h['USER_NAME'] = (string)$row['sus_name'];   // nuBuilder: sus_name, not first + last name
 		}
-		// custom user fields (0.8.454): #USER_<CODE># – empty for the globeadmin (no user record)
+		// custom user fields: #USER_<CODE># – empty for the globeadmin (no user record)
 		foreach (NuUserFields::mine() + array_map(static fn() => '', NuUserFields::all()) as $code => $val) {
 			$k = 'USER_' . strtoupper((string)$code);
 			if (!isset($h[$k])) $h[$k] = (string)$val;
@@ -105,7 +105,7 @@ final class NuHash
 		foreach (self::CATALOG as $g => $names) {
 			$items = [];
 			foreach ($names as $n) $items[] = [$n, t('hv_' . strtolower($n))];
-			if ($g === 'user') foreach (NuUserFields::all() as $code => $f) $items[] = ['USER_' . strtoupper((string)$code), t('hv_user_field', NuUserFields::label($f))];   // 0.8.454
+			if ($g === 'user') foreach (NuUserFields::all() as $code => $f) $items[] = ['USER_' . strtoupper((string)$code), t('hv_user_field', NuUserFields::label($f))];
 			$groups[] = ['title' => t('hv_group_' . $g), 'items' => $items];
 		}
 		return ['title' => t('hv_title'), 'search' => t('hv_search'), 'empty' => t('hv_empty'), 'fields' => t('hv_group_fields'),
@@ -125,7 +125,7 @@ final class NuHash
 		$db = nu_db();
 		if (!$db->tableExists('zzzzsys_user_permission') || !$db->tableExists('zzzzsys_permission_item')) return [];
 		try {
-			// once per request (0.8.1341 – the hash, the start page conditions, field access and the notification senders each asked)
+			// once per request (the hash, the start page conditions, field access and the notification senders each asked)
 			return NuMemo::get('perm:' . $userId, ['zzzzsys_user_permission', 'zzzzsys_permission_item'], static fn(): array =>
 				array_map('strval', array_column($db->all("SELECT pme_ident FROM zzzzsys_user_permission
 				LEFT JOIN zzzzsys_permission_item ON zzzzsys_permission_item_id = upe_ident
@@ -143,7 +143,7 @@ final class NuHash
 			'nu_year' => $d->format('Y'), 'nu_month' => $d->format('m'), 'nu_day' => $d->format('d'), 'nu_hour' => $d->format('H'), 'nu_minute' => $d->format('i')];
 	}
 
-	/** Hash variables that hold a ready list of quoted ids for SQL "IN (…)" – inserted as they are into SQL while they have that form (0.8.867). */
+	/** Hash variables that hold a ready list of quoted ids for SQL "IN (…)" – inserted as they are into SQL while they have that form. */
 	public const SQL_LISTS = ['ACCESS_LEVEL_IDS'];
 	private const ID_LIST = "/^'[A-Za-z0-9_.-]*'(,'[A-Za-z0-9_.-]+')*$/";
 
@@ -154,7 +154,7 @@ final class NuHash
 		return $ids ? "'" . implode("','", $ids) . "'" : "''";
 	}
 
-	// ----------------------------------------------------------------- bound hash variables (0.8.873)
+	// ----------------------------------------------------------------- bound hash variables
 	/**
 	 * nuBuilder Forte's $nuDevSelectQueryRunParameterised (core/nudatabase.php nuRunQueryString): hash variables become bound parameters
 	 * instead of text. Forte does it for the SQL of select objects and access conditions; nuBuilder Next also for the browse SQL and its
@@ -290,7 +290,7 @@ final class NuHash
 	public static function escape(string $v, string $context): string
 	{
 		return match ($context) {
-			self::SQL  => nu_db()->escapeString($v),           // also with MySQL's NO_BACKSLASH_ESCAPES (0.8.207)
+			self::SQL  => nu_db()->escapeString($v),           // also with MySQL's NO_BACKSLASH_ESCAPES
 			self::PHP  => str_replace(['\\', "'", '"', '$'], ['\\\\', "\\'", '\\"', '\\$'], $v),
 			self::HTML => htmlspecialchars($v, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'),
 			default    => $v,
@@ -328,14 +328,15 @@ final class NuHash
 	{
 		$src = [];
 		$h = [];
-		foreach (self::base() as $k => $v) { $h[$k] = $v; $src[$k] = str_starts_with($k, 'USER_') || in_array($k, ['LOGIN_NAME', 'ACCESS_LEVEL_ID', 'ACCESS_LEVEL_IDS', 'ACCESS_LEVEL_CODE', 'ACCESS_LEVEL_GROUP', 'GLOBAL_ACCESS', 'HOME_ID', 'LANGUAGE'], true) ? 'user' : 'system'; }
+		foreach (self::base() as $k => $v) { $h[$k] = $v; $src[$k] = str_starts_with($k, 'USER_')
+			|| in_array($k, ['LOGIN_NAME', 'ACCESS_LEVEL_ID', 'ACCESS_LEVEL_IDS', 'ACCESS_LEVEL_CODE', 'ACCESS_LEVEL_GROUP', 'GLOBAL_ACCESS', 'HOME_ID', 'LANGUAGE'], true) ? 'user' : 'system'; }
 		$sys = [
 			'FORM_ID' => $meta->id, 'FORM_CODE' => (string)$meta->form['sfo_code'], 'FORM_GROUP' => (string)($meta->form['sfo_group'] ?? ''),
 			'RECORD_ID' => $recordId, 'NEW_RECORD' => $recordId === '-1' ? '1' : '0',
 			'TABLE_ID' => self::tableId(), 'PREVIOUS_RECORD_ID' => $recordId,
 		] + self::now() + $extra;
 		foreach ($sys as $k => $v) { $h[$k] = $v; $src[$k] = 'system'; }
-		// fields of the record as nuBuilder Forte puts them into nuHash(): text, NULL as '' (0.8.984)
+		// fields of the record as nuBuilder Forte puts them into nuHash(): text, NULL as ''
 		$values = array_map(static fn($v) => $v === null ? '' : (is_bool($v) ? ($v ? '1' : '') : (is_scalar($v) ? (string)$v : $v)), $values);
 		foreach (['record' => $values, 'property' => $props, 'state' => self::$state + self::STATE_DEFAULTS, 'global' => NuHashCookies::all(), 'caller' => self::$caller] as $from => $list) {
 			foreach ($list as $k => $v) {
@@ -344,7 +345,7 @@ final class NuHash
 				$src[$k] = $from;
 			}
 		}
-		// nuBuilder's lower-case names (0.8.576): nuBuilder copies the request fields form_id / record_id (and, in hidden procedures,
+		// nuBuilder's lower-case names: nuBuilder copies the request fields form_id / record_id (and, in hidden procedures,
 		// hash_record_id) into the hash – here the same values as #FORM_ID# / #RECORD_ID#. A field, property or hash cookie of that
 		// name comes first, as in nuBuilder (the edit form's values overwrite them there).
 		foreach (self::lowerAliases($h['FORM_ID'], $h['RECORD_ID'], $h) as $k => $v) if (!array_key_exists($k, $h)) { $h[$k] = $v; $src[$k] = 'system'; }
@@ -354,7 +355,7 @@ final class NuHash
 	/**
 	 * @param array<string, mixed> $h
 	 * @return array<string, string> #form_id#, #record_id#, #hash_record_id# and – as the form properties nuBuilder Forte's browser sends
-	 *   with every request (0.8.965) – #user_id#, #session_id#, #redirect_form_id#
+	 *   with every request – #user_id#, #session_id#, #redirect_form_id#
 	 */
 	private static function lowerAliases(mixed $formId, mixed $recordId, array $h = []): array
 	{
@@ -376,7 +377,7 @@ final class NuHash
 	 */
 	public static function sessionId(): string
 	{
-		return NuHashCookies::nuBuilderSession() ?? ($_SESSION['nu_hash_session'] ??= 'nx' . bin2hex(random_bytes(10)));
+		return NuHashCookies::nuBuilderSession() ?? ($_SESSION[NuSess::HASH_SESSION] ??= 'nx' . bin2hex(random_bytes(10)));
 	}
 
 	/** Unique temp table name for #TABLE_ID# within this request. */

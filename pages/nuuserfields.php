@@ -3,13 +3,13 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Custom user fields (0.8.454, core/nuuserfields.php): the list of fields and one field's settings (?id=<id> | ?id=new).
+ * Custom user fields (core/nuuserfields.php): the list of fields and one field's settings (?id=<id> | ?id=new).
  * Admin right userfields: view on GET, change on POST (NuAdmin::require). Adding / deleting a field changes the table
  * zzzzsys_nunext_user_ext – password confirmation for the changes. ?csv=<id>: the values of a field (before deleting it).
  */
 
 NuAdmin::require('userfields');
-if (nu_is_post()) NuSecurity::requireRecentAuth(nu_url('userfields'));
+NuUserfieldsPage::post1(get_defined_vars());   // the POST actions (code review R7, nuuserfieldspage.php)
 $canChange = NuAdmin::can('userfields', 'change') && empty(NuAuth::user()['demo']);
 $id = (string)($_GET['id'] ?? '');
 
@@ -25,55 +25,8 @@ if (isset($_GET['csv'])) {
 
 $errors = [];
 $in = [];
-if (nu_is_post()) {
-	$action = nu_post('action');
-	if ($action === 'default_preview') {   // example of a worked-out default + its check (0.8.1074, JSON for nuuserfields.js)
-		header('Content-Type: application/json; charset=utf-8');
-		$fd = ['type' => (string)nu_post('type'), 'options' => (string)nu_post('options'), 'code' => (string)nu_post('code'), 'is_unique' => '0', 'required' => '0'];
-		if (!isset(NuUserFields::TYPES[$fd['type']])) $fd['type'] = 'text';
-		$d = trim((string)nu_post('default_value'));
-		$old = $id !== 'new' ? NuUserFields::byId($id) : null;
-		$kept = $old && $d === trim((string)$old['default_value']);
-		$ex = NuUserDefault::example($fd, $d);
-		$err = $d === '' ? null : (NuUserDefault::dynamic($d) ? NuUserDefault::check($fd, $d) : NuUserFields::checkValue($fd, $d, null));
-		if ($kept && $err === t('ufd_err_ga')) $err = null;
-		exit((string)json_encode($ex + ['error' => $err ?? ($ex['error'] ?? null)], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE));
-	}
-	try {
-		if ($action === 'move') {
-			NuUserFields::move(nu_post('id'), nu_post('dir') === 'up' ? -1 : 1);
-			nu_redirect(nu_url('userfields'));
-		}
-		if ($action === 'delete') {
-			$f = NuUserFields::byId(nu_post('id'));
-			if ($f) {
-				$n = NuUserFields::delete((string)$f['zzzzsys_nunext_user_field_id']);
-				nu_flash('success', t('uf_deleted', NuUserFields::label($f), $n));
-			}
-			nu_redirect(nu_url('userfields'));
-		}
-		if ($action === 'save') {
-			$old = $id !== 'new' ? NuUserFields::byId($id) : null;
-			if ($id !== 'new' && !$old) throw new RuntimeException(t('record_not_found'));
-			$in = $_POST;
-			[$row, $errors] = NuUserFields::check($in, $old);
-			if (!$errors) {
-				if ($old) {
-					NuUserFields::update($id, $row);
-				} else {
-					$id = NuUserFields::add($row);
-				}
-				nu_flash('success', t('saved'));
-				nu_redirect(nu_url('userfields'));
-			}
-			nu_flash('danger', t('err_check_form'));
-		}
-	} catch (Throwable $e) {
-		error_log('nuBuilder Next user fields: ' . $e->getMessage());
-		nu_flash('danger', t('uf_err_save') . ' ' . (NuAuth::user()['globeadmin'] || nu_debug() ? $e->getMessage() : ''));
-		if ($action !== 'save') nu_redirect(nu_url('userfields'));
-	}
-}
+['id' => $id, 'in' => $in, 'errors' => $errors, 'e' => $e]
+	= NuUserfieldsPage::post2(get_defined_vars());   // the POST actions (code review R7, nuuserfieldspage.php)
 
 $all = NuUserFields::all();
 $typeName = static fn(string $t) => t('uf_type_' . $t);
@@ -108,7 +61,7 @@ if ($id !== '') {
 			<div class="d-flex flex-wrap gap-2"><?= nu_back_button(null, nu_url('userfields')) ?>
 				<?php if ($canChange): ?><button class="btn nuBtnAct nuBtnSave" type="submit" data-nu-save id="ufSave"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button><?php endif; ?>
 				<?php if ($canChange && $f): ?><button class="btn nuBtnAct nuBtnDel" type="submit" form="ufDelete" id="ufDeleteBtn"><i class="bi bi-trash me-1"></i><?= h(t('delete')) ?></button><?php endif; ?>
-				<?php if ($f): ?><?= NuFormInfo::record(NuUserFields::TABLE, (string)$id, ['code' => (string)($f['code'] ?? '')]) /* (i) record info (0.8.501) */ ?><?php endif; ?>
+				<?php if ($f): ?><?= NuFormInfo::record(NuUserFields::TABLE, (string)$id, ['code' => (string)($f['code'] ?? '')]) /* (i) record info */ ?><?php endif; ?>
 			</div>
 		</div>
 		<fieldset<?= $canChange ? '' : ' disabled' ?>>
@@ -151,7 +104,8 @@ if ($id !== '') {
 						['next:{0000}', 'ufd_counter'], ['{first_name}.{last_name}', 'ufd_fields'], ['{email}', 'ufd_email'], ['#USER_NAME#', 'ufd_admin'], null];
 					if (!empty(NuAuth::user()['globeadmin'])) { $ins[] = ['= SELECT ', 'ufd_sql']; $ins[] = ['proc:', 'ufd_proc']; }
 					$menu = '';
-					foreach ($ins as $it) $menu .= $it === null ? '<li><hr class="dropdown-divider"></li>' : '<li><button type="button" class="dropdown-item d-flex justify-content-between gap-3 ufdIns" data-ins="' . h($it[0]) . '"><span>' . h(t($it[1])) . '</span><code class="small">' . h($it[0]) . '</code></button></li>';
+					foreach ($ins as $it) $menu .= $it === null ? '<li><hr class="dropdown-divider"></li>' : '<li><button type="button" class="dropdown-item d-flex justify-content-between gap-3 ufdIns" data-ins="'
+						. h($it[0]) . '"><span>' . h(t($it[1])) . '</span><code class="small">' . h($it[0]) . '</code></button></li>';
 				?>
 				<?= $fld('default_value', '<div class="input-group"><input class="form-control font-monospace' . $inv('default_value') . '" id="ufDefault" name="default_value" maxlength="1000" value="' . h($val('default_value')) . '" data-preview="' . h(nu_url('userfields', ['id' => $id])) . '">'
 					. '<button type="button" class="btn btn-outline-secondary dropdown-toggle" id="ufDefaultIns" data-bs-toggle="dropdown" aria-expanded="false">' . h(t('ufd_insert')) . '</button>'
@@ -163,9 +117,12 @@ if ($id !== '') {
 				<input class="form-control" id="ufHint" name="hint" maxlength="1000" value="<?= h($val('hint')) ?>">
 			</div>
 			<div class="col-12 d-flex flex-wrap gap-4">
-				<div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" id="ufRequired" name="required" value="1"<?= $chk('required') ? ' checked' : '' ?>><label class="form-check-label" for="ufRequired"><?= h(t('uf_required')) ?></label></div>
-				<div class="form-check form-switch ufOnlyUnique"><input class="form-check-input" type="checkbox" role="switch" id="ufUnique" name="is_unique" value="1"<?= $chk('is_unique') ? ' checked' : '' ?>><label class="form-check-label" for="ufUnique"><?= h(t('uf_unique')) ?></label></div>
-				<div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" id="ufInList" name="in_list" value="1"<?= $chk('in_list', true) ? ' checked' : '' ?>><label class="form-check-label" for="ufInList"><?= h(t('uf_in_list')) ?></label>
+				<div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" id="ufRequired" name="required"
+					value="1"<?= $chk('required') ? ' checked' : '' ?>><label class="form-check-label" for="ufRequired"><?= h(t('uf_required')) ?></label></div>
+				<div class="form-check form-switch ufOnlyUnique"><input class="form-check-input" type="checkbox" role="switch" id="ufUnique" name="is_unique"
+					value="1"<?= $chk('is_unique') ? ' checked' : '' ?>><label class="form-check-label" for="ufUnique"><?= h(t('uf_unique')) ?></label></div>
+				<div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" id="ufInList" name="in_list"
+					value="1"<?= $chk('in_list', true) ? ' checked' : '' ?>><label class="form-check-label" for="ufInList"><?= h(t('uf_in_list')) ?></label>
 					<?= nu_info_tip(t('uf_in_list_tip')) ?></div>
 			</div>
 			<?php if ($f): ?>
@@ -176,7 +133,8 @@ if ($id !== '') {
 	</form>
 	<?php if ($canChange && $f): ?>
 		<form method="post" action="<?= h(nu_url('userfields', ['id' => $id])) ?>" id="ufDelete" data-confirm="<?= h(t('uf_delete_confirm', NuUserFields::label($f), $values)) ?>"
-			data-confirm-ok="<?= h(t('delete')) ?>" data-confirm-class="btn btn-danger"><?= nu_csrf_field() ?><input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="<?= h($id) ?>"></form>
+			data-confirm-ok="<?= h(t('delete')) ?>" data-confirm-class="btn btn-danger"><?= nu_csrf_field() ?><input type="hidden" name="action"
+				value="delete"><input type="hidden" name="id" value="<?= h($id) ?>"></form>
 		<p class="small mt-3"><a href="<?= h(nu_url('userfields', ['csv' => $id])) ?>" id="ufCsv"><i class="bi bi-filetype-csv me-1"></i><?= h(t('uf_csv', $values)) ?></a></p>
 	<?php endif; ?>
 	<?php
@@ -184,7 +142,7 @@ if ($id !== '') {
 	return;
 }
 
-// ------------------------------------------------------------------ the list (0.8.546: a system list – views, columns, filters, print / export, core/nulistdefs.php)
+// ------------------------------------------------------------------ the list (a system list – views, columns, filters, print / export, core/nulistdefs.php)
 $tip = t('uf_sub', t('user_tab_more')) . ' ' . t('uf_list_hint');
 NuListView::page('userfields', [
 	'before' => NuListView::crumbs([[t('nav_users'), nu_url('users')], [t('uf_title')]]), 'active' => 'users',

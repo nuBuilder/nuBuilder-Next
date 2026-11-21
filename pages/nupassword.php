@@ -11,27 +11,8 @@ if ($u['globeadmin']) {
 $min    = NuPwPolicy::minLength();
 $errors = [];
 
-if (nu_is_post()) {
-	$current = (string)($_POST['current'] ?? '');
-	$new     = (string)($_POST['new'] ?? '');
-	$confirm = (string)($_POST['confirm'] ?? '');
-
-	if ($current === '')                $errors['current'] = t('err_required');
-	if (mb_strlen($new) < $min)         $errors['new']     = t('pw_err_min', $min);
-	elseif (strlen($new) > 72)          $errors['new']     = t('err_too_long', 72);
-	if ($new !== $confirm)              $errors['confirm'] = t('pw_err_confirm');
-
-	if (!$errors) {
-		$err = NuAuth::changeOwnPassword($current, $new);
-		if ($err === 'pw_err_current') $errors['current'] = t($err);
-		elseif ($err)                  $errors['new']     = t($err);
-		else {
-			unset($_SESSION['nu_pw_reason']);
-			nu_flash('success', t('pw_changed'));
-			nu_redirect(nu_url('home'));
-		}
-	}
-}
+['errors' => $errors]
+	= NuPasswordPage::post(get_defined_vars());   // the POST actions (code review R7, nupasswordpage.php)
 
 nu_layout_start(t('pw_title'));
 ?>
@@ -40,8 +21,9 @@ nu_layout_start(t('pw_title'));
 		<h1 class="h3 mb-3"><?= h(t('pw_title')) ?></h1>
 		<?php if (!$u['change_password']): ?><div class="mb-3"><?= nu_back_button() ?></div><?php endif; ?>
 		<?php if ($u['change_password']): ?>
-			<?php $why = (string)($_SESSION['nu_pw_reason'] ?? ''); // password policy (0.8.745): expired / leaked ?>
-			<div class="alert alert-warning d-flex gap-2" id="pwForced"<?= $why !== '' ? ' data-reason="' . h($why) . '"' : '' ?>><i class="bi bi-shield-exclamation mt-1"></i><div><?= h(t($why === 'leaked' ? 'pw_forced_leaked' : ($why === 'expired' ? 'pw_forced_expired' : 'pw_forced'))) ?></div></div>
+			<?php $why = (string)($_SESSION[NuSess::PW_REASON] ?? ''); // password policy: expired / leaked ?>
+			<div class="alert alert-warning d-flex gap-2"
+				id="pwForced"<?= $why !== '' ? ' data-reason="' . h($why) . '"' : '' ?>><i class="bi bi-shield-exclamation mt-1"></i><div><?= h(t($why === 'leaked' ? 'pw_forced_leaked' : ($why === 'expired' ? 'pw_forced_expired' : 'pw_forced'))) ?></div></div>
 		<?php endif; ?>
 		<div class="card shadow-sm">
 			<div class="card-body p-4">

@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Forms for everyone (0.8.784): a form every access level may open, with the same buttons – the form's Access levels dialog
+ * Forms for everyone: a form every access level may open, with the same buttons – the form's Access levels dialog
  * (pages/nuformaccess.php, assets/js/nu/nuformaccess.js), switch "Everyone".
  *
  * The rights themselves are nuBuilder Forte's normal rows of zzzzsys_access_form, one per level – so nuBuilder Forte opens the form for
@@ -25,8 +25,7 @@ final class NuFormEveryone
 			$v = nu_setting_value(self::KEY);
 			$d = is_string($v) ? json_decode($v, true) : null;
 			if (is_array($d)) foreach ($d as $fid => $c) if (is_array($c) && self::allowed((string)$fid)) $out[(string)$fid] = self::clean($c);
-		} catch (Throwable) {
-		}
+		} catch (Throwable $ig) { nu_ignored($ig); }
 		return NuMemo::keep('set:formeveryone', ['zzzzsys_nunext_setting'], $out);
 	}
 

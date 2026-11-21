@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Is the database ready? (0.8.645) nuconfig.php only says how to connect – it may have been written by hand (or copied from nuBuilder
+ * Is the database ready? nuconfig.php only says how to connect – it may have been written by hand (or copied from nuBuilder
  * Forte) for a database that was never set up. Every request asks once per session (cached when ready):
  *   ok      – the tables of nuBuilder Next's install scripts exist (and, MySQL, every column of nuBuilder 4.9 in them)
  *   empty   – none of nuBuilder's core tables (zzzzsys_form / _user / _access / _setup): the database steps of the installer are offered
@@ -26,9 +26,9 @@ final class NuDbState
 
 	public static function ready(): bool
 	{
-		if (isset($_SESSION['nu_db_ready']) && $_SESSION['nu_db_ready'] === self::key()) return true;
+		if (isset($_SESSION[NuSess::DB_READY]) && $_SESSION[NuSess::DB_READY] === self::key()) return true;
 		$ok = self::check()['state'] === 'ok';
-		if ($ok && session_status() === PHP_SESSION_ACTIVE) $_SESSION['nu_db_ready'] = self::key();
+		if ($ok && session_status() === PHP_SESSION_ACTIVE) $_SESSION[NuSess::DB_READY] = self::key();
 		return $ok;
 	}
 
@@ -36,7 +36,7 @@ final class NuDbState
 	public static function reset(): void
 	{
 		self::$state = null;
-		unset($_SESSION['nu_db_ready']);
+		unset($_SESSION[NuSess::DB_READY]);
 	}
 
 	/** Tables of nuBuilder Next's install scripts for this database type. @return list<string> */
@@ -111,7 +111,7 @@ final class NuDbState
 		$out['steps'] = NuMigrate::run();
 		NuLog::write('db_setup', '', '', ['state' => $st['state'], 'choice' => $choice, 'statements' => $out['imported']]);
 		self::reset();
-		unset($_SESSION['nu_schema']);
+		unset($_SESSION[NuSess::SCHEMA]);
 		return $out;
 	}
 }

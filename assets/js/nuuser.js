@@ -1,5 +1,5 @@
 /* global nuBs */
-/* Access level and admin role (0.8.738): the "open in new tab" button follows the chosen value (disabled while none is chosen). */
+/* Access level and admin role: the "open in new tab" button follows the chosen value (disabled while none is chosen). */
 (function () {
 	'use strict';
 	[['sus_zzzzsys_access_id', 'accessOpen'], ['admin_role', 'admRoleOpen']].forEach(function (pair) {
@@ -17,7 +17,7 @@
 	});
 })();
 
-/* User form tabs General / Permission items (0.8.438): the open tab goes into the address (?tab=perm) and into the form, so a
+/* User form tabs General / Permission items: the open tab goes into the address (?tab=perm) and into the form, so a
    reload and the page after Save show the same tab; a field the browser finds invalid opens its tab. */
 (function () {
 	'use strict';
@@ -54,8 +54,8 @@
 		count.textContent = box.querySelectorAll('input[name="perm[]"]:checked').length;
 		if (tabCount) tabCount.textContent = count.textContent;
 	}
-	var group = document.getElementById('userPermGroup');   // group filter (0.8.260) – combined with the search
-	// assigned / all / not assigned (0.8.642): taken when the filter changes – a box ticked or cleared afterwards stays in the list
+	var group = document.getElementById('userPermGroup');   // group filter – combined with the search
+	// assigned / all / not assigned: taken when the filter changes – a box ticked or cleared afterwards stays in the list
 	var state = document.getElementById('userPermState');
 	function apply() {
 		var q = (filter.value || '').toLowerCase().trim(), g = group ? group.value : '*', st = state ? state.value : 'all', shown = 0;
@@ -73,7 +73,7 @@
 	}
 	if (state) {
 		state.addEventListener('change', apply);
-		state.value = 'assigned';   // the record opens on "Assigned" (0.8.644) – also when the browser restores the last choice (reload, back button)
+		state.value = 'assigned';   // the record opens on "Assigned" – also when the browser restores the last choice (reload, back button)
 		apply();
 		window.addEventListener('pageshow', function (e) { if (e.persisted) { state.value = 'assigned'; apply(); } });
 	}
@@ -82,7 +82,7 @@
 		filter.addEventListener('keydown', function (e) { if (e.key === 'Enter') e.preventDefault(); });   // do not submit the user form
 	}
 	if (group) group.addEventListener('change', apply);
-	// sortable columns (0.8.611): ident, group, description, or the selected items first; ties by group and ident; kept per browser
+	// sortable columns: ident, group, description, or the selected items first; ties by group and ident; kept per browser
 	var SORT_STORE = 'nunext-user-perm-sort', tbody = box.querySelector('.userPermTable tbody');
 	function keyOf(it, col) {
 		if (col === 'sel') return it.querySelector('input[name="perm[]"]').checked ? '0' : '1';
@@ -115,7 +115,7 @@
 		var keep = (localStorage.getItem(SORT_STORE) || '').split(':');
 		if (keep[0] && !(keep[0] === 'group' && keep[1] === 'asc')) sortBy(keep[0], keep[1] === 'desc' ? 'desc' : 'asc');
 	} catch (e) { /* no storage */ }
-	// Undo of All / None (0.8.584): the states before the click; a change by hand afterwards ends it
+	// Undo of All / None: the states before the click; a change by hand afterwards ends it
 	var undoBtn = document.getElementById('userPermUndo'), before = null, bulk = false;
 	function setUndo(snap) { before = snap; if (undoBtn) undoBtn.classList.toggle('d-none', !snap); }
 	box.addEventListener('change', function (e) {
@@ -132,7 +132,7 @@
 		update();
 		setUndo(null);
 	});
-	box.addEventListener('click', function (e) {   // table (0.8.458): a click on the row toggles its checkbox (not on the box / label themselves)
+	box.addEventListener('click', function (e) {   // table: a click on the row toggles its checkbox (not on the box / label themselves)
 		var row = e.target.closest('.userPermItem');
 		if (!row || e.target.closest('input, label, a, button')) return;
 		var cb = row.querySelector('input[name="perm[]"]');
@@ -161,7 +161,7 @@
 		});
 	});
 
-	// Copy from user… (0.8.649): the chosen user's active items (POST action "perm_of", nothing saved) are ticked here – Replace = exactly
+	// Copy from user…: the chosen user's active items (POST action "perm_of", nothing saved) are ticked here – Replace = exactly
 	// theirs, Add = the ticked ones stay; saved with Save, Undo as after All / None
 	var cdlg = document.getElementById('userPermCopyDlg');
 	if (cdlg) {
@@ -439,7 +439,7 @@
 	});
 })();
 
-/* One-time login link (nuBuilder's LOGIN_TOKEN, 0.8.339): copy button. */
+/* One-time login link (nuBuilder's LOGIN_TOKEN): copy button. */
 (function () {
 	'use strict';
 	var b = document.getElementById('loginTokenCopy'), f = document.getElementById('loginTokenUrl');
@@ -452,7 +452,7 @@
 	});
 })();
 
-/* E-mail (0.8.508): checked when the field is left – red with the message while the syntax is wrong (empty is fine; the server checks again). */
+/* E-mail: checked when the field is left – red with the message while the syntax is wrong (empty is fine; the server checks again). */
 (function () {
 	'use strict';
 	var el = document.getElementById('sus_email');
@@ -477,7 +477,7 @@
 	el.addEventListener('input', function () { if (el.classList.contains('is-invalid') && !bad()) show(false); });   // turns back as soon as it is right
 })();
 
-/* Welcome e-mail (0.8.508): ticking the switch shows in a toast what will be sent – the procedure nu_send_welcome_email, the e-mail
+/* Welcome e-mail: ticking the switch shows in a toast what will be sent – the procedure nu_send_welcome_email, the e-mail
    template nu_send_welcome_email in the user's language (else the one without a language) or the built-in text (NuWelcome::send). */
 (function () {
 	'use strict';
@@ -492,7 +492,7 @@
 		for (var i = 0; i < tries.length; i++) {
 			if (tries[i] !== null && Object.prototype.hasOwnProperty.call(src.tpl, tries[i])) return tx.tpl.replace('%s', src.tpl[tries[i]]);
 		}
-		// nuBuilder Next's read-only template nu_send_welcome_email_template (0.8.658): user's language, the session's, English
+		// nuBuilder Next's read-only template nu_send_welcome_email_template: user's language, the session's, English
 		var std = src.std || {}, tries2 = [lang, src.fallback, 'English'];
 		for (var j = 0; j < tries2.length; j++) {
 			if (tries2[j] && Object.prototype.hasOwnProperty.call(std, tries2[j])) return tx.std.replace('%s', std[tries2[j]]);
@@ -525,7 +525,7 @@
 	box.addEventListener('change', function () { if (box.checked) show(); });
 })();
 
-/* Additional access levels (0.8.585): add a row from the template, remove a row; "none" text while there is no row. */
+/* Additional access levels: add a row from the template, remove a row; "none" text while there is no row. */
 (function () {
 	'use strict';
 	var box = document.getElementById('xaBox'), rows = document.getElementById('xaRows'), tpl = document.getElementById('xaTpl'), add = document.getElementById('xaAdd');
@@ -550,7 +550,7 @@
 	});
 })();
 
-/* Effective rights (0.8.589): the rights of the main and the additional access levels together, as entered in the form (not saved
+/* Effective rights: the rights of the main and the additional access levels together, as entered in the form (not saved
    yet) – asked from the server (POST action "effective"); a tick names the additional levels it comes from. */
 (function () {
 	'use strict';
@@ -666,7 +666,7 @@
 	});
 })();
 
-/* Welcome e-mail preview (0.8.684): with "Preview the e-mail before sending" on, Save first asks the server (welcome_check=1: every check
+/* Welcome e-mail preview: with "Preview the e-mail before sending" on, Save first asks the server (welcome_check=1: every check
    of the save, nothing written) for the e-mail; errors → the normal save shows them. The dialog shows recipient, template, subject and the
    mail (iframe ?p=user&welcome_frame=… with a CSP of its own, editable through designMode – or as HTML). "Save and send" submits the form
    with the edited mail (welcome_edit, welcome_subject, welcome_html, welcome_choice, welcome_link); Cancel leaves the form as it was.
@@ -766,7 +766,7 @@
 	dlg.addEventListener('hidden.bs.modal', function () { if (!state.ok) frame.removeAttribute('src'); });
 })();
 
-// own titles of Code / Additional 1 / 2 (0.8.799): the pencil next to the label opens #userLblDlg; Save posts action=user_label and
+// own titles of Code / Additional 1 / 2: the pencil next to the label opens #userLblDlg; Save posts action=user_label and
 // changes the label in place (the form's own values stay untouched – nothing else is sent)
 (function () {
 	var dlg = document.getElementById('userLblDlg');
@@ -812,7 +812,7 @@
 	});
 })();
 
-/* Password reset by an administrator (0.8.901): passkeys only together with blocking; copy button of the link shown once. */
+/* Password reset by an administrator: passkeys only together with blocking; copy button of the link shown once. */
 (function () {
 	'use strict';
 	var block = document.getElementById('pwrBlock'), pk = document.getElementById('pwrPasskeys');
@@ -827,7 +827,7 @@
 	});
 })();
 
-// summary card (0.8.1230; Person card header 0.8.1018 / 0.8.1019): initials + name follow first / last name, else the full name
+// summary card (Person card header): initials + name follow first / last name, else the full name
 (function () {
 	'use strict';
 	var txt = document.getElementById('userAvatarTxt'), icon = document.getElementById('userAvatarIcon');
@@ -841,12 +841,12 @@
 		txt.textContent = s;
 		if (icon) icon.classList.toggle('d-none', s !== '');
 		var who = document.getElementById('userAvatarName'), full = ((n && n.value) || '').trim();
-		if (who) who.textContent = full || who.getAttribute('data-new') || '';   // summary card (0.8.1230)
+		if (who) who.textContent = full || who.getAttribute('data-new') || '';   // summary card
 	}
 	[f, l, n].forEach(function (e) { if (e) e.addEventListener('input', upd); });
 })();
 
-/* Custom user fields whose default uses the new user's values ({first_name}.{last_name}, 0.8.1074): filled while those fields are
+/* Custom user fields whose default uses the new user's values ({first_name}.{last_name}): filled while those fields are
    typed, until the field itself is changed by hand. */
 (function () {
 	'use strict';
@@ -869,7 +869,7 @@
 	fill();
 })();
 
-// summary: login, code, status and access level jump to their fields (0.8.1238)
+// summary: login, code, status and access level jump to their fields
 (function () {
 	document.addEventListener('click', function (e) {
 		var b = e.target.closest && e.target.closest('.userSumJump[data-nu-jump]');
@@ -883,11 +883,11 @@
 			if (tb) tb.click();
 		}
 		var ts = el.tomselect;
-		var vis = ts ? ts.wrapper : (el.closest('.nuDateWrap') || el);   // a date field in the language's format (0.8.1332)
+		var vis = ts ? ts.wrapper : (el.closest('.nuDateWrap') || el);   // a date field in the language's format
 		var box = vis.closest('.input-group') || vis;
 		box.scrollIntoView({ block: 'center', behavior: 'smooth' });
 		setTimeout(function () {
-			if (!ts && (!window.nuHasKeyboard || window.nuHasKeyboard())) el.focus({ preventScroll: true });   // no on-screen keyboard on touch screens (0.8.1239)
+			if (!ts && (!window.nuHasKeyboard || window.nuHasKeyboard())) el.focus({ preventScroll: true });   // no on-screen keyboard on touch screens
 			box.classList.remove('nuJumpFlash');
 			void box.offsetWidth;
 			box.classList.add('nuJumpFlash');

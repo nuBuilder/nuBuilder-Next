@@ -28,7 +28,7 @@
 		var re = new RegExp('[' + Object.keys(r).map(function (c) { return '\\' + c; }).join('') + ']', 'g');
 		return string.replace(re, function (c) { return r[c]; });
 	});
-	// small layout helpers of nuBuilder Forte's nuform.js that form code calls (0.8.975): text width, element with id, absolute bounds
+	// small layout helpers of nuBuilder Forte's nuform.js that form code calls: text width, element with id, absolute bounds
 	api('nuGetWordWidth', function (text, refElem) {
 		var $t = $('<div>', {text: text, css: {position: 'absolute', visibility: 'hidden', whiteSpace: 'nowrap', width: 'auto'}}).appendTo('body');
 		// no reference: the font of the form's labels – Forte measures in its body font, which is the labels' font there (Next's body is larger)
@@ -66,7 +66,7 @@
 		var s = getComputedStyle(e); return e.getBoundingClientRect().height + parseFloat(s.marginTop) + parseFloat(s.marginBottom);
 	});
 	api('nuRoundNearest', function (n, v) { return Math.round(n / v) * v; });
-	// $(…).clone() of a field of the fixed layout (0.8.975): in Forte a field carries its own size; here its wrapper does (the field is
+	// $(…).clone() of a field of the fixed layout: in Forte a field carries its own size; here its wrapper does (the field is
 	// width: 100 %). A clone placed elsewhere by form code (template fields cloned next to #nuRECORD) keeps the size it had – px – and
 	// the look of the fixed layout (class nuAbsClone, nuform.css)
 	if ($.fn.clone && !$.fn.clone.nuNext) {
@@ -132,7 +132,7 @@
 		return '<a href="' + esc(protocol + url) + '" target="' + esc(target || '_blank') + '" rel="noopener" title="' + esc(title) + '">' + text + '</a>';
 	});
 	api('nuGetURLParameterValue', function (name) { return new URLSearchParams(window.location.search).get(name); });
-	// nuBuilder's permalink in the address bar (0.8.568): here nuBuilder Next's own form address ?p=form&f=…&r=… (F5 opens the same record;
+	// nuBuilder's permalink in the address bar: here nuBuilder Next's own form address ?p=form&f=…&r=… (F5 opens the same record;
 	// index.php also accepts nuBuilder's ?f=…&r=…&h=…)
 	api('nuSetURLPermaLink', function () {
 		if (window.top !== window.self) return;
@@ -232,8 +232,10 @@
 		if (!t.length) { console.warn('Target element not found.'); return; }
 		if (appendToEnd) t.append('&nbsp;' + html); else t.prepend(html + '&nbsp;');
 	});
-	api('nuButtonIcon', function (id) { $(typeof id === 'string' && id.charAt(0) !== '#' ? '#' + id : id).css({'text-align': 'left', 'padding-left': '35px', 'background-size': '30px', 'background-repeat': 'no-repeat'}); });
-	// as nuBuilder: the icon goes INSIDE the button / word, before (or with "a|b" also after) the label – 0.8.559 (before: next to it);
+	api('nuButtonIcon',
+		function (id) { $(typeof id === 'string'
+			&& id.charAt(0) !== '#' ? '#' + id : id).css({'text-align': 'left', 'padding-left': '35px', 'background-size': '30px', 'background-repeat': 'no-repeat'}); });
+	// as nuBuilder: the icon goes INSIDE the button / word, before (or with "a|b" also after) the label – (before: next to it);
 	// the same markup the server draws for sob_input_icon (NuRender::withIcon)
 	api('nuAddInputIcon', function (id, icon) {
 		if (!icon || nuUserA11Y()) return;
@@ -270,10 +272,12 @@
 		});
 	});
 	api('nuToggleSize', function (id, h, w) {
-		nuToggleStyleAttribute(id, [{styleProp: 'height', dataAttr: 'data-nu-org-height', value: h === undefined ? null : h}, {styleProp: 'width', dataAttr: 'data-nu-org-width', value: w === undefined ? null : w}]);
+		nuToggleStyleAttribute(id,
+			[{styleProp: 'height', dataAttr: 'data-nu-org-height', value: h === undefined ? null : h}, {styleProp: 'width', dataAttr: 'data-nu-org-width', value: w === undefined ? null : w}]);
 	});
 	api('nuTogglePosition', function (id, top, left) {
-		nuToggleStyleAttribute(id, [{styleProp: 'top', dataAttr: 'data-nu-org-top', value: top === undefined ? null : top}, {styleProp: 'left', dataAttr: 'data-nu-org-left', value: left === undefined ? null : left}]);
+		nuToggleStyleAttribute(id,
+			[{styleProp: 'top', dataAttr: 'data-nu-org-top', value: top === undefined ? null : top}, {styleProp: 'left', dataAttr: 'data-nu-org-left', value: left === undefined ? null : left}]);
 	});
 	api('nuGetSelectedText', function (input) {
 		var el = typeof input === 'string' ? g(input) : input;
@@ -293,11 +297,11 @@
 	api('nuAddEventListenerOnce', function (target, type, fn, options, cls) {
 		if (!target.classList.contains(cls)) { target.addEventListener(type, fn, options); target.classList.add(cls); }
 	});
-	// nuBuilder Forte: a column's align code (l / r / c) as CSS text-align (0.8.965)
+	// nuBuilder Forte: a column's align code (l / r / c) as CSS text-align
 	api('nuAlign', function (a) { return ({l: 'left', r: 'right', c: 'center'})[a] || ''; });
 	api('nuAlignmentStyle', function (a) { return ({l: 'left', c: 'center', r: 'right'})[a]; });
 	api('nuCopyToClipboard', function (s) {
-		// as nuBuilder Forte: a field (jQuery object or element) gives its value; a string is the text itself (0.8.965)
+		// as nuBuilder Forte: a field (jQuery object or element) gives its value; a string is the text itself
 		if (s && typeof s === 'object') s = s.jquery ? s.val() : ('value' in s ? s.value : s.textContent);
 		if (s === undefined || s === null) s = '';
 		if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(String(s)).then(function () { return true; }, function () { return false; });
@@ -437,7 +441,8 @@
 		var input = g('prompt_value1');
 		input.value = defaultValue === undefined || defaultValue === null ? '' : defaultValue;
 		var done = false, modal = nuBs.modal(m);
-		var finish = function (ok) { if (done) return; done = true; if (m.classList.contains('show')) { m.classList.add('nuPromptHiding'); $(m).one('hidden.bs.modal', function () { m.classList.remove('nuPromptHiding'); }); } modal.hide(); try { cb(ok ? input.value : null, ok); } catch (e) { console.error(e); } };
+		var finish = function (ok) { if (done) return; done = true; if (m.classList.contains('show')) { m.classList.add('nuPromptHiding'); $(m).one('hidden.bs.modal',
+			function () { m.classList.remove('nuPromptHiding'); }); } modal.hide(); try { cb(ok ? input.value : null, ok); } catch (e) { console.error(e); } };
 		$('#nuPromptOk').off('click').on('click', function () { finish(true); });
 		$(input).off('keydown.nuPrompt').on('keydown.nuPrompt', function (e) { if (e.key === 'Enter') { e.preventDefault(); finish(true); } });
 		$(m).off('hidden.bs.modal.nuPrompt').on('hidden.bs.modal.nuPrompt', function () { finish(false); });
@@ -618,7 +623,7 @@
 	api('nuSubformHeaderToSeparatedString', function (fields, d, includeId) { return fields.slice(includeId ? 0 : 1).join(d) + '\n'; });
 	api('nuSubformToClipboard', function (sf, delimiter, includeHeader, includeId) {
 		var o = nuSubformObject(sf), d = delimiter || '\t';
-		// with the nuDelete column (title and 0 / 1), as nuBuilder Forte (0.8.965)
+		// with the nuDelete column (title and 0 / 1), as nuBuilder Forte
 		return nuCopyToClipboard((includeHeader ? nuSubformHeaderToSeparatedString(o.fields, d, !!includeId) : '') + nuSubformRowToSeparatedString(o.rows, d, !!includeId));
 	});
 	api('nuSubformMoveFocus', function (active, d) {
@@ -733,7 +738,7 @@
 	};
 	$.fn.nuUnhighlight = function () { return this.each(function () { if (window.nuHighlightClear) window.nuHighlightClear(this); }); };
 	// the search words / "phrases" of the browse list (NuBrowse::terms – -exclusions are not marked) in the searched columns; runs after
-	// loading as in nuBuilder (0.8.427) – again from form code it does nothing new (existing marks are skipped)
+	// loading as in nuBuilder – again from form code it does nothing new (existing marks are skipped)
 	api('nuHighlightSearch', function () {
 		var b = N.browse || {}, terms = b.hl || [], no = (b.nsc || []).map(Number), only = (b.sc || []).map(Number);
 		if (!terms.length || !window.nuHighlightText) return;
@@ -760,7 +765,7 @@
 			return this.each(function () { $(this).on('keydown', function (e) { if (e.key === 'Enter') { if (preventDefault) e.preventDefault(); fn.call(this, e); } }); });
 		};
 	}
-	// =================================================================== more nuBuilder 4.9 functions (compatibility report N3, 0.8.383)
+	// =================================================================== more nuBuilder 4.9 functions (compatibility report N3)
 	// nuActionCheckbox: a check box in the action bar; its state is kept in the property "<id>_filter" (or session / local storage)
 	if (!$.fn.nuActionCheckbox) {
 		$.fn.nuActionCheckbox = function (options) {
@@ -826,9 +831,9 @@
 	}
 })();
 
-/* Absolute layout (0.8.443): nuBuilder positions every field and every label on its own; nuBuilder Next puts label + field into one
+/* Absolute layout: nuBuilder positions every field and every label on its own; nuBuilder Next puts label + field into one
  * positioned wrapper #nuw_<id>. Form code that reads or sets top / left with jQuery on a field works on the wrapper, so label and field
- * move together as in nuBuilder ($('#x').css('top', …), .css({top: …}), $('#x').nuCSSNumber('top')). A label's top / left (0.8.965) are
+ * move together as in nuBuilder ($('#x').css('top', …), .css({top: …}), $('#x').nuCSSNumber('top')). A label's top / left are
  * form coordinates as in nuBuilder Forte: the label is placed there inside its wrapper (e.g. above the field) and stays there when the
  * field moves later; reading them gives the label's form position. */
 (function () {
@@ -844,7 +849,7 @@
 		if (el.id === 'label_' + id) return {w: w, label: true};
 		return null;
 	}
-	// a lookup's code / button / description (0.8.1215): nuBuilder Forte places each one on its own – reading gives its form position,
+	// a lookup's code / button / description: nuBuilder Forte places each one on its own – reading gives its form position,
 	// setting moves just that part (out of the input group) to the form position given
 	function partOf(el) {
 		if (!el || el.nodeType !== 1 || !el.id) return null;
@@ -909,7 +914,7 @@
 })();
 
 /*
- * Uppy (0.8.459): nuBuilder's nuUppyCreate / nuUppySetLanguage / nuUppyGetLanguageCodeAndLocale for file objects with target
+ * Uppy: nuBuilder's nuUppyCreate / nuUppySetLanguage / nuUppyGetLanguageCodeAndLocale for file objects with target
  * "File System" (template: code snippet nu_upload_file_uppy_code_template). Uppy itself is a library pack (vendor/packs/uppy-<version>/),
  * loaded by pages/nuform.php where a form uses it. nuUppyCreate() keeps the template unchanged: an XHRUpload endpoint
  * 'core/nuapi.php' (nuBuilder's upload) goes to index.php?p=upload with the CSRF header, and the form id is added to the meta data.
@@ -953,7 +958,7 @@
 	});
 
 	// Uppy built by the form's own code (new Uppy.Core() / new Uppy.Uppy() with XHRUpload to 'core/nuapi.php', as older nuBuilder Forte
-	// templates did) goes the same way as nuUppyCreate(): Uppy's use() is wrapped once on the class (0.8.1215)
+	// templates did) goes the same way as nuUppyCreate(): Uppy's use() is wrapped once on the class
 	function fixOpts(plugin, opts, inst) {
 		var U = window.Uppy;
 		if (plugin === U.XHRUpload && opts && typeof opts.endpoint === 'string' && ENDPOINT.test(opts.endpoint)) {
@@ -1204,7 +1209,7 @@
 })();
 
 /*
- * Textareas of the fixed (absolute) layout above the other objects while in use (0.8.1177, the owner): a textarea the user clicks into
+ * Textareas of the fixed (absolute) layout above the other objects while in use (the owner): a textarea the user clicks into
  * or resizes (Chrome / Edge: the corner handle) lies over the fields below it instead of under them – until the user clicks elsewhere.
  * Its new size stays. Grid / auto layouts need nothing: the objects below move down there.
  */

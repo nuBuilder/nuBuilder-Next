@@ -7,16 +7,16 @@ defined('NU_ROOT') || exit;
  * POST (CSRF-checked in index.php), JSON answers: action = upload | preview | columns | sample | check | import | discard
  */
 
-// admin rights (0.8.323): the globeadmin, or a user whose admin role has the right (core/nuadmin.php);
-// users (0.8.327): also whoever may add users – then only the target "Users" (NuImport::targets)
-// permission items of type "Data import" (0.8.773): their tables only (NuImport::allowedTables / modesFor)
+// admin rights: the globeadmin, or a user whose admin role has the right (core/nuadmin.php);
+// users: also whoever may add users – then only the target "Users" (NuImport::targets)
+// permission items of type "Data import": their tables only (NuImport::allowedTables / modesFor)
 if (!NuImport::canUsers() && !NuImport::itemRules()) NuAdmin::require('import', 'change');
 
-// template of the user import (0.8.330): the column titles as CSV – fill in with Excel, save as CSV, upload in step 1
+// template of the user import: the column titles as CSV – fill in with Excel, save as CSV, upload in step 1
 if (!nu_is_post() && ($_GET['action'] ?? '') === 'template' && ($_GET['target'] ?? '') === 'users') {
 	if (!NuImport::canUsers()) NuAcl::require(NuAcl::FORM_USER, 'add');
 	header('Cache-Control: no-store');
-	if (($zip = NuImport::userTemplateZip()) !== null) {            // 0.8.752: CSV + readme.txt
+	if (($zip = NuImport::userTemplateZip()) !== null) {            // CSV + readme.txt
 		header('Content-Type: application/zip');
 		header('Content-Disposition: attachment; filename="users-import-template.zip"');
 		header('Content-Length: ' . strlen($zip));
@@ -28,58 +28,7 @@ if (!nu_is_post() && ($_GET['action'] ?? '') === 'template' && ($_GET['target'] 
 }
 if (NuImpersonate::active()) { nu_flash('warning', t('imp_err_route')); nu_redirect(nu_url('home')); }
 
-if (nu_is_post()) {
-	header('Content-Type: application/json; charset=utf-8');
-	header('Cache-Control: no-store');
-	$out = static fn(array $a) => exit(json_encode($a, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE));
-	try {
-		nu_time_limit(600);
-		$action = nu_post('action');
-		$read = NuImport::readOptions($_POST);
-		switch ($action) {
-			case 'upload':
-				$info = NuImport::upload($_FILES['file'] ?? []);
-				$read = NuImport::readOptions(['delimiter' => $info['delimiter'], 'header' => $_POST['header'] ?? '1', 'quote' => $_POST['quote'] ?? '"']);
-				$out(['ok' => true, 'file' => ['name' => $info['name'], 'size' => $info['size'], 'encoding' => $info['encoding']],
-					'delimiter' => $info['delimiter'] === "\t" ? 'tab' : $info['delimiter'], 'sheets' => $info['sheets'] ?? [], 'sheet' => $info['sheet'] ?? 0] + NuImport::preview($read));
-			case 'sheet':                                                 // another sheet of the uploaded spreadsheet (0.8.755)
-				$info = NuImport::chooseSheet((int)nu_post('sheet'));
-				$read = NuImport::readOptions(['delimiter' => ',', 'header' => $_POST['header'] ?? '1', 'quote' => '"']);
-				$out(['ok' => true, 'sheets' => $info['sheets'], 'sheet' => $info['sheet'], 'delimiter' => ','] + NuImport::preview($read));
-			case 'preview':
-				$out(['ok' => true] + NuImport::preview($read));
-			case 'columns':
-				$out(['ok' => true, 'columns' => array_values(NuImport::columns(nu_post('table')))]);
-			case 'sample':
-				$table = nu_post('table');
-				$cols = NuImport::columns($table);
-				$width = count(NuImport::preview($read)['headers']);
-				$map = NuImport::mapping(json_decode((string)($_POST['mapping'] ?? '{}'), true) ?: [], $cols, $width);
-				$out(['ok' => true, 'sample' => NuImport::sample($read, $cols, $map, NuImport::options($_POST))]);
-			case 'check':
-			case 'import':
-				$table = nu_post('table');
-				$opt = NuImport::options($_POST);
-				$res = NuImport::run($table, $read, json_decode((string)($_POST['mapping'] ?? '{}'), true) ?: [], $opt, $action === 'check');
-				if ($action === 'import') {
-					$file = NuImport::current();
-					$via = $table !== NuImport::USERS && !NuImport::allTables() ? (NuImport::itemRules()[$table]['items'] ?? []) : [];
-					NuLog::write($res['rolled_back'] ? 'csv_import_failed' : 'csv_imported', $table, '', ($via ? ['permission_items' => $via] : []) + [
-						'file' => $file['name'] ?? '', 'mode' => $opt['mode'], 'inserted' => $res['inserted'], 'updated' => $res['updated'],
-						'failed' => $res['failed'], 'rows' => $res['rows'], 'rolled_back' => $res['rolled_back']] + ($table === NuImport::USERS ? ['skipped' => $res['skipped'], 'welcome' => $res['welcome']] : []));
-					if (!$res['rolled_back']) NuImport::discard();       // done: the temp file is deleted
-				}
-				$out(['ok' => true] + $res);
-			case 'discard':
-				NuImport::discard();
-				$out(['ok' => true]);
-		}
-		$out(['ok' => false, 'error' => t('err_not_found')]);
-	} catch (Throwable $e) {
-		if (!$e instanceof RuntimeException) error_log('nuBuilder Next CSV import: ' . $e->getMessage());
-		$out(['ok' => false, 'error' => $e instanceof RuntimeException ? $e->getMessage() : t('imp_err_general') . (nu_debug() ? ' ' . $e->getMessage() : '')]);
-	}
-}
+NuImportPage::post(get_defined_vars());   // the POST actions (code review R7, nuimportpage.php)
 
 // ------------------------------------------------------------------ page
 $texts = [];
@@ -115,8 +64,9 @@ nu_layout_start(t('imp_title'), 'home', ['head' => '<link rel="stylesheet" href=
 		</ol></div>
 	</div>
 	<div id="impMsg" aria-live="polite"></div>
-	<?php if (!NuImport::allTables() && ($rules = NuImport::itemRules())): // permission items of type Data import (0.8.773): where the right comes from ?>
-		<div class="alert alert-info small d-flex gap-2" id="impItemsNote"><i class="bi bi-key mt-1" aria-hidden="true"></i><div><?= h(t('imp_items_note', implode(', ', array_keys($rules)), implode(', ', array_unique(array_merge(...array_column($rules, 'items')))))) ?></div></div>
+	<?php if (!NuImport::allTables() && ($rules = NuImport::itemRules())): // permission items of type Data import: where the right comes from ?>
+		<div class="alert alert-info small d-flex gap-2" id="impItemsNote"><i class="bi bi-key mt-1"
+			aria-hidden="true"></i><div><?= h(t('imp_items_note', implode(', ', array_keys($rules)), implode(', ', array_unique(array_merge(...array_column($rules, 'items')))))) ?></div></div>
 	<?php endif; ?>
 
 	<!-- step 1: file -->
@@ -129,20 +79,22 @@ nu_layout_start(t('imp_title'), 'home', ['head' => '<link rel="stylesheet" href=
 				<span class="small text-body-secondary d-block"><?= h($pssOk ? t('imp_drop_hint_xlsx2', NuImport::maxBytes() >> 20) : t('imp_drop_hint', NuImport::maxBytes() >> 20)) ?></span>
 				<input type="file" id="impFile" accept=".csv,.txt,.tsv,.tab,text/csv,text/plain<?= $pssOk ? ',.xlsx,.xls,.ods' : '' ?>" class="visually-hidden">
 			</label>
-			<?php if (!$pssOk): // Excel files need the PhpSpreadsheet library pack (0.8.755) ?>
+			<?php if (!$pssOk): // Excel files need the PhpSpreadsheet library pack ?>
 				<div class="small text-body-secondary mt-2" id="impXlsxHint"><i class="bi bi-file-earmark-spreadsheet me-1" aria-hidden="true"></i><?= h(NuSpreadsheet::problem() ?: t('pss_missing')) ?>
 					<?php if (NuAdmin::can('update')): ?> <a href="<?= h(nu_url('update', ['tab' => 'libraries'])) ?>#libraries"><?= h(t('pss_install_link')) ?></a><?php endif; ?></div>
 			<?php endif; ?>
 			<div class="d-flex flex-wrap gap-2 align-items-center mt-2">
 				<label class="btn btn-sm btn-outline-secondary mb-0" for="impConfigFile"><i class="bi bi-folder2-open me-1"></i><?= h(t('imp_config_load')) ?></label>
 				<input type="file" id="impConfigFile" accept=".json,application/json" class="visually-hidden">
-				<?php $tpls = NuImport::canUsers() ? [['users', t('imp_tpl_users'), t('imp_tpl_zip_tip')]] : [];   // templates (0.8.870): always offered; a new one = an entry here + its action=template branch above ?>
+				<?php $tpls = NuImport::canUsers() ? [['users', t('imp_tpl_users'), t('imp_tpl_zip_tip')]] : [];   // templates: always offered; a new one = an entry here + its action=template branch above ?>
 				<?php if ($tpls): ?>
 					<div class="dropdown" id="impTplMenu">
-						<button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="impTplBtn" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-file-earmark-arrow-down me-1"></i><?= h(t('imp_tpl_menu')) ?></button>
+						<button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="impTplBtn" data-bs-toggle="dropdown"
+							aria-expanded="false"><i class="bi bi-file-earmark-arrow-down me-1"></i><?= h(t('imp_tpl_menu')) ?></button>
 						<ul class="dropdown-menu impTplList" aria-labelledby="impTplBtn">
 							<?php foreach ($tpls as [$key, $label, $tip]): ?>
-								<li><a class="dropdown-item" href="<?= h(nu_url('import', ['target' => $key, 'action' => 'template'])) ?>" download data-tpl="<?= h($key) ?>"><span class="d-block"><?= h($label) ?></span><span class="d-block small text-body-secondary text-wrap"><?= h($tip) ?></span></a></li>
+								<li><a class="dropdown-item" href="<?= h(nu_url('import', ['target' => $key, 'action' => 'template'])) ?>" download
+									data-tpl="<?= h($key) ?>"><span class="d-block"><?= h($label) ?></span><span class="d-block small text-body-secondary text-wrap"><?= h($tip) ?></span></a></li>
 							<?php endforeach; ?>
 						</ul>
 					</div>
@@ -157,7 +109,7 @@ nu_layout_start(t('imp_title'), 'home', ['head' => '<link rel="stylesheet" href=
 			</div>
 			<div class="card-body">
 				<div class="row g-2 mb-3">
-					<div class="col-sm-6 col-lg-6 d-none" id="impSheetWrap"><!-- spreadsheets: the sheet instead of separator and quote (0.8.755) -->
+					<div class="col-sm-6 col-lg-6 d-none" id="impSheetWrap"><!-- spreadsheets: the sheet instead of separator and quote -->
 						<label class="form-label small mb-1" for="impSheet"><?= h(t('imp_sheet')) ?></label>
 						<select class="form-select" id="impSheet"></select>
 					</div>
@@ -242,8 +194,10 @@ nu_layout_start(t('imp_title'), 'home', ['head' => '<link rel="stylesheet" href=
 						<select class="form-select" id="impOnError"><option value="stop"><?= h(t('imp_on_error_stop')) ?></option><option value="skip"><?= h(t('imp_on_error_skip')) ?></option></select>
 					</div>
 					<div class="col-md-6 col-lg-4 d-flex flex-column justify-content-end gap-1">
-						<div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" id="impTrim" checked><label class="form-check-label" for="impTrim"><?= h(t('imp_trim')) ?></label></div>
-						<div class="form-check form-switch impTableOnly"><input class="form-check-input" type="checkbox" role="switch" id="impAudit" checked><label class="form-check-label" for="impAudit"><?= h(t('imp_audit')) ?></label></div>
+						<div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" id="impTrim"
+							checked><label class="form-check-label" for="impTrim"><?= h(t('imp_trim')) ?></label></div>
+						<div class="form-check form-switch impTableOnly"><input class="form-check-input" type="checkbox" role="switch" id="impAudit"
+							checked><label class="form-check-label" for="impAudit"><?= h(t('imp_audit')) ?></label></div>
 					</div>
 					<div class="col-12 impUsersOnly d-none">
 						<?php $mailOk = NuMail::configured(); ?>

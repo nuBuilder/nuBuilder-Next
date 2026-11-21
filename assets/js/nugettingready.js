@@ -1,4 +1,4 @@
-/* Getting ready checklist (0.8.1310, pages/nugettingready.php): on phones the steps are one scrolling row – show the current step. */
+/* Getting ready checklist (pages/nugettingready.php): on phones the steps are one scrolling row – show the current step. */
 (function () {
 	'use strict';
 	var a = document.querySelector('.nuGrSteps .nuGrStep.active');

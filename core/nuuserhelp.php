@@ -3,13 +3,13 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * User help pages (0.8.1023): help for the people who USE an application built with nuBuilder Next – written in the browser, no code.
+ * User help pages: help for the people who USE an application built with nuBuilder Next – written in the browser, no code.
  *
  * - Table zzzzsys_nunext_help: one row per page and language. The row with lang '' is the page itself (code, parent, order, access
  *   levels, active); rows with a language code are its translations (title, text, keywords only). The reader takes the row of the
  *   user's language, else the page itself.
  * - Text: HTML (TinyMCE, cleaned by NuHtmlClean::doc on save) or Markdown (NuMarkdown). Links to other pages: "#help=<code>".
- *   Pictures are files (0.8.1024): custom/userhelp/<sha256>.<ext>, served to signed-in users by ?p=userhelpimg&f=<name>; pictures inside
+ *   Pictures are files: custom/userhelp/<sha256>.<ext>, served to signed-in users by ?p=userhelpimg&f=<name>; pictures inside
  *   the text (data:image) become files on save, an export carries them inside again, housekeeping removes files no page uses.
  * - Who reads: everyone signed in, or only the access levels of the page (any level of the user counts). Inside the text,
  *     [[level: sales, support]] … [[else]] … [[/level]]   shown only to these access levels (codes), [[else]] = for everybody else
@@ -46,7 +46,8 @@ final class NuUserHelp
 	public static function rows(): array
 	{
 		if (!self::ready()) return [];
-		return NuMemo::get('uhelp:rows', [self::T], static fn(): array => nu_db()->all('SELECT zzzzsys_nunext_help_id AS id, code, lang, title, format, parent, sort_order, access, keywords, active, updated_at, updated_by FROM '
+		return NuMemo::get('uhelp:rows', [self::T],
+			static fn(): array => nu_db()->all('SELECT zzzzsys_nunext_help_id AS id, code, lang, title, format, parent, sort_order, access, keywords, active, updated_at, updated_by FROM '
 			. self::T . ' ORDER BY sort_order, title'));
 	}
 
@@ -273,7 +274,8 @@ final class NuUserHelp
 		$out = '';
 		foreach ($parts as $p) {
 			if (preg_match('~^\[\[\s*(level|not)\s*:([^\]]*)\]\]$~i', $p, $m)) {
-				$list = array_values(array_filter(array_map(static fn($x) => mb_strtolower(trim(html_entity_decode(strip_tags($x), ENT_QUOTES | ENT_HTML5, 'UTF-8'))), explode(',', $m[2])), static fn($x) => $x !== ''));
+				$list = array_values(array_filter(array_map(static fn($x) => mb_strtolower(trim(html_entity_decode(strip_tags($x), ENT_QUOTES | ENT_HTML5, 'UTF-8'))), explode(',', $m[2])),
+					static fn($x) => $x !== ''));
 				$hit = (bool)array_intersect($list, $codes);
 				$kind = strtolower($m[1]);
 				$show = $kind === 'level' ? $hit : !$hit;
@@ -408,7 +410,7 @@ final class NuUserHelp
 		return $out;
 	}
 
-	// ------------------------------------------------------------------ linking from the help page editor (0.8.1054)
+	// ------------------------------------------------------------------ linking from the help page editor
 
 	/** Who may link pages to forms: change right on help pages + save right on nuform (as design mode), not in demo mode. */
 	public static function canLink(): bool
@@ -496,7 +498,8 @@ final class NuUserHelp
 		}
 		NuFormMeta::forget($formId);
 		$draft = NuFormDraft::patchOpen($formId, $apply);
-		NuLog::write($code === null ? 'userhelp_unlinked' : 'userhelp_linked', 'zzzzsys_form', $formId, ['page' => $code ?? $cur, 'place' => $place, 'replaced' => $code !== null && $cur !== '' ? $cur : null, 'draft' => $draft ?: null]);
+		NuLog::write($code === null ? 'userhelp_unlinked' : 'userhelp_linked', 'zzzzsys_form', $formId,
+			['page' => $code ?? $cur, 'place' => $place, 'replaced' => $code !== null && $cur !== '' ? $cur : null, 'draft' => $draft ?: null]);
 		return ['ok' => true, 'draft' => $draft];
 	}
 
@@ -594,7 +597,9 @@ final class NuUserHelp
 				}
 			} else {
 				$id = nu_id();
-				$db->insert(self::T, ['zzzzsys_nunext_help_id' => $id, 'lang' => $lang, 'created_at' => $row['updated_at']] + $row + ($lang !== '' ? ['code' => $code, 'parent' => '', 'sort_order' => 0, 'access' => '', 'active' => '1'] : []));
+				$db->insert(self::T,
+					['zzzzsys_nunext_help_id' => $id, 'lang' => $lang,
+						'created_at' => $row['updated_at']] + $row + ($lang !== '' ? ['code' => $code, 'parent' => '', 'sort_order' => 0, 'access' => '', 'active' => '1'] : []));
 			}
 		});
 		self::forget();
@@ -709,11 +714,12 @@ final class NuUserHelp
 	public static function foot(): string
 	{
 		return '<div id="nuUhPanelTexts" hidden data-uhelp-base="' . h(nu_url('userhelp')) . '" data-close="' . h(t('close')) . '" data-back="' . h(t('back')) . '" data-newtab="' . h(t('uh_newtab'))
-			. '" data-loading="' . h(t('uh_loading')) . '" data-error="' . h(t('uh_not_found')) . '" data-insection="' . h(t('uh_in_section')) . '" data-edit="' . h(t('edit')) . '" data-resize="' . h(t('bsq_resize')) . '"></div>'
+			. '" data-loading="' . h(t('uh_loading')) . '" data-error="' . h(t('uh_not_found')) . '" data-insection="' . h(t('uh_in_section')) . '" data-edit="'
+				. h(t('edit')) . '" data-resize="' . h(t('bsq_resize')) . '"></div>'
 			. '<script src="' . nu_asset('assets/js/nuuserhelp.js') . '"></script>';
 	}
 
-	// ------------------------------------------------------------------ pictures as files (0.8.1024)
+	// ------------------------------------------------------------------ pictures as files
 
 	public const IMG_TYPES = ['image/png' => 'png', 'image/jpeg' => 'jpg', 'image/gif' => 'gif', 'image/webp' => 'webp'];
 	public const IMG_MAX = 10 * 1024 * 1024;
@@ -807,7 +813,7 @@ final class NuUserHelp
 	// ------------------------------------------------------------------ AI draft
 
 	/**
-	 * Forms a form leads to (0.8.1025): its sub-forms (a table of rows inside the screen), the forms behind its lookups (the list to pick
+	 * Forms a form leads to: its sub-forms (a table of rows inside the screen), the forms behind its lookups (the list to pick
 	 * a value from) and the forms its buttons open. @return list<array{id: string, name: string, kind: string, via: list<string>, on: bool}>
 	 * (on = proposed: sub-forms, they are part of the screen)
 	 */
@@ -831,7 +837,8 @@ final class NuUserHelp
 			if ($kind === '' || $target === '' || $target === $formId || !isset($forms[$target])) continue;
 			$label = trim(html_entity_decode(strip_tags((string)$o['sob_all_label']), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
 			$key = $target . '|' . $kind;
-			$out[$key] ??= ['id' => $target, 'name' => (string)($forms[$target]['description'] ?? '') ?: (string)($forms[$target]['code'] ?? $target), 'kind' => $kind, 'via' => [], 'on' => $kind === 'subform'];
+			$out[$key] ??= ['id' => $target, 'name' => (string)($forms[$target]['description'] ?? '') ?: (string)($forms[$target]['code'] ?? $target),
+				'kind' => $kind, 'via' => [], 'on' => $kind === 'subform'];
 			if ($label !== '' && !in_array($label, $out[$key]['via'], true)) $out[$key]['via'][] = $label;
 		}
 		$order = ['subform' => 0, 'lookup' => 1, 'button' => 2];

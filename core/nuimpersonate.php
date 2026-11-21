@@ -5,10 +5,10 @@ defined('NU_ROOT') || exit;
 /**
  * "Act as user": the globeadmin works as another user – with that user's access level, rights, permission items and hash variables.
  *   mode 'view': only view / print (no save, delete, clone, new, no procedures, no form posts) · mode 'full': everything the user may do.
- * The globeadmin's own login stays in the session ($_SESSION['nu_imp']['orig']) and comes back with "Back to globeadmin".
+ * The globeadmin's own login stays in the session ($_SESSION[NuSess::IMP]['orig']) and comes back with "Back to globeadmin".
  * Not allowed while acting: change password, security page (2FA, devices) – they belong to the user.
- * Test an admin role (0.8.1318): the same, with a role of zzzzsys_nunext_admin_role applied to the chosen user for this session only
- * ($_SESSION['nu_imp']['role']; NuAdmin::role() returns it and its rights count while acting) – nothing is saved. Who may: the
+ * Test an admin role: the same, with a role of zzzzsys_nunext_admin_role applied to the chosen user for this session only
+ * ($_SESSION[NuSess::IMP]['role']; NuAdmin::role() returns it and its rights count while acting) – nothing is saved. Who may: the
  * globeadmin, or a user with the rights impersonate + adminroles (change) for roles whose rights he has himself, never on another admin.
  */
 final class NuImpersonate
@@ -17,7 +17,7 @@ final class NuImpersonate
 
 	public static function active(): ?array
 	{
-		$i = $_SESSION['nu_imp'] ?? null;
+		$i = $_SESSION[NuSess::IMP] ?? null;
 		return is_array($i) && isset($i['orig'], $i['id']) ? $i : null;
 	}
 
@@ -26,7 +26,7 @@ final class NuImpersonate
 		return (self::active()['mode'] ?? '') === 'view';
 	}
 
-	/** The admin role tested while acting (0.8.1318): the session entry with 'role' / 'role_name', or null. */
+	/** The admin role tested while acting: the session entry with 'role' / 'role_name', or null. */
 	public static function testRole(): ?array
 	{
 		$i = self::active();
@@ -75,7 +75,7 @@ final class NuImpersonate
 		if (!$me || !NuAdmin::can('impersonate', 'change') || self::active()) return 'imp_err_not_allowed';
 		if (!empty($me['demo'])) return 'demo_not_available';     // demo mode: never another user's rights
 		$role = null;
-		if ($roleId !== '') {                                       // test an admin role (0.8.1318)
+		if ($roleId !== '') {                                       // test an admin role
 			$role = NuAdmin::get($roleId);
 			if (!$role) return 'record_not_found';
 			if (!self::canTest($role)) return 'imp_err_not_allowed';
@@ -85,14 +85,14 @@ final class NuImpersonate
 		$row = nu_db()->one('SELECT zzzzsys_user_id, sus_login_name, sus_login_password FROM zzzzsys_user WHERE zzzzsys_user_id = ?', [$userId]);
 		if (!$row) return 'record_not_found';
 		if (!$me['globeadmin'] && (NuAdmin::roleOfUser($userId) !== null || (string)$me['id'] === $userId)) return 'imp_err_not_allowed';   // admin roles: not another admin
-		$orig = $_SESSION['nu_auth'];
+		$orig = $_SESSION[NuSess::AUTH];
 		$target = ['id' => (string)$row['zzzzsys_user_id'], 'globeadmin' => false, 'login' => (string)$row['sus_login_name'],
 			'fp' => NuAuth::fingerprint((string)$row['sus_login_password']), 'via' => 'impersonated'];
 		NuLog::write('impersonate_start', 'zzzzsys_user', $target['id'], ['login' => $target['login'], 'mode' => $mode] + ($role ? ['role' => (string)$role['code']] : []));
 		NuAuth::startAs($target);
-		$_SESSION['nu_imp'] = ['orig' => $orig, 'id' => $target['id'], 'login' => $target['login'], 'mode' => $mode, 'by' => (string)$me['login'],
+		$_SESSION[NuSess::IMP] = ['orig' => $orig, 'id' => $target['id'], 'login' => $target['login'], 'mode' => $mode, 'by' => (string)$me['login'],
 			'since' => time(), 'back' => self::safeBack($back)] + ($role ? ['role' => (string)$role['id'], 'role_name' => (string)$role['name'], 'role_code' => (string)$role['code']] : []);
-		unset($_SESSION['nu_hashcookies'], $_SESSION['nu_vendor']);
+		unset($_SESSION[NuSess::HASH_COOKIES], $_SESSION[NuSess::VENDOR]);
 		return null;
 	}
 
@@ -101,8 +101,9 @@ final class NuImpersonate
 	{
 		$i = self::active();
 		if (!$i) return nu_url('home');
-		$details = ['login' => $i['login'], 'mode' => $i['mode'], 'minutes' => (int)round((time() - (int)$i['since']) / 60)] + ((string)($i['role_code'] ?? '') !== '' ? ['role' => (string)$i['role_code']] : []) + ($why !== '' ? ['reason' => $why] : []);
-		unset($_SESSION['nu_imp'], $_SESSION['nu_hashcookies']);
+		$details = ['login' => $i['login'], 'mode' => $i['mode'],
+			'minutes' => (int)round((time() - (int)$i['since']) / 60)] + ((string)($i['role_code'] ?? '') !== '' ? ['role' => (string)$i['role_code']] : []) + ($why !== '' ? ['reason' => $why] : []);
+		unset($_SESSION[NuSess::IMP], $_SESSION[NuSess::HASH_COOKIES]);
 		NuAuth::startAs($i['orig']);
 		NuLog::write('impersonate_end', 'zzzzsys_user', (string)$i['id'], $details, ['id' => (string)$i['orig']['id'], 'login' => (string)$i['by']]);
 		return $i['back'] !== '' ? $i['back'] : nu_url('home');
@@ -146,7 +147,7 @@ final class NuImpersonate
 	}
 
 	/** "Act as user" dropdown (user form, sessions page). */
-	/** $iconOnly: just the icon (user page, in front of the user name – 0.8.200), the label as tooltip. */
+	/** $iconOnly: just the icon (user page, in front of the user name), the label as tooltip. */
 	public static function button(string $userId, string $login, string $back, bool $small = false, bool $iconOnly = false): string
 	{
 		$u = NuAuth::user();
@@ -159,7 +160,8 @@ final class NuImpersonate
 			. '<button class="dropdown-item" type="submit"><i class="bi ' . $icon . ' me-2"></i>' . $label . '</button></form></li>';
 		$menu = '<ul class="dropdown-menu ' . ($iconOnly ? 'nuImpMenu' : 'dropdown-menu-end') . '">';
 		$toggle = $iconOnly
-			? '<div class="dropdown nuImpIcon"><button class="btn nuImpIconBtn" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="' . h(t('imp_act_as')) . '" aria-label="' . h(t('imp_act_as_user', $login)) . '">'
+			? '<div class="dropdown nuImpIcon"><button class="btn nuImpIconBtn" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="'
+				. h(t('imp_act_as')) . '" aria-label="' . h(t('imp_act_as_user', $login)) . '">'
 				. '<i class="bi bi-person-fill-gear"></i></button>'
 			: '<div class="dropdown"><button class="btn ' . ($small ? 'btn-sm ' : '') . 'btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">'
 				. '<i class="bi bi-person-fill-gear me-1"></i>' . h(t('imp_act_as')) . '</button>';

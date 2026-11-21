@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Notification centre (0.8.357): messages for users – the bell in the top bar (red badge = unread), its panel, ?p=notifications
+ * Notification centre: messages for users – the bell in the top bar (red badge = unread), its panel, ?p=notifications
  * (own notifications; "Manage" for senders), PHP nuNextNotify(), REST API POST /v1/notifications.
  *
  * Tables: zzzzsys_nunext_notification (one row per notification: text, level, link, audience JSON, mode, times, flags, status) and
@@ -119,7 +119,7 @@ final class NuNotify
 			'email' => (string)(nu_cfg('nuConfigGlobeadminEmail') ?? '')];
 		$none = ['id' => (string)$u['id'], 'login' => (string)$u['login'], 'name' => '', 'department' => '', 'team' => '', 'position' => '',
 			'access' => (string)($u['access_id'] ?? ''), 'email' => (string)($u['email'] ?? '')];
-		// from the user's own row (0.8.1341) – people() reads EVERY user, and the bell asks on each page and each check (10,000 users = 10,000
+		// from the user's own row – people() reads EVERY user, and the bell asks on each page and each check (10,000 users = 10,000
 		// rows a minute per open tab). The same person as people() gives: no login name or expired = none of the groups.
 		$r = NuAuth::userRow((string)$u['id']);
 		if (!$r || (string)($r['sus_login_name'] ?? '') === '') return $none;
@@ -133,7 +133,7 @@ final class NuNotify
 
 	public static function matches(array $aud, array $p): bool
 	{
-		if (in_array($p['id'], (array)($aud['exclude'] ?? []), true)) return false;   // "Exclude users" wins over everything (0.8.510)
+		if (in_array($p['id'], (array)($aud['exclude'] ?? []), true)) return false;   // "Exclude users" wins over everything
 		if (!empty($aud['all'])) return true;
 		$in = static fn(string $k, string $v) => $v !== '' && in_array(mb_strtolower($v), array_map('mb_strtolower', (array)($aud[$k] ?? [])), true);
 		return in_array($p['id'], (array)($aud['users'] ?? []), true) || $in('departments', $p['department']) || $in('teams', $p['team'])
@@ -154,7 +154,8 @@ final class NuNotify
 	{
 		$people = self::people();
 		$logins = array_change_key_case(array_column($people, 'id', 'login'));
-		$list = static fn($v) => array_values(array_unique(array_filter(array_map(static fn($x) => mb_substr(trim((string)$x), 0, 100), is_array($v) ? $v : (is_string($v) && $v !== '' ? explode(',', $v) : [])), static fn($x) => $x !== '')));
+		$list = static fn($v) => array_values(array_unique(array_filter(array_map(static fn($x) => mb_substr(trim((string)$x), 0, 100), is_array($v) ? $v : (is_string($v) && $v !== '' ? explode(',', $v) : [])),
+			static fn($x) => $x !== '')));
 		$aud = ['all' => !empty($in['all']) && $in['all'] !== '0'];
 		foreach (self::AUD_KEYS as $k) $aud[$k] = $list($in[$k] ?? ($k === 'access' ? ($in['access_levels'] ?? []) : []));
 		$ids = static fn(array $v) => array_values(array_unique(array_filter(array_map(static function ($x) use ($people, $logins) {
@@ -162,7 +163,7 @@ final class NuNotify
 			return $logins[mb_strtolower($x)] ?? null;
 		}, $v))));
 		$aud['users'] = $ids($aud['users']);
-		$aud['exclude'] = $ids($list($in['exclude'] ?? []));   // users left out (0.8.510) – not a recipient group: an audience of only exclusions is empty
+		$aud['exclude'] = $ids($list($in['exclude'] ?? []));   // users left out – not a recipient group: an audience of only exclusions is empty
 		if ($own) {
 			$g = self::ownGroups();
 			$aud = ['all' => false, 'users' => [], 'positions' => [], 'access' => [], 'exclude' => [],
@@ -244,13 +245,13 @@ final class NuNotify
 		return self::$mine = self::mineRows('n.*', $max);
 	}
 
-	/** The columns the top bar's count needs – no title, no text (0.8.1341). */
+	/** The columns the top bar's count needs – no title, no text. */
 	private const LIGHT = 'n.zzzzsys_nunext_notification_id, n.audience, n.mode, n.must_confirm';
 	private static ?array $light = null;
 
 	/**
 	 * For the bell in the top bar of every page: how many are unread, their ids, and whether one waits to be confirmed – read without
-	 * the texts (performance review, 0.8.1341: every page view fetched up to 300 notifications with their whole text for one number).
+	 * the texts (performance review: every page view fetched up to 300 notifications with their whole text for one number).
 	 * @return array{unread: int, unread_ids: list<string>, confirm: bool}
 	 */
 	public static function counts(): array
@@ -274,7 +275,7 @@ final class NuNotify
 		$rows = nu_db()->page('SELECT ' . $cols . ', s.recipient AS s_recipient, s.read_at, s.hidden_at, s.confirmed_at FROM ' . self::T . ' n LEFT JOIN ' . self::U
 			. " s ON s.notification_id = n.zzzzsys_nunext_notification_id AND s.user_id = ? WHERE n.status = 'published' AND (n.publish_at IS NULL OR n.publish_at <= ?)"
 			. ' AND (n.expires_at IS NULL OR n.expires_at > ?)', [$p['id'], $now, $now], 'n.pinned DESC, n.publish_at DESC, n.created_at DESC', $max, 0);
-		$demo = NuDemo::active() ? (array)($_SESSION['nu_ntf'] ?? []) : null;
+		$demo = NuDemo::active() ? (array)($_SESSION[NuSess::NOTIFY] ?? []) : null;
 		$out = [];
 		foreach ($rows as $r) {
 			$aud = json_decode((string)$r['audience'], true);
@@ -290,13 +291,15 @@ final class NuNotify
 	/** One notification for the bell / page (escaped HTML where needed). */
 	public static function item(array $r): array
 	{
-		return ['id' => (string)$r['zzzzsys_nunext_notification_id'], 'title' => (string)$r['title'], 'body' => self::bodyHtml((string)$r['body'], (string)($r['format'] ?? '')), 'text' => self::bodyText((string)$r['body'], (string)($r['format'] ?? '')),
+		return ['id' => (string)$r['zzzzsys_nunext_notification_id'], 'title' => (string)$r['title'],
+			'body' => self::bodyHtml((string)$r['body'], (string)($r['format'] ?? '')),
+			'text' => self::bodyText((string)$r['body'], (string)($r['format'] ?? '')),
 			'level' => (string)$r['level'], 'icon' => self::LEVELS[$r['level']] ?? 'bi-info-circle', 'link' => self::safeLink((string)$r['link']), 'pinned' => (string)$r['pinned'] === '1',
 			'confirm' => (string)$r['must_confirm'] === '1', 'at' => (string)($r['publish_at'] ?: $r['created_at']), 'ago' => self::ago((string)($r['publish_at'] ?: $r['created_at'])),
 			'read' => (string)$r['read_at'] !== '', 'hidden' => (string)$r['hidden_at'] !== '', 'confirmed' => (string)$r['confirmed_at'] !== '', 'by' => (string)$r['created_by']];
 	}
 
-	/** A link as save() allows it (http(s)://…, index.php…, ?…) or '' – also for rows written past save() (0.8.367: no javascript: links). */
+	/** A link as save() allows it (http(s)://…, index.php…, ?…) or '' – also for rows written past save() (no javascript: links). */
 	public static function safeLink(string $link): string
 	{
 		$link = trim($link);
@@ -304,7 +307,7 @@ final class NuNotify
 	}
 
 	/**
-	 * The text as HTML. Format 'text': escaped, line breaks, http(s) links clickable; 'html' (formatted text, 0.8.400): cleaned again
+	 * The text as HTML. Format 'text': escaped, line breaks, http(s) links clickable; 'html' (formatted text): cleaned again
 	 * with NuHtmlClean (also rows written past save()).
 	 */
 	public static function bodyHtml(string $s, string $format = 'text'): string
@@ -367,7 +370,7 @@ final class NuNotify
 		self::$mine = null;
 		self::$light = null;
 		if (NuDemo::active()) {                                    // demo visitors: only this session
-			$_SESSION['nu_ntf'][$id] = $vals + (array)($_SESSION['nu_ntf'][$id] ?? []);
+			$_SESSION[NuSess::NOTIFY][$id] = $vals + (array)($_SESSION[NuSess::NOTIFY][$id] ?? []);
 			return;
 		}
 		$uid = self::me()['id'];
@@ -431,7 +434,8 @@ final class NuNotify
 			if ((string)($s['read_at'] ?? '') !== '') $out['read']++;
 			if ((string)($s['confirmed_at'] ?? '') !== '') $out['confirmed']++;
 			if ($list) $out['rows'][] = ['user' => $uid, 'login' => $uid === 'globeadmin' ? 'globeadmin' : ($people[$uid]['login'] ?? $uid), 'name' => $people[$uid]['name'] ?? '',
-				'department' => $people[$uid]['department'] ?? '', 'read_at' => (string)($s['read_at'] ?? ''), 'confirmed_at' => (string)($s['confirmed_at'] ?? ''), 'hidden_at' => (string)($s['hidden_at'] ?? '')];
+				'department' => $people[$uid]['department'] ?? '', 'read_at' => (string)($s['read_at'] ?? ''), 'confirmed_at' => (string)($s['confirmed_at'] ?? ''),
+					'hidden_at' => (string)($s['hidden_at'] ?? '')];
 		}
 		if ($list) usort($out['rows'], static fn($a, $b) => [$a['read_at'] === '' ? 0 : 1, mb_strtolower($a['login'])] <=> [$b['read_at'] === '' ? 0 : 1, mb_strtolower($b['login'])]);
 		return $out;
@@ -465,7 +469,7 @@ final class NuNotify
 		if ($exp === false) $e['expires_at'] = t('ntf_err_date');
 		if (is_string($exp) && $exp <= max(self::now(), (string)$pub)) $e['expires_at'] = t('ntf_err_expires');
 		$confirm = !empty($in['must_confirm']) && $in['must_confirm'] !== '0';
-		$format = ($in['format'] ?? '') === 'html' ? 'html' : 'text';      // 0.8.400: formatted text (allowlist HTML)
+		$format = ($in['format'] ?? '') === 'html' ? 'html' : 'text';      // formatted text (allowlist HTML)
 		$body = trim((string)($in['body'] ?? ''));
 		if ($format === 'html') {
 			$body = NuHtmlClean::clean($body);
@@ -595,7 +599,8 @@ final class NuNotify
 		if (!self::ready()) return 0;
 		$db = nu_db();
 		$now = self::now();
-		foreach ($db->all('SELECT zzzzsys_nunext_notification_id AS id FROM ' . self::T . " WHERE status = 'published' AND email = '1' AND sent_mail_at IS NULL AND (publish_at IS NULL OR publish_at <= ?)", [$now]) as $r) {
+		foreach ($db->all('SELECT zzzzsys_nunext_notification_id AS id FROM ' . self::T
+			. " WHERE status = 'published' AND email = '1' AND sent_mail_at IS NULL AND (publish_at IS NULL OR publish_at <= ?)", [$now]) as $r) {
 			$n = self::load((string)$r['id']);
 			if ($n) self::mail($n);
 		}

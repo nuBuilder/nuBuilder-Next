@@ -9,7 +9,7 @@ page) for how to use it.
 - **Works on every screen** – phones, tablets and desktops; light, dark or automatic mode; checked against WCAG 2.1 A/AA and the target size of WCAG 2.2 (24 px on touch screens, 16 px text in fields so phones do not zoom, nothing below 12 px).
 - **One header on phones** – every page starts with ‹ previous page and its title; a record's title on its own row with the buttons below; tabs that scroll in one row; icon buttons on tablets; start page notices in one strip that folds.
 - **Fast pages** – own statements sent in one step, compressed pages, minified scripts and styles, form definitions of sub-forms and lookups read together, the help kept ready built.
-- **Tidy lists on phones** – at most three buttons in a list's title bar (the rest in ⋮), folded filters, cards or table per list; system rows hidden until you ask for them.
+- **Tidy lists on phones** – at most three buttons in a list's title bar (the rest in ⋮), folded filters (also on tablets when a list has more than three), cards or table per list; system rows hidden until you ask for them.
 - **Fast lists** – search, filters, sorting and paging; an advanced search with conditions per column and saved searches;
   coloured status badges; cells that open a form, a filtered list, a procedure or a report.
 - **Totals and groups** – a row of totals below a list (sum, average, minimum, maximum, count) over everything the search matches, the totals of ticked rows, and lists grouped by a column with a heading and subtotals per group.

@@ -2,7 +2,7 @@
 declare(strict_types=1);
 defined('NU_ROOT') || exit;
 /*
- * Getting ready (0.8.1310): a checklist for the globeadmin after the installation – security, server, database, backups, e-mail, people,
+ * Getting ready: a checklist for the globeadmin after the installation – security, server, database, backups, e-mail, people,
  * look and next steps. Points marked 'auto' check their state themselves (mostly through NuSecurity::checks()); 'manual' points are
  * ticked by hand. Every point that is not green can be set to "Not needed". Shown as a slim bar below the top bar (bar()), a card on
  * the start page (homeCard()) and the page ?p=gettingready (pages/nugettingready.php, one group per step).
@@ -78,7 +78,7 @@ final class NuReady
 	{
 		$ids = array_keys(self::ITEMS);
 		$origin = '';
-		try { $origin = NuInstall::origin(); } catch (Throwable) { /* unknown */ }
+		try { $origin = NuInstall::origin(); } catch (Throwable $ig) { nu_ignored($ig, 'unknown'); }
 		if ($origin === 'nunext') $ids = array_values(array_diff($ids, ['compat']));
 		return $ids;
 	}
@@ -95,7 +95,7 @@ final class NuReady
 				if (is_array($h) && in_array($h['mode'] ?? '', ['later', 'forever'], true))
 					$s['hide'] = ['mode' => $h['mode'], 'until' => (int)($h['until'] ?? 0), 'bad' => array_values(array_filter((array)($h['bad'] ?? []), 'is_string'))];
 			}
-		} catch (Throwable) { /* defaults */ }
+		} catch (Throwable $ig) { nu_ignored($ig, 'defaults'); }
 		return $s;
 	}
 
@@ -104,7 +104,7 @@ final class NuReady
 		NuSchema::ensure();
 		nu_setting_save(self::SETTING, ['setting_value' => json_encode(['marks' => (object)$s['marks'], 'hide' => $s['hide']]),
 			'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => (string)(NuAuth::user()['login'] ?? '')]);
-		unset($_SESSION['nu_gr']);
+		unset($_SESSION[NuSess::GETTING_READY]);
 	}
 
 	/** Ticks a point (done / na) or takes the tick away (''). */
@@ -120,11 +120,11 @@ final class NuReady
 	/** Hides the bar and the start page card: later (LATER_DAYS) or forever; '' shows them again. */
 	public static function hide(string $mode): void
 	{
-		if ($mode === 'session') {                             // until the next sign-in: only this session (0.8.1312)
-			$_SESSION['nu_gr_hide'] = 1;
+		if ($mode === 'session') {                             // until the next sign-in: only this session
+			$_SESSION[NuSess::GETTING_READY_HIDE] = 1;
 			return;
 		}
-		unset($_SESSION['nu_gr_hide']);
+		unset($_SESSION[NuSess::GETTING_READY_HIDE]);
 		$s = self::state();
 		if ($mode === '') $s['hide'] = null;
 		else {
@@ -258,10 +258,10 @@ final class NuReady
 	/** The summary for the bar and the card, from the session when it is fresh. */
 	public static function summary(): array
 	{
-		$c = $_SESSION['nu_gr'] ?? null;
+		$c = $_SESSION[NuSess::GETTING_READY] ?? null;
 		if (is_array($c) && ($c['t'] ?? 0) > time() - self::CACHE && isset($c['st'])) return $c;
 		$c = self::summarise(self::items()) + ['t' => time()];
-		$_SESSION['nu_gr'] = $c;
+		$_SESSION[NuSess::GETTING_READY] = $c;
 		return $c;
 	}
 
@@ -269,10 +269,10 @@ final class NuReady
 	public static function visible(): bool
 	{
 		if (!self::allowed()) return false;
-		try { if (NuSetupWizard::pending()) return false; } catch (Throwable) { /* none */ }
+		try { if (NuSetupWizard::pending()) return false; } catch (Throwable $ig) { nu_ignored($ig, 'none'); }
 		$sum = self::summary();
 		if (!$sum['open']) return false;
-		if (!empty($_SESSION['nu_gr_hide'])) return false;
+		if (!empty($_SESSION[NuSess::GETTING_READY_HIDE])) return false;
 		$h = self::state()['hide'];
 		if ($h === null) return true;
 		$back = false;
@@ -302,8 +302,11 @@ final class NuReady
 		$f = static fn(string $mode, string $label, string $icon): string => '<li><form method="post" action="' . h(nu_url('gettingready')) . '" class="m-0">' . nu_csrf_field()
 			. '<input type="hidden" name="action" value="hide"><input type="hidden" name="mode" value="' . h($mode) . '"><input type="hidden" name="back" value="' . h($back) . '">'
 			. '<button type="submit" class="dropdown-item" data-gr-hide="' . h($mode) . '"><i class="bi ' . $icon . ' me-2"></i>' . h($label) . '</button></form></li>';
-		return '<div class="dropdown"><button type="button" class="btn btn-sm nuGrHideBtn" id="' . h($id) . '" data-bs-toggle="dropdown" aria-expanded="false" title="' . h(t('gr_hide')) . '" aria-label="' . h(t('gr_hide')) . '"><i class="bi bi-x-lg"></i></button>'
-			. '<ul class="dropdown-menu dropdown-menu-end">' . $f('session', t('gr_hide_session'), 'bi-box-arrow-in-right') . $f('later', t('gr_hide_later', self::LATER_DAYS), 'bi-clock') . $f('forever', t('gr_hide_forever'), 'bi-eye-slash')
+		return '<div class="dropdown"><button type="button" class="btn btn-sm nuGrHideBtn" id="' . h($id)
+			. '" data-bs-toggle="dropdown" aria-expanded="false" title="' . h(t('gr_hide')) . '" aria-label="' . h(t('gr_hide'))
+			. '"><i class="bi bi-x-lg"></i></button>'
+			. '<ul class="dropdown-menu dropdown-menu-end">' . $f('session', t('gr_hide_session'), 'bi-box-arrow-in-right')
+				. $f('later', t('gr_hide_later', self::LATER_DAYS), 'bi-clock') . $f('forever', t('gr_hide_forever'), 'bi-eye-slash')
 			. '<li><hr class="dropdown-divider"></li><li><span class="dropdown-item-text small text-body-secondary">' . h(t('gr_hide_note')) . '</span></li></ul></div>';
 	}
 
@@ -325,18 +328,20 @@ final class NuReady
 	public static function homeCard(): string
 	{
 		try { if (!self::visible()) return ''; } catch (Throwable) { return ''; }
-		// from the summary kept in the session (0.8.1341): the card used to run every check again on each view of the start page – the
+		// from the summary kept in the session: the card used to run every check again on each view of the start page – the
 		// whole security check and the scan of the application's code, a third of the page's time and about 45 statements
 		$s = self::summary();
 		$li = '';
 		foreach (array_slice($s['open'], 0, self::CARD_ITEMS) as $id) {
 			if (!isset(self::ITEMS[$id], $s['st'][$id])) continue;
 			[, , $route, $params, $anchor] = self::ITEMS[$id];
-			$li .= '<li><a href="' . h(nu_url($route, $params) . $anchor) . '" class="nuGrNext"><span class="nuGrDot nuGrSt-' . h($s['st'][$id]) . '" aria-hidden="true"></span>' . h(t('gr_i_' . $id)) . '</a></li>';
+			$li .= '<li><a href="' . h(nu_url($route, $params) . $anchor) . '" class="nuGrNext"><span class="nuGrDot nuGrSt-' . h($s['st'][$id])
+				. '" aria-hidden="true"></span>' . h(t('gr_i_' . $id)) . '</a></li>';
 		}
 		return '<div class="card mb-4 nuGrCard" id="nuGrCard"><div class="card-body d-flex flex-wrap align-items-center gap-3">'
 			. self::ring($s['done'], $s['total'], 56)
-			. '<div class="flex-grow-1 nuGrCardMain"><div class="fw-semibold">' . h(t('gr_title')) . ' <span class="text-body-secondary fw-normal small">' . h(t('gr_count', $s['done'], $s['total'])) . '</span></div>'
+			. '<div class="flex-grow-1 nuGrCardMain"><div class="fw-semibold">' . h(t('gr_title')) . ' <span class="text-body-secondary fw-normal small">'
+				. h(t('gr_count', $s['done'], $s['total'])) . '</span></div>'
 			. '<div class="small text-body-secondary">' . h(t('gr_card_next')) . '</div><ul class="nuGrNextList">' . $li . '</ul></div>'
 			. '<div class="d-flex gap-2 align-items-center"><a class="btn btn-primary btn-sm" href="' . h(nu_url('gettingready')) . '" id="nuGrCardOpen">' . h(t('gr_open')) . '</a>'
 			. self::hideMenu('nuGrCardHide') . '</div></div></div>';

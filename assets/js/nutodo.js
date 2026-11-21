@@ -1,6 +1,5 @@
-/* To do page (?p=todo, 0.8.467): every "## " section folds; one button folds / opens all. All sections start folded (0.8.509 –
-   the folded state is no longer remembered). */
-// upload (0.8.712): the button opens the file picker, a chosen file is sent at once (also when TODO.md exists – no question)
+/* To do page (?p=todo): every "## " section folds; one button folds / opens all. All sections start folded (the folded state is no longer remembered). */
+// upload: the button opens the file picker, a chosen file is sent at once (also when TODO.md exists – no question)
 (function () {
 	'use strict';
 	var form = document.getElementById('nuTodoUpForm'), inp = document.getElementById('nuTodoFile'), btn = document.getElementById('nuTodoUpload');
@@ -22,7 +21,7 @@
 	var secs = Array.prototype.slice.call(document.querySelectorAll('.nuTodoSec'));
 	if (!secs.length) return;
 	var btn = document.getElementById('nuTodoAll');
-	nuStore.remove('nunext-todo-closed');   // remembered state of 0.8.467–0.8.508
+	nuStore.remove('nunext-todo-closed');   // remembered state of 0.8.467
 	/** All open → "Collapse all"; otherwise "Expand all". */
 	function label() {
 		if (!btn) return;

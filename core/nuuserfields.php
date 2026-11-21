@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Custom user fields (0.8.454): extra fields of the user form, defined by an admin (page ?p=userfields, admin right userfields).
+ * Custom user fields: extra fields of the user form, defined by an admin (page ?p=userfields, admin right userfields).
  *   Definitions: zzzzsys_nunext_user_field (code, label, type, options, required, unique, default, hint, edit_by, in_list, sort).
  *   Values:      zzzzsys_nunext_user_ext – one row per user, one REAL column per field (created / dropped with the field), key
  *                zzzzsys_user_id in the collation of zzzzsys_user, so SQL joins work everywhere:
@@ -47,8 +47,7 @@ final class NuUserFields
 					if (!isset(self::TYPES[(string)$r['type']])) continue;
 					$all[(string)$r['code']] = $r;
 				}
-			} catch (Throwable) {
-			}
+			} catch (Throwable $ig) { nu_ignored($ig); }
 			return $all;
 		});
 	}
@@ -121,7 +120,7 @@ final class NuUserFields
 		$row['edit_by'] = in_array((string)($in['edit_by'] ?? ''), self::EDIT_BY, true) ? (string)$in['edit_by'] : 'admin';
 		$row['in_list'] = !empty($in['in_list']) ? '1' : '0';
 		$def = trim((string)($in['default_value'] ?? ''));
-		$dyn = NuUserDefault::dynamic($def);   // keywords, counter, template, SQL, procedure (0.8.1074)
+		$dyn = NuUserDefault::dynamic($def);   // keywords, counter, template, SQL, procedure
 		if ($def !== '' && !isset($e['type'])) {
 			$fd = ['type' => $type, 'options' => $row['options'], 'code' => $row['code'] ?? $old['code'], 'is_unique' => '0', 'required' => '0'];
 			$err = $dyn ? NuUserDefault::check($fd, $def) : self::checkValue($fd, $def, null);
@@ -265,7 +264,7 @@ final class NuUserFields
 	public static function options(array $f): array
 	{
 		$o = (string)($f['options'] ?? '');
-		// NuMemo (code review R9, 0.8.1351): a query's choices come from any table – every write through NuDB drops them ('*')
+		// NuMemo (code review R9): a query's choices come from any table – every write through NuDB drops them ('*')
 		return NuMemo::get('uf:opt:' . md5($o), self::isSql($o) ? ['*'] : [], static fn(): array => self::readOptions($o));
 	}
 
@@ -361,7 +360,7 @@ final class NuUserFields
 	}
 
 	/**
-	 * Defaults of the fields for a new user (0.8.1074: worked out – keywords, counter, SQL, procedure). Without $ctx (the user form when it
+	 * Defaults of the fields for a new user (worked out – keywords, counter, SQL, procedure). Without $ctx (the user form when it
 	 * opens) templates with {fields} stay empty – nuuser.js fills them while typing, the save fills what is still empty.
 	 */
 	public static function defaults(?array $ctx = null): array
@@ -403,8 +402,7 @@ final class NuUserFields
 	{
 		try {
 			if (nu_db()->tableExists(self::EXT)) nu_db()->run('DELETE FROM ' . self::EXT . ' WHERE ' . self::KEY . ' = ?', [$userId]);
-		} catch (Throwable) {
-		}
+		} catch (Throwable $ig) { nu_ignored($ig); }
 	}
 
 	/**
@@ -423,9 +421,9 @@ final class NuUserFields
 		$attr = ' id="' . h($id) . '" name="' . h($name) . '"' . ($req && !$readOnly ? ' required' : '') . $ro . ' data-uf="' . h($code) . '"';
 		$tpl = (string)($f['default_value'] ?? '');
 		if (str_contains($tpl, '#') && NuUserDefault::usesFields($tpl)) $tpl = (string)NuHash::replace($tpl, NuHash::plain());   // hash variables now, {fields} in the browser
-		if ($value === '' && NuUserDefault::usesFields($tpl) && !$readOnly) $attr .= ' data-uf-tpl="' . h($tpl) . '"';   // filled while the user's fields are typed (nuuser.js, 0.8.1074)
+		if ($value === '' && NuUserDefault::usesFields($tpl) && !$readOnly) $attr .= ' data-uf-tpl="' . h($tpl) . '"';   // filled while the user's fields are typed (nuuser.js)
 		$tip = self::hint($f) !== '' ? ' ' . nu_info_tip(self::hint($f)) : '';
-		$kind = $showType ? ' <span class="text-body-secondary small nuUfType">(' . h(t('uf_type_' . $type)) . ')</span>' : '';   // user form (0.8.508)
+		$kind = $showType ? ' <span class="text-body-secondary small nuUfType">(' . h(t('uf_type_' . $type)) . ')</span>' : '';   // user form
 		$label = '<label class="form-label" for="' . h($id) . '">' . h(self::label($f)) . $kind . ($req ? ' <span class="text-danger">*</span>' : '') . '</label>' . $tip;
 		$max = self::TYPES[$type][2];
 		$ml = $max ? ' maxlength="' . $max . '"' : '';

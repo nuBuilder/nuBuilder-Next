@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Global JS & CSS (0.8.523) – the second layer of Admin tools → Custom code: JavaScript and CSS for every page of nuBuilder Next,
+ * Global JS & CSS – the second layer of Admin tools → Custom code: JavaScript and CSS for every page of nuBuilder Next,
  * next to nuBuilder's Setup → Header / Style / Include (which stay form-only, as in nuBuilder).
  *   storage   settings rows custom_js, custom_css, custom_scope ({"forms":1,"app":1,"login":0}) – never zzzzsys_setup, so nuBuilder is untouched
  *   output    as files of this server (?p=globalcodefile&t=js|css&v=<hash>) – the strict Content-Security-Policy of nuBuilder Next's pages
@@ -34,17 +34,15 @@ final class NuCustomCode
 		if (self::$cache !== null) return self::$cache;
 		$out = ['js' => '', 'css' => '', 'scope' => self::SCOPES];
 		try {
-			// installer (no nuconfig.php yet): nu_db() would end the request with "nuconfig.php not found" (0.8.552)
+			// installer (no nuconfig.php yet): nu_db() would end the request with "nuconfig.php not found"
 			if (!is_file(nu_config_path()) || !nu_db()->tableExists('zzzzsys_nunext_setting')) return self::$cache = $out;
-			// with the other settings in one statement (nu_setting_values, 0.8.1341); long code in one more
+			// with the other settings in one statement (nu_setting_values); long code in one more
 			$rows = nu_setting_values([self::KEYS['js'], self::KEYS['css'], self::SCOPE_KEY]);
 			$out['js'] = (string)($rows[self::KEYS['js']] ?? '');
 			$out['css'] = (string)($rows[self::KEYS['css']] ?? '');
 			$s = isset($rows[self::SCOPE_KEY]) ? json_decode((string)$rows[self::SCOPE_KEY], true) : null;
 			if (is_array($s)) foreach (self::SCOPES as $k => $d) $out['scope'][$k] = !empty($s[$k] ?? $d);
-		} catch (Throwable) {
-			/* no database (installer, error pages): nothing */
-		}
+		} catch (Throwable $ig) { nu_ignored($ig, 'no database (installer, error pages): nothing'); }
 		return self::$cache = $out;
 	}
 
@@ -57,7 +55,7 @@ final class NuCustomCode
 	/**
 	 * Global CSS is served as a .css file, where <style> is not CSS (the browser skips the rule it runs into). CSS pasted from Form CSS
 	 * often comes wrapped: when the text starts with <style …> and ends with </style>, every <style …> / </style> tag is removed
-	 * (several blocks too). @return ?string the CSS without the tags, null when it was not wrapped (0.8.557)
+	 * (several blocks too). @return ?string the CSS without the tags, null when it was not wrapped
 	 */
 	public static function unwrapStyle(string $css): ?string
 	{
@@ -137,14 +135,12 @@ final class NuCustomCode
 	{
 		$a = ' data-nu-page="' . h(self::$context === 'login' && self::page() === 'home' ? 'login' : self::page()) . '"';
 		if ($form) $a .= ' data-nu-mode="' . h((string)$form[0]) . '" data-nu-form="' . h((string)$form[1]) . '"';
-		if (self::$context === 'app' && ($help = NuHelpLink::url(self::page())) !== '') $a .= ' data-nu-help="' . h($help) . '"';   // F1 (0.8.528)
-		if (self::$context === 'app') $a .= ' data-nu-tab-sections="' . h(t('tab_sections')) . '"';   // label of the ▾ in tabs (0.8.639, nuapp.js)
+		if (self::$context === 'app' && ($help = NuHelpLink::url(self::page())) !== '') $a .= ' data-nu-help="' . h($help) . '"';   // F1
+		if (self::$context === 'app') $a .= ' data-nu-tab-sections="' . h(t('tab_sections')) . '"';   // label of the ▾ in tabs (nuapp.js)
 		try {
 			$u = NuAuth::user();
 			if ($u !== null && (!empty($u['globeadmin']) || NuAdmin::any())) $a .= ' data-nu-admin="1"';
-		} catch (Throwable) {
-			/* before the set-up */
-		}
+		} catch (Throwable $ig) { nu_ignored($ig, 'before the set-up'); }
 		return $a;
 	}
 
@@ -154,7 +150,7 @@ final class NuCustomCode
 		$kind = ($_GET['t'] ?? '') === 'css' ? 'css' : 'js';
 		$c = self::get();
 		$user = null;
-		try { $user = NuAuth::user(); } catch (Throwable) { /* no session */ }
+		try { $user = NuAuth::user(); } catch (Throwable $ig) { nu_ignored($ig, 'no session'); }
 		session_write_close();
 		header('Content-Type: ' . ($kind === 'css' ? 'text/css' : 'text/javascript') . '; charset=utf-8');
 		header('X-Content-Type-Options: nosniff');

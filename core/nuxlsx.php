@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Excel export (0.8.398, revised): a small writer for .xlsx files (Office Open XML) without other libraries – only PHP's ZipArchive.
+ * Excel export (revised): a small writer for .xlsx files (Office Open XML) without other libraries – only PHP's ZipArchive.
  * For the list exports of nuBuilder Next and for own code (procedures, page forms: $nu->excel()).
  *
  *   $x = NuXlsx::create('Customers');                         // workbook (title = file property)
@@ -365,7 +365,9 @@ final class NuXlsx
 			}
 			$borderId = 0;
 			if (isset($st['border'])) {
-				$b = '<border>' . implode('', array_map(static fn($side) => '<' . $side . ' style="' . $st['border'] . '"><color auto="1"/></' . $side . '>', ['left', 'right', 'top', 'bottom'])) . '<diagonal/></border>';
+				$b = '<border>'
+					. implode('', array_map(static fn($side) => '<' . $side . ' style="' . $st['border'] . '"><color auto="1"/></' . $side . '>', ['left', 'right', 'top', 'bottom']))
+					. '<diagonal/></border>';
 				$borderId = array_search($b, $borders, true);
 				if ($borderId === false) { $borders[] = $b; $borderId = count($borders) - 1; }
 			}
@@ -437,7 +439,8 @@ final class NuXlsx
 	{
 		$out = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' . "\n" . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">';
 		$n = count($this->sheets);
-		foreach ($this->sheets as $i => $s) $out .= '<Relationship Id="rId' . ($i + 1) . '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' . ($i + 1) . '.xml"/>';
+		foreach ($this->sheets as $i => $s) $out .= '<Relationship Id="rId' . ($i + 1)
+			. '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' . ($i + 1) . '.xml"/>';
 		$out .= '<Relationship Id="rId' . ($n + 1) . '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>';
 		$out .= '<Relationship Id="rId' . ($n + 2) . '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/>';
 		return $out . '</Relationships>';

@@ -5,8 +5,7 @@ defined('NU_ROOT') || exit;
 /*
  * Admin tools → To do (?p=todo): TODO.md of the installation as a page – only in developer mode (globeadmin + $nuConfigDevMode = true,
  * nuBuilder's switch, NuHash::devMode()), never for demo users. Read only; the small Markdown renderer covers what TODO.md uses:
- * headings, lists with [ ] / [x], indented continuation lines, `code`, **bold**, *italic*. Every "## " section folds (0.8.467,
- * assets/js/nutodo.js: Collapse all / Expand all; since 0.8.509 every section starts folded).
+ * headings, lists with [ ] / [x], indented continuation lines, `code`, **bold**, *italic*. Every "## " section folds (* assets/js/nutodo.js: Collapse all / Expand all; every section starts folded).
  */
 
 $u = NuAuth::user();
@@ -17,7 +16,7 @@ if (!NuHash::devMode() || !empty($u['demo'])) {
 
 $file = NU_ROOT . '/TODO.md';
 
-// upload (0.8.712): nunext-dev.zip (or TODO.md itself) – only TODO.md is taken out of the zip and written; the upload is deleted at
+// upload: nunext-dev.zip (or TODO.md itself) – only TODO.md is taken out of the zip and written; the upload is deleted at
 // once; an existing TODO.md is replaced without asking
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && nu_post('action') === 'upload') {
 	$f = $_FILES['todo_file'] ?? null;
@@ -99,7 +98,7 @@ $flushList = static function () use (&$items, &$html, $inline, &$open, &$done) {
 	while ($depth >= 0) { $html .= '</ul>'; $depth--; }
 	$items = [];
 };
-// every "## " section folds (0.8.467): <details> with the heading as <summary> and the number of its open points
+// every "## " section folds: <details> with the heading as <summary> and the number of its open points
 $sec = null; $secs = 0;
 $closeSec = static function () use (&$sec, &$html, &$open) {
 	if ($sec === null) return;
@@ -149,12 +148,16 @@ nu_layout_start(t('todo_title'), 'home', ['container' => 'nuContainer']);
 	<h1 class="h3 mb-0"><i class="bi bi-list-check me-2"></i><?= h(t('todo_title')) ?></h1>
 	<?php if ($md !== ''): ?><div class="nuTitleSub text-body-secondary small"><?= h(t('todo_counts', $open, $done)) ?> · <code>TODO.md</code> · <?= h(date(nu_dfmt('d.m.Y H:i'), (int)filemtime($file))) ?></div><?php endif; ?>
 	<div class="d-flex flex-wrap gap-2 align-items-center"><?= nu_back_button() ?>
-		<form method="post" action="<?= h(nu_url('todo')) ?>" enctype="multipart/form-data" id="nuTodoUpForm" data-max="<?= NuUpdate::uploadLimit() ?>" data-big="<?= h(t('todo_up_big', NuUpdate::uploadLimitText())) ?>">
+		<form method="post" action="<?= h(nu_url('todo')) ?>" enctype="multipart/form-data" id="nuTodoUpForm" data-max="<?= NuUpdate::uploadLimit() ?>"
+			data-big="<?= h(t('todo_up_big', NuUpdate::uploadLimitText())) ?>">
 			<?= nu_csrf_field() ?><input type="hidden" name="action" value="upload">
 			<input type="file" name="todo_file" id="nuTodoFile" accept=".zip,.md" class="d-none">
-			<button type="button" class="btn nuBtnAct" id="nuTodoUpload" title="<?= h(t('todo_up_hint')) ?>"><i class="bi bi-upload me-1" aria-hidden="true"></i><?= h(t($md === '' ? 'todo_up_btn' : 'todo_up_replace')) ?></button>
+			<button type="button" class="btn nuBtnAct" id="nuTodoUpload" title="<?= h(t('todo_up_hint')) ?>"><i class="bi bi-upload me-1"
+				aria-hidden="true"></i><?= h(t($md === '' ? 'todo_up_btn' : 'todo_up_replace')) ?></button>
 		</form>
-		<?php if ($secs > 1): ?><button type="button" class="btn nuBtnAct" id="nuTodoAll" data-collapse="<?= h(t('todo_collapse_all')) ?>" data-expand="<?= h(t('todo_expand_all')) ?>"><i class="bi bi-arrows-expand me-1" aria-hidden="true"></i><span><?= h(t('todo_expand_all')) ?></span></button><?php endif; ?>
+		<?php if ($secs > 1): ?><button type="button" class="btn nuBtnAct" id="nuTodoAll" data-collapse="<?= h(t('todo_collapse_all')) ?>"
+			data-expand="<?= h(t('todo_expand_all')) ?>"><i class="bi bi-arrows-expand me-1"
+			aria-hidden="true"></i><span><?= h(t('todo_expand_all')) ?></span></button><?php endif; ?>
 	</div>
 </div>
 <div class="alert alert-danger" id="nuTodoUpErr" role="alert" hidden></div>

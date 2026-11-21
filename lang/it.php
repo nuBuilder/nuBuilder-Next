@@ -152,6 +152,7 @@ return [
 	'hf_empty' => 'vuota',
 	'hf_empty_tip' => 'Questa pagina a riquadri non ha riquadri – i suoi livelli di accesso non vi vedono nulla. Aprila e aggiungi riquadri, oppure usa di nuovo il predefinito.',
 	'form_blank_page' => 'Pagina vuota (sistema)',
+	'uhome_empty_tab' => 'Nessun pulsante in questa scheda. Aggiungili in modalità progettazione, oppure lascia che la procedura Nuovo modulo ne aggiunga uno per ogni nuovo modulo (Dopo la creazione → User Home).',
 	'nav_users' => 'Utenti',
 	'nav_access' => 'Livelli di accesso',
 	'nav_logout' => 'Esci',
@@ -7021,6 +7022,7 @@ return [
 	'rd_search' => 'Cerca',
 	'rd_no_fields' => 'La sorgente dati non ha colonne.',
 	'rd_fields_error' => 'Impossibile leggere i campi:',
+	'rd_canvas' => 'Layout del report – i tasti freccia spostano gli oggetti selezionati',
 	'rd_criteria' => 'Campi del form di avvio',
 	'rd_system' => 'Pagina e sistema',
 	'rd_images' => 'Immagini (file)',
@@ -7186,7 +7188,7 @@ return [
 	'sqb_empty' => 'Aggiungi una tabella dall\'elenco.',
 	'sqb_run_failed' => 'La query non è riuscita:',
 	'sqb_columns' => 'Colonne',
-	// security check (0.8.207, Admin tools → Security check, core/nusecurity.php)
+	// security check (Admin tools → Security check, core/nusecurity.php)
 	'secchk_title' => 'Controllo di sicurezza',
 	'ipa_title' => 'Accesso IP',
 	'sso_title' => 'Single sign-on (SSO)',

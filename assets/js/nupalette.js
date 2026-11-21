@@ -1,5 +1,5 @@
 /* global nuBs */
-/* nuBuilder Next – search (0.8.321), globeadmin only: Ctrl+K (or the magnifier in the top bar) opens a box that finds pages, actions,
+/* nuBuilder Next – search, globeadmin only: Ctrl+K (or the magnifier in the top bar) opens a box that finds pages, actions,
    own tiles, forms, procedures and reports (list from ?p=palette, core/nupalette.php). ↑ ↓ choose, Enter opens, Ctrl+Enter in a new tab,
    Esc closes. The last opened entries come first (kept in this browser). window.nuPalette.load() / .match() are used by the start page
    search too (assets/js/nuhome.js). */
@@ -48,7 +48,7 @@
 		res.sort(function (a, b) { return a[0] - b[0] || a[1].label.localeCompare(b[1].label); });
 		return res.map(function (r) { return r[1]; });
 	}
-	/** An entry (or its id, e.g. 't:users' – tiles opened on the start page, 0.8.420) goes to the top of the last opened ones. */
+	/** An entry (or its id, e.g. 't:users' – tiles opened on the start page) goes to the top of the last opened ones. */
 	function remember(it) {
 		var id = typeof it === 'string' ? it : it.id;
 		var r = store().filter(function (x) { return x !== id; });
@@ -97,7 +97,7 @@
 				mark();
 			} else if (e.key === 'Enter') {
 				e.preventDefault();
-				if (window.nuPageNoGo && window.nuPageNoGo(input.value)) return;     // P100 … – page numbers (0.8.804)
+				if (window.nuPageNoGo && window.nuPageNoGo(input.value)) return;     // P100 … – page numbers
 				if (current[active]) { var nt = e.ctrlKey || e.metaKey; if (!nt) modal.hide(); go(current[active], nt); }
 			}
 		});

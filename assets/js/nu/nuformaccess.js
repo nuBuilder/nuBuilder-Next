@@ -1,6 +1,6 @@
 /* global nuBs */
 /*
- * Access levels of one form (0.8.683): window.nuFormAccessOpen([formId]) – a dialog listing every access level with Open (the level may use
+ * Access levels of one form: window.nuFormAccessOpen([formId]) – a dialog listing every access level with Open (the level may use
  * the form) and its buttons (Add, Save, Delete, Clone, New, Print), data mode and form type. Opened from the form's ⋮ menu
  * (nuruntime.js shortcutActions, tools.formaccess) and from design mode (Form panel → Tools). Reads / writes through the JSON route
  * ?p=formaccess (pages/nuformaccess.php) – only the levels that were changed are sent. No inline styles or scripts (CSP).
@@ -10,7 +10,7 @@
 	var N = window.nuNext || {};
 	function el(tag, attrs, kids) { return NuUtil.el(tag, attrs, kids); }
 	function url(q) { return (N.base || 'index.php') + '?p=formaccess' + (q || ''); }
-	// own pages without window.nuNext (the forms list, 0.8.688): the token from #nuFacData
+	// own pages without window.nuNext (the forms list): the token from #nuFacData
 	function csrf() { var d = document.getElementById('nuFacData'); return N.csrf || (d ? d.getAttribute('data-csrf') : '') || ''; }
 	function toast(msg, type) { if (window.nuToast) window.nuToast(msg, type); else if (type === 'danger') window.alert(msg); }
 
@@ -23,21 +23,8 @@
 			.catch(function () { toast('Error', 'danger'); });
 	}
 
-	function show(d) {
-		var T = d.texts, start = {}, rows = [];
-		var old = document.getElementById('nuFormAccessDlg');
-		if (old) old.remove();
-		var dlg = el('div', 'modal fade'); dlg.id = 'nuFormAccessDlg'; dlg.tabIndex = -1; dlg.setAttribute('aria-labelledby', 'nuFacTitle');
-		var md = el('div', 'modal-dialog modal-xl modal-dialog-scrollable'), mc = el('div', 'modal-content');
-		var head = el('div', 'modal-header'), h = el('h2', 'modal-title fs-5', T.fac_title); h.id = 'nuFacTitle';
-		h.appendChild(el('span', 'text-body-secondary fw-normal ms-2', d.form.label));
-		var x = el('button', 'btn-close'); x.type = 'button'; x.setAttribute('data-bs-dismiss', 'modal'); x.setAttribute('aria-label', T.cancel);
-		head.appendChild(h); head.appendChild(x);
-		var body = el('div', 'modal-body');
-		body.appendChild(el('p', 'small text-body-secondary mb-2', T.fac_intro));
-		if (d.admin_form) body.appendChild(el('div', 'alert alert-warning small py-2', T.fac_admin));
-		// Everyone (0.8.784): every level gets the form with the buttons below; "Also for new access levels" = levels created later too
-		var EV = d.everyone ? JSON.parse(JSON.stringify(d.everyone)) : null, evStart = JSON.stringify(EV);
+	// Everyone: every level gets the form with the buttons below; "Also for new access levels" = levels created later too
+	function buildEveryone(d, T, EV) {
 		var evBox = el('div', 'nuFacEv mb-3' + (d.everyone_ok ? '' : ' nuFacEvOff')); evBox.id = 'nuFacEvBox';
 		var evTop = el('div', 'd-flex flex-wrap align-items-center gap-2');
 		var evSw = el('div', 'form-check form-switch mb-0 flex-grow-1'), ev = el('input', 'form-check-input'); ev.type = 'checkbox'; ev.id = 'nuFacEv'; ev.setAttribute('role', 'switch');
@@ -58,15 +45,19 @@
 		evCheck('nuFacEvOpen', T.fac_open, true, true);
 		d.rights.forEach(function (r) { evCb[r] = evCheck('nuFacEvR_' + r, T['right_' + r], !!(EV && EV.rights[r]), !d.can_save); evCb[r].setAttribute('data-ev-right', r); });
 		evOpts.appendChild(evRights);
-		var evNewW = el('div', 'form-check mt-2 mb-0 small'), evNew = el('input', 'form-check-input'); evNew.type = 'checkbox'; evNew.id = 'nuFacEvNew'; evNew.checked = !EV || EV['new'] !== false; evNew.disabled = !d.can_save;
+		var evNewW = el('div', 'form-check mt-2 mb-0 small'),
+			evNew = el('input', 'form-check-input'); evNew.type = 'checkbox'; evNew.id = 'nuFacEvNew'; evNew.checked = !EV
+			|| EV['new'] !== false; evNew.disabled = !d.can_save;
 		var evNewL = el('label', 'form-check-label'); evNewL.htmlFor = 'nuFacEvNew';
 		evNewL.appendChild(el('span', 'fw-semibold', T.fac_ev_new)); evNewL.appendChild(el('span', 'd-block text-body-secondary', T.fac_ev_new_hint));
 		evNewW.appendChild(evNew); evNewW.appendChild(evNewL); evOpts.appendChild(evNewW);
 		evBox.appendChild(evOpts);
 		if (!d.everyone_ok) evBox.appendChild(el('div', 'alert alert-warning small py-2 mb-0 mt-2', T.fac_ev_admin));
-		body.appendChild(evBox);
-		var evFollow = el('p', 'small text-body-secondary mb-2', T.fac_ev_follow); evFollow.id = 'nuFacEvFollow'; body.appendChild(evFollow);
-		// toolbar: search, group filter, Select all, count
+		return {box: evBox, ev: ev, evNew: evNew, evCb: evCb, evOpts: evOpts, evCount: evCount};
+	}
+
+	// toolbar: search, group filter, count
+	function buildBar(d, T) {
 		var bar = el('div', 'd-flex flex-wrap align-items-center gap-2 mb-2 nuFacBar');
 		var q = el('input', 'form-control form-control-sm nuFacSearch'); q.type = 'search'; q.id = 'nuFacSearch'; q.placeholder = T.fac_search; q.setAttribute('aria-label', T.fac_search);
 		bar.appendChild(q);
@@ -80,18 +71,22 @@
 			bar.appendChild(gsel);
 		}
 		var count = el('span', 'small text-body-secondary ms-auto'); count.id = 'nuFacCount'; bar.appendChild(count);
-		body.appendChild(bar);
-		// the table
+		return {bar: bar, q: q, gsel: gsel, count: count};
+	}
+
+	// the table: one row per level – Open, the buttons, data mode, form type, a link to the level; rows / start collect each row's
+	// controls and its state when opened, onChange runs on every change of a row (code review L4)
+	function buildTable(d, T, rows, start, onChange) {
 		var wrap = el('div', 'table-responsive'), t = el('table', 'table table-sm align-middle mb-0 nu-table nuFacTable'); t.id = 'nuFacTable';
 		var thead = el('thead'), htr = el('tr');
-		// sortable titles (0.8.696): a button per column – level code, Open / each right (ticked first), data mode, form type
+		// sortable titles: a button per column – level code, Open / each right (ticked first), data mode, form type
 		var sortTh = function (cls, key, text) {
 			var th = el('th', (cls ? cls + ' ' : '') + 'nuFacSort'); th.setAttribute('data-sort', key);
 			var b = el('button', 'btn btn-link p-0 userPermSortBtn' + (key.indexOf('r:') === 0 ? ' small' : ''), text); b.type = 'button';
 			th.appendChild(b); return th;
 		};
 		htr.appendChild(sortTh('', 'level', T.fac_level));
-		// Open (0.8.785): its "select all" sits in the title like the buttons' – for the levels the search / group filter show
+		// Open: its "select all" sits in the title like the buttons' – for the levels the search / group filter show
 		var thOpen = sortTh('text-center', 'open', T.fac_open);
 		var all = el('input', 'form-check-input nuFacColOpen d-block mx-auto mt-1'); all.type = 'checkbox'; all.id = 'nuFacAll'; all.setAttribute('aria-label', T.fac_all + ': ' + T.fac_open);
 		thOpen.appendChild(all); htr.appendChild(thOpen);
@@ -129,8 +124,10 @@
 				boxes[r] = cell(cb);
 			});
 			var dm = null, ft = null;
-			if (d.dm) { dm = selOf([['', T.access_dm_normal], ['0', T.access_dm_noedit]], l.row ? l.row.dm : '', T.access_col_dm + ': ' + l.code); dm.disabled = lock || !l.row; var c1 = el('td'); c1.appendChild(dm); tr.appendChild(c1); }
-			if (d.ft) { ft = selOf([['', T.access_ft_both], ['0', T.access_ft_browse], ['1', T.access_ft_edit]], l.row ? l.row.ft : '', T.access_col_ft + ': ' + l.code); ft.disabled = lock || !l.row; var c2 = el('td'); c2.appendChild(ft); tr.appendChild(c2); }
+			if (d.dm) { dm = selOf([['', T.access_dm_normal], ['0', T.access_dm_noedit]], l.row ? l.row.dm : '', T.access_col_dm + ': ' + l.code); dm.disabled = lock
+				|| !l.row; var c1 = el('td'); c1.appendChild(dm); tr.appendChild(c1); }
+			if (d.ft) { ft = selOf([['', T.access_ft_both], ['0', T.access_ft_browse], ['1', T.access_ft_edit]], l.row ? l.row.ft : '', T.access_col_ft + ': ' + l.code); ft.disabled = lock
+				|| !l.row; var c2 = el('td'); c2.appendChild(ft); tr.appendChild(c2); }
 			var lk = el('td', 'text-end'), a = el('a', 'btn btn-sm btn-link p-0');
 			a.href = d.page.replace('__ID__', encodeURIComponent(l.id)); a.target = '_blank'; a.rel = 'noopener'; a.title = T.fac_page; a.setAttribute('aria-label', T.fac_page + ': ' + l.code);
 			var ic = el('i', 'bi bi-box-arrow-up-right'); ic.setAttribute('aria-hidden', 'true'); a.appendChild(ic); lk.appendChild(a); tr.appendChild(lk);
@@ -145,13 +142,56 @@
 				var en = on.checked && !lock;
 				d.rights.forEach(function (r) { boxes[r].disabled = !en; });   // a level that gets the form: open only, the buttons are ticked one by one
 				if (dm) dm.disabled = !en; if (ft) ft.disabled = !en;
-				row.touched = true; sync();
+				row.touched = true; onChange();
 			});
-			Object.keys(boxes).forEach(function (r) { boxes[r].addEventListener('change', function () { row.touched = true; sync(); }); });
+			Object.keys(boxes).forEach(function (r) { boxes[r].addEventListener('change', function () { row.touched = true; onChange(); }); });
 			rows.push(row); start[l.id] = JSON.stringify(row.state());
 			tb.appendChild(tr);
 		});
-		t.appendChild(tb); wrap.appendChild(t); body.appendChild(wrap);
+		t.appendChild(tb); wrap.appendChild(t);
+		return {wrap: wrap, t: t, tb: tb, all: all};
+	}
+
+	// sort: by the clicked column, then by level code; a second click reverses
+	function sortable(t, tb, rows) {
+		var cmp = function (a, b) { return a.localeCompare(b, undefined, {sensitivity: 'base', numeric: true}); };
+		var keyOf = function (r, k) {
+			if (k === 'level') return r.l.code;
+			if (k === 'open') return r.on.checked ? '0' : '1';
+			if (k.indexOf('r:') === 0) return r.on.checked && r.boxes[k.slice(2)].checked ? '0' : '1';
+			var s = r[k]; return s && r.on.checked ? s.options[s.selectedIndex].text : '\uffff';
+		};
+		t.querySelectorAll('th.nuFacSort').forEach(function (th) {
+			th.querySelector('button').addEventListener('click', function () {
+				var k = th.getAttribute('data-sort'), dir = th.getAttribute('aria-sort') === 'ascending' ? -1 : 1;
+				rows.slice().sort(function (a, b) { return cmp(keyOf(a, k), keyOf(b, k)) * dir || cmp(a.l.code, b.l.code); }).forEach(function (r) { tb.appendChild(r.tr); });
+				t.querySelectorAll('th.nuFacSort').forEach(function (o) { o.removeAttribute('aria-sort'); });
+				th.setAttribute('aria-sort', dir === 1 ? 'ascending' : 'descending');
+			});
+		});
+	}
+
+	function show(d) {
+		var T = d.texts, start = {}, rows = [];
+		var old = document.getElementById('nuFormAccessDlg');
+		if (old) old.remove();
+		var dlg = el('div', 'modal fade'); dlg.id = 'nuFormAccessDlg'; dlg.tabIndex = -1; dlg.setAttribute('aria-labelledby', 'nuFacTitle');
+		var md = el('div', 'modal-dialog modal-xl modal-dialog-scrollable'), mc = el('div', 'modal-content');
+		var head = el('div', 'modal-header'), h = el('h2', 'modal-title fs-5', T.fac_title); h.id = 'nuFacTitle';
+		h.appendChild(el('span', 'text-body-secondary fw-normal ms-2', d.form.label));
+		var x = el('button', 'btn-close'); x.type = 'button'; x.setAttribute('data-bs-dismiss', 'modal'); x.setAttribute('aria-label', T.cancel);
+		head.appendChild(h); head.appendChild(x);
+		var body = el('div', 'modal-body');
+		body.appendChild(el('p', 'small text-body-secondary mb-2', T.fac_intro));
+		if (d.admin_form) body.appendChild(el('div', 'alert alert-warning small py-2', T.fac_admin));
+		var EV = d.everyone ? JSON.parse(JSON.stringify(d.everyone)) : null, evStart = JSON.stringify(EV);
+		var E = buildEveryone(d, T, EV), evBox = E.box, ev = E.ev, evNew = E.evNew, evCb = E.evCb, evOpts = E.evOpts, evCount = E.evCount;
+		body.appendChild(evBox);
+		var evFollow = el('p', 'small text-body-secondary mb-2', T.fac_ev_follow); evFollow.id = 'nuFacEvFollow'; body.appendChild(evFollow);
+		var B = buildBar(d, T), bar = B.bar, q = B.q, gsel = B.gsel, count = B.count;
+		body.appendChild(bar);
+		var TB = buildTable(d, T, rows, start, function () { sync(); }), t = TB.t, tb = TB.tb, all = TB.all;
+		body.appendChild(TB.wrap);
 		var foot = el('div', 'modal-footer');
 		var cancel = el('button', 'btn btn-outline-secondary', T.cancel); cancel.type = 'button'; cancel.setAttribute('data-bs-dismiss', 'modal');
 		var save = el('button', 'btn btn-primary', T.save); save.type = 'button'; save.id = 'nuFacSave';
@@ -169,7 +209,7 @@
 		function applyEv() {
 			var c = evState();
 			evOpts.hidden = !c; evFollow.hidden = !c; bar.classList.toggle('nuFacFollow', !!c);
-			evBox.classList.toggle('nuFacEvOn', !!c);                       // blue only while on (0.8.785)
+			evBox.classList.toggle('nuFacEvOn', !!c);                       // blue only while on
 			rows.forEach(function (r) {
 				if (c) {
 					r.on.checked = true;
@@ -210,22 +250,7 @@
 			rows.forEach(function (r) { r.tr.hidden = (s !== '' && r.tr.getAttribute('data-search').indexOf(s) < 0) || (g !== '*' && r.l.group !== g); });
 			sync();
 		}
-		// sort (0.8.696): by the clicked column, then by level code; a second click reverses
-		var cmp = function (a, b) { return a.localeCompare(b, undefined, {sensitivity: 'base', numeric: true}); };
-		var keyOf = function (r, k) {
-			if (k === 'level') return r.l.code;
-			if (k === 'open') return r.on.checked ? '0' : '1';
-			if (k.indexOf('r:') === 0) return r.on.checked && r.boxes[k.slice(2)].checked ? '0' : '1';
-			var s = r[k]; return s && r.on.checked ? s.options[s.selectedIndex].text : '\uffff';
-		};
-		t.querySelectorAll('th.nuFacSort').forEach(function (th) {
-			th.querySelector('button').addEventListener('click', function () {
-				var k = th.getAttribute('data-sort'), dir = th.getAttribute('aria-sort') === 'ascending' ? -1 : 1;
-				rows.slice().sort(function (a, b) { return cmp(keyOf(a, k), keyOf(b, k)) * dir || cmp(a.l.code, b.l.code); }).forEach(function (r) { tb.appendChild(r.tr); });
-				t.querySelectorAll('th.nuFacSort').forEach(function (o) { o.removeAttribute('aria-sort'); });
-				th.setAttribute('aria-sort', dir === 1 ? 'ascending' : 'descending');
-			});
-		});
+		sortable(t, tb, rows);
 		q.addEventListener('input', filter);
 		if (gsel) gsel.addEventListener('change', filter);
 		all.addEventListener('change', function () {
@@ -266,7 +291,7 @@
 		dlg.addEventListener('shown.bs.modal', function () { q.focus(); }, {once: true});
 	}
 	window.nuFormAccessOpen = open;
-	// [data-nu-fac="<form id>"] opens the dialog (the forms list's column Access levels, 0.8.688)
+	// [data-nu-fac="<form id>"] opens the dialog (the forms list's column Access levels)
 	document.addEventListener('click', function (e) {
 		var b = e.target.closest && e.target.closest('[data-nu-fac]');
 		if (!b) return;

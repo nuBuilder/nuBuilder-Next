@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Settings → Sign-in & security → Password policy (0.8.745, core/nupwpolicy.php NuPwPolicy): rules for new passwords, the leak check,
+ * Settings → Sign-in & security → Password policy (core/nupwpolicy.php NuPwPolicy): rules for new passwords, the leak check,
  * the regular change (users, per access level, the globeadmin's reminder). Admin right securitycheck (view / change).
  * POST action=save (password confirmed recently); action=test (JSON) checks a typed password against the rules – nothing is stored.
  */
@@ -11,26 +11,10 @@ defined('NU_ROOT') || exit;
 NuAdmin::require('securitycheck');
 $canChange = NuAdmin::can('securitycheck', 'change');
 
-if (nu_is_post() && nu_post('action') === 'test') {          // JSON: the policy's verdict on a typed password (never stored or logged)
-	header('Content-Type: application/json; charset=utf-8');
-	header('Cache-Control: no-store');
-	$v = NuPwPolicy::violations((string)($_POST['pw'] ?? ''), ['login' => (string)($_POST['login'] ?? '')]);
-	echo json_encode(['ok' => !$v, 'message' => $v ? NuPwPolicy::message($v) : t('pwp_test_ok')], JSON_UNESCAPED_UNICODE);
-	exit;
-}
+NuPwpolicyPage::post1(get_defined_vars());   // the POST actions (code review R7, nupwpolicypage.php)
 NuSecurity::requireRecentAuth(nu_url('pwpolicy'));
-if (nu_is_post() && nu_post('action') === 'save') {
-	NuAdmin::require('securitycheck', 'change');
-	$lv = is_array($_POST['lv'] ?? null) ? $_POST['lv'] : [];
-	$levels = [];
-	foreach ($lv as $id => $d) if (is_string($id) && $d !== '' && $d !== null) $levels[$id] = (int)$d;
-	$changed = NuPwPolicy::save(['min_len' => (int)nu_post('min_len'), 'upper' => nu_check('upper') === '1', 'lower' => nu_check('lower') === '1',
-		'digit' => nu_check('digit') === '1', 'symbol' => nu_check('symbol') === '1', 'not_name' => nu_check('not_name') === '1', 'leak' => nu_post('leak'),
-		'leak_login' => nu_check('leak_login') === '1', 'expire' => (int)nu_post('expire'), 'warn' => (int)nu_post('warn'), 'ga_expire' => (int)nu_post('ga_expire'),
-		'levels' => $levels]);
-	nu_flash('success', $changed ? t('saved') : t('aud_set_nochange'));
-	nu_redirect(nu_url('pwpolicy'));
-}
+['id' => $id]
+	= NuPwpolicyPage::post2(get_defined_vars());   // the POST actions (code review R7, nupwpolicypage.php)
 
 $s = NuPwPolicy::settings();
 $cfgMin = max(1, (int)nu_cfg('nuConfigPasswordMinLength'));
@@ -48,7 +32,8 @@ $every = static function (string $name, int $cur, string $id, bool $withDefault 
 	return $o . '</select>';
 };
 $sw = static function (string $name, bool $on, string $label, string $tipText = '') use ($dis, $tip): string {
-	return '<div class="d-flex align-items-center mb-2"><div class="form-check form-switch mb-0"><input class="form-check-input" type="checkbox" role="switch" name="' . h($name) . '" value="1" id="pwp_' . h($name) . '"'
+	return '<div class="d-flex align-items-center mb-2"><div class="form-check form-switch mb-0"><input class="form-check-input" type="checkbox" role="switch" name="'
+		. h($name) . '" value="1" id="pwp_' . h($name) . '"'
 		. ($on ? ' checked' : '') . $dis . '><label class="form-check-label" for="pwp_' . h($name) . '">' . h($label) . '</label></div>' . ($tipText !== '' ? $tip($tipText) : '') . '</div>';
 };
 
@@ -85,8 +70,10 @@ nu_layout_start(t('pwp_title'), 'home', ['container' => 'nuContainer', 'settings
 			<div class="row g-3 mb-3">
 				<div class="col-md-4"><label class="form-label" for="pwp_expire"><?= h(t('pwp_users_every')) ?></label><?= $every('expire', (int)$s['expire'], 'pwp_expire') ?></div>
 				<div class="col-md-4"><label class="form-label" for="pwp_warn"><?= h(t('pwp_warn')) ?></label>
-					<select class="form-select" name="warn" id="pwp_warn"<?= $dis ?>><?php foreach (NuPwPolicy::WARN as $d): ?><option value="<?= $d ?>"<?= (int)$s['warn'] === $d ? ' selected' : '' ?>><?= h(t('pwp_every_n', $d)) ?></option><?php endforeach; ?></select></div>
-				<div class="col-md-4"><label class="form-label" for="pwp_ga_expire"><?= h(t('pwp_ga_every')) ?></label><?= $tip(t('pwp_ga_tip')) ?><?= $every('ga_expire', (int)$s['ga_expire'], 'pwp_ga_expire') ?></div>
+					<select class="form-select" name="warn"
+						id="pwp_warn"<?= $dis ?>><?php foreach (NuPwPolicy::WARN as $d): ?><option value="<?= $d ?>"<?= (int)$s['warn'] === $d ? ' selected' : '' ?>><?= h(t('pwp_every_n', $d)) ?></option><?php endforeach; ?></select></div>
+				<div class="col-md-4"><label class="form-label"
+					for="pwp_ga_expire"><?= h(t('pwp_ga_every')) ?></label><?= $tip(t('pwp_ga_tip')) ?><?= $every('ga_expire', (int)$s['ga_expire'], 'pwp_ga_expire') ?></div>
 			</div>
 			<?php if ($nExp || $nSoon): ?><div class="alert alert-info small" id="pwpCounts"><?= h(t('pwp_status', $nExp, $nSoon)) ?></div><?php endif; ?>
 			<details id="pwpLevels"<?= $s['levels'] ? ' open' : '' ?>><summary class="fw-semibold small"><?= h(t('pwp_levels')) ?> <span class="badge text-bg-light border"><?= count($s['levels']) ?></span></summary>

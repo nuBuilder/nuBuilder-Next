@@ -18,20 +18,20 @@ final class NuBuilderGen
 		$table = trim((string)($in['table'] ?? ''));
 		$pk    = trim((string)($in['primary_key'] ?? ''));
 		$audit = $mode === 'new' && !empty($in['audit']);
-		$nulog = $mode === 'new' && !empty($in['nulog']);                       // nuBuilder's <table>_nulog (0.8.349)
+		$nulog = $mode === 'new' && !empty($in['nulog']);                       // nuBuilder's <table>_nulog
 
-		if ($code === '' || $desc === '') nb_err(t('builder_err_code_desc'));
-		if ((int)$db->value('SELECT COUNT(*) FROM zzzzsys_form WHERE sfo_code = ?', [$code])) nb_err(t('builder_err_code_taken'));
-		if ($type === 'page' && !NuPage::validCode($code)) nb_err(t('page_err_code', $code));     // the code is the folder name (0.8.387)
+		if ($code === '' || $desc === '') NuBuilderApi::err(t('builder_err_code_desc'));
+		if ((int)$db->value('SELECT COUNT(*) FROM zzzzsys_form WHERE sfo_code = ?', [$code])) NuBuilderApi::err(t('builder_err_code_taken'));
+		if ($type === 'page' && !NuPage::validCode($code)) NuBuilderApi::err(t('page_err_code', $code));     // the code is the folder name
 
 		$fields = [];                                 // what to generate objects for
 		if ($mode === 'existing') {
-			if ($table === '' || !NuDDL::validName($table)) nb_err(t('builder_err_table_name'));
+			if ($table === '' || !NuDDL::validName($table)) NuBuilderApi::err(t('builder_err_table_name'));
 			$cols = $db->columns($table);
-			if (!$cols) nb_err(t('form_err_table_missing', $table));
+			if (!$cols) NuBuilderApi::err(t('form_err_table_missing', $table));
 			if ($pk === '') foreach ($cols as $n => $c) { if ($c['auto']) { $pk = $n; break; } }
 			if ($pk === '') $pk = (string)array_key_first($cols);
-			if (NuRecord::column($cols, $pk) === null) nb_err(t('builder_err_pk'));
+			if (NuRecord::column($cols, $pk) === null) NuBuilderApi::err(t('builder_err_pk'));
 			if (!empty($in['generate'])) {
 				$prefix = self::commonPrefix(array_keys($cols));
 				$pick = is_array($in['pick'] ?? null) ? $in['pick'] : null;
@@ -41,7 +41,7 @@ final class NuBuilderGen
 						$fields[] = self::fromColumn($name, $c, self::label($name, $prefix));
 					}
 				} else {
-					// chosen columns (0.8.675): only these, in this order, own label, list column on / off – unknown names and doubles are skipped
+					// chosen columns: only these, in this order, own label, list column on / off – unknown names and doubles are skipped
 					$seen = [];
 					foreach ($pick as $p) {
 						if (!is_array($p)) continue;
@@ -52,7 +52,7 @@ final class NuBuilderGen
 						$label = mb_substr(trim((string)($p['label'] ?? '')), 0, 100);
 						$f = self::fromColumn($real, $cols[$real], $label !== '' ? $label : self::label($real, $prefix));
 						$f['browse'] = !empty($p['browse']);
-						$f['filter'] = !empty($p['browse']) && !empty($p['filter']);   // column filter of the list (0.8.688)
+						$f['filter'] = !empty($p['browse']) && !empty($p['filter']);   // column filter of the list
 						$f['pick'] = true;
 						$fields[] = $f;
 					}
@@ -84,7 +84,7 @@ final class NuBuilderGen
 			$db->transaction(static function (NuDB $db) use ($formId, $type, $code, $desc, $table, $pk, $fields, $settings) {
 				$db->insert('zzzzsys_form', [
 					'zzzzsys_form_id' => $formId, 'sfo_type' => $type, 'sfo_code' => $code, 'sfo_description' => $desc,
-					// changes only through drafts (0.8.386): a new form starts as Draft – only designers open it until it is published
+					// changes only through drafts: a new form starts as Draft – only designers open it until it is published
 					'sfo_status' => NuSecurity::get('form_drafts_required') ? '0' : '1',
 					'sfo_table' => $table ?: null, 'sfo_primary_key' => $pk ?: null, 'sfo_browse_rows_per_page' => 20,
 					'sfo_browse_sql' => $table !== '' ? 'SELECT * FROM ' . $table : null,
@@ -114,17 +114,17 @@ final class NuBuilderGen
 			});
 		} catch (Throwable $e) {
 			if ($mode === 'new') {
-				try { NuDDL::dropTable($table); } catch (Throwable) {}
+				try { NuDDL::dropTable($table); } catch (Throwable $ig) { nu_ignored($ig); }
 			}
 			throw $e;
 		}
-		if ($type === 'page') {                                             // settings row of a custom page (0.8.387); open mode from the dialogue (0.8.861)
+		if ($type === 'page') {                                             // settings row of a custom page; open mode from the dialogue
 			$pm = (string)($in['page_open_mode'] ?? 'tab');
 			NuPage::save($formId, ['open_mode' => in_array($pm, NuPage::MODES, true) ? $pm : 'tab'] + NuPage::defaults());
 		}
-		// after creating (0.8.602): a run button on nuBuilder Forte's User Home, access + start page tile for chosen access levels
+		// after creating: a run button on nuBuilder Forte's User Home, access + start page tile for chosen access levels
 		if ($type !== 'subform') {
-			if (!empty($in['user_home']) && NuUserHome::addButton($formId, $desc, $type)) nu_flash('success', t('builder_userhome_done', $desc), true);   // 0.8.603
+			if (!empty($in['user_home']) && NuUserHome::addButton($formId, $desc, $type)) nu_flash('success', t('builder_userhome_done', $desc), true);
 			$levels = self::grantLevels($formId, is_array($in['levels'] ?? null) ? $in['levels'] : []);
 			if ($levels) NuHome::addFormTile($levels, $formId, $desc, (string)(NuAuth::currentRaw()['login'] ?? ''));
 		}
@@ -158,11 +158,11 @@ final class NuBuilderGen
 	private static function validateNewTable(string $table, string $pk, array $rows, bool $audit, bool $nulog = false): array
 	{
 		$db = nu_db();
-		if ($table === '' || !NuDDL::validName($table)) nb_err(t('builder_err_table_name'));
-		if (str_starts_with(strtolower($table), 'zzzzsys')) nb_err(t('builder_err_table_reserved'));
-		if ($db->tableExists($table)) nb_err(t('builder_err_table_exists', $table));
+		if ($table === '' || !NuDDL::validName($table)) NuBuilderApi::err(t('builder_err_table_name'));
+		if (str_starts_with(strtolower($table), 'zzzzsys')) NuBuilderApi::err(t('builder_err_table_reserved'));
+		if ($db->tableExists($table)) NuBuilderApi::err(t('builder_err_table_exists', $table));
 		if ($pk === '') $pk = $table . '_id';
-		if (!NuDDL::validName($pk)) nb_err(t('builder_err_column_name', $pk));
+		if (!NuDDL::validName($pk)) NuBuilderApi::err(t('builder_err_column_name', $pk));
 
 		$seen = [strtolower($pk) => true];
 		if ($audit) foreach (array_keys(NuDDL::AUDIT) as $a) $seen[$a] = true;
@@ -172,16 +172,16 @@ final class NuBuilderGen
 			if (!is_array($r)) continue;
 			$name = trim((string)($r['name'] ?? ''));
 			if ($name === '') continue;
-			if (!NuDDL::validName($name)) nb_err(t('builder_err_column_name', $name));
-			if (isset($seen[strtolower($name)])) nb_err(t('builder_err_column_dup', $name));
+			if (!NuDDL::validName($name)) NuBuilderApi::err(t('builder_err_column_name', $name));
+			if (isset($seen[strtolower($name)])) NuBuilderApi::err(t('builder_err_column_dup', $name));
 			$seen[strtolower($name)] = true;
 			$type = (string)($r['type'] ?? 'text');
-			if (!in_array($type, NuDDL::TYPES, true)) nb_err(t('builder_err_column_type', $name));
+			if (!in_array($type, NuDDL::TYPES, true)) NuBuilderApi::err(t('builder_err_column_type', $name));
 			$length = trim((string)($r['length'] ?? ''));
-			if ($length !== '' && !preg_match('/^\d{1,5}([,.]\d{1,2})?$/', $length)) nb_err(t('builder_err_column_length', $name));
+			if ($length !== '' && !preg_match('/^\d{1,5}([,.]\d{1,2})?$/', $length)) NuBuilderApi::err(t('builder_err_column_length', $name));
 			$columns[] = ['name' => $name, 'type' => $type, 'length' => $length, 'required' => !empty($r['required']), 'label' => trim((string)($r['label'] ?? ''))];
 		}
-		if (!$columns) nb_err(t('builder_err_no_columns'));
+		if (!$columns) NuBuilderApi::err(t('builder_err_no_columns'));
 		return ['pk' => $pk, 'columns' => $columns];
 	}
 

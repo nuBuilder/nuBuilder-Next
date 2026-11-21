@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * OAuth 2 for the SMTP login (0.8.445, core/numailoauth.php) – rights of nuBuilder's form "nusetup", like the E-mail settings.
+ * OAuth 2 for the SMTP login (core/numailoauth.php) – rights of nuBuilder's form "nusetup", like the E-mail settings.
  *   ?p=mailoauth&go=1  after "Save and connect": a state for this session, then the provider's consent page. A page of its own that
  *                      forwards with <meta refresh>: the form post itself may not redirect to another site (Content-Security-Policy form-action).
  *   oauth.php?code=…&state=…  the provider sends the browser back here (oauth.php sets p=mailoauth – a redirect address without a query
@@ -15,8 +15,8 @@ $back = nu_url('email', ['tab' => 'settings']) . '#nuMailOAuth';
 
 // ------------------------------------------------------------------ back from the provider
 if (isset($_GET['state']) || isset($_GET['code']) || isset($_GET['error'])) {
-	$st = $_SESSION['nunext_mail_oauth'] ?? null;
-	unset($_SESSION['nunext_mail_oauth']);
+	$st = $_SESSION[NuSess::MAIL_OAUTH] ?? null;
+	unset($_SESSION[NuSess::MAIL_OAUTH]);
 	$ok = is_array($st) && is_string($_GET['state'] ?? null) && hash_equals((string)$st['state'], (string)$_GET['state']) && (int)$st['at'] > time() - 600;
 	if (!$ok) {
 		NuLog::write('mail_oauth_failed', NuMailOAuth::SETTING, '', ['reason' => 'state']);
@@ -46,7 +46,7 @@ if (!NuMailOAuth::ready()) {
 	nu_redirect($back);
 }
 $state = bin2hex(random_bytes(24));
-$_SESSION['nunext_mail_oauth'] = ['state' => $state, 'at' => time()];
+$_SESSION[NuSess::MAIL_OAUTH] = ['state' => $state, 'at' => time()];
 $url = NuMailOAuth::authorizeUrl($state);
 $host = (string)parse_url($url, PHP_URL_HOST);
 

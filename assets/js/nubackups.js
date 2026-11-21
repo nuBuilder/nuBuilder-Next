@@ -1,5 +1,5 @@
 /*
- * Update page → Backups (0.8.451): select several backups and delete them at once; the clean-up rule (keep the newest n / delete
+ * Update page → Backups: select several backups and delete them at once; the clean-up rule (keep the newest n / delete
  * older than n days) with a live preview. The newest backup and the newest safety backup before a roll back have no checkbox and are
  * left out by the rule – the server checks the same (NuUpdate::protectedBackups).
  */

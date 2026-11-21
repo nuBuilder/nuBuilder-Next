@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Side bar (0.8.460): an optional left column on every page with the user's favourites and the pages / forms he used last.
+ * Side bar: an optional left column on every page with the user's favourites and the pages / forms he used last.
  *   - On / off per user (default off): sus_json NUNEXT_SIDEBAR '1' / '0', the globeadmin's in the setting row sidebar_ga, demo
  *     visitors in the session; without an own choice the default for everyone counts (setting row sidebar_default, the globeadmin).
  *   - Favourites = the ☆ tiles of the start page the user sees (NuHome: the admin layout, or the user start page with his own
@@ -22,7 +22,7 @@ final class NuSidebar
 	public const TABLE       = 'zzzzsys_nunext_recent';
 	public const KEEP        = 10;
 	/** Session key of the page recorded last ([user|item, time]) and how long it is not written again (record()). */
-	private const LAST         = 'nu_recent_last';
+	private const LAST         = NuSess::RECENT_LAST;
 	private const SAME_SECONDS = 300;
 	/** Pages recorded under their start page tile key (the key is the route). */
 	public const PAGE_KEYS   = ['users', 'access', 'permissions', 'sessions', 'adminroles', 'userfields', 'forms', 'procedures', 'reports', 'prompts',
@@ -42,7 +42,7 @@ final class NuSidebar
 		$u = NuAuth::user();
 		if (!$u) return self::$on = false;
 		try {
-			if (!empty($u['demo'])) $v = $_SESSION['nu_sidebar'] ?? '';
+			if (!empty($u['demo'])) $v = $_SESSION[NuSess::SIDEBAR] ?? '';
 			elseif ($u['globeadmin']) $v = (string)(self::setting(self::SETTING_GA) ?? '');
 			else $v = (string)NuUserJson::get((string)$u['id'], self::JSON);
 		} catch (Throwable) {
@@ -55,14 +55,14 @@ final class NuSidebar
 	{
 		$u = NuAuth::user();
 		if (!$u) return;
-		if (!empty($u['demo'])) $_SESSION['nu_sidebar'] = $on ? '1' : '0';
+		if (!empty($u['demo'])) $_SESSION[NuSess::SIDEBAR] = $on ? '1' : '0';
 		elseif ($u['globeadmin']) self::setSetting(self::SETTING_GA, $on ? '1' : '0');
 		else NuUserJson::set((string)$u['id'], self::JSON, $on ? '1' : '0');
 		self::$on = $on;
 	}
 
 	/**
-	 * Pinned (0.8.556): the side bar stays open as a column next to the page (from 992 px; narrower screens keep the drawer) – per user
+	 * Pinned: the side bar stays open as a column next to the page (from 992 px; narrower screens keep the drawer) – per user
 	 * like on / off: sus_json NUNEXT_SIDEBAR_PIN, the globeadmin's in the setting row sidebar_pin_ga, demo visitors in the session.
 	 */
 	public static function pinned(): bool
@@ -71,7 +71,7 @@ final class NuSidebar
 		$u = NuAuth::user();
 		if (!$u) return self::$pin = false;
 		try {
-			if (!empty($u['demo'])) $v = $_SESSION['nu_sidebar_pin'] ?? '';
+			if (!empty($u['demo'])) $v = $_SESSION[NuSess::SIDEBAR_PIN] ?? '';
 			elseif ($u['globeadmin']) $v = (string)(self::setting(self::SETTING_PIN_GA) ?? '');
 			else $v = (string)NuUserJson::get((string)$u['id'], self::JSON_PIN);
 		} catch (Throwable) {
@@ -84,7 +84,7 @@ final class NuSidebar
 	{
 		$u = NuAuth::user();
 		if (!$u) return;
-		if (!empty($u['demo'])) $_SESSION['nu_sidebar_pin'] = $on ? '1' : '0';
+		if (!empty($u['demo'])) $_SESSION[NuSess::SIDEBAR_PIN] = $on ? '1' : '0';
 		elseif ($u['globeadmin']) self::setSetting(self::SETTING_PIN_GA, $on ? '1' : '0');
 		else NuUserJson::set((string)$u['id'], self::JSON_PIN, $on ? '1' : '0');
 		self::$pin = $on;
@@ -144,7 +144,7 @@ final class NuSidebar
 	}
 
 	/**
-	 * Notes the page being shown – also while the side bar is off (0.8.492): the start page's row "Recently used" shows the same list.
+	 * Notes the page being shown – also while the side bar is off: the start page's row "Recently used" shows the same list.
 	 * Not while the globeadmin acts as another user.
 	 */
 	public static function record(string $key): void
@@ -152,14 +152,14 @@ final class NuSidebar
 		$u = NuAuth::user();
 		if ($key === '' || !$u || NuImpersonate::active()) return;
 		if (!empty($u['demo'])) {
-			$list = array_values(array_diff((array)($_SESSION['nu_recent'] ?? []), [$key]));
+			$list = array_values(array_diff((array)($_SESSION[NuSess::RECENT] ?? []), [$key]));
 			array_unshift($list, $key);
-			$_SESSION['nu_recent'] = array_slice($list, 0, self::KEEP);
+			$_SESSION[NuSess::RECENT] = array_slice($list, 0, self::KEEP);
 			return;
 		}
 		try {
 			$uid = self::userId();
-			// The page shown last is already on top of the list – nothing to write (performance review, 0.8.1341: every page view cost a
+			// The page shown last is already on top of the list – nothing to write (performance review: every page view cost a
 			// SELECT and an UPDATE, i.e. a write to disk, also while paging through one list or going from a list to its records).
 			// Written again after SAME_SECONDS, so two browsers of one user stay in order.
 			$mark = $uid . '|' . $key;
@@ -185,7 +185,7 @@ final class NuSidebar
 	}
 
 	/**
-	 * A start page tile was opened (POST action used, 0.8.492): a form tile counts as its form (as when the form page is shown), a tile
+	 * A start page tile was opened (POST action used): a form tile counts as its form (as when the form page is shown), a tile
 	 * of a page as that page, other tiles (reports, links, tools) under their own key. Unknown or hidden tiles are ignored.
 	 */
 	public static function recordTile(string $key): void
@@ -193,7 +193,7 @@ final class NuSidebar
 		if ($key === '' || strlen($key) > 100) return;
 		[$layout] = self::startPage();
 		if (!NuHome::visible($key, $layout) || ($r = NuHome::resolve($key, $layout)) === null || $r['proc'] !== null) return;
-		$c = (array)(((array)($layout['custom'] ?? []))[$key] ?? []);   // custom tiles are an object in the default / a saved layout (0.8.940)
+		$c = (array)(((array)($layout['custom'] ?? []))[$key] ?? []);   // custom tiles are an object in the default / a saved layout
 		if (($r['kind'] ?? '') === 'form' && ($c['target'] ?? '') !== '') {
 			$f = (string)$c['target'];
 			self::record($f === 'nunotes' ? 'notes' : 'form:' . $f);
@@ -207,7 +207,7 @@ final class NuSidebar
 	{
 		$u = NuAuth::user();
 		if (!$u) return [];
-		if (!empty($u['demo'])) return array_values(array_map('strval', (array)($_SESSION['nu_recent'] ?? [])));
+		if (!empty($u['demo'])) return array_values(array_map('strval', (array)($_SESSION[NuSess::RECENT] ?? [])));
 		try {
 			NuSchema::ensure();
 			return array_map(static fn($r) => (string)$r['item'],
@@ -217,12 +217,12 @@ final class NuSidebar
 		}
 	}
 
-	/** One entry out of "Recently used" (right-click / long press → Remove from recently used, 0.8.498). */
+	/** One entry out of "Recently used" (right-click / long press → Remove from recently used). */
 	public static function forget(string $key): void
 	{
 		$u = NuAuth::user();
 		if (!$u || $key === '') return;
-		if (!empty($u['demo'])) { $_SESSION['nu_recent'] = array_values(array_diff((array)($_SESSION['nu_recent'] ?? []), [$key])); return; }
+		if (!empty($u['demo'])) { $_SESSION[NuSess::RECENT] = array_values(array_diff((array)($_SESSION[NuSess::RECENT] ?? []), [$key])); return; }
 		unset($_SESSION[self::LAST]);                           // the page may be recorded again at once
 		NuSchema::ensure();
 		nu_db()->run('DELETE FROM ' . self::TABLE . ' WHERE user_id = ? AND item = ?', [self::userId(), $key]);
@@ -232,7 +232,7 @@ final class NuSidebar
 	{
 		$u = NuAuth::user();
 		if (!$u) return;
-		if (!empty($u['demo'])) { $_SESSION['nu_recent'] = []; return; }
+		if (!empty($u['demo'])) { $_SESSION[NuSess::RECENT] = []; return; }
 		unset($_SESSION[self::LAST]);
 		NuSchema::ensure();
 		nu_db()->run('DELETE FROM ' . self::TABLE . ' WHERE user_id = ?', [self::userId()]);
@@ -266,7 +266,7 @@ final class NuSidebar
 	public static function data(int $recentMax = 8, ?bool $skipFav = null): array
 	{
 		[$layout, $userPage, $mine] = self::startPage();
-		// 0.8.1115: Recently used without the favourites – the start page's view key recentNoFav (null = as that view says; the start page
+		// Recently used without the favourites – the start page's view key recentNoFav (null = as that view says; the start page
 		// passes false and hides them itself, so its switch works without a reload)
 		if ($skipFav === null) {
 			try {
@@ -331,11 +331,11 @@ final class NuSidebar
 		return $errors ? null : $on;
 	}
 
-	/** Session key of the last tile hidden with the start page's tile menu (0.8.652): what Undo needs and whether its message is still to show. */
-	public const UNDO = 'nu_home_hide_undo';
+	/** Session key of the last tile hidden with the start page's tile menu: what Undo needs and whether its message is still to show. */
+	public const UNDO = NuSess::HOME_HIDE_UNDO;
 
 	/**
-	 * "Hide" in the right-click / long-press menu of a start page tile (0.8.652): on an admin start page the tile goes to the layout's hidden
+	 * "Hide" in the right-click / long-press menu of a start page tile: on an admin start page the tile goes to the layout's hidden
 	 * tiles (as Edit tiles and groups – everyone who uses the layout); on a user start page it is hidden for this user (as Personalise). Same
 	 * rights as the ☆ (canFav). The place is kept in the session for Undo. @return bool false = not possible here
 	 */

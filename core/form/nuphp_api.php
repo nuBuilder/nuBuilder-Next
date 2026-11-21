@@ -14,14 +14,14 @@ if (!function_exists('nuRunQuery')) {
 	function nuRunQuery(?string $sql = null, array $params = [], bool $isInsert = false): NuResult|string|array|int
 	{
 		$db = nu_db();
-		// no SQL: nuBuilder Forte returns [host, database, user, password] – here without the password (0.8.926)
+		// no SQL: nuBuilder Forte returns [host, database, user, password] – here without the password
 		if ($sql === null || trim($sql) === '') return [(string)nu_cfg('nuConfigDBHost'), (string)nu_cfg('nuConfigDBName'), (string)nu_cfg('nuConfigDBUser'), ''];
-		// SQL of the application: server-side prepares as nuBuilder Next always had (0.8.1342 – its own statements go in one step)
+		// SQL of the application: server-side prepares as nuBuilder Next always had (its own statements go in one step)
 		if ($db->emulated()) return $db->native(static fn () => nuRunQuery($sql, $params, $isInsert));
 		// nuBuilder Forte: when the first line starts with '#', every '#' line is a command run first (e.g. "#SET SESSION …")
 		[$commands, $sql] = nu_query_commands($sql);
 		foreach ($commands as $c) if ($c !== '') $db->run($c);
-		// a database error as nuBuilder Forte (0.8.982, the owner's decision): written to the Debug results, nuGetLastError() describes
+		// a database error as nuBuilder Forte (the owner's decision): written to the Debug results, nuGetLastError() describes
 		// it, the query returns -1 and the code goes on. Not database errors (demo mode's refusal, …) still stop the code.
 		try {
 			$st = $db->run($sql, $params);
@@ -114,7 +114,7 @@ if (!function_exists('nuRunQuery')) {
 		NuPhp::$errors[] = ['message' => $message, 'field' => $field];
 	}
 
-	/** nuBuilder: in After Save – the form opens this record instead of the saved one (-1 = a new, empty record; 0.8.443). */
+	/** nuBuilder: in After Save – the form opens this record instead of the saved one (-1 = a new, empty record). */
 	function nuReturnNewRecord(mixed $i = -1): void
 	{
 		NuPhp::$openRecord = (string)$i;
@@ -137,7 +137,7 @@ if (!function_exists('nuRunQuery')) {
 	function nuGetNuDataValue(mixed $nudata, string $formId, string $field): mixed
 	{
 		if ($formId === '') $formId = 'nuBuilder4EditForm';
-		if (!is_array($nudata) || !$nudata) $nudata = NuPhp::$hash['nuFORMdata'] ?? [];   // no $nudata at hand: the form data of this save (0.8.922)
+		if (!is_array($nudata) || !$nudata) $nudata = NuPhp::$hash['nuFORMdata'] ?? [];   // no $nudata at hand: the form data of this save
 		foreach ((array)$nudata as $sf) {
 			if (!is_object($sf) || ($sf->id ?? null) !== $formId) continue;
 			$key = array_search($field, (array)($sf->fields ?? []), true);
@@ -167,7 +167,7 @@ if (!function_exists('nuRunQuery')) {
 	}
 
 	/**
-	 * nuBuilder Next (0.8.924): a value of the record being saved – Before Save / After Save, no $nudata or form id needed.
+	 * nuBuilder Next: a value of the record being saved – Before Save / After Save, no $nudata or form id needed.
 	 * $subform '' = the edit form, else a sub-form object id and $row its row (0 = the first).
 	 */
 	function nuNextSaveValue(string $field, string $subform = '', int $row = 0): mixed
@@ -181,7 +181,7 @@ if (!function_exists('nuRunQuery')) {
 	}
 
 	/**
-	 * nuBuilder Next (0.8.924): changes a value of the record being saved – in Before Save the new value is what gets saved.
+	 * nuBuilder Next: changes a value of the record being saved – in Before Save the new value is what gets saved.
 	 * $subform '' = the edit form, else a sub-form object id and $row its row (0 = the first). false = no such field / row.
 	 */
 	function nuNextSetSaveValue(string $field, mixed $value, string $subform = '', int $row = 0): bool
@@ -260,19 +260,19 @@ if (!function_exists('nuRunQuery')) {
 		return nu_id();
 	}
 
-	/** nuBuilder Next (0.8.622): a UUID v7 – the key new records get when the primary key is a 36-character column. */
+	/** nuBuilder Next: a UUID v7 – the key new records get when the primary key is a 36-character column. */
 	function nuNextUUID(): string
 	{
 		return nu_uuid();
 	}
 
-	/** nuBuilder Next (0.8.755): can Excel / OpenDocument files be read (PhpSpreadsheet library pack, PHP 8.2, extensions)? */
+	/** nuBuilder Next: can Excel / OpenDocument files be read (PhpSpreadsheet library pack, PHP 8.2, extensions)? */
 	function nuNextSpreadsheetAvailable(): bool
 	{
 		return NuSpreadsheet::available();
 	}
 
-	/** nuBuilder Next (0.8.755): the rows of one sheet (index or name) of an .xlsx / .xls / .ods file as texts – formulas give their saved result. */
+	/** nuBuilder Next: the rows of one sheet (index or name) of an .xlsx / .xls / .ods file as texts – formulas give their saved result. */
 	function nuNextReadSpreadsheet(string $file, int|string $sheet = 0): array
 	{
 		return NuSpreadsheet::read($file, $sheet)['rows'];
@@ -294,7 +294,7 @@ if (!function_exists('nuRunQuery')) {
 		$name = (string)nu_cfg('nuConfigDBGlobeadminUsername');
 		$db = nu_db();
 		if ($name !== '' && NuUserJson::available() && !NuAuth::userExists($name)) {
-			try { $db->insert('zzzzsys_user', ['zzzzsys_user_id' => $name]); } catch (Throwable) { /* columns without default – nothing stored */ }
+			try { $db->insert('zzzzsys_user', ['zzzzsys_user_id' => $name]); } catch (Throwable $ig) { nu_ignored($ig, 'columns without default – nothing stored'); }
 		}
 		return $name;
 	}
@@ -310,7 +310,7 @@ if (!function_exists('nuRunQuery')) {
 	}
 
 	/**
-	 * nuBuilder Next (0.8.339): new single-use login token for a user (nuBuilder's sus_json LOGIN_TOKEN) and the link
+	 * nuBuilder Next: new single-use login token for a user (nuBuilder's sus_json LOGIN_TOKEN) and the link
 	 * index.php?u=<login name>&p=<token>[&f=&r=]. $minutes 0 = no expiry; '' on error (e.g. API service user, no sus_json).
 	 */
 	function nuCreateLoginToken($userId, $minutes = 0, $formId = '', $recordId = ''): string
@@ -320,7 +320,7 @@ if (!function_exists('nuRunQuery')) {
 	}
 
 	/**
-	 * nuBuilder Next (0.8.357): notification for the bell. $args: title (required), body, level (info|success|warning|danger), link,
+	 * nuBuilder Next: notification for the bell. $args: title (required), body, level (info|success|warning|danger), link,
 	 * all, users (ids or login names), departments, teams, positions, access_levels (ids), mode (live|fixed), publish_at, expires_at,
 	 * pinned, must_confirm, email. Published at once (or at publish_at). Returns the id, '' when not valid.
 	 */
@@ -374,7 +374,7 @@ if (!function_exists('nuRunQuery')) {
 	/** nuBuilder Forte: the parameters of the address index.php was opened with in this session (without p = password), latest values. */
 	function nuGetURLParams(): array
 	{
-		return (array)($_SESSION['nu_url_params'] ?? []);
+		return (array)($_SESSION[NuSess::URL_PARAMS] ?? []);
 	}
 
 	/** Posted subform, shaped like nuBuilder's object: rows, fields, deleted, edited. */
@@ -440,7 +440,7 @@ if (!function_exists('nuRunQuery')) {
 	}
 
 	/**
-	 * Access levels of the signed-in user or of $userId (0.8.867): the main level first, then the active additional levels – each
+	 * Access levels of the signed-in user or of $userId: the main level first, then the active additional levels – each
 	 * {id, code, description, group, main, valid_until}. The globeadmin (signed in, no user record) has none: [].
 	 */
 	function nuNextAccessLevels(?string $userId = null): array
@@ -448,13 +448,13 @@ if (!function_exists('nuRunQuery')) {
 		return NuUserAccess::listOf($userId);
 	}
 
-	/** Custom user field (0.8.454): the value of $code for the signed-in user or $userId; null when there is no such field. */
+	/** Custom user field: the value of $code for the signed-in user or $userId; null when there is no such field. */
 	function nuNextUserField(string $code, ?string $userId = null): ?string
 	{
 		return NuUserFields::get($code, $userId);
 	}
 
-	/** Custom user field (0.8.454): sets $code of a user ('' = empty). Checked like in the user form; logged. @return string '' or the error */
+	/** Custom user field: sets $code of a user ('' = empty). Checked like in the user form; logged. @return string '' or the error */
 	function nuNextSetUserField(string $userId, string $code, string $value): string
 	{
 		$code = strtolower($code);
@@ -505,7 +505,7 @@ if (!function_exists('nuRunQuery')) {
 
 	function nuReplaceHashVariables($s): string
 	{
-		return NuHash::replace(trim((string)$s), NuPhp::$hash, NuHash::RAW);   // trimmed as Forte's nuReplaceHashVariables (nuTrim, 0.8.977)
+		return NuHash::replace(trim((string)$s), NuPhp::$hash, NuHash::RAW);   // trimmed as Forte's nuReplaceHashVariables (nuTrim)
 	}
 
 	function nuSendEmailFromTemplate($template): array
@@ -519,16 +519,16 @@ if (!function_exists('nuRunQuery')) {
 
 if (!function_exists('nuDashboardData')) {
 	/**
-	 * nuBuilder Next (0.8.401), in Before Edit: switch the check for concurrent edits (another user saved the same field since the form
+	 * nuBuilder Next, in Before Edit: switch the check for concurrent edits (another user saved the same field since the form
 	 * was opened) or the "also open by …" hint off – or on again – for this form.
 	 */
 	function nuNextConflictCheck(bool $on = true): void { NuConflict::$formCheck = $on; }
-	/** Before Edit (0.8.1234): false = this record may be opened, saved and deleted although the form's list does not show it ("Records only through the form's list"). */
+	/** Before Edit: false = this record may be opened, saved and deleted although the form's list does not show it ("Records only through the form's list"). */
 	function nuNextRecordCheck(bool $on = true): void { NuRecord::$formRecordCheck = $on; }
 	function nuNextPresence(bool $on = true): void { NuConflict::$formPresence = $on; }
 
 	/**
-	 * nuBuilder Next field data access (0.8.480): the mode of a field for the signed-in user – edit, ro, hide, prot, ins, upd, mask or wh
+	 * nuBuilder Next field data access: the mode of a field for the signed-in user – edit, ro, hide, prot, ins, upd, mask or wh
 	 * (Form builder → Data access); '' when the form or field does not exist. nuFieldAccessAllowed(): may the user see its value?
 	 * Report SQL and procedures read the real values – use these to leave out what the user must not see.
 	 */
@@ -548,7 +548,7 @@ if (!function_exists('nuDashboardData')) {
 	}
 
 	/**
-	 * nuBuilder Next dashboards (0.8.298): a procedure used as the source of a dashboard widget hands over its rows –
+	 * nuBuilder Next dashboards: a procedure used as the source of a dashboard widget hands over its rows –
 	 * a list of arrays, e.g. [['month' => 'Jan', 'sales' => 120], …] (first column = categories, the others = series).
 	 */
 	function nuDashboardData(array $rows): void
@@ -559,7 +559,7 @@ if (!function_exists('nuDashboardData')) {
 
 if (!function_exists('nuHomeSetBadge')) {
 	/*
-	 * Start page hooks (0.8.378, core/nuhomehook.php): in the procedure nu_home – they change only the tile start page being
+	 * Start page hooks (core/nuhomehook.php): in the procedure nu_home – they change only the tile start page being
 	 * built (badges, descriptions, hidden tiles, dynamic groups / tiles with keys x_…, banners, data for JavaScript).
 	 */
 	function nuHomeSetBadge($key, $text, $color = 'secondary'): void { NuHomeHook::setBadge((string)$key, (string)$text, (string)$color); }

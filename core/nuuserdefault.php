@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Defaults of custom user fields that are worked out when a user is created (0.8.1074).
+ * Defaults of custom user fields that are worked out when a user is created.
  *
  *   fixed text           a value as before ("Zurich")
  *   expression           date keywords:  today, yesterday, tomorrow, now, month_start, month_end, year_start, year_end,
@@ -109,7 +109,8 @@ final class NuUserDefault
 		if ($code !== '' && NuUserFields::validCode($code) && nu_db()->tableExists(NuUserFields::EXT)) {
 			$db = nu_db();
 			$col = NuDB::ident($code);
-			try { $rows = $db->all('SELECT ' . $col . ' AS v FROM ' . NuUserFields::EXT . ' WHERE ' . $col . " LIKE ? ESCAPE '!'", [NuDB::likeRaw($pre) . '%']); } catch (Throwable) { $rows = []; }   // a new field: its column comes on save
+			try { $rows = $db->all('SELECT ' . $col . ' AS v FROM ' . NuUserFields::EXT . ' WHERE ' . $col . " LIKE ? ESCAPE '!'",
+				[NuDB::likeRaw($pre) . '%']); } catch (Throwable) { $rows = []; }   // a new field: its column comes on save
 			foreach ($rows as $r) {
 				$v = (string)$r['v'];
 				if ($suf !== '' && !str_ends_with($v, $suf)) continue;

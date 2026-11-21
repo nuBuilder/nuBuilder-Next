@@ -6,11 +6,11 @@ defined('NU_ROOT') || exit;
 final class NuDraftRevException extends RuntimeException {}
 
 /**
- * Form drafts (0.8.386): a working copy of a form in zzzzsys_nunext_form_draft (a NuFormSnapshot as JSON) – nuBuilder and the users
+ * Form drafts: a working copy of a form in zzzzsys_nunext_form_draft (a NuFormSnapshot as JSON) – nuBuilder and the users
  * keep the live form until the draft is published. Lifecycle open → published | discarded (review: Phase 2). Publishing checks that
  * live was not changed since the draft started (hash of base_snapshot), writes the draft into nuBuilder's tables in one transaction
  * (NuFormSnapshot::apply) and records the version in the history ("before publish", "published vN"). A preview session
- * ($_SESSION['nu_form_preview']) makes NuFormMeta::load() return the draft for its author / designers – read-only unless the draft
+ * ($_SESSION[NuSess::FORM_PREVIEW]) makes NuFormMeta::load() return the draft for its author / designers – read-only unless the draft
  * allows saving.
  */
 final class NuFormDraft
@@ -20,7 +20,7 @@ final class NuFormDraft
 	public const UNDO_MAX = 20;
 	public const PREVIEW_TTL = 7200;                 // seconds a preview stays on in the session
 	public const TYPES = ['input', 'select', 'textarea', 'editor', 'display', 'calc', 'lookup', 'subform', 'html', 'chart', 'word', 'contentbox', 'run', 'image'];
-	private const SESSION = 'nu_form_preview';
+	private const SESSION = NuSess::FORM_PREVIEW;
 
 	/** @var array<string, ?array> preview snapshots of this request */
 	private static array $previewCache = [];
@@ -71,7 +71,7 @@ final class NuFormDraft
 			'note' => (string)($d['note'] ?? ''), 'created_by' => (string)$d['created_by'], 'created_at' => (string)$d['created_at'],
 			'updated_by' => (string)($d['updated_by'] ?? ''), 'updated_at' => (string)($d['updated_at'] ?? ''), 'preview_saves' => (int)($d['preview_saves'] ?? 0) === 1,
 			'changes' => $live && $snap ? NuFormSnapshot::diff($live, $snap)['counts']['total'] : 0,
-			'ddl' => count(json_decode((string)($d['ddl'] ?? '[]'), true) ?: []),   // table changes waiting in the draft (0.8.1303: an empty draft = 0 changes and no ddl)
+			'ddl' => count(json_decode((string)($d['ddl'] ?? '[]'), true) ?: []),   // table changes waiting in the draft (an empty draft = 0 changes and no ddl)
 			'conflict' => $live === null || ($base && NuFormSnapshot::hash($live, $base) !== (string)$d['base_hash']),
 			'undo_count' => count($undo), 'undo_label' => (string)($undo[0]['label'] ?? ''),
 			'redo_count' => count(json_decode((string)($d['redo_list'] ?? '[]'), true) ?: []),
@@ -83,7 +83,7 @@ final class NuFormDraft
 	public static function start(string $formId, string $note = ''): array
 	{
 		if (!self::canEdit()) throw new RuntimeException(t('err_forbidden'));
-		if (str_starts_with($formId, 'nu') && $formId !== NuUserHome::FORM) throw new RuntimeException(t('builder_err_system'));   // User Home: 0.8.605
+		if (str_starts_with($formId, 'nu') && $formId !== NuUserHome::FORM) throw new RuntimeException(t('builder_err_system'));   // User Home
 		NuSchema::ensure();
 		if ($open = self::openFor($formId)) throw new RuntimeException(t('builder_draft_exists', (string)$open['created_by']));
 		$snap = NuFormSnapshot::capture($formId) ?? throw new RuntimeException(t('form_err_not_found'));
@@ -98,7 +98,7 @@ final class NuFormDraft
 	}
 
 	/**
-	 * A change made to the live form outside the draft (0.8.1054: help pages linked from the help page editor) applied to an open draft too:
+	 * A change made to the live form outside the draft (help pages linked from the help page editor) applied to an open draft too:
 	 * $fn changes a snapshot; it runs on the draft AND on its base, so publishing neither drops the change nor reports it as a conflict.
 	 * No undo step (not the designer's change). Returns true when a draft was changed.
 	 */
@@ -151,7 +151,7 @@ final class NuFormDraft
 		});
 	}
 
-	/** Again the change that undo() took back (review H2, 0.8.765). */
+	/** Again the change that undo took back (review H2). */
 	public static function redo(string $id, int $rev): int
 	{
 		return nu_db()->transaction(static function (NuDB $db) use ($id, $rev): int {
@@ -171,7 +171,7 @@ final class NuFormDraft
 	}
 
 	/** A column added for the draft (DDL runs at once – additive and nullable); listed in the publish summary. */
-	/** $change (0.8.623): a changed column, e.g. "varchar(25) → varchar(50)" ('' = a column added). */
+	/** $change: a changed column, e.g. "varchar(25) → varchar(50)" ('' = a column added). */
 	public static function addDdl(string $id, string $table, string $column, string $type, string $length, string $change = ''): void
 	{
 		$d = self::get($id);
@@ -212,7 +212,7 @@ final class NuFormDraft
 		$f = $snap['form'] ?? [];
 		$live ??= NuFormSnapshot::capture($formId);
 		$lf = $live['form'] ?? [];
-		// problems the draft did not cause (0.8.1286): parts that are as on the live form only warn – a database of nuBuilder Forte may hold
+		// problems the draft did not cause: parts that are as on the live form only warn – a database of nuBuilder Forte may hold
 		// e.g. a run button to a form deleted long ago, and that must not stop publishing an unrelated change
 		$same = static function ($a, $b): bool {
 			if (!is_array($a) || !is_array($b)) return false;
@@ -221,13 +221,15 @@ final class NuFormDraft
 		};
 		$add = static function (bool $changed, string $msg) use (&$e, &$w): void { if ($changed) $e[] = $msg; else $w[] = $msg; };
 		$code = trim((string)($f['sfo_code'] ?? ''));
-		if ($code === '' || (int)$db->value('SELECT COUNT(*) FROM zzzzsys_form WHERE sfo_code = ? AND zzzzsys_form_id <> ?', [$code, $formId])) $add($code !== trim((string)($lf['sfo_code'] ?? '')) || !$live, t('builder_draft_err_code', $code));
+		if ($code === ''
+			|| (int)$db->value('SELECT COUNT(*) FROM zzzzsys_form WHERE sfo_code = ? AND zzzzsys_form_id <> ?', [$code, $formId])) $add($code !== trim((string)($lf['sfo_code'] ?? ''))
+			|| !$live, t('builder_draft_err_code', $code));
 		$tabs = array_flip(array_map(static fn($t) => (string)$t['zzzzsys_tab_id'], $snap['tabs'] ?? []));
 		if (!$tabs && ($snap['objects'] ?? [])) $e[] = t('builder_err_one_tab');
 		$seen = [];
 		$cols = trim((string)($f['sfo_table'] ?? '')) !== '' && ($f['sfo_type'] ?? '') !== 'launch' ? $db->columns((string)$f['sfo_table']) : [];
 		$formExists = static fn(string $id): bool => $id === '' || nu_form_exists($id);
-		// ids of the live form (0.8.1164): an id nuBuilder Forte allowed (e.g. with umlauts) blocks only when it is new or renamed in the draft
+		// ids of the live form: an id nuBuilder Forte allowed (e.g. with umlauts) blocks only when it is new or renamed in the draft
 		$liveIds = $liveObj = [];
 		foreach ($live['objects'] ?? [] as $lo) { $k = (string)($lo['zzzzsys_object_id'] ?? ''); $liveIds[$k] = (string)($lo['sob_all_id'] ?? ''); $liveObj[$k] = $lo; }
 		foreach ($snap['objects'] ?? [] as $o) {
@@ -279,13 +281,13 @@ final class NuFormDraft
 		$d = self::get($id);
 		if (!$d || !in_array($d['status'], [self::OPEN, self::REVIEW], true)) throw new RuntimeException(t('builder_draft_not_open'));
 		if (!self::canPublish()) throw new RuntimeException(t('err_forbidden'));
-		$note = trim($note);                                 // optional (0.8.797): empty = an automatic note with the number of changes, below
+		$note = trim($note);                                 // optional: empty = an automatic note with the number of changes, below
 		$formId = (string)$d['form_id'];
 		$live = NuFormSnapshot::capture($formId);
 		if ($live === null) return ['ok' => false, 'errors' => [t('builder_draft_form_gone')]];
 		$base = self::snapshotOf($d, 'base_snapshot');
 		$snap = self::snapshotOf($d);
-		// status (0.8.808): Maintenance is switched on the live form at once – a draft that did not change the status keeps the live one,
+		// status: Maintenance is switched on the live form at once – a draft that did not change the status keeps the live one,
 		// and a status changed only on the live form is no conflict
 		$bs = $base['form']['sfo_status'] ?? null;
 		if (isset($snap['form']) && ($snap['form']['sfo_status'] ?? null) === $bs) $snap['form']['sfo_status'] = $live['form']['sfo_status'] ?? null;
@@ -300,7 +302,7 @@ final class NuFormDraft
 		$v = self::validate($formId, $snap, $live);
 		if ($v['errors']) return ['ok' => false, 'errors' => $v['errors']];
 		if ($v['warnings'] && !$warningsOk) return ['ok' => false, 'warnings' => $v['warnings']];
-		// only the globeadmin renames or deletes tabs (0.8.247) – also not through a draft
+		// only the globeadmin renames or deletes tabs – also not through a draft
 		if (empty(NuAuth::user()['globeadmin'])) {
 			$tabs = [];
 			foreach ($snap['tabs'] ?? [] as $t) $tabs[(string)$t['zzzzsys_tab_id']] = trim((string)$t['syt_title']);
@@ -356,7 +358,7 @@ final class NuFormDraft
 	}
 
 	/**
-	 * Where a Save of the form's code side panels goes (0.8.1300: label in their title) – the same rules as the builder API's form.save:
+	 * Where a Save of the form's code side panels goes (label in their title) – the same rules as the builder API's form.save:
 	 * draft = the draft shown in the preview · unpub = a form never published (changed directly) · open = live while a draft is open
 	 * (the globeadmin confirms, others are refused) · need = "changes only through drafts" for non-globeadmins · live = the live form.
 	 * @return array{mode: string, label: string, tip: string}
@@ -478,10 +480,14 @@ final class NuFormDraft
 		$desc = (string)(self::snapshotOf($d)['form']['sfo_description'] ?? $formId);
 		$saves = self::previewSaves($formId) || (int)$d['preview_saves'] === 1;
 		return '<div class="alert alert-warning rounded-0 border-0 border-bottom mb-0 py-2 nuDraftBanner" role="status"><div class="container-fluid d-flex flex-wrap align-items-center gap-2">'
-			. '<i class="bi bi-cone-striped" aria-hidden="true"></i><span class="me-auto"><strong>' . h(t('draft_preview_banner', $desc, (string)$d['created_by'], (string)($info['changes'] ?? 0))) . '</strong> '
+			. '<i class="bi bi-cone-striped" aria-hidden="true"></i><span class="me-auto"><strong>'
+				. h(t('draft_preview_banner', $desc, (string)$d['created_by'], (string)($info['changes'] ?? 0))) . '</strong> '
 			. h(t($saves ? 'draft_preview_saves_on' : 'draft_preview_saves_off')) . (count($drafts) > 1 ? ' (+' . (count($drafts) - 1) . ')' : '') . '</span>'
-			. (NuAcl::can(NuAcl::FORM_FORM, 'view') ? '<a class="btn btn-sm btn-outline-dark" href="' . h(nu_url('builder', ['f' => $formId, 'draft' => '1'])) . '"><i class="bi bi-tools me-1" aria-hidden="true"></i>' . h(t('draft_preview_builder')) . '</a>' : '')
-			. '<a class="btn btn-sm btn-dark" id="nuDraftLeave" title="' . h(t('draft_preview_leave_tip')) . '" href="' . h(nu_url('form', ['f' => $formId, 'draft' => 'off'])) . '"><i class="bi bi-box-arrow-right me-1" aria-hidden="true"></i>' . h(t('draft_preview_leave')) . '</a>'
+			. (NuAcl::can(NuAcl::FORM_FORM, 'view') ? '<a class="btn btn-sm btn-outline-dark" href="' . h(nu_url('builder', ['f' => $formId, 'draft' => '1']))
+				. '"><i class="bi bi-tools me-1" aria-hidden="true"></i>' . h(t('draft_preview_builder')) . '</a>' : '')
+			. '<a class="btn btn-sm btn-dark" id="nuDraftLeave" title="' . h(t('draft_preview_leave_tip')) . '" href="'
+				. h(nu_url('form', ['f' => $formId, 'draft' => 'off'])) . '"><i class="bi bi-box-arrow-right me-1" aria-hidden="true"></i>'
+				. h(t('draft_preview_leave')) . '</a>'
 			. '</div></div>';
 	}
 }

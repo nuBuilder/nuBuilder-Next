@@ -1,4 +1,4 @@
-/* nuBuilder Next – Admin tools → Themes (pages/nuthemes.php, 0.8.632): colour swatches, import, and the editor's live preview –
+/* nuBuilder Next – Admin tools → Themes (pages/nuthemes.php): colour swatches, import, and the editor's live preview –
  * the values go to the session (POST action=draft, JSON) and the preview iframe reloads its theme stylesheet (?p=brand&a=theme&t=draft). */
 (function () {
 	'use strict';
@@ -74,7 +74,7 @@
 	frame.addEventListener('load', function () { if (frame.contentDocument) frame.contentDocument.documentElement.setAttribute('data-bs-theme', mode); send(); });
 })();
 
-// theme names are unique (0.8.694): the name field says so while typing; the browser then refuses to save
+// theme names are unique: the name field says so while typing; the browser then refuses to save
 (function () {
 	'use strict';
 	var f = document.getElementById('thName'), msg = document.getElementById('thNameMsg');

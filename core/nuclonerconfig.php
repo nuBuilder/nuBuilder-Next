@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Saved form cloner settings (0.8.276) – nuBuilder's table zzzzsys_cloner, the same rows nuBuilder's Cloner form ("nucloner")
+ * Saved form cloner settings – nuBuilder's table zzzzsys_cloner, the same rows nuBuilder's Cloner form ("nucloner")
  * reads and writes, so settings saved in one are opened in the other.
  *
  * Mapping (nuBuilder column → Cloner page):
@@ -34,7 +34,7 @@ final class NuClonerConfig
 			. "clo_subforms_include $flag NULL, clo_subforms " . $T('text', '1000') . " NULL, clo_iframe_forms_include $flag NULL, "
 			. 'clo_iframe_forms ' . $T('longtext') . ' NULL, clo_tables_include ' . $T('longtext') . ' NULL, clo_tables_exclude ' . $T('longtext') . ' NULL, '
 			. "clo_new_pks $flag NULL, clo_notes " . $T('longtext') . ' NULL, clo_json ' . $T('longtext') . ' NULL)'
-			. ($db->type === 'mysql' ? NuDDL::mysqlTableOptions() : ''));
+			. $db->tableOptions());
 		NuDB::forgetColumns(self::TABLE);
 	}
 
@@ -100,7 +100,7 @@ final class NuClonerConfig
 		$x = is_array($x) && is_array($x['nunext'] ?? null) ? $x['nunext'] : [];
 		$in['access'] = !empty($x['access']);
 		$in['replace'] = !empty($x['replace']);
-		if (in_array($x['target'] ?? '', ['mysql', 'sqlsrv'], true)) $in['target'] = $x['target'];   // SQL of the dump (0.8.794)
+		if (in_array($x['target'] ?? '', ['mysql', 'sqlsrv'], true)) $in['target'] = $x['target'];   // SQL of the dump
 		return $in;
 	}
 

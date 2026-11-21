@@ -29,15 +29,8 @@ final class NuSchemaCheck
 	/** Expected structure inside an update package (zip). */
 	public static function fromZip(string $zipFile, string $prefix): ?array
 	{
-		if (!class_exists('ZipArchive')) return null;
-		$z = new ZipArchive();
-		if ($z->open($zipFile) !== true) return null;
-		try {
-			$j = $z->getFromName($prefix . self::FILE);
-			return $j === false ? null : self::parse($j);
-		} finally {
-			$z->close();
-		}
+		$j = nu_zip_entry($zipFile, $prefix . self::FILE);
+		return $j === null ? null : self::parse($j);
 	}
 
 	/**
@@ -164,7 +157,7 @@ final class NuSchemaCheck
 		return $res;
 	}
 
-	/** SQL of one difference ("add:…" / "modify:…" with its compare() item) for the preview of an update (0.8.346). */
+	/** SQL of one difference ("add:…" / "modify:…" with its compare() item) for the preview of an update. */
 	public static function sqlFor(array $expected, string $key, array $it): ?string
 	{
 		try {
@@ -187,7 +180,7 @@ final class NuSchemaCheck
 		}
 		if ($op !== 'add') return null;
 		$t = self::foreignType($mysqlType);
-		return $db->type === 'sqlsrv' ? "ALTER TABLE [$table] ADD [$col] $t NULL" : "ALTER TABLE \"$table\" ADD COLUMN \"$col\" $t";
+		return $db->addColumnSql($db->quoteName($table), $db->quoteName($col), $db->type === 'sqlsrv' ? "$t NULL" : $t);
 	}
 
 	/** Column definition from the schema file, only what a column definition may contain (no statements). */

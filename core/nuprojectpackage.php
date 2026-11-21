@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Project packages (0.8.1035): a project with its items as one JSON file ("nunext-project-1") – to move a piece of the application
+ * Project packages: a project with its items as one JSON file ("nunext-project-1") – to move a piece of the application
  * from a test installation to the live one, or to keep a copy.
  *  - export(): the project (code, name, description, notes, to-dos without the assignee), its member list and the rows of every member:
  *    forms (NuFormSnapshot: tabs, objects, events, list columns, hooks, SQL builder rows of the form), procedures, reports, SQL builder
@@ -44,7 +44,8 @@ final class NuProjectPackage
 			if ($k === 'form') { if ($s = NuFormSnapshot::capture($it['ref'])) $pkg['forms'][] = $s; }
 			elseif (isset(self::ROWS[$k])) { if ($r = $db->one('SELECT * FROM ' . self::ROWS[$k][0] . ' WHERE ' . self::ROWS[$k][1] . ' = ?', [$it['ref']])) $pkg[$k][] = $r; }
 			elseif ($k === 'select') {
-				if ($r = $db->one('SELECT * FROM zzzzsys_select WHERE zzzzsys_select_id = ?', [$it['ref']])) $pkg['select'][] = ['row' => $r, 'clauses' => $db->all('SELECT * FROM zzzzsys_select_clause WHERE ssc_zzzzsys_select_id = ?', [$it['ref']])];
+				if ($r = $db->one('SELECT * FROM zzzzsys_select WHERE zzzzsys_select_id = ?', [$it['ref']])) $pkg['select'][] = ['row' => $r,
+					'clauses' => $db->all('SELECT * FROM zzzzsys_select_clause WHERE ssc_zzzzsys_select_id = ?', [$it['ref']])];
 			} elseif ($k === 'helppage') {
 				if ($c = $db->value('SELECT code FROM ' . NuUserHelp::T . ' WHERE zzzzsys_nunext_help_id = ?', [$it['ref']])) { $helpCodes[(string)$c] = true; $pkg['help_ids'][$it['ref']] = (string)$c; }
 			} elseif ($k === 'table') {
@@ -106,7 +107,8 @@ final class NuProjectPackage
 	public static function read(string $json): array
 	{
 		$p = json_decode($json, true);
-		if (!is_array($p) || ($p['format'] ?? '') !== self::FORMAT || !is_array($p['project'] ?? null) || !preg_match(NuProject::CODE_RE, (string)($p['project']['code'] ?? ''))) return [null, t('prj_err_package')];
+		if (!is_array($p) || ($p['format'] ?? '') !== self::FORMAT || !is_array($p['project'] ?? null)
+			|| !preg_match(NuProject::CODE_RE, (string)($p['project']['code'] ?? ''))) return [null, t('prj_err_package')];
 		foreach (['items', 'forms', 'procedure', 'report', 'select', 'emailtemplate', 'snippet', 'help', 'tables', 'notes', 'tasks'] as $k) if (!is_array($p[$k] ?? [])) return [null, t('prj_err_package')];
 		return [$p, ''];
 	}
@@ -138,7 +140,8 @@ final class NuProjectPackage
 			if ($id === '' || str_starts_with($id, 'nu')) continue;
 			$label = trim((string)($f['sfo_description'] ?? '')) . ' (' . ($f['sfo_code'] ?? '') . ')';
 			$cur = NuFormSnapshot::capture($id);
-			if ($cur) { $row('form', $id, $label, NuFormSnapshot::hash($cur) === NuFormSnapshot::hash($s) ? 'same' : 'different', NuFormDraft::ready() && NuFormDraft::openFor($id) ? t('prj_imp_draft_open') : ''); continue; }
+			if ($cur) { $row('form', $id, $label, NuFormSnapshot::hash($cur) === NuFormSnapshot::hash($s) ? 'same' : 'different', NuFormDraft::ready()
+				&& NuFormDraft::openFor($id) ? t('prj_imp_draft_open') : ''); continue; }
 			$clash = $db->value('SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_code = ?', [(string)($f['sfo_code'] ?? '')]);
 			$row('form', $id, $label, $clash ? 'conflict' : 'new', $clash ? t('prj_imp_code_used') : '');
 		}
@@ -153,7 +156,8 @@ final class NuProjectPackage
 			$row('helppage', $code, $title . ' (' . $code . ')', $exists ? 'different' : 'new', '');
 		}
 		$p = NuProject::byCode((string)$pkg['project']['code']);
-		$row('project', (string)$pkg['project']['code'], (string)$pkg['project']['name'], $p ? 'different' : 'new', $p ? t('prj_imp_merge') : t('prj_imp_new_project', count($pkg['notes'] ?? []), count($pkg['tasks'] ?? [])));
+		$row('project', (string)$pkg['project']['code'], (string)$pkg['project']['name'], $p ? 'different' : 'new',
+			$p ? t('prj_imp_merge') : t('prj_imp_new_project', count($pkg['notes'] ?? []), count($pkg['tasks'] ?? [])));
 		return $out;
 	}
 
@@ -219,12 +223,16 @@ final class NuProjectPackage
 			if ($want('table', $name) !== 'add') { $res['skipped']++; continue; }
 			try {
 				$create = self::noDefiner((string)$t['create']);
-				if (!preg_match('/^CREATE\s+(TABLE\s+`?' . preg_quote($name, '/') . '`?\s*\(|(OR\s+REPLACE\s+)?(ALGORITHM\s*=\s*\w+\s+)?(SQL\s+SECURITY\s+\w+\s+)?VIEW\s+`?' . preg_quote($name, '/') . '`?\s+AS\s)/i', $create)) throw new RuntimeException(t('prj_err_create'));
+				if (!preg_match('/^CREATE\s+(TABLE\s+`?' . preg_quote($name, '/')
+					. '`?\s*\(|(OR\s+REPLACE\s+)?(ALGORITHM\s*=\s*\w+\s+)?(SQL\s+SECURITY\s+\w+\s+)?VIEW\s+`?' . preg_quote($name, '/') . '`?\s+AS\s)/i',
+					$create)) throw new RuntimeException(t('prj_err_create'));
 				$db->exec($create);
 				$rows = (array)($t['rows'] ?? []);
 				$cols = array_map('strval', (array)($t['columns'] ?? []));
 				if ($rows && $cols) {
-					$sql = 'INSERT INTO `' . str_replace('`', '``', $name) . '` (' . implode(', ', array_map(static fn($c) => '`' . str_replace('`', '``', $c) . '`', $cols)) . ') VALUES (' . implode(', ', array_fill(0, count($cols), '?')) . ')';
+					$sql = 'INSERT INTO `' . str_replace('`', '``', $name) . '` ('
+						. implode(', ', array_map(static fn($c) => '`' . str_replace('`', '``', $c) . '`', $cols)) . ') VALUES ('
+						. implode(', ', array_fill(0, count($cols), '?')) . ')';
 					$st = $db->pdo()->prepare($sql);
 					$db->pdo()->beginTransaction();
 					try {
@@ -310,7 +318,9 @@ final class NuProjectPackage
 			} else $pid = (string)$p['zzzzsys_nunext_project_id'];
 			if ($pid !== '') {
 				$items = [];
-				foreach ((array)($pkg['items'] ?? []) as $it) if (is_array($it) && count($it) === 2) $items[] = [(string)$it[0], $it[0] === 'helppage' ? (string)($db->value('SELECT zzzzsys_nunext_help_id FROM ' . NuUserHelp::T . " WHERE code = ? AND lang = ''", [self::helpCode($pkg, (string)$it[1])]) ?: $it[1]) : (string)$it[1]];
+				foreach ((array)($pkg['items'] ?? []) as $it) if (is_array($it) && count($it) === 2) $items[] = [(string)$it[0],
+					$it[0] === 'helppage' ? (string)($db->value('SELECT zzzzsys_nunext_help_id FROM ' . NuUserHelp::T . " WHERE code = ? AND lang = ''",
+						[self::helpCode($pkg, (string)$it[1])]) ?: $it[1]) : (string)$it[1]];
 				NuProject::addItems($pid, $items);
 				if ($new) {
 					foreach ((array)($pkg['notes'] ?? []) as $n) NuProject::saveNote($pid, '', (array)$n);

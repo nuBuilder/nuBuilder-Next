@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Additional access levels per user (0.8.585). nuBuilder gives a user ONE access level (sus_zzzzsys_access_id); nuBuilder Next can
+ * Additional access levels per user. nuBuilder gives a user ONE access level (sus_zzzzsys_access_id); nuBuilder Next can
  * give him more in its own table zzzzsys_nunext_user_access (user_id, access_id, valid_until 'Y-m-d' or NULL = no end).
  * The rights of all active levels are combined – an extra level only adds (NuAcl::rightsOf: a right granted by any level counts;
  * browse / edit when any level allows it; "no changes to existing records" only when every level with the form says so).
@@ -32,7 +32,7 @@ final class NuUserAccess
 	public static function extraIds(string $userId): array
 	{
 		if ($userId === '' || !self::ready()) return [];
-		// NuMemo (code review R9, 0.8.1351): a write to the table through NuDB drops it
+		// NuMemo (code review R9): a write to the table through NuDB drops it
 		return NuMemo::get('ua:' . $userId, [self::TABLE], static function () use ($userId): array {
 			$out = [];
 			foreach (nu_db()->all('SELECT access_id, valid_until FROM ' . self::TABLE . ' WHERE user_id = ?', [$userId]) as $r) {
@@ -62,7 +62,7 @@ final class NuUserAccess
 	}
 
 	/**
-	 * Main level + active additional levels of a user with code, description and group (0.8.867, nuNextAccessLevels()):
+	 * Main level + active additional levels of a user with code, description and group (nuNextAccessLevels()):
 	 * list of {id, code, description, group, main, valid_until}; the main level first. $userId null = the signed-in user (globeadmin: none).
 	 */
 	public static function listOf(?string $userId = null): array
@@ -111,7 +111,7 @@ final class NuUserAccess
 	}
 
 	/**
-	 * Who still uses an access level, for deleting it (0.8.1250): active = users who can sign in with it (main level and not
+	 * Who still uses an access level, for deleting it: active = users who can sign in with it (main level and not
 	 * expired, or an additional level that is still valid for a user who is not expired); expired = ids of expired users whose
 	 * MAIN level it is – Delete empties their level. Additional assignments of expired users or that have ended do not count.
 	 * @return array{active: int, expired: list<string>}
@@ -189,7 +189,7 @@ final class NuUserAccess
 	}
 
 	/**
-	 * Effective rights of a set of levels (0.8.589, user form → Effective rights): $main + $rows [access_id, valid_until] as entered
+	 * Effective rights of a set of levels (user form → Effective rights): $main + $rows [access_id, valid_until] as entered
 	 * in the form (not saved yet). Forms with every right and the levels that grant it (NuAcl::levelRights, combined like NuAcl::rightsOf),
 	 * procedures and reports with their levels. Expired additional levels are listed and not counted.
 	 * @return array{levels: list<array>, forms: list<array>, procs: list<array>, reports: list<array>}
@@ -237,7 +237,7 @@ final class NuUserAccess
 					$o[$k] ??= ['id' => $k, 'code' => (string)$r['code'], 'description' => (string)($r['description'] ?? ''), 'levels' => []];
 					$o[$k]['levels'][] = $code((string)$r['a']);
 				}
-			} catch (Throwable) { /* table missing */ }
+			} catch (Throwable $ig) { nu_ignored($ig, 'table missing'); }
 			uasort($o, static fn($x, $y) => strcasecmp($x['code'], $y['code']));
 			return array_values($o);
 		};

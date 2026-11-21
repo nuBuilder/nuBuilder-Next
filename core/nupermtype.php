@@ -3,7 +3,7 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /**
- * Types of permission items (0.8.773). nuBuilder Forte's zzzzsys_permission_item stays as it is (no new columns): the type and its settings
+ * Types of permission items. nuBuilder Forte's zzzzsys_permission_item stays as it is (no new columns): the type and its settings
  * are a row of zzzzsys_nunext_permission_type with the item's id as key. No row = "plain" – the item as before (nuUserHasPermission,
  * #USER_PERMISSIONS#). nuBuilder Forte sees every item as a plain item; a row whose item is gone is removed by the housekeeping.
  *
@@ -20,7 +20,7 @@ final class NuPermType
 	/** @return array<string, array{type: string, settings: array}> item id => type and settings (only items with a type other than plain) */
 	public static function all(): array
 	{
-		// NuMemo (code review R9, 0.8.1351): a write to the table through NuDB drops it
+		// NuMemo (code review R9): a write to the table through NuDB drops it
 		return NuMemo::get('ptype:all', [self::TABLE], static fn(): array => self::read());
 	}
 
@@ -36,7 +36,7 @@ final class NuPermType
 					$out[(string)$r['id']] = ['type' => $type, 'settings' => self::clean($type, is_array($s) ? $s : [])];
 				}
 			}
-		} catch (Throwable) { /* no table yet */ }
+		} catch (Throwable $ig) { nu_ignored($ig, 'no table yet'); }
 		return $out;
 	}
 
@@ -85,7 +85,7 @@ final class NuPermType
 
 	public static function delete(string $itemId): void
 	{
-		try { if (nu_db()->tableExists(self::TABLE)) nu_db()->run('DELETE FROM ' . self::TABLE . ' WHERE zzzzsys_nunext_permission_type_id = ?', [$itemId]); } catch (Throwable) {}
+		try { if (nu_db()->tableExists(self::TABLE)) nu_db()->run('DELETE FROM ' . self::TABLE . ' WHERE zzzzsys_nunext_permission_type_id = ?', [$itemId]); } catch (Throwable $ig) { nu_ignored($ig); }
 	}
 
 	/** "Data import: orders, order_items · add + update" – for lists and the user form. */

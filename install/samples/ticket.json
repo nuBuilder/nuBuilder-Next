@@ -1,10 +1,11 @@
 {
     "key": "ticket",
-    "version": 11,
+    "version": 12,
     "prefix": "tkt_",
     "home": "tkthome",
     "date_ref": "2026-10-29",
     "changes": {
+        "12": "The start page greets the globeadmin without an empty name; the Status and Due columns of the tickets list are wide enough for their values.",
         "11": "The tickets list has row details: ▸ opens the description, channel and creation time of a ticket (hidden columns of the list).",
         "10": "The subject of a ticket suggests the subjects of earlier tickets while typing.",
         "9": "Calendars: the tickets list has a calendar view by due date, the category form a calendar of its tickets, the support dashboard a \"Due dates\" calendar.",
@@ -236,7 +237,7 @@
                 "sfo_javascript": null,
                 "sfo_browse_javascript": null,
                 "sfo_edit_javascript": null,
-                "sfo_style": null,
+                "sfo_style": "/* the globeadmin has no first name and no access level: the greeting leaves those parts out */\n.tktWho:has(> b:empty), .tktAs:has(> code:empty) { display: none; }",
                 "sfo_mobile_view": null,
                 "sfo_json": "{\"nunext\":{\"layout\":\"grid\",\"sample\":{\"version\":1,\"installed\":\"2026-10-29 07:19\",\"key\":\"ticket\"},\"help\":\"tkt_help\"}}"
             }
@@ -1313,7 +1314,7 @@
                 "sob_input_datalist": null,
                 "sob_input_attribute": null,
                 "sob_input_file_target": "0",
-                "sob_html_code": "<div class=\"tktIntro\"><h1>Support desk</h1><p>Hello <b>#USER_FIRST_NAME#</b> – signed in as <code>#ACCESS_LEVEL_CODE#</code>.</p></div>",
+                "sob_html_code": "<div class=\"tktIntro\"><h1>Support desk</h1><p>Hello<span class=\"tktWho\"> <b>#USER_FIRST_NAME#</b></span><span class=\"tktAs\"> – signed in as <code>#ACCESS_LEVEL_CODE#</code></span>.</p></div>",
                 "sob_html_chart_type": null,
                 "sob_html_javascript": null,
                 "sob_html_title": null,
@@ -3976,7 +3977,7 @@
                 "sbr_align": "l",
                 "sbr_format": null,
                 "sbr_order": 40,
-                "sbr_width": 250,
+                "sbr_width": 180,
                 "sbr_json": "{\"nunext\":{\"filter\":true}}"
             }
         ],
@@ -3990,7 +3991,7 @@
                 "sbr_align": "l",
                 "sbr_format": "D|dd.mm.yyyy hh:nn",
                 "sbr_order": 80,
-                "sbr_width": 120,
+                "sbr_width": 150,
                 "sbr_json": null
             }
         ],
@@ -4046,7 +4047,7 @@
                 "sbr_align": "l",
                 "sbr_format": null,
                 "sbr_order": 30,
-                "sbr_width": 250,
+                "sbr_width": 180,
                 "sbr_json": "{\"nunext\":{\"filter\":true}}"
             }
         ],
@@ -4074,7 +4075,7 @@
                 "sbr_align": "l",
                 "sbr_format": null,
                 "sbr_order": 60,
-                "sbr_width": 80,
+                "sbr_width": 160,
                 "sbr_json": "{\"nunext\":{\"filter\":true}}"
             }
         ],

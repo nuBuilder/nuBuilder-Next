@@ -1,5 +1,5 @@
 /*
- * Passkeys (0.8.877) – buttons [data-nu-pk="add|2fa|login|reauth"] on the security page, the second-factor page, the sign-in page
+ * Passkeys – buttons [data-nu-pk="add|2fa|login|reauth"] on the security page, the second-factor page, the sign-in page
  * and the password confirmation. Options and checks come from index.php?p=passkey (pages/nupasskey.php, core/nupasskey.php); binary
  * values travel base64url. Texts: data-t-cancel / data-t-unsupported / data-t-exists / data-t-failed on the button; the message goes
  * into the element of data-err. The sign-in page also offers the passkeys in the user name field (conditional mediation) when its

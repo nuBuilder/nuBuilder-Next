@@ -152,6 +152,7 @@ return [
 	'hf_empty' => 'vacía',
 	'hf_empty_tip' => 'Esta página de mosaicos no tiene mosaicos – sus niveles de acceso no ven nada en ella. Ábrala y añada mosaicos, o vuelva a usar el predeterminado.',
 	'form_blank_page' => 'Página en blanco (sistema)',
+	'uhome_empty_tab' => 'Todavía no hay botones en esta pestaña. Añádelos en el modo de diseño o deja que el asistente Nuevo formulario añada uno por cada formulario nuevo (Después de crear → User Home).',
 	'nav_users' => 'Usuarios',
 	'nav_access' => 'Niveles de acceso',
 	'nav_logout' => 'Cerrar sesión',
@@ -7021,6 +7022,7 @@ return [
 	'rd_search' => 'Buscar',
 	'rd_no_fields' => 'La fuente de datos no tiene columnas.',
 	'rd_fields_error' => 'No se pudieron leer los campos:',
+	'rd_canvas' => 'Diseño del informe – las flechas mueven los objetos seleccionados',
 	'rd_criteria' => 'Campos del formulario de inicio',
 	'rd_system' => 'Página y sistema',
 	'rd_images' => 'Imágenes (archivos)',
@@ -7186,7 +7188,7 @@ return [
 	'sqb_empty' => 'Añada una tabla de la lista.',
 	'sqb_run_failed' => 'La consulta falló:',
 	'sqb_columns' => 'Columnas',
-	// security check (0.8.207, Admin tools → Security check, core/nusecurity.php)
+	// security check (Admin tools → Security check, core/nusecurity.php)
 	'secchk_title' => 'Comprobación de seguridad',
 	'ipa_title' => 'Acceso por IP',
 	'sso_title' => 'Inicio de sesión único (SSO)',
