@@ -10,7 +10,7 @@
 	var D = JSON.parse(holder.getAttribute('data-lv') || '{}');
 	var T = D.texts || {};
 	var csrf = (holder.querySelector('input[name="_csrf"]') || {}).value || '';
-	var esc = function (s) { return String(s === undefined || s === null ? '' : s).replace(/[&<>"']/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]; }); };
+	var esc = NuUtil.esc;
 	var colLabel = {};
 	D.columns.forEach(function (c) { colLabel[c.key] = c.label; });
 	var uid = 0;

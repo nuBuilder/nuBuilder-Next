@@ -216,7 +216,7 @@ final class NuDraftStore
 	{
 		$o = $this->object($objectId);
 		if (!$o || $o['sob_all_type'] !== 'subform') return;
-		$table = (string)nu_db()->value('SELECT sfo_table FROM zzzzsys_form WHERE zzzzsys_form_id = ?', [(string)($o['sob_subform_zzzzsys_form_id'] ?? '')]);
+		$table = (string)(nu_form((string)($o['sob_subform_zzzzsys_form_id'] ?? ''))['table'] ?? '');
 		$fk = trim((string)($o['sob_subform_foreign_key'] ?? ''));   // a new sub-form object of a draft has neither yet (0.8.679)
 		if (trim($table) === '' || $fk === '') return;
 		try { NuDDL::ensureIndex($table, $fk); } catch (Throwable $e) { error_log('nuBuilder Next index: ' . $e->getMessage()); }

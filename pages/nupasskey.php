@@ -14,11 +14,7 @@ defined('NU_ROOT') || exit;
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
-$out = static function (array $a, int $code = 200): never {
-	http_response_code($code);
-	echo json_encode($a, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-	exit;
-};
+$out = static function (array $a, int $code = 200): never { nu_json($a, $code); };
 if (!nu_is_post()) $out(['ok' => false, 'message' => 'POST'], 405);
 $action = nu_post('action');
 if (!NuPasskey::usable()) $out(['ok' => false, 'message' => t(NuPasskey::problem())]);

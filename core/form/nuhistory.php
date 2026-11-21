@@ -28,7 +28,7 @@ final class NuFormHistory
 			'login' => mb_substr($u['login'], 0, 50), 'action' => mb_substr($action, 0, 60),
 			'snapshot' => json_encode(self::capture($formId), JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE),
 		]);
-		NuLog::write('form_changed', (string)$db->value('SELECT sfo_code FROM zzzzsys_form WHERE zzzzsys_form_id = ?', [$formId]), $formId, ['action' => $action]);
+		NuLog::write('form_changed', (string)(nu_form($formId)['code'] ?? ''), $formId, ['action' => $action]);
 
 		// keep the newest KEEP snapshots per form
 		$old = $db->page("SELECT zzzzsys_nunext_form_history_id FROM zzzzsys_nunext_form_history WHERE form_id = ? AND action NOT LIKE 'published v%'", [$formId], 'created_at DESC, zzzzsys_nunext_form_history_id DESC', 1000, self::KEEP);

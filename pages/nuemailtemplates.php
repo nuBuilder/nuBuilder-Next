@@ -16,10 +16,7 @@ $T = NuEmailTemplate::TABLE;
 
 function nu_emt_json(array $d, int $status = 200): never
 {
-	http_response_code($status);
-	header('Content-Type: application/json; charset=utf-8');
-	echo json_encode($d, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
-	exit;
+	nu_json($d, $status);
 }
 
 // ------------------------------------------------------------------ placeholders of a form (JSON)

@@ -293,7 +293,7 @@ if (!function_exists('nuRunQuery')) {
 		if (!$u['globeadmin']) return (string)$u['id'];
 		$name = (string)nu_cfg('nuConfigDBGlobeadminUsername');
 		$db = nu_db();
-		if ($name !== '' && NuUserJson::available() && !$db->value('SELECT COUNT(*) FROM zzzzsys_user WHERE zzzzsys_user_id = ?', [$name])) {
+		if ($name !== '' && NuUserJson::available() && !NuAuth::userExists($name)) {
 			try { $db->insert('zzzzsys_user', ['zzzzsys_user_id' => $name]); } catch (Throwable) { /* columns without default – nothing stored */ }
 		}
 		return $name;
@@ -460,7 +460,7 @@ if (!function_exists('nuRunQuery')) {
 		$code = strtolower($code);
 		$f = NuUserFields::all()[$code] ?? null;
 		if (!$f) return 'unknown field';
-		if (!nu_db()->value('SELECT COUNT(*) FROM zzzzsys_user WHERE zzzzsys_user_id = ?', [$userId])) return 'unknown user';
+		if (!NuAuth::userExists((string)$userId)) return 'unknown user';
 		[$vals, $err] = NuUserFields::validate([$code => $value], $userId, 'api');
 		if ($err) return (string)reset($err);
 		if (!isset($vals[$code])) return 'not allowed';

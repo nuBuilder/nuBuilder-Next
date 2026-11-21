@@ -31,7 +31,7 @@
 			[T.user, dlg.getAttribute('data-user') || '']
 		]};
 	}
-	function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
+	function el(tag, attrs, kids) { return NuUtil.el(tag, attrs, kids); }
 	function draw(list) {
 		body.textContent = '';
 		list.forEach(function (s) {

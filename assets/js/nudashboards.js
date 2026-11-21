@@ -41,11 +41,8 @@
 		const card = $('dashTestCard'), err = $('dashTestError'), btn = $('dashTest');
 		card.hidden = false; err.hidden = true; btn.disabled = true;
 		const script = document.querySelector('script[data-url][data-apex]');
-		fetch(script.getAttribute('data-url'), {
-			method: 'POST', credentials: 'same-origin',
-			headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-Token': script.getAttribute('data-csrf') },
-			body: JSON.stringify({ action: 'test', w: fields(), range: $('dashTestRange').value, record_id: $('dashTestRecord').value }),
-		}).then((r) => r.json()).then((r) => {
+		NuUtil.post(script.getAttribute('data-url'), { action: 'test', w: fields(), range: $('dashTestRange').value, record_id: $('dashTestRecord').value },
+			{csrf: script.getAttribute('data-csrf'), strict: true}).then((r) => {
 			btn.disabled = false;
 			const prev = $('dashTestPreview'), tab = $('dashTestTable');
 			prev.textContent = ''; tab.textContent = ''; $('dashTestMs').textContent = '';

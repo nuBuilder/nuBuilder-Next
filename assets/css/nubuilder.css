@@ -1,14 +1,11 @@
 /* New form wizard (pages/nubuilder.php, assets/js/nubuilder.js). The form builder's editor was replaced by design mode (0.8.670,
  * assets/css/nudesign.css); the attribute editor's rules moved there too. */
 .nuBuilderContainer { max-width: none; }   /* 0.8.563: no cap – the preview takes the extra width */
-.nbListTable td { padding: .2rem; }
-.nbListTable .nbNum { width: 5rem; }
 .nbColGrid td { padding: .2rem; }
-.nbColGrid .nbLen, .nbMcLen .nbLen { width: 5.5rem; }
+.nbColGrid .nbLen { width: 5.5rem; }
 .nbColGrid td:first-child { min-width: 9rem; }
 .nbColGrid td:nth-child(2) { min-width: 8.5rem; }   /* label */
 .nbColGrid td:nth-child(3) { min-width: 10.5rem; }  /* type: the longest name ("Record ID (lookup)") fits; the grid scrolls sideways on phones */
-.nbMcType { min-width: 10rem; }
 /* table mode of the wizard: classes of #nbNewForm set by the page (start) and nubuilder.js applyMode() – was :has() (0.8.1342) */
 #nbNewForm.nbIsNew .nbExisting { display: none !important; }
 #nbNewForm.nbIsNew:not(.nbIsLaunch) .nbNew { display: block !important; }

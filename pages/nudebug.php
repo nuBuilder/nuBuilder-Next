@@ -85,7 +85,7 @@ nu_layout_start(t('debug_title'), 'log');
 <div class="card shadow-sm nuListCard">
 	<div class="card-header nuListHead nuTitleBar">
 	<h1 class="h5 mb-0 fw-semibold"><?= h(t('debug_title')) ?><?php // the hint only as tooltip of the (i) ?>
-		<span class="nuInfoTip fs-6 fw-normal ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" aria-label="<?= h(t('debug_hint')) ?>" title="<?= h(t('debug_hint')) ?>"><i class="bi bi-info-circle"></i></span></h1>
+		<?= nu_info_tip(t('debug_hint'), 'fs-6 fw-normal ms-1', false) ?></h1>
 	<div class="d-flex flex-wrap gap-2 align-items-center"><?= nu_back_button() ?>
 		<?php // Back · Refresh · Print in one style (0.8.262); the auto refresh switch at the right end, on phones in its own row ?>
 		<a class="btn nuBtnAct nuPhKeep" href="<?= h(nu_url('debug', $keep)) ?>" title="<?= h(t('debug_refresh')) ?>"><i class="bi bi-arrow-clockwise me-1"></i><?= h(t('debug_refresh')) ?></a>
@@ -139,7 +139,6 @@ nu_layout_start(t('debug_title'), 'log');
 				$text = nu_debug_text((string)$r['deb_message']);
 				$lines = explode("\n", $text);
 				$first = $lines[0] ?? '';
-				$long = count($lines) > 20 || mb_strlen($text) > 2000;
 				$who = $hasUser ? ((string)($r['sus_login_name'] ?? '') ?: (string)($r['deb_user_id'] ?? '')) : ''; ?>
 				<div class="list-group-item debugRow">
 					<div class="d-flex flex-wrap gap-2 align-items-center mb-1">
@@ -150,8 +149,7 @@ nu_layout_start(t('debug_title'), 'log');
 						<span class="small text-body-secondary text-truncate debugFirst me-auto"><?= h(preg_replace('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} - /', '', $first)) ?></span>
 						<button type="button" class="btn btn-sm btn-link p-0 debugCopy" title="<?= h(t('debug_copy')) ?>" aria-label="<?= h(t('debug_copy')) ?>"><i class="bi bi-clipboard"></i></button>
 					</div>
-					<pre class="debugMsg mb-0<?= $long ? ' debugCollapsed' : '' ?>"><?= h(implode("\n", array_slice($lines, 1)) ?: $first) ?></pre>
-					<?php if ($long): ?><button type="button" class="btn btn-sm btn-link px-0 debugMore" data-less="<?= h(t('debug_less')) ?>"><?= h(t('debug_more')) ?></button><?php endif; ?>
+					<pre class="debugMsg mb-0" data-more="<?= h(t('debug_more')) ?>" data-less="<?= h(t('debug_less')) ?>"><?= h(implode("\n", array_slice($lines, 1)) ?: $first) ?></pre>
 				</div>
 			<?php endforeach; ?>
 		</div>

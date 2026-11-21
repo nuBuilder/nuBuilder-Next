@@ -38,6 +38,9 @@ export default [
 			'no-undef': 'error', 'no-dupe-keys': 'error', 'no-unreachable': 'error', 'no-dupe-args': 'error', 'no-func-assign': 'error',
 			'no-self-assign': 'error', 'valid-typeof': 'error', 'no-cond-assign': ['error', 'except-parens'], 'use-isnan': 'error',
 			'no-unsafe-finally': 'error', 'no-sparse-arrays': 'error',
+			// unused variables (0.8.1349, code review Q2): a warning – only inside functions (top-level functions of the browser scripts are
+			// the API that form code calls); unused parameters and caught errors are left alone
+			'no-unused-vars': ['warn', { vars: 'local', args: 'none', caughtErrors: 'none' }],
 		},
 		linterOptions: { reportUnusedDisableDirectives: 'off' },
 	},

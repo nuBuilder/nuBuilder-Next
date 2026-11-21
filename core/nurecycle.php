@@ -13,7 +13,6 @@ defined('NU_ROOT') || exit;
 final class NuRecycle
 {
 	public const TABLE = 'zzzzsys_nunext_recycle';
-	public const DEFAULT_DAYS = 30;
 	public const MAX_DAYS = 3650;
 	public const MAX_BYTES = 8 * 1024 * 1024;               // a bigger copy is not kept (the delete still happens; logged)
 

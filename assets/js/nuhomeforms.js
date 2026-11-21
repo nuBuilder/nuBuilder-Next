@@ -29,12 +29,7 @@
 	}
 	var data = null, loading = false;
 
-	function el(tag, cls, text) {
-		var e = document.createElement(tag);
-		if (cls) e.className = cls;
-		if (text !== undefined && text !== null) e.textContent = text;
-		return e;
-	}
+	function el(tag, attrs, kids) { return NuUtil.el(tag, attrs, kids); }
 	function fmt(s) {
 		var a = Array.prototype.slice.call(arguments, 1), i = 0;
 		return String(s).replace(/%[sd]/g, function () { return String(a[i++]); });
@@ -196,7 +191,7 @@
 			var ph = k === 'tiles' ? T.hf_search_tiles : T.hf_search;
 			q.placeholder = ph; q.setAttribute('aria-label', ph);
 			keysHint.textContent = k === 'tiles' ? T.hf_keys_tiles : T.hf_keys;
-			try { localStorage.setItem(TAB_KEY, k); } catch (e) { /* storage blocked */ }
+			nuStore.set(TAB_KEY, k);
 			filter();
 			if (focus) focusSearch();
 		}

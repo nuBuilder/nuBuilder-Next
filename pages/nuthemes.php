@@ -147,7 +147,7 @@ if (nu_is_post()) {
 	nu_redirect($back);
 }
 
-$tip = static fn(string $text) => '<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="' . h($text) . '" title="' . h($text) . '"><i class="bi bi-info-circle"></i></span>';
+$tip = static fn(string $text) => nu_info_tip($text);
 $all = NuTheme::all();
 $ro = NuAdmin::$viewOnly;
 
@@ -233,7 +233,7 @@ if (isset($_GET['edit'])) {
 $s = NuTheme::settings();
 $mine = NuTheme::current(); $myChoices = NuTheme::choices(); $myPick = NuTheme::userPick();   // own theme (0.8.643): globeadmin always, others when users may choose
 $levels = [];
-try { $levels = nu_db()->all('SELECT zzzzsys_access_id AS id, sal_code AS code, sal_description AS descr FROM zzzzsys_access ORDER BY sal_code'); } catch (Throwable) {}
+$levels = array_values(array_map(static fn($a) => ['id' => (string)$a['zzzzsys_access_id'], 'code' => $a['sal_code'], 'descr' => $a['sal_description']], NuAcl::levels()));
 $swatch = static function (array $t): string {
 	$v = $t['v'];
 	$c = [$v['accent'] ?? '#2f6fd6', $v['page_bg'] ?? '#f4f6f9', $v['btn_bg'] ?? '#f8f9fa', $v['nav_bg'] ?? ($v['surface'] ?? '#ffffff'), $v['fbtn_bg'] ?? ($v['accent'] ?? '#2f6fd6')];

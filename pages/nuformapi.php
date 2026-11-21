@@ -18,9 +18,7 @@ function nu_api_out(array $data, int $status = 200): never
 		if (NuPhp::$props) NuProps::lock($ps ?? '', NuPhp::$props);
 		if (NuPhp::$deleted) NuProps::forget($ps ?? '', array_keys(NuPhp::$deleted));
 	}
-	http_response_code($status);
-	echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
-	exit;
+	nu_json($data, $status);
 }
 
 function nu_api_error(string $msg, int $status = 400): never

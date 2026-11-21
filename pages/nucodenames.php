@@ -43,7 +43,7 @@ if (NuSqlCheck::allowed()) {
 	$f = (string)($_GET['f'] ?? '');
 	if ($f !== '' && preg_match('/^[\w.-]{1,64}$/', $f)) {
 		try {
-			$out['table'] = (string)($db->value('SELECT sfo_table FROM zzzzsys_form WHERE zzzzsys_form_id = ?', [$f]) ?? '');
+			$out['table'] = (string)(nu_form($f)['table'] ?? '');
 			foreach ($db->all("SELECT sob_all_id AS i, sob_all_label AS l FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id = ?
 				AND sob_all_type NOT IN ('word', 'html', 'image', 'run', 'contentbox') ORDER BY sob_all_order", [$f]) as $r) {
 				if ((string)$r['i'] !== '') $out['fields'][] = [(string)$r['i'], trim(strip_tags((string)$r['l']))];

@@ -10,14 +10,9 @@
 		fd.append('_csrf', csrf);
 		fd.append('project', pid);
 		Object.keys(data).forEach(function (k) { fd.append(k, data[k]); });
-		return fetch(url, {method: 'POST', body: fd, credentials: 'same-origin', headers: {'X-CSRF-Token': csrf}}).then(function (r) { return r.json(); });
+		return NuUtil.post(url, fd, {csrf: csrf, strict: true});
 	}
-	function el(tag, cls, text) {
-		var e = document.createElement(tag);
-		if (cls) e.className = cls;
-		if (text !== undefined) e.textContent = text;
-		return e;
-	}
+	function el(tag, attrs, kids) { return NuUtil.el(tag, attrs, kids); }
 	function row(value, label, sub, disabled, why) {
 		var lab = el('label', 'list-group-item d-flex gap-2 align-items-start' + (disabled ? ' text-body-secondary' : ''));
 		var cb = el('input', 'form-check-input mt-1 flex-shrink-0');

@@ -164,6 +164,7 @@ if (nu_is_post()) {
 $s       = NuMailer::settings();
 $row     = NuMailer::setupRow(true);
 $setupOk = $db->tableExists('zzzzsys_setup');
+$canSave = NuAcl::can(NuAcl::FORM_SETUP, 'save');
 $pmDir   = NuMailer::loadPHPMailer();
 $val = static fn(string $k, string $post) => nu_is_post() && nu_post('action') === 'save' ? nu_post($post) : NuMailer::setupValue($k);
 $smtpOnly = NuSecret::smtp()['only'];
@@ -210,7 +211,9 @@ if ($tab === 'log' && !$detail && $logExists) {
 
 nu_layout_start(t('nav_email'), 'email', ['head' => NuListView::head(), 'settings' => 'mail']);
 ?>
-<?= nu_page_header(t('nav_email'), ['icon' => 'bi-envelope']) ?>
+<?php // Save of the settings form in the header, as on the other settings pages (usability review) ?>
+<?= nu_page_header(t('nav_email'), ['icon' => 'bi-envelope', 'buttons' => $tab === 'settings' && $setupOk && $canSave
+	? '<button data-nu-save class="btn nuBtnAct nuBtnSave" type="submit" form="nuMailForm" id="nuMailSave"><i class="bi bi-floppy me-1"></i>' . h(t('save')) . '</button>' : '']) ?>
 
 <ul class="nav nav-tabs mb-3">
 	<?php if ($canSetup): ?>
@@ -279,7 +282,7 @@ nu_layout_start(t('nav_email'), 'email', ['head' => NuListView::head(), 'setting
 							<div class="form-check form-switch mt-1 small" id="m_onlyWrap">
 								<input class="form-check-input" type="checkbox" role="switch" id="m_only" name="smtp_only" value="1"<?= $smtpOnly ? ' checked' : '' ?><?= NuSecret::available() ? '' : ' disabled' ?>>
 								<label class="form-check-label" for="m_only"><?= h(t('mail_pw_only_next')) ?></label>
-								<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('mail_pw_only_next_tip')) ?>" title="<?= h(t('mail_pw_only_next_tip')) ?>"><i class="bi bi-info-circle"></i></span>
+								<?= nu_info_tip(t('mail_pw_only_next_tip')) ?>
 								<?php if (!NuSecret::available()): ?><div class="text-body-secondary" id="m_onlyNoKey"><?= h(t('mail_pw_only_nokey')) ?></div><?php elseif ($smtpOnly): ?><div class="text-body-secondary" id="m_onlyOn"><i class="bi bi-lock me-1"></i><?= h(t('mail_pw_only_on')) ?></div><?php endif; ?>
 							</div>
 						</div>
@@ -301,7 +304,7 @@ nu_layout_start(t('nav_email'), 'email', ['head' => NuListView::head(), 'setting
 						</div>
 						<div class="col-sm-6">
 							<label class="form-label" for="m_authtype"><?= h(t('mail_auth_type')) ?></label>
-							<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('mail_auth_type_tip')) ?>" title="<?= h(t('mail_auth_type_tip')) ?>"><i class="bi bi-info-circle"></i></span>
+							<?= nu_info_tip(t('mail_auth_type_tip')) ?>
 							<?php $curAuth = nu_is_post() ? strtoupper(nu_post('auth_type')) : NuMailer::authType(); ?>
 							<select class="form-select" id="m_authtype" name="auth_type">
 								<?php foreach (NuMailer::AUTH_TYPES as $at): ?><option value="<?= h($at) ?>"<?= $curAuth === $at ? ' selected' : '' ?>><?= h($at === '' ? t('mail_auth_auto') : ($at === 'XOAUTH2' ? t('mail_auth_oauth') : $at)) ?></option><?php endforeach; ?>
@@ -311,8 +314,7 @@ nu_layout_start(t('nav_email'), 'email', ['head' => NuListView::head(), 'setting
 							<div class="form-check form-switch">
 								<input class="form-check-input" type="checkbox" role="switch" id="m_ssl" name="use_ssl" value="1"<?= (nu_is_post() ? nu_check('use_ssl') === '1' : NuMailer::setupValue('set_smtp_use_ssl') === '1') ? ' checked' : '' ?>>
 								<label class="form-check-label" for="m_ssl"><?= h(t('mail_use_ssl')) ?></label><?php // hint only as tooltip of the (i) – outside the label, so a click does not toggle ?>
-								<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('mail_use_ssl_hint')) ?>"
-									title="<?= h(t('mail_use_ssl_hint')) ?>"><i class="bi bi-info-circle"></i></span>
+								<?= nu_info_tip(t('mail_use_ssl_hint')) ?>
 							</div>
 						</div>
 						<?php // OAuth 2 (0.8.445, core/numailoauth.php): shown with the method OAuth 2 (assets/js/nuemail.js) ?>
@@ -339,7 +341,7 @@ nu_layout_start(t('nav_email'), 'email', ['head' => NuListView::head(), 'setting
 									</div>
 									<div class="col-sm-6 nuOAuthMs<?= $prov === 'microsoft' ? '' : ' d-none' ?>">
 										<label class="form-label" for="m_otenant"><?= h(t('mail_oauth_tenant')) ?></label>
-										<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('mail_oauth_tenant_tip')) ?>" title="<?= h(t('mail_oauth_tenant_tip')) ?>"><i class="bi bi-info-circle"></i></span>
+										<?= nu_info_tip(t('mail_oauth_tenant_tip')) ?>
 										<input class="form-control" id="m_otenant" name="oauth_tenant" maxlength="100" value="<?= h($ov('tenant') ?: 'common') ?>" autocomplete="off">
 									</div>
 									<div class="col-sm-6">
@@ -363,7 +365,7 @@ nu_layout_start(t('nav_email'), 'email', ['head' => NuListView::head(), 'setting
 									</div>
 									<div class="col-12">
 										<label class="form-label" for="m_oredir"><?= h(t('mail_oauth_redirect')) ?></label>
-										<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('mail_oauth_redirect_tip')) ?>" title="<?= h(t('mail_oauth_redirect_tip')) ?>"><i class="bi bi-info-circle"></i></span>
+										<?= nu_info_tip(t('mail_oauth_redirect_tip')) ?>
 										<div class="input-group">
 											<input class="form-control font-monospace" id="m_oredir" value="<?= h(NuMailOAuth::redirectUri()) ?>" readonly>
 											<button type="button" class="btn btn-outline-secondary" data-nu-copy-text="<?= h(NuMailOAuth::redirectUri()) ?>" title="<?= h(t('copy')) ?>" aria-label="<?= h(t('copy')) ?>"><i class="bi bi-clipboard"></i></button>
@@ -402,9 +404,6 @@ nu_layout_start(t('nav_email'), 'email', ['head' => NuListView::head(), 'setting
 								data-done="<?= h(t('mail_downloaded')) ?>"><i class="bi bi-download me-2"></i><?= h(t('mail_download_settings')) ?></button></li>
 						</ul>
 					</div>
-					<?php if ($canSave): ?>
-						<button data-nu-save class="btn nuBtnAct nuBtnSave" type="submit"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button>
-					<?php endif; ?>
 					<?php if (NuAcl::can(NuAcl::FORM_SETUP)): ?>
 						<button class="btn btn-outline-primary" type="submit" form="nuMailCheckForm" id="nuMailCheckBtn2" title="<?= h(t('mail_chk_tip')) ?>" data-nu-busy="<?= h(t('mail_chk_busy')) ?>"><i class="bi bi-plug me-1"></i><?= h(t('mail_chk_button')) ?></button>
 					<?php endif; ?>
@@ -486,8 +485,7 @@ nu_layout_start(t('nav_email'), 'email', ['head' => NuListView::head(), 'setting
 					</div>
 				</div>
 				<div class="card-footer d-flex justify-content-end align-items-center gap-2">
-					<span class="nuInfoTip" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('mail_test_hint')) ?>"
-						title="<?= h(t('mail_test_hint')) ?>"><i class="bi bi-info-circle"></i></span><?php // what the test does – only as tooltip ?>
+					<?= nu_info_tip(t('mail_test_hint'), '') ?><?php // what the test does – only as tooltip ?>
 					<button class="btn btn-primary" type="submit"><i class="bi bi-send me-1"></i><?= h(t('mail_send_test')) ?></button>
 				</div>
 			</form>
@@ -548,7 +546,7 @@ nu_layout_start(t('nav_email'), 'email', ['head' => NuListView::head(), 'setting
 	$userLogin = '';
 	if (!empty($detail['eml_user_id'])) {
 		$userLogin = $detail['eml_user_id'] === 'globeadmin' ? 'globeadmin'
-			: (string)($db->tableExists('zzzzsys_user') ? $db->value('SELECT sus_login_name FROM zzzzsys_user WHERE zzzzsys_user_id = ?', [$detail['eml_user_id']]) : '');
+			: ($db->tableExists('zzzzsys_user') ? NuAuth::userLogin((string)$detail['eml_user_id']) : '');
 	}
 	?>
 	<div class="mb-3 d-flex gap-2"><a class="btn nuBtnAct" href="<?= h(nu_url('email', ['tab' => 'log'])) ?>"><i class="bi bi-arrow-left me-1"></i><?= h(t('back')) ?></a>

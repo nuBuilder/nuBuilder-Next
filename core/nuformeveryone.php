@@ -15,12 +15,11 @@ defined('NU_ROOT') || exit;
 final class NuFormEveryone
 {
 	public const KEY = 'form_everyone';
-	private static ?array $cache = null;
 
 	/** @return array<string, array{rights: array<string, bool>, dm: string, ft: string, new: bool}> */
 	public static function all(): array
 	{
-		if (self::$cache !== null) return self::$cache;
+		if (NuMemo::find('set:formeveryone', $kept)) return $kept;   // NuMemo (code review R9): a write to the settings drops it
 		$out = [];
 		try {
 			$v = nu_setting_value(self::KEY);
@@ -28,7 +27,7 @@ final class NuFormEveryone
 			if (is_array($d)) foreach ($d as $fid => $c) if (is_array($c) && self::allowed((string)$fid)) $out[(string)$fid] = self::clean($c);
 		} catch (Throwable) {
 		}
-		return self::$cache = $out;
+		return NuMemo::keep('set:formeveryone', ['zzzzsys_nunext_setting'], $out);
 	}
 
 	public static function of(string $formId): ?array
@@ -60,7 +59,7 @@ final class NuFormEveryone
 		$db = nu_db();
 		$row = ['setting_value' => (string)json_encode((object)$all), 'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => mb_substr($by, 0, 50)];
 		nu_setting_save(self::KEY, $row, $db);
-		self::$cache = null;
+		NuMemo::drop('set:formeveryone');
 	}
 
 	/** The columns of a zzzzsys_access_form row for a switch's buttons. */
@@ -84,7 +83,7 @@ final class NuFormEveryone
 		$have = array_flip(array_map('strval', array_column($db->all('SELECT slf_zzzzsys_form_id FROM zzzzsys_access_form WHERE slf_zzzzsys_access_id = ?', [$accessId]), 'slf_zzzzsys_form_id')));
 		$added = [];
 		foreach (self::all() as $fid => $cfg) {
-			if (!$cfg['new'] || isset($have[$fid]) || !$db->value('SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id = ?', [$fid])) continue;
+			if (!$cfg['new'] || isset($have[$fid]) || !nu_form_exists((string)$fid)) continue;
 			$db->insert('zzzzsys_access_form', ['zzzzsys_access_form_id' => nu_id(), 'slf_zzzzsys_access_id' => $accessId, 'slf_zzzzsys_form_id' => $fid] + self::row($cfg));
 			$added[] = nu_form_label($fid);
 		}
@@ -98,10 +97,10 @@ final class NuFormEveryone
 		$all = self::all();
 		if (!$all) return [];
 		$db = nu_db();
-		$levels = array_map('strval', array_column($db->all('SELECT zzzzsys_access_id FROM zzzzsys_access'), 'zzzzsys_access_id'));
+		$levels = array_map('strval', array_keys(NuAcl::levels()));
 		$out = [];
 		foreach (array_keys($all) as $fid) {
-			if (!$db->value('SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id = ?', [$fid])) continue;
+			if (!nu_form_exists((string)$fid)) continue;
 			$have = array_flip(array_map('strval', array_column($db->all('SELECT slf_zzzzsys_access_id FROM zzzzsys_access_form WHERE slf_zzzzsys_form_id = ?', [$fid]), 'slf_zzzzsys_access_id')));
 			$miss = array_values(array_filter($levels, static fn($l) => !isset($have[$l])));
 			if ($miss) $out[$fid] = $miss;
@@ -132,7 +131,7 @@ final class NuFormEveryone
 		$all = self::all();
 		if (!$all) return 0;
 		$db = nu_db();
-		$gone = array_values(array_filter(array_keys($all), static fn($fid) => !$db->value('SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id = ?', [$fid])));
+		$gone = array_values(array_filter(array_keys($all), static fn($fid) => !nu_form_exists((string)$fid)));
 		foreach ($gone as $fid) self::set($fid, null, 'housekeeping');
 		return count($gone);
 	}

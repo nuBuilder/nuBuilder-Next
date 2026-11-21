@@ -12,11 +12,7 @@ NuAdmin::require('dataexport', 'view');                               // view = 
 NuSecurity::requireRecentAuth(nu_url('dataexport'));
 NuDataExport::ensure();
 
-$json = static function (array $data): never {
-	header('Content-Type: application/json; charset=utf-8');
-	header('Cache-Control: no-store');
-	exit((string)json_encode($data, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE));
-};
+$json = static function (array $data): never { nu_json($data); };
 $canChange = NuDataExport::can('change');
 $id = (string)($_GET['id'] ?? '');
 $runId = (string)($_GET['run'] ?? '');
@@ -233,7 +229,7 @@ $fieldErr = static fn(string $f) => isset($errors[$f]) ? '<div class="invalid-fe
 					</div>
 					<div class="mb-3">
 						<label class="form-label" for="dxpCode"><?= h(t('dxp_code')) ?></label>
-						<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('dxp_code_tip')) ?>" title="<?= h(t('dxp_code_tip')) ?>"><i class="bi bi-info-circle"></i></span>
+						<?= nu_info_tip(t('dxp_code_tip')) ?>
 						<input class="form-control font-monospace<?= isset($errors['code']) ? ' is-invalid' : '' ?>" id="dxpCode" name="code" value="<?= h($e['code']) ?>" maxlength="50" pattern="[a-z0-9_]*"<?= $ro ? ' readonly' : '' ?>>
 						<?= $fieldErr('code') ?>
 					</div>
@@ -250,7 +246,7 @@ $fieldErr = static fn(string $f) => isset($errors[$f]) ? '<div class="invalid-fe
 					</div>
 					<div class="mb-0">
 						<label class="form-label" for="dxpFilename"><?= h(t('dxp_filename')) ?></label>
-						<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('dxp_filename_tip')) ?>" title="<?= h(t('dxp_filename_tip')) ?>"><i class="bi bi-info-circle"></i></span>
+						<?= nu_info_tip(t('dxp_filename_tip')) ?>
 						<input class="form-control" id="dxpFilename" name="filename" value="<?= h($e['filename']) ?>" maxlength="100" placeholder="{code}_{date}"<?= $ro ? ' readonly' : '' ?>>
 					</div>
 				</div>
@@ -279,7 +275,7 @@ $fieldErr = static fn(string $f) => isset($errors[$f]) ? '<div class="invalid-fe
 							<div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="dxpCsvHead" name="csv_head" value="1"<?= $csv['head'] ? ' checked' : '' ?><?= $ro ? ' disabled' : '' ?>><label class="form-check-label small" for="dxpCsvHead"><?= h(t('csv_header')) ?></label></div>
 							<div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="dxpCsvBom" name="csv_bom" value="1"<?= $csv['bom'] ? ' checked' : '' ?><?= $ro ? ' disabled' : '' ?>><label class="form-check-label small" for="dxpCsvBom"><?= h(t('csv_bom')) ?></label></div>
 							<div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="dxpCsvProtect" name="csv_protect" value="1"<?= $csv['protect'] ? ' checked' : '' ?><?= $ro ? ' disabled' : '' ?>><label class="form-check-label small" for="dxpCsvProtect"><?= h(t('dxp_csv_protect')) ?></label>
-								<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('dxp_csv_protect_tip')) ?>" title="<?= h(t('dxp_csv_protect_tip')) ?>"><i class="bi bi-info-circle"></i></span></div>
+								<?= nu_info_tip(t('dxp_csv_protect_tip')) ?></div>
 						</div>
 					</div>
 				</div>
@@ -290,7 +286,7 @@ $fieldErr = static fn(string $f) => isset($errors[$f]) ? '<div class="invalid-fe
 				<div class="card-body" id="dxpEditor">
 					<div class="d-flex align-items-center flex-wrap gap-2 mb-2">
 						<h2 class="h6 mb-0"><?= h(t('dxp_datasets')) ?></h2>
-						<span class="nuInfoTip" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('dxp_datasets_tip')) ?>" title="<?= h(t('dxp_datasets_tip')) ?>"><i class="bi bi-info-circle"></i></span>
+						<?= nu_info_tip(t('dxp_datasets_tip'), '') ?>
 						<ul class="nav nav-tabs ms-2 flex-grow-1" id="dxpDsTabs"></ul>
 						<?php if (!$ro): ?><button type="button" class="btn btn-sm btn-outline-secondary" id="dxpDsAdd"><i class="bi bi-plus-lg me-1"></i><?= h(t('dxp_add_dataset')) ?></button><?php endif; ?>
 					</div>

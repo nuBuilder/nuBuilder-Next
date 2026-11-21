@@ -446,7 +446,7 @@ final class NuFormMeta
 	{
 		$m = self::$cache[$formId] ?? null;
 		if ($m instanceof self && !$m->isDraft()) return (string)($m->form['sfo_status'] ?? '');
-		return (string)nu_db()->value('SELECT sfo_status FROM zzzzsys_form WHERE zzzzsys_form_id = ?', [$formId]);
+		return (string)(nu_form($formId)['status'] ?? '');
 	}
 
 	/** An object by its zzzzsys_object_id. */

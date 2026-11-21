@@ -75,7 +75,7 @@ if ($action === 'context') {
 
 // ------------------------------------------------------------------ JSON actions
 header('Content-Type: application/json; charset=utf-8');
-$out = static function (array $d): never { echo json_encode($d, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE); exit; };
+$out = static function (array $d): never { nu_json($d); };
 try {
 	if ($action === 'prompt') {
 		$req = trim(nu_post('request'));

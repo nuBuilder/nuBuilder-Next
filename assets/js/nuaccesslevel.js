@@ -107,7 +107,7 @@
 		th.querySelector('button').addEventListener('click', function () {
 			var col = th.getAttribute('data-sort'), dir = th.getAttribute('aria-sort') === 'ascending' ? 'desc' : 'asc';
 			sortBy(col, dir);
-			try { localStorage.setItem(KEY, col + '|' + dir); } catch (e) { /* no storage */ }
+			nuStore.set(KEY, col + '|' + dir);
 		});
 	});
 	try {

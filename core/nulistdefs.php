@@ -269,17 +269,17 @@ final class NuListDefs
 
 		$filters = [
 			'access' => ['label' => t('access_level'), 'type' => 'select', 'tom' => true, 'none' => t('none_assigned'),
-				'options' => static function () use ($db): array {
+				'options' => static function (): array {
 					$o = [];
-					foreach ($db->all('SELECT zzzzsys_access_id, sal_code, sal_description FROM zzzzsys_access ORDER BY sal_code') as $a) $o[(string)$a['zzzzsys_access_id']] = [(string)$a['sal_code'], (string)$a['sal_description']];
+					foreach (NuAcl::levels() as $a) $o[(string)$a['zzzzsys_access_id']] = [(string)$a['sal_code'], (string)$a['sal_description']];
 					return $o;
 				},
 				'where' => static fn(string $v) => $v === '-' ? ["(u.sus_zzzzsys_access_id IS NULL OR u.sus_zzzzsys_access_id = '')", []] : ['u.sus_zzzzsys_access_id = ?', [$v]]],
 			// main or additional access level (0.8.687 – the link "Show in the users list" of an access level)
 			'anyacc' => ['label' => t('users_flt_anyacc'), 'type' => 'select', 'tom' => true,
-				'options' => static function () use ($db): array {
+				'options' => static function (): array {
 					$o = [];
-					foreach ($db->all('SELECT zzzzsys_access_id, sal_code, sal_description FROM zzzzsys_access ORDER BY sal_code') as $a) $o[(string)$a['zzzzsys_access_id']] = [(string)$a['sal_code'], (string)$a['sal_description']];
+					foreach (NuAcl::levels() as $a) $o[(string)$a['zzzzsys_access_id']] = [(string)$a['sal_code'], (string)$a['sal_description']];
 					return $o;
 				},
 				'where' => static fn(string $v) => NuUserAccess::ready()
@@ -1337,7 +1337,7 @@ final class NuListDefs
 	{
 		$T = NuUserHelp::T;
 		$levels = [];
-		foreach (nu_db()->all('SELECT zzzzsys_access_id, sal_code, sal_description FROM zzzzsys_access ORDER BY sal_code') as $a) $levels[(string)$a['zzzzsys_access_id']] = (string)$a['sal_code'];
+		foreach (NuAcl::levels() as $a) $levels[(string)$a['zzzzsys_access_id']] = (string)$a['sal_code'];
 		$usage = NuUserHelp::usage();
 		$titles = array_map(static fn($b) => (string)$b['title'], NuUserHelp::bases());
 		$accOf = static function ($r) use ($levels): array { $j = json_decode((string)$r['hp_acc'], true); return array_map(static fn($x) => $levels[$x] ?? (string)$x, is_array($j) ? $j : []); };
@@ -1763,10 +1763,9 @@ final class NuListDefs
 	/** The user whose e-mail address this is (one address, exactly one user, view right on users) – '' otherwise. */
 	private static function userOfMail(string $to): string
 	{
-		static $by = null;
 		$to = strtolower(trim($to));
 		if ($to === '' || str_contains($to, ',') || str_contains($to, ';') || !NuAcl::can(NuAcl::FORM_USER)) return '';
-		if ($by === null) {
+		$by = NuMemo::get('users:bymail', ['zzzzsys_user'], static function (): array {
 			$by = [];
 			try {
 				foreach (nu_db()->all("SELECT zzzzsys_user_id, sus_email FROM zzzzsys_user WHERE sus_email IS NOT NULL AND sus_email <> ''") as $u) {
@@ -1774,7 +1773,8 @@ final class NuListDefs
 					$by[$k] = isset($by[$k]) ? '' : (string)$u['zzzzsys_user_id'];   // two users with one address: no link
 				}
 			} catch (Throwable) { $by = []; }
-		}
+			return $by;
+		});
 		return $by[$to] ?? '';
 	}
 
@@ -1923,9 +1923,7 @@ final class NuListDefs
 		$W = NuDashboard::TW;
 		$nW = "(SELECT COUNT(*) FROM $W w WHERE w.dashboard_id = d.zzzzsys_nunext_dashboard_id)";
 		$accName = static function (): array {
-			static $m = null;
-			if ($m === null) { $m = []; try { foreach (nu_db()->all('SELECT zzzzsys_access_id, sal_code FROM zzzzsys_access') as $a) $m[(string)$a['zzzzsys_access_id']] = (string)$a['sal_code']; } catch (Throwable) { /* none */ } }
-			return $m;
+			return NuAcl::levelCodes();
 		};
 		$accText = static function (array $r) use ($accName): string {
 			$a = NuDashboard::access(['access' => $r['dsh_access']]);

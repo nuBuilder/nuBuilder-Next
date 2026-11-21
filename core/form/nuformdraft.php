@@ -226,7 +226,7 @@ final class NuFormDraft
 		if (!$tabs && ($snap['objects'] ?? [])) $e[] = t('builder_err_one_tab');
 		$seen = [];
 		$cols = trim((string)($f['sfo_table'] ?? '')) !== '' && ($f['sfo_type'] ?? '') !== 'launch' ? $db->columns((string)$f['sfo_table']) : [];
-		$formExists = static function (string $id) use ($db): bool { return $id === '' || (bool)$db->value('SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id = ?', [$id]); };
+		$formExists = static fn(string $id): bool => $id === '' || nu_form_exists($id);
 		// ids of the live form (0.8.1164): an id nuBuilder Forte allowed (e.g. with umlauts) blocks only when it is new or renamed in the draft
 		$liveIds = $liveObj = [];
 		foreach ($live['objects'] ?? [] as $lo) { $k = (string)($lo['zzzzsys_object_id'] ?? ''); $liveIds[$k] = (string)($lo['sob_all_id'] ?? ''); $liveObj[$k] = $lo; }
@@ -344,7 +344,7 @@ final class NuFormDraft
 	public static function liveEditRefused(string $formId, bool $liveOk): ?array
 	{
 		if (!self::ready()) return null;
-		if ((string)nu_db()->value('SELECT sfo_status FROM zzzzsys_form WHERE zzzzsys_form_id = ?', [$formId]) === '0') return null;
+		if ((string)(nu_form($formId)['status'] ?? '') === '0') return null;
 		$ga = !empty(NuAuth::user()['globeadmin']);
 		$open = self::openFor($formId);
 		if ($open) {

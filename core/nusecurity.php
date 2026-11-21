@@ -419,7 +419,7 @@ final class NuSecurity
 	public static function adminLevels(): array
 	{
 		$out = [];
-		foreach (nu_db()->all('SELECT zzzzsys_access_id, sal_code FROM zzzzsys_access ORDER BY sal_code') as $a) {
+		foreach (NuAcl::levels() as $a) {
 			$r = self::adminRightsOf((string)$a['zzzzsys_access_id']);
 			if ($r) $out[(string)$a['sal_code']] = array_keys($r);
 		}

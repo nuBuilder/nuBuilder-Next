@@ -163,7 +163,7 @@ final class NuApiClient
 		$errors = [];
 		if (!preg_match('/^[A-Za-z0-9_.\-]{3,50}$/', $login)) $errors['su_login'] = t('api_err_login');
 		elseif ((int)$db->value('SELECT COUNT(*) FROM zzzzsys_user WHERE sus_login_name = ?', [$login]) || strcasecmp($login, (string)nu_cfg('nuConfigDBGlobeadminUsername')) === 0) $errors['su_login'] = t('user_err_login_taken');
-		if (!(int)$db->value('SELECT COUNT(*) FROM zzzzsys_access WHERE zzzzsys_access_id = ?', [$accessId])) $errors['su_access'] = t('err_required');
+		if (!NuAcl::levelExists((string)$accessId)) $errors['su_access'] = t('err_required');
 		if ($errors) return [null, $errors];
 		$id = nu_id();
 		$db->insert('zzzzsys_user', ['zzzzsys_user_id' => $id, 'sus_login_name' => $login, 'sus_name' => $name !== '' ? mb_substr($name, 0, 50) : $login,
@@ -284,7 +284,7 @@ final class NuApiClient
 		if (!$t || strtotime((string)$t['expires_at']) <= time()) return null;
 		$c = self::get((string)$t['client_ref']);
 		if (!$c || (string)$c['active'] !== '1' || ($c['expires_on'] && nu_is_expired($c['expires_on'])) || !self::ipAllowed($c['ip_allow'], $ip)) return null;
-		$u = $db->one('SELECT * FROM zzzzsys_user WHERE zzzzsys_user_id = ?', [(string)$c['user_id']]);
+		$u = NuAuth::userRow((string)$c['user_id']);
 		if (!$u || nu_is_expired($u['sus_expires_on']) || (string)$u['sus_zzzzsys_access_id'] === '') return null;
 		$scopes = json_decode((string)$t['scopes'], true);
 		return ['client' => $c, 'scopes' => array_values(array_intersect(is_array($scopes) ? $scopes : [], self::scopesOf($c))), 'user' => $u];

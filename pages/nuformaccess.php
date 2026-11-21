@@ -13,17 +13,12 @@ defined('NU_ROOT') || exit;
  * the form with these buttons (the normal rows) and stores the switch, {everyone: null} switches it off (the rows stay).
  */
 $db = nu_db();
-$out = static function (array $d, int $code = 200): never {
-	http_response_code($code);
-	header('Content-Type: application/json; charset=utf-8');
-	header('X-Content-Type-Options: nosniff');
-	exit((string)json_encode($d, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE));
-};
+$out = static function (array $d, int $code = 200): never { nu_json($d, $code); };
 if (!NuAcl::can(NuAcl::FORM_ACCESS)) $out(['ok' => false, 'message' => t('err_forbidden')], 403);
 
 $post = nu_is_post() ? (json_decode((string)file_get_contents('php://input'), true) ?: []) : [];
 $fid = trim((string)($post['f'] ?? $_GET['f'] ?? ''));
-$form = $fid === '' ? null : $db->one('SELECT zzzzsys_form_id, sfo_code, sfo_description FROM zzzzsys_form WHERE zzzzsys_form_id = ?', [$fid]);
+$form = ($nf = nu_form($fid)) ? ['zzzzsys_form_id' => $fid, 'sfo_code' => $nf['code'], 'sfo_description' => $nf['description']] : null;
 if (!$form) $out(['ok' => false, 'message' => t('record_not_found')], 404);
 
 $cols = $db->columns('zzzzsys_access_form');
@@ -45,7 +40,7 @@ if (nu_is_post()) {
 	if (!$canSave) $out(['ok' => false, 'message' => t('err_forbidden')], 403);
 	$want = is_array($post['levels'] ?? null) ? $post['levels'] : [];
 	$levels = [];
-	foreach ($db->all('SELECT zzzzsys_access_id, sal_code FROM zzzzsys_access') as $l) $levels[(string)$l['zzzzsys_access_id']] = (string)$l['sal_code'];
+	foreach (NuAcl::levels() as $l) $levels[(string)$l['zzzzsys_access_id']] = (string)$l['sal_code'];
 	$evSent = array_key_exists('everyone', $post);
 	$ev = $evSent && is_array($post['everyone']) ? NuFormEveryone::clean($post['everyone']) : null;
 	if ($ev !== null) {                                              // Everyone (0.8.784): every level gets the form with these buttons
@@ -104,7 +99,7 @@ if (nu_is_post()) {
 session_write_close();
 $by = $rowsOf();
 $levels = [];
-foreach ($db->all('SELECT zzzzsys_access_id, sal_code, sal_description, sal_group FROM zzzzsys_access ORDER BY sal_code') as $l) {
+foreach (NuAcl::levels() as $l) {
 	$aid = (string)$l['zzzzsys_access_id'];
 	$r = $by[$aid] ?? null;
 	$row = null;

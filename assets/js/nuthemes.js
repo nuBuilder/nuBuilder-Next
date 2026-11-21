@@ -48,11 +48,7 @@
 
 	function send() {
 		var my = ++seq;
-		fetch(form.getAttribute('data-draft-url'), {
-			method: 'POST', credentials: 'same-origin',
-			headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': form.getAttribute('data-csrf') },
-			body: JSON.stringify(Object.assign({ action: 'draft' }, values()))
-		}).then(function (r) { return r.json(); }).then(function (j) {
+		NuUtil.post(form.getAttribute('data-draft-url'), Object.assign({ action: 'draft' }, values()), {csrf: form.getAttribute('data-csrf'), strict: true}).then(function (j) {
 			if (my !== seq) return;
 			reloadCss();
 			warn.textContent = '';

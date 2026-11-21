@@ -43,7 +43,7 @@ final class NuSubject
 	public static function forUser(string $userId): array
 	{
 		$db = nu_db();
-		$row = $db->one('SELECT zzzzsys_user_id, sus_zzzzsys_access_id, sus_team, sus_department FROM zzzzsys_user WHERE zzzzsys_user_id = ?', [$userId]) ?? [];
+		$row = NuAuth::userRow($userId) ?? [];
 		return ['id' => $userId, 'ga' => false, 'access' => (string)($row['sus_zzzzsys_access_id'] ?? ''),
 			'perms' => array_map(static fn($p) => mb_strtolower(trim((string)$p)), NuPermission::idents($userId)),
 			'team' => mb_strtolower(trim((string)($row['sus_team'] ?? ''))), 'dept' => mb_strtolower(trim((string)($row['sus_department'] ?? '')))];
@@ -93,7 +93,7 @@ final class NuSubject
 		$db = nu_db();
 		$out = ['access' => [], 'user' => [], 'perm' => [], 'team' => [], 'dept' => []];
 		try {
-			foreach ($db->all('SELECT zzzzsys_access_id, sal_code, sal_description FROM zzzzsys_access ORDER BY sal_code') as $r) $out['access'][] = [(string)$r['zzzzsys_access_id'], trim($r['sal_code'] . ' – ' . $r['sal_description'], ' –')];
+			foreach (NuAcl::levels() as $r) $out['access'][] = [(string)$r['zzzzsys_access_id'], trim($r['sal_code'] . ' – ' . $r['sal_description'], ' –')];
 			foreach ($db->all('SELECT zzzzsys_user_id, sus_login_name, sus_name FROM zzzzsys_user ORDER BY sus_login_name') as $r) $out['user'][] = [(string)$r['zzzzsys_user_id'], trim($r['sus_login_name'] . ' – ' . $r['sus_name'], ' –')];
 			foreach (NuPermission::items() as $r) $out['perm'][] = [(string)$r['pme_ident'], trim($r['pme_ident'] . ' – ' . $r['pme_description'], ' –')];
 			foreach (['team' => 'sus_team', 'dept' => 'sus_department'] as $k => $c) {

@@ -25,19 +25,18 @@ final class NuPwPolicy
 
 	/** Test hook (unit tests): fn(string $prefix): ?string = the range answer, null = not reachable. */
 	public static $transport = null;
-	private static ?array $cache = null;
 	private static ?array $common = null;
 
 	/** @return array<string, mixed> */
 	public static function settings(): array
 	{
-		if (self::$cache !== null) return self::$cache;
+		if (NuMemo::find('set:pwpolicy', $kept)) return $kept;   // NuMemo (code review R9): a write to the settings drops it
 		$s = [];
 		try {
 			$v = nu_setting_value(self::KEY);
 			$s = is_string($v) ? (json_decode($v, true) ?: []) : [];
 		} catch (Throwable) { /* no settings table yet */ }
-		return self::$cache = self::clean($s);
+		return NuMemo::keep('set:pwpolicy', ['zzzzsys_nunext_setting'], self::clean($s));
 	}
 
 	/** @param array<string, mixed> $s */
@@ -67,7 +66,7 @@ final class NuPwPolicy
 		$new = self::clean($s + ['leak_url' => $old['leak_url']]);
 		if ($new === $old) return false;
 		self::write(self::KEY, $new);
-		self::$cache = $new;
+		NuMemo::put('set:pwpolicy', ['zzzzsys_nunext_setting'], $new);
 		NuLog::write('pw_policy_changed', 'zzzzsys_nunext_setting', self::KEY, ['from' => $old, 'to' => $new]);
 		return true;
 	}
@@ -234,8 +233,8 @@ final class NuPwPolicy
 		$s = self::settings();
 		$over = [];
 		try {   // 0.8.827: levels() takes the user row (a string threw a TypeError here, so the overrides never applied)
-			$u = nu_db()->one('SELECT zzzzsys_user_id AS id, sus_zzzzsys_access_id AS access_id FROM zzzzsys_user WHERE zzzzsys_user_id = ?', [$userId]);
-			$levels = $u ? NuUserAccess::levels($u) : [];
+			$r = NuAuth::userRow($userId);
+			$levels = $r ? NuUserAccess::levels(['id' => $userId, 'access_id' => (string)$r['sus_zzzzsys_access_id']]) : [];
 		} catch (Throwable) { $levels = []; }
 		foreach ($levels as $l) if (isset($s['levels'][$l])) $over[] = (int)$s['levels'][$l];
 		if (!$over) return (int)$s['expire'];

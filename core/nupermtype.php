@@ -17,12 +17,15 @@ final class NuPermType
 	/** type => [label text key, Bootstrap icon] */
 	public const TYPES = ['plain' => ['ptype_plain', 'bi-key'], 'import' => ['ptype_import', 'bi-file-earmark-arrow-up']];
 
-	private static ?array $cache = null;
-
 	/** @return array<string, array{type: string, settings: array}> item id => type and settings (only items with a type other than plain) */
 	public static function all(): array
 	{
-		if (self::$cache !== null) return self::$cache;
+		// NuMemo (code review R9, 0.8.1351): a write to the table through NuDB drops it
+		return NuMemo::get('ptype:all', [self::TABLE], static fn(): array => self::read());
+	}
+
+	private static function read(): array
+	{
 		$out = [];
 		try {
 			if (nu_db()->tableExists(self::TABLE)) {
@@ -34,7 +37,7 @@ final class NuPermType
 				}
 			}
 		} catch (Throwable) { /* no table yet */ }
-		return self::$cache = $out;
+		return $out;
 	}
 
 	/** @return array{type: string, settings: array} */
@@ -78,13 +81,11 @@ final class NuPermType
 			if ($db->value('SELECT COUNT(*) FROM ' . self::TABLE . ' WHERE zzzzsys_nunext_permission_type_id = ?', [$itemId])) $db->update(self::TABLE, $row, 'zzzzsys_nunext_permission_type_id', $itemId);
 			else $db->insert(self::TABLE, ['zzzzsys_nunext_permission_type_id' => $itemId] + $row);
 		}
-		self::$cache = null;
 	}
 
 	public static function delete(string $itemId): void
 	{
 		try { if (nu_db()->tableExists(self::TABLE)) nu_db()->run('DELETE FROM ' . self::TABLE . ' WHERE zzzzsys_nunext_permission_type_id = ?', [$itemId]); } catch (Throwable) {}
-		self::$cache = null;
 	}
 
 	/** "Data import: orders, order_items · add + update" – for lists and the user form. */
@@ -120,7 +121,6 @@ final class NuPermType
 		foreach ($db->all('SELECT zzzzsys_nunext_permission_type_id AS id FROM ' . self::TABLE) as $r) {
 			if (!isset($ids[(string)$r['id']])) { $db->run('DELETE FROM ' . self::TABLE . ' WHERE zzzzsys_nunext_permission_type_id = ?', [(string)$r['id']]); $n++; }
 		}
-		self::$cache = null;
 		return $n;
 	}
 }

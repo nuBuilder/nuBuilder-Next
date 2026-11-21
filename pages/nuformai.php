@@ -27,7 +27,7 @@ $appMode = !$meta;                                                 // a new form
 
 if (nu_is_post()) {
 	header('Content-Type: application/json; charset=utf-8');
-	$out = static function (array $d): never { echo json_encode($d, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE); exit; };
+	$out = static function (array $d): never { nu_json($d); };
 	$action = nu_post('action');
 	if ($action === 'context') {                         // AI context pack (0.8.961): a file to attach to the chat together with the prompt
 		$tables = array_values(array_filter(array_map('strval', (array)($_POST['tables'] ?? [])), static fn($t) => $t !== ''));
@@ -57,7 +57,7 @@ if (nu_is_post()) {
 			if (!NuFormDraft::canPublish()) $out(['ok' => false, 'errors' => [t('err_forbidden')]]);
 			$n = 0;
 			foreach (array_slice(array_map('strval', (array)($_POST['forms'] ?? [])), 0, NuFormSpec::MAX_APP_FORMS) as $fid) {
-				if ((string)nu_db()->value('SELECT sfo_status FROM zzzzsys_form WHERE zzzzsys_form_id = ?', [$fid]) !== '0') continue;
+				if ((string)(nu_form($fid)['status'] ?? '') !== '0') continue;
 				NuFormDraft::publishNewForm($fid);
 				$n++;
 			}

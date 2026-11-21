@@ -63,7 +63,7 @@ $hasTotp  = NuTwoFA::hasTotp($uid);
 $setup    = $_SESSION['nu_totp_setup'] ?? null;
 $devices  = NuTwoFA::deviceCount($uid);
 $required = $u['globeadmin'] ? (bool)nu_cfg('nuConfig2FAAdmin')
-	: ((bool)nu_cfg('nuConfig2FAUser') && NuAuth::levels2fa((string)nu_db()->value('SELECT sal_use_2fa FROM zzzzsys_access WHERE zzzzsys_access_id = ?', [$u['access_id']]) === '1', (string)$u['id']));
+	: ((bool)nu_cfg('nuConfig2FAUser') && NuAuth::levels2fa((string)(NuAcl::level((string)$u['access_id'])['sal_use_2fa'] ?? '') === '1', (string)$u['id']));
 $email    = $u['globeadmin'] ? (string)(nu_cfg('nuConfigGlobeadminEmail') ?: NuMail::settings()['from']) : $u['email'];
 
 $foot = $setup ? '<script src="' . nu_asset(NU_QRCODE . '/qrcode.js') . '"></script><script src="' . nu_asset('assets/js/nuqr.js') . '"></script>' : '';
@@ -127,7 +127,7 @@ nu_layout_start(t('sec_title'));
 		<?php if ($pkOn): $pkProblem = NuPasskey::problem(); $pkTip = t('pk_tip'); ?>
 		<div class="card shadow-sm mb-3" id="secPasskeys">
 			<div class="card-header fw-semibold d-flex align-items-center gap-2"><i class="bi bi-fingerprint"></i><?= h(t('pk_title')) ?>
-				<span class="nuInfoTip" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h($pkTip) ?>" title="<?= h($pkTip) ?>"><i class="bi bi-info-circle"></i></span>
+				<?= nu_info_tip($pkTip, '') ?>
 				<span class="badge ms-auto <?= $pks ? 'text-bg-success' : 'text-bg-secondary' ?>" id="secPkCount"><?= h($pks ? t('pk_count', count($pks)) : t('sec_inactive')) ?></span></div>
 			<div class="card-body">
 				<?php if ($pkProblem !== ''): ?>

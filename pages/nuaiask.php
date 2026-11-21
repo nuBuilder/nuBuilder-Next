@@ -9,7 +9,7 @@ defined('NU_ROOT') || exit;
  * The answer is only handed to the dialogue, which checks it as a pasted answer – nothing is applied here.
  */
 header('Content-Type: application/json; charset=utf-8');
-$out = static function (array $d, int $code = 200): never { http_response_code($code); echo json_encode($d, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE); exit; };
+$out = static function (array $d, int $code = 200): never { nu_json($d, $code); };
 if (!nu_is_post()) $out(['ok' => false, 'error' => 'POST'], 405);
 $feature = nu_post('feature');
 if (!NuAiProvider::featureAllowed($feature)) $out(['ok' => false, 'error' => t('aip_err_not_allowed')], 403);

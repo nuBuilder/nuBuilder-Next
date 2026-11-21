@@ -194,7 +194,7 @@ nu_layout_start(t('help_title'), '');
 			<?php endif; ?>
 			<?php if ($hasRef || str_contains($html, 'data-level="advanced"') || str_contains($html, 'data-level="detail"')): ?>
 			<div class="mb-2" id="helpLevelBox">
-				<div class="small text-body-secondary mb-1"><?= h(t('help_level')) ?><span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('help_level_tip')) ?>" title="<?= h(t('help_level_tip')) ?>"><i class="bi bi-info-circle"></i></span></div>
+				<div class="small text-body-secondary mb-1"><?= h(t('help_level')) ?><?= nu_info_tip(t('help_level_tip')) ?></div>
 				<div class="btn-group btn-group-sm w-100" role="group" id="helpLevel" aria-label="<?= h(t('help_level')) ?>">
 					<?php foreach (['essentials', 'standard', 'everything'] as $lv): ?>
 					<input type="radio" class="btn-check" name="helpLevel" id="helpLvl_<?= $lv ?>" value="<?= $lv ?>" autocomplete="off"<?= $lv === 'standard' ? ' checked' : '' ?>>
@@ -204,8 +204,11 @@ nu_layout_start(t('help_title'), '');
 			</div>
 			<?php endif; ?>
 			<div class="small text-body-secondary mb-2" id="helpCount" aria-live="polite"></div>
+			<?php // phones and tablets (< 992 px): the index folds behind "Contents", so the text starts at the top (assets/js/nuhelp.js) ?>
+			<details class="nuHelpTocFold" id="helpTocFold" open><summary class="nuHelpTocSum"><i class="bi bi-list-ul me-1" aria-hidden="true"></i><?= h(t('help_index')) ?></summary>
 			<nav id="helpToc" class="nuHelpToc" aria-label="<?= h(t('help_index')) ?>"<?= $tab === 'ref' ? ' hidden' : '' ?>></nav>
 			<?php if ($hasRef): ?><nav id="helpTocRef" class="nuHelpToc" aria-label="<?= h(t('help_index')) ?>"<?= $tab === 'ref' ? '' : ' hidden' ?>></nav><?php endif; ?>
+			</details>
 		</div>
 	</aside>
 	<div class="col-lg-9">

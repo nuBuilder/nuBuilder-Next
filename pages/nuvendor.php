@@ -224,7 +224,7 @@ $demoForms = trim((string)(nu_cfg('nuConfigDemoSavingAllowedIds') ?? ''));
 			<?php if ($demoForms !== ''):
 				$dTables = NuDemoData::tables(); $dInfo = NuDemoData::info(); $dSet = NuDemoData::setting(); ?>
 				<h3 class="h6 mt-3" id="demodata"><?= h(t('demo_data_title')) ?>
-					<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('demo_data_tip')) ?>" title="<?= h(t('demo_data_tip')) ?>"><i class="bi bi-info-circle"></i></span></h3>
+					<?= nu_info_tip(t('demo_data_tip')) ?></h3>
 				<div class="small text-body-secondary mb-1"><?= h($dTables ? t('demo_data_tables', implode(', ', $dTables)) : t('demo_snap_no_tables')) ?></div>
 				<div class="small mb-2" id="demoSnapState"><?php if ($dInfo): ?><i class="bi bi-camera me-1"></i><?= h(t('demo_snap_info', date(nu_dfmt('d.m.Y H:i'), (int)$dInfo['created']), (string)$dInfo['by'], array_sum((array)$dInfo['tables']))) ?>
 					<?php if ((int)$dSet['last'] > 0): ?> · <?= h(t('demo_reset_last', date(nu_dfmt('d.m.Y H:i'), (int)$dSet['last']))) ?><?php endif; ?>

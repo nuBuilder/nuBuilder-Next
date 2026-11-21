@@ -345,7 +345,6 @@ body.nuObjMenuOn #nuEditForm label[id^="label_"], body.nuObjMenuOn #nuEditForm .
    Stacks per position; fixed bars push the page, the sticky navbar and the action bar (CSS variables set by the script). */
 body.nuForm { padding-top: var(--nu-infobar-top, 0px); padding-bottom: var(--nu-infobar-bottom, 0px); transition: padding .2s ease-out; }
 .nuForm .nu-navbar.sticky-top { top: var(--nu-infobar-top, 0px); }
-.nuForm .nu-actionbar { bottom: var(--nu-infobar-bottom, 0px); }
 .nu-info-bar-stack { position: absolute; left: 0; right: 0; display: flex; flex-direction: column; pointer-events: none; }
 .nu-info-bar-stack--fixed { position: fixed; }
 .nu-info-bar-stack--top { top: 0; }

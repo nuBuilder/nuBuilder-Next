@@ -86,7 +86,7 @@ function initInsert(cm) {
 	function names(re) { var out = {}, m, s = text(); re.lastIndex = 0; while ((m = re.exec(s)) !== null) out[m[1]] = true; return out; }
 	function setNames() { return names(/^[ \t]*\$([A-Za-z_]\w*)\s*=/gm); }
 	function commentedNames() { return names(/^[ \t]*(?:\/\/|#)[ \t]*\$([A-Za-z_]\w*)\s*=/gm); }
-	function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined) e.textContent = txt; return e; }
+	function el(tag, attrs, kids) { return NuUtil.el(tag, attrs, kids); }
 	function safeComment(c) { return String(c || '').replace(/[\r\n]+/g, ' ').replace(/\?>/g, '? >').trim(); }   // ?> would end PHP inside a // comment
 	function lineOf(name, value, comment) { comment = safeComment(comment); return '$' + name + ' = ' + value + ';' + (comment ? '\t\t//-- ' + comment : ''); }
 

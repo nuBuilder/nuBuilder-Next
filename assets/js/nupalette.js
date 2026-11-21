@@ -14,16 +14,7 @@
 	var RECENT_KEY = 'nunext.palRecent';
 	var items = null, loading = null;
 
-	function el(tag, attrs, kids) {
-		var e = document.createElement(tag);
-		Object.keys(attrs || {}).forEach(function (k) {
-			if (k === 'text') e.textContent = attrs[k];
-			else if (k === 'class') e.className = attrs[k];
-			else e.setAttribute(k, attrs[k]);
-		});
-		(kids || []).forEach(function (c) { if (c) e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); });
-		return e;
-	}
+	function el(tag, attrs, kids) { return NuUtil.el(tag, attrs, kids); }
 	function store(v) {
 		try { if (v === undefined) return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); localStorage.setItem(RECENT_KEY, JSON.stringify(v)); } catch (e) { return []; }
 		return [];

@@ -140,7 +140,7 @@ final class NuBuilderGen
 	{
 		if (!$levels || !NuAcl::can(NuAcl::FORM_ACCESS, 'save')) return [];
 		$db = nu_db();
-		$known = array_column($db->all('SELECT zzzzsys_access_id, sal_code FROM zzzzsys_access'), 'sal_code', 'zzzzsys_access_id');
+		$known = NuAcl::levelCodes();
 		$out = [];
 		foreach (array_unique(array_map('strval', $levels)) as $acc) {
 			if (!isset($known[$acc]) || (NuSecurity::restricted() && NuUserAccess::holds($acc))) continue;

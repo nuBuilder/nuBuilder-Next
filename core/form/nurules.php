@@ -511,7 +511,7 @@ final class NuFormRules
 		}
 		$db = nu_db();
 		$levels = array_map(static fn($r) => [(string)$r['zzzzsys_access_id'], (string)$r['sal_code'] . ($r['sal_description'] ? ' – ' . $r['sal_description'] : '')],
-			$db->all('SELECT zzzzsys_access_id, sal_code, sal_description FROM zzzzsys_access ORDER BY sal_code'));
+			array_values(NuAcl::levels()));
 		$perms = $db->tableExists('zzzzsys_permission_item') ? array_map(static fn($r) => [(string)$r['pme_ident'], (string)$r['pme_ident'] . ($r['pme_description'] ? ' – ' . $r['pme_description'] : '')],
 			$db->all('SELECT pme_ident, pme_description FROM zzzzsys_permission_item ORDER BY pme_ident')) : [];
 		return ['list' => self::of($meta), 'fields' => $list($meta), 'subs' => (object)$subs, 'levels' => $levels, 'perms' => $perms, 'ops' => self::OPS];

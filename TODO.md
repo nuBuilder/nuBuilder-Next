@@ -7,8 +7,11 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       the Claude Doc "nuBuilder Next review – performance, usability, code"): **P6 C – form definitions across requests** (a cached copy
       plus one check statement): would take the remaining 6 statements per form shown (≈ 18 on an order record, ≈ 2 ms locally, more with
       a database server elsewhere) – needs a reliable way to notice nuBuilder Forte editing the same tables (InnoDB keeps no change
-      time that survives a restart). Recommendation after A: not now. Also open in the doc: the usability list page by page (G1–G18 built
-      in 0.8.1344) and the code review (D, R, L, Q).
+      time that survives a restart). Recommendation after A: not now. Also open in the doc: the rest of the usability list page by page
+      (G1–G18 built in 0.8.1344, ten page fixes in 0.8.1348 – left: dashboard table titles, ticket list Due column / tablet filters,
+      order Status width on tablets, calendar arrow names, design panel on tablets, Forte system form cards, Data & logs Keep row,
+      e-mail template header, dashboard form widgets on phones, API client note, cloner empty state, report designer canvas focus,
+      sample greeting / buttons, empty User Home tab) and the code review (D, R, L, Q).
 - [ ] **Phone numbers without JavaScript** (0.8.1143, a forum post with a global JS formatter for one country) – options:
   A validation rule (matches, server + live; no reformat) · B HTML attributes pattern / inputmode="tel" (browser only) ·
   C Before Save PHP with nuNextSaveValue / nuNextSetSaveValue (per form) · D built-in format "Phone" P|<country> or
@@ -135,6 +138,10 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       protect_fields is off.
 
 ## Forms and design mode
+- [ ] **Please verify: page fixes of the usability list** (0.8.1348) – a due to-do in the assignee's language (German user, English
+      run); on a phone: IP access exceptions, shared settings as cards, documentation index behind "Contents", the ticket agent's start
+      page (no From / To unless "Custom", no sideways scrolling), code search without the keyboard popping up; Debug results fold; e-mail
+      Save in the header.
 - [ ] **Please verify: usability G1–G18 on a real phone / tablet** (0.8.1344) – iPhone: no zoom when a field gets the focus; record
       header (title row, icons below); sub-form rows as cards (order items) and "Table on phones"; nine tabs as one scrolling row; tablet:
       form buttons as icons; start page notices strip; date-time fields of the notification editor; Sign in / Sign out wording.

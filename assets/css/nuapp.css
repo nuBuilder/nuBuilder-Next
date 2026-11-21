@@ -126,19 +126,10 @@ input.form-control[list]:not(.is-invalid):not(.is-valid) {
 .ts-dropdown.nuAddFormDd { z-index: 1050; }   /* above the sticky header and selects of the rights grid, below dialogs (0.8.486) */
 .nu-scroll { max-height: 18rem; overflow: auto; }
 
-/* sticky action bar at the bottom of edit screens */
-.nu-actionbar {
-	position: sticky; bottom: 0; z-index: 10;
-	padding: .75rem 1rem; margin-inline: -.25rem;
-	background: color-mix(in srgb, var(--nu-surface) 92%, transparent);
-	backdrop-filter: blur(6px);
-	border: 1px solid var(--bs-border-color-translucent); border-radius: .75rem;
-}
-
 fieldset[disabled] .form-control, fieldset[disabled] .form-select { background-color: var(--bs-tertiary-bg); }
 
 @media print {
-	.nu-navbar, .nu-actionbar, footer, .btn { display: none !important; }
+	.nu-navbar, footer, .btn { display: none !important; }
 	body.nu-app { background: #fff; }
 }
 
@@ -178,8 +169,6 @@ fieldset[disabled] .form-control, fieldset[disabled] .form-select { background-c
 .nfdPreview { display: grid; gap: .25rem; margin-top: .25rem; }
 .nfdPreviewRow { display: flex; align-items: center; flex-wrap: wrap; }
 .nfdLegend { display: flex; flex-wrap: wrap; gap: .25rem 1rem; color: var(--bs-secondary-color); }
-.nbFormatPick { display: flex; gap: .25rem; }
-.nbFormatPick select { min-width: 0; }
 
 /* Mobile: dropdowns of the collapsed navbar open to the right of their button (Bootstrap positions navbar menus statically,
    so right-aligned menus of buttons at the left edge would leave the screen) */
@@ -216,7 +205,7 @@ fieldset[disabled] .form-control, fieldset[disabled] .form-select { background-c
 
 /* ---------------------------------------------------------------- debug */
 .debugMsg { font-size: .8rem; white-space: pre-wrap; word-break: break-word; background: var(--bs-tertiary-bg); border-radius: var(--bs-border-radius); padding: .5rem .75rem; }
-.debugCollapsed { max-height: 14rem; overflow: hidden; -webkit-mask-image: linear-gradient(#000 75%, transparent); mask-image: linear-gradient(#000 75%, transparent); }
+.debugCollapsed { max-height: 8.5rem; overflow: hidden; -webkit-mask-image: linear-gradient(#000 75%, transparent); mask-image: linear-gradient(#000 75%, transparent); }
 .debugFirst { max-width: 60ch; }
 .nu-navbar .nav-link { white-space: nowrap; }
 
@@ -237,14 +226,14 @@ fieldset[disabled] .form-control, fieldset[disabled] .form-select { background-c
 	border-radius: .5rem; font-weight: 400;
 }
 .btn.nuBtnAct > .bi { margin-inline-end: .45rem !important; }
-.btn.nuBtnSave.nuSaveEdited, #nbSave.nbDirty {
+.btn.nuBtnSave.nuSaveEdited {
 	--bs-btn-color: var(--bs-danger); --bs-btn-bg: rgba(var(--bs-danger-rgb), .05); --bs-btn-border-color: rgba(var(--bs-danger-rgb), .25);
 	--bs-btn-hover-color: var(--bs-danger); --bs-btn-hover-bg: rgba(var(--bs-danger-rgb), .1); --bs-btn-hover-border-color: rgba(var(--bs-danger-rgb), .4);
 	--bs-btn-active-color: var(--bs-danger); --bs-btn-active-bg: rgba(var(--bs-danger-rgb), .14); --bs-btn-active-border-color: rgba(var(--bs-danger-rgb), .45);
 	--bs-btn-disabled-color: var(--bs-danger); --bs-btn-disabled-bg: rgba(var(--bs-danger-rgb), .05); --bs-btn-disabled-border-color: rgba(var(--bs-danger-rgb), .25);
 	--bs-btn-focus-shadow-rgb: var(--bs-danger-rgb);
 }
-[data-bs-theme="dark"] .btn.nuBtnSave.nuSaveEdited, [data-bs-theme="dark"] #nbSave.nbDirty {
+[data-bs-theme="dark"] .btn.nuBtnSave.nuSaveEdited {
 	--bs-btn-color: #ff8e98; --bs-btn-hover-color: #ffa8b0; --bs-btn-active-color: #ffa8b0; --bs-btn-disabled-color: #ff8e98;
 	--bs-btn-bg: rgba(var(--bs-danger-rgb), .14); --bs-btn-border-color: rgba(var(--bs-danger-rgb), .45);
 }
@@ -492,7 +481,6 @@ li.CodeMirror-hint-active .nuHintIcon { opacity: .9; }
 .nuHashVarsList { max-height: 50vh; overflow-y: auto; }
 .nuHashVarsList .dropdown-header { position: sticky; top: 0; background: var(--bs-dropdown-bg); font-weight: 600; }
 .nuHashVarsList .dropdown-item code { flex: none; }
-.nbCodeBar { margin-bottom: .25rem; }
 
 
 /* printable lists (core/nulistexport.php) */
@@ -867,7 +855,6 @@ th[aria-sort="descending"] .inspSortBtn::after, th[aria-sort="descending"] .user
 .apgCode { font-size: .8rem; tab-size: 2; min-height: 6rem; resize: vertical; }
 .apgOut { background: var(--bs-tertiary-bg); border: 1px solid var(--bs-border-color); border-radius: .375rem; padding: .5rem .75rem;
 	font-size: .78rem; white-space: pre-wrap; word-break: break-word; max-height: 55vh; overflow: auto; }
-.apgToast { z-index: 1090; max-width: 24rem; }
 @media (max-width: 991.98px) { .apgSide .apgList { max-height: 18rem; } }
 
 /* validation markers (sob_all_validate): red * = no blanks, a neutral key = no duplicates (0.8.627, before a blue ◆; nu_unique_mark) */
@@ -943,7 +930,6 @@ label > .nuMarkUnique, .form-label > .nuMarkUnique { margin-inline-start: .25em;
 }
 .nuHomeList .nu-tile-icon { width: 2.1rem; height: 2.1rem; font-size: 1.05rem; }
 .nuHomeTabs { margin-bottom: 0; }
-.nuHomeToast { z-index: 1090; max-width: 26rem; }
 /* start page edit mode (0.8.263): the page itself is edited – tools on the tiles, drag with mouse or (hold, then drag) finger */
 .nuHeBar { position: sticky; top: calc(var(--nu-nav-h, 0px) + .5rem); z-index: 1010;   /* below the top bar (1020) and its menus, 0.8.318 */
 	 margin-bottom: 1rem; padding: .55rem .75rem; border: 1px solid var(--bs-primary-border-subtle);
@@ -1416,7 +1402,6 @@ button.nuDbStar:hover, button.nuDbStar:focus-visible { background: var(--bs-tert
 .nuFormStatus { cursor: context-menu; border-radius: var(--bs-border-radius-pill); }   /* forms list: status with right-click menu (0.8.575) */
 .nuFormStatus:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 2px; }
 .nuFormStatusBusy { opacity: .5; }
-.nuFormStatusToast { z-index: 1090; }
 .nuSbList { list-style: none; margin: 0; padding: 0; }
 .nuSbItem { display: flex; align-items: center; border-radius: .5rem; border: 1px solid transparent; margin: 1px 0; }
 .nuSbItem:hover { background: var(--bs-tertiary-bg); }
@@ -1524,7 +1509,7 @@ html.nuNoNavbar .nu-navbar { display: none !important; }
    its link blue and a few own colours are a little too light on the grey page (#f4f6f9) or too dark in dark mode. */
 :root:not([data-bs-theme="dark"]) .btn-outline-secondary { --bs-btn-color: #5c636a; }
 :root:not([data-bs-theme="dark"]) { --bs-link-color: #0a58ca; --bs-link-color-rgb: 10, 88, 202; --bs-link-hover-color: #084298; --bs-link-hover-color-rgb: 8, 66, 152; }
-:root:not([data-bs-theme="dark"]) .btn.nuBtnSave.nuSaveEdited, :root:not([data-bs-theme="dark"]) #nbSave.nbDirty { --bs-btn-color: #b02a37; --bs-btn-hover-color: #b02a37; --bs-btn-active-color: #b02a37; --bs-btn-disabled-color: #b02a37; }
+:root:not([data-bs-theme="dark"]) .btn.nuBtnSave.nuSaveEdited { --bs-btn-color: #b02a37; --bs-btn-hover-color: #b02a37; --bs-btn-active-color: #b02a37; --bs-btn-disabled-color: #b02a37; }
 :root:not([data-bs-theme="dark"]) { --nu-tab-active-color: #1f6fb8; }
 [data-bs-theme="dark"] .btn-outline-secondary { --bs-btn-color: #adb5bd; }
 [data-bs-theme="dark"] .btn-outline-primary { --bs-btn-color: #6ea8fe; }
@@ -1615,8 +1600,6 @@ html.nuNoNavbar .nu-navbar { display: none !important; }
 .nu-print-table th .nuColHide:hover, .nu-print-table th .nuColHide:focus-visible { color: var(--bs-danger); }
 
 /* notifications → Manage (0.8.402): the ⋯ column stays visible when the table scrolls sideways on phones */
-.nuNtfManage th:last-child, .nuNtfManage td:last-child { position: sticky; right: 0; z-index: 1; background: var(--nu-surface, var(--bs-body-bg)); }
-.nuNtfManage td:last-child .dropdown-menu { z-index: 1060; }
 .nuCopyBuffer { position: fixed; left: -10000px; top: 0; opacity: 0; }
 /* page size menu in the list footer (0.8.437) */
 .nuLfPerBtn { color: var(--bs-secondary-color); font-size: inherit; padding: .15rem .5rem; border: 1px solid transparent; }
@@ -1693,14 +1676,6 @@ html.nuTabsPending [data-nu-tab-restore] { visibility: hidden; }
 /* API clients list (0.8.547): the scopes of a client in a small menu – never wider than the screen, long descriptions wrap */
 .nuApiScopes .dropdown-menu { max-width: min(92vw, 480px); }
 .nuApiScopes .dropdown-item-text { white-space: normal; }
-
-/* form builder toolbar (0.8.619): groups with a thin divider, the deleting buttons in their own row */
-.nbToolbar { display: flex; flex-direction: column; gap: .5rem; width: 100%; }
-.nbTbRow { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
-.nbTbGroup, .nbTbSlot { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
-.nbTbSlot:empty { display: none; }
-.nbTbRow > .nbTbGroup:not(.d-none) ~ .nbTbGroup:not(.d-none) { padding-left: .5rem; border-left: 1px solid var(--bs-border-color); }
-@media (max-width: 575.98px) { .nbTbRow > .nbTbGroup:not(.d-none) ~ .nbTbGroup:not(.d-none) { padding-left: 0; border-left: 0; } }
 
 /* update page: database choice of the backup before an update (0.8.624) – on phones the select goes below its label and fits the screen */
 .updBkDbRow { min-width: 0; max-width: 100%; }
@@ -2300,7 +2275,7 @@ img.nuUhAl-center { display: block; margin-left: auto; margin-right: auto; }
 	.nuUhNav { position: static; max-height: none; }
 	.nuUhNavFold:not([open]) { margin-bottom: .5rem; }
 }
-@media print { .nuUhNav, nav[aria-label=breadcrumb], .nuNavbar, .navbar { display: none !important; } .nuUhLayout { display: block; } }
+@media print { .nuUhNav, nav[aria-label=breadcrumb], .navbar { display: none !important; } .nuUhLayout { display: block; } }
 /* side panel + (?) of fields on form pages */
 .nuUhPanel { position: fixed; top: 0; right: 0; bottom: 0; width: min(var(--nu-uh-w, 440px), 100vw); z-index: 1046; background: var(--bs-body-bg); border-left: 1px solid var(--bs-border-color);
 	box-shadow: -.5rem 0 1.5rem rgba(0, 0, 0, .15); display: flex; flex-direction: column; }
@@ -2807,7 +2782,6 @@ html.nuSetCompact .nuSetLink { padding-top: .55rem; padding-bottom: .55rem; alig
 .nuHfActs { display: flex; gap: .35rem; flex: none; }
 .nuHfEmpty { padding: .75rem .85rem; color: var(--bs-secondary-color); font-size: .875rem; }
 .nuHfFoot { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem 1rem; padding: .55rem .85rem; border-top: 1px solid var(--bs-border-color); font-size: .82rem; }
-.nuHfNoHome { color: var(--bs-secondary-color); }
 .nuHfKeys { margin-left: auto; color: var(--bs-secondary-color); }
 @media (max-width: 575.98px) {
 	.nuHfSearch { width: 100%; margin-left: 0; }
@@ -3157,3 +3131,40 @@ html.nuNoticesShut .nuHomeNoticesBody { display: none; }
 .nuDateWrap > .nuDateText.nuDateTimeText { min-width: 11rem; }
 /* G17 touch screens: TinyMCE's "Press ⌥0 for help" means nothing without a keyboard */
 @media (pointer: coarse) { .tox .tox-statusbar__help-text { display: none !important; } }
+
+/* usability review, page list (0.8.1348) */
+/* documentation: the index folds behind "Contents" below 992 px (assets/js/nuhelp.js); from 992 px no summary */
+.nuHelpTocSum { cursor: pointer; font-weight: 600; padding: .4rem .6rem; border: 1px solid var(--bs-border-color); border-radius: var(--bs-border-radius); background: var(--bs-body-bg); list-style-position: inside; }
+.nuHelpTocFold[open] > .nuHelpTocSum { margin-bottom: .5rem; }
+@media (min-width: 992px) { .nuHelpTocSum { display: none; } }
+@media (max-width: 991.98px) { .nuHelpTocFold .nuHelpToc { max-height: 60vh; } }
+/* IP access, exceptions per access level on phones: the rule below the name, the ranges below it, no columns */
+@media (max-width: 575.98px) {
+	#ipaLevels > thead { display: none; }
+	#ipaLevels, #ipaLevels > tbody { display: block; }
+	#ipaLevels > tbody > tr { display: block; padding: .6rem .75rem; border-bottom: 1px solid var(--bs-border-color); }
+	#ipaLevels > tbody > tr > td { display: block; border: 0; padding: .15rem 0; width: auto; }
+	#ipaLevels .ipaMode { width: 100%; }
+	#ipaLevels textarea { min-width: 0; width: 100%; }
+}
+/* shared settings on phones: one card per setting – name, then setting and category, then the value */
+@media (max-width: 575.98px) {
+	#setTable > thead { display: none; }
+	#setTable, #setTable > tbody { display: block; }
+	#setTable > tbody > tr:not(.setNone) { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name name" "key cat" "val val"; gap: .2rem .5rem; padding: .6rem .75rem; border-bottom: 1px solid var(--bs-border-color); }
+	#setTable > tbody > tr > td { display: block; border: 0; padding: 0; min-width: 0; width: auto; }
+	#setTable .setNameCell { grid-area: name; }
+	#setTable .setKeyCell { grid-area: key; }
+	#setTable .setCatCell { grid-area: cat; text-align: end; }
+	#setTable .setValueCol { grid-area: val; margin-top: .25rem; }
+	#setTable .setDescCol { display: none; }
+}
+/* dashboards on phones: the stacked table rows no wider than the card (the table kept its own width – 4 px sideways scrolling) */
+@media (max-width: 575.98px) {
+	.nuDashTable > table, .nuDashTable > table > tbody { display: block; width: 100%; }
+	.nuDashTable > table > tbody > tr > td { min-width: 0; overflow-wrap: anywhere; }
+}
+/* dashboard tools: period select, From / To (only for a custom period) and refresh in one row where they fit */
+.nuDashTools > .nuDateWrap { flex: 0 1 10rem; width: 10rem; min-width: 0; }
+/* shared toasts of the page scripts (0.8.1350, assets/js/nuutil.js NuUtil.toast) – bottom right, above dialogues */
+.nuToastStack { z-index: 1090; max-width: 26rem; }

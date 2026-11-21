@@ -11,7 +11,7 @@
 	var $ = function (id) { return document.getElementById(id); };
 	var reqEl = $('raiReq'), ansEl = $('raiAns'), opt = {back: '', dirty: null};
 
-	function esc(s) { return String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]; }); }
+	function esc(s) { return NuUtil.esc(s); }
 	function allowSql() { var c = $('raiSql'); return c && c.checked ? '1' : '0'; }
 	function tables() { var s = $('raiTables'); return s ? Array.prototype.filter.call(s.options, function (o) { return o.selected; }).map(function (o) { return o.value; }) : []; }
 	function body(data) {

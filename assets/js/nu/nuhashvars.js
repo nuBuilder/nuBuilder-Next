@@ -9,16 +9,7 @@
 (function () {
 	'use strict';
 
-	function el(tag, attrs, kids) {
-		var e = document.createElement(tag);
-		Object.keys(attrs || {}).forEach(function (k) {
-			if (k === 'text') e.textContent = attrs[k];
-			else if (k === 'class') e.className = attrs[k];
-			else e.setAttribute(k, attrs[k]);
-		});
-		(kids || []).forEach(function (c) { if (c) e.appendChild(c); });
-		return e;
-	}
+	function el(tag, attrs, kids) { return NuUtil.el(tag, attrs, kids); }
 
 	function attach(cm, host, opt) {
 		opt = opt || {};

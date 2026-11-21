@@ -489,7 +489,7 @@
 	function saveGap(k, val) {
 		var g = savedGaps();
 		g[k] = val;
-		try { window.localStorage.setItem(GAP_KEY, JSON.stringify(g)); } catch (e) { /* no storage */ }
+		nuStore.set(GAP_KEY, JSON.stringify(g));
 		document.querySelectorAll('.nuArrangeGapInput[data-gap="' + k + '"]').forEach(function (x) { x.value = String(val); });
 	}
 	// what sits in front of an object outside its box: a label on the left (horizontal) or above (sub-forms, vertical)

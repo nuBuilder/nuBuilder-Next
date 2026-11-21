@@ -135,6 +135,61 @@ final class NuAcl
 		});
 	}
 
+	/**
+	 * Every access level (zzzzsys_access): id => row (all columns as text, ordered by code) – read once per request (code review R5,
+	 * 0.8.1351: about thirty places read the list by hand); a write to the table through NuDB drops it (NuMemo). [] without the table.
+	 * @return array<string, array<string, mixed>>
+	 */
+	public static function levels(): array
+	{
+		return NuMemo::get('acl:levels', ['zzzzsys_access'], static function (): array {
+			$out = [];
+			try {
+				$db = nu_db();
+				if (!$db->tableExists('zzzzsys_access')) return [];
+				foreach ($db->all('SELECT * FROM zzzzsys_access ORDER BY sal_code') as $r) {
+					foreach ($r as $k => $v) if (is_string($k) && $v !== null && !is_string($v)) $r[$k] = (string)$v;
+					$out[(string)$r['zzzzsys_access_id']] = $r;
+				}
+			} catch (Throwable) { /* no table / no connection */ }
+			return $out;
+		});
+	}
+
+	/** One access level's row, or null (ids compared as the database does: case and trailing spaces do not count). */
+	public static function level(string $id): ?array
+	{
+		if ($id === '') return null;
+		$all = self::levels();
+		if (isset($all[$id])) return $all[$id];
+		$k = self::formKey($id);
+		foreach ($all as $lid => $r) if (self::formKey((string)$lid) === $k) return $r;
+		return null;
+	}
+
+	public static function levelExists(string $id): bool
+	{
+		return self::level($id) !== null;
+	}
+
+	/** id => code of every access level, ordered by code. @return array<string, string> */
+	public static function levelCodes(): array
+	{
+		return array_map(static fn($r) => (string)($r['sal_code'] ?? ''), self::levels());
+	}
+
+	/** The access levels ordered by group, then code (select lists with groups). @return array<string, array<string, mixed>> */
+	public static function levelsByGroup(): array
+	{
+		$all = self::levels();
+		$pos = array_flip(array_keys($all));
+		uksort($all, static function ($a, $b) use ($all, $pos): int {
+			$c = strcmp(mb_strtolower((string)($all[$a]['sal_group'] ?? '')), mb_strtolower((string)($all[$b]['sal_group'] ?? '')));
+			return $c !== 0 ? $c : $pos[$a] <=> $pos[$b];
+		});
+		return $all;
+	}
+
 	/** Form ids are compared as the database does with its usual collations: case and trailing spaces do not count. */
 	private static function formKey(string $formId): string
 	{

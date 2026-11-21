@@ -1,9 +1,9 @@
 {
-	"home": 20,
-	"home_user": 31,
-	"users": 25,
+	"home": 19,
+	"home_user": 27,
+	"users": 23,
 	"user": 36,
-	"accesslevel": 28,
+	"accesslevel": 27,
 	"forms": 20,
 	"procedures": 17,
 	"reports": 20,
@@ -11,11 +11,11 @@
 	"settings": 8,
 	"notifications": 7,
 	"list_customer": 28,
-	"list_customer_user": 35,
+	"list_customer_user": 32,
 	"rec_customer": 26,
-	"rec_customer_user": 35,
+	"rec_customer_user": 32,
 	"rec_order": 43,
-	"rec_order_user": 50,
+	"rec_order_user": 47,
 	"rec_all": 58,
-	"design_customer": 72
+	"design_customer": 71
 }

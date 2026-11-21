@@ -5,13 +5,18 @@
 	function sync() { if (del) del.disabled = !document.querySelector('.debugSel:checked'); }
 	if (all) all.addEventListener('change', function () { document.querySelectorAll('.debugSel').forEach(function (c) { c.checked = all.checked; }); sync(); });
 	document.querySelectorAll('.debugSel').forEach(function (c) { c.addEventListener('change', sync); });
-	document.querySelectorAll('.debugMore').forEach(function (b) {
-		var more = b.textContent;
+	// every message folds after a few lines (as the Log's details), "more" / "less" below it – measured, so short ones stay as they are
+	document.querySelectorAll('.debugMsg').forEach(function (pre) {
+		pre.classList.add('debugCollapsed');
+		if (pre.scrollHeight <= pre.clientHeight + 2) { pre.classList.remove('debugCollapsed'); return; }
+		var b = document.createElement('button'), more = pre.getAttribute('data-more') || '…';
+		b.type = 'button'; b.className = 'btn btn-sm btn-link px-0 debugMore'; b.textContent = more; b.setAttribute('aria-expanded', 'false');
 		b.addEventListener('click', function () {
-			var pre = b.parentNode.querySelector('.debugMsg');
-			pre.classList.toggle('debugCollapsed');
-			b.textContent = pre.classList.contains('debugCollapsed') ? more : b.getAttribute('data-less');
+			var open = !pre.classList.toggle('debugCollapsed');
+			b.textContent = open ? (pre.getAttribute('data-less') || '…') : more;
+			b.setAttribute('aria-expanded', open ? 'true' : 'false');
 		});
+		pre.insertAdjacentElement('afterend', b);
 	});
 	document.querySelectorAll('.debugCopy').forEach(function (b) {
 		b.addEventListener('click', function () {
@@ -26,7 +31,7 @@
 	}
 	if (auto) {
 		try { auto.checked = localStorage.getItem(key) === '1'; } catch (e) { /* private mode */ }
-		auto.addEventListener('change', function () { try { localStorage.setItem(key, auto.checked ? '1' : '0'); } catch (e) { /* ignore */ } plan(); });
+		auto.addEventListener('change', function () { nuStore.set(key, auto.checked ? '1' : '0'); plan(); });
 		plan();
 	}
 })();

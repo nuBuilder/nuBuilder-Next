@@ -12,21 +12,8 @@
 
 	function closeMenu() { if (menu) { menu.remove(); menu = null; } }
 
-	function toast(msg, ok) {
-		var box = document.getElementById('nuFormStatusToast');
-		if (!box) {
-			box = document.createElement('div');
-			box.id = 'nuFormStatusToast';
-			box.className = 'position-fixed bottom-0 end-0 p-3 nuFormStatusToast';
-			document.body.appendChild(box);
-		}
-		var a = document.createElement('div');
-		a.className = 'alert py-2 px-3 small shadow-sm mb-2 ' + (ok ? 'alert-success' : 'alert-danger');
-		a.setAttribute('role', ok ? 'status' : 'alert');
-		a.textContent = msg;
-		box.appendChild(a);
-		setTimeout(function () { a.remove(); }, ok ? 2500 : 7000);
-	}
+	function toast(msg, ok) { NuUtil.toast(msg, !!ok, {box: 'nuFormStatusToast', ms: ok ? 2500 : 7000}); }
+
 
 	function show(el, st) {
 		el.setAttribute('data-nu-st', st);
@@ -38,9 +25,7 @@
 		var body = {action: 'form.save', form_id: el.getAttribute('data-nu-form'), fields: {sfo_status: st}};
 		if (liveOk) body.live_ok = true;
 		el.classList.add('nuFormStatusBusy');
-		fetch(D.getAttribute('data-url'), {method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': D.getAttribute('data-csrf')},
-			body: JSON.stringify(body)})
-			.then(function (r) { return r.json().catch(function () { return {ok: false}; }); })
+		NuUtil.post(D.getAttribute('data-url'), body, {csrf: D.getAttribute('data-csrf')})
 			.then(function (j) {
 				el.classList.remove('nuFormStatusBusy');
 				if (j.ok) { show(el, st); toast((T.done || '%s').replace('%s', T[st] || st), true); return; }
@@ -58,9 +43,7 @@
 			return;
 		}
 		var fd = document.getElementById('nuFmsData');
-		fetch(fd.getAttribute('data-url'), {method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': fd.getAttribute('data-csrf')},
-			body: JSON.stringify({forms: [id], on: false})})
-			.then(function (r) { return r.json().catch(function () { return {ok: false}; }); })
+		NuUtil.post(fd.getAttribute('data-url'), {forms: [id], on: false}, {csrf: fd.getAttribute('data-csrf')})
 			.then(function (j) {
 				if (!j.ok) { toast(j.error || j.message || T.err || '', false); return; }
 				show(el, '1');

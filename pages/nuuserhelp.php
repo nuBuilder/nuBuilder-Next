@@ -66,11 +66,11 @@ echo NuListView::crumbs($crumbs);
 		<?php if ($editor): ?>
 		<form method="get" action="index.php" class="nuUhEditorBox mt-4 small d-none d-md-block" id="nuUhViewAs">
 			<input type="hidden" name="p" value="userhelp"><input type="hidden" name="c" value="<?= h($code) ?>">
-			<div class="fw-semibold mb-1"><i class="bi bi-eye me-1"></i><?= h(t('uh_view_as')) ?><?= NuListView::infoTip(t('uh_view_as_tip')) ?></div>
+			<div class="fw-semibold mb-1"><i class="bi bi-eye me-1" aria-hidden="true"></i><label for="nuUhAs"><?= h(t('uh_view_as')) ?></label><?= NuListView::infoTip(t('uh_view_as_tip')) ?></div>
 			<select class="form-select form-select-sm mb-2 js-autosubmit" name="as" id="nuUhAs">
 				<option value=""><?= h(t('uh_view_editor')) ?></option>
 				<option value="*"<?= $as === '*' ? ' selected' : '' ?>><?= h(t('uh_view_none')) ?></option>
-				<?php foreach (nu_db()->all('SELECT zzzzsys_access_id, sal_code, sal_description FROM zzzzsys_access ORDER BY sal_code') as $a): ?>
+				<?php foreach (NuAcl::levels() as $a): ?>
 					<option value="<?= h((string)$a['zzzzsys_access_id']) ?>"<?= $as === (string)$a['zzzzsys_access_id'] ? ' selected' : '' ?>><?= h((string)$a['sal_code']) ?> – <?= h((string)$a['sal_description']) ?></option>
 				<?php endforeach; ?>
 			</select>
@@ -80,7 +80,7 @@ echo NuListView::crumbs($crumbs);
 		</form>
 		<?php endif; ?>
 	</aside>
-	<main class="nuUhMain">
+	<div class="nuUhMain">
 	<?php if ($results !== null): ?>
 		<h1 class="h4 mb-3"><?= h($title) ?></h1>
 		<?php if (!$results): ?><p class="text-body-secondary" id="nuUhNoHits"><?= h(t('uh_no_hits')) ?></p><?php endif; ?>
@@ -108,6 +108,6 @@ echo NuListView::crumbs($crumbs);
 			<?php if (NuUserHelp::canEdit()): ?><a class="btn btn-primary" href="<?= h(nu_url('helppages', ['id' => 'new', 'code' => $code !== '' && preg_match(NuUserHelp::CODE_RE, $code) ? $code : null])) ?>" id="nuUhCreate"><i class="bi bi-plus-lg me-1"></i><?= h(t('uh_new')) ?></a><?php endif; ?>
 		</div>
 	<?php endif; ?>
-	</main>
+	</div>
 </div>
 <?php nu_layout_end('<script src="' . nu_asset('assets/js/nuuserhelp.js') . '"></script>');

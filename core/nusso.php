@@ -25,7 +25,6 @@ final class NuSso
 	public const KINDS = ['entra', 'google', 'keycloak', 'other'];
 	/** @var callable|null test hook: fn(string $url, ?array $post): array{0:int,1:string} */
 	public static $transport = null;
-	private static ?array $cache = null;
 
 	public static function defaults(): array
 	{
@@ -35,14 +34,14 @@ final class NuSso
 
 	public static function settings(): array
 	{
-		if (self::$cache !== null) return self::$cache;
+		if (NuMemo::find('set:sso', $kept)) return $kept;   // NuMemo (code review R9): a write to the settings drops it
 		$s = null;
 		try {
 			$v = nu_setting_value(self::KEY);
 			$s = is_string($v) ? json_decode($v, true) : null;
 		} catch (Throwable) {
 		}
-		return self::$cache = self::clean(is_array($s) ? $s : []);
+		return NuMemo::keep('set:sso', ['zzzzsys_nunext_setting'], self::clean(is_array($s) ? $s : []));
 	}
 
 	public static function clean(array $s): array
@@ -84,7 +83,7 @@ final class NuSso
 		NuSchema::ensure();
 		nu_setting_save(self::KEY, ['setting_value' => json_encode($s, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), 'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => $by]);
 		if ($old['issuer'] !== $s['issuer']) self::forgetCache();
-		self::$cache = null;
+		NuMemo::drop('set:sso');
 		return self::settings();
 	}
 
@@ -282,7 +281,7 @@ final class NuSso
 			$out['access'] = $s['sync'] && $mapped !== '' ? $mapped : $cur;
 			$out['change'] = $out['access'] !== $cur;
 		}
-		if ($out['access'] === '' || !$db->one('SELECT zzzzsys_access_id FROM zzzzsys_access WHERE zzzzsys_access_id = ?', [$out['access']])) {
+		if ($out['access'] === '' || !NuAcl::levelExists((string)$out['access'])) {
 			$out['error'] = 'login_err_no_access';
 			return $out;
 		}

@@ -100,7 +100,7 @@ final class NuProcedure
 		elseif ($db->value('SELECT COUNT(*) FROM zzzzsys_php WHERE (sph_code = ? OR zzzzsys_php_id = ?) AND zzzzsys_php_id <> ?', [$row['sph_code'], $row['sph_code'], $id])) $errors['sph_code'] = t('proc_err_code_taken');
 		if ($row['sph_description'] === '') $errors['sph_description'] = t('proc_err_description');
 		if (trim($row['sph_php']) === '') $errors['sph_php'] = t('proc_err_php');
-		if ($row['sph_zzzzsys_form_id'] !== '' && !$db->value('SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id = ?', [$row['sph_zzzzsys_form_id']])) $errors['sph_zzzzsys_form_id'] = t('form_err_not_found');
+		if ($row['sph_zzzzsys_form_id'] !== '' && !nu_form_exists((string)$row['sph_zzzzsys_form_id'])) $errors['sph_zzzzsys_form_id'] = t('form_err_not_found');
 		if ($errors) return [$id, $errors];
 
 		$cols = $db->columns('zzzzsys_php');
@@ -137,7 +137,8 @@ final class NuProcedure
 		$db = nu_db();
 		$granted = $id !== '' ? array_flip(array_column($db->all('SELECT slp_zzzzsys_access_id FROM zzzzsys_access_php WHERE slp_zzzzsys_php_id = ?', [$id]), 'slp_zzzzsys_access_id')) : [];
 		$out = [];
-		foreach ($db->all('SELECT zzzzsys_access_id, sal_code, sal_description, sal_group FROM zzzzsys_access ORDER BY sal_group, sal_code') as $a) {
+		foreach (NuAcl::levelsByGroup() as $a) {
+			$a = ['zzzzsys_access_id' => (string)$a['zzzzsys_access_id'], 'sal_code' => $a['sal_code'], 'sal_description' => $a['sal_description'], 'sal_group' => $a['sal_group'] ?? null];
 			$out[] = $a + ['granted' => isset($granted[$a['zzzzsys_access_id']])];
 		}
 		return $out;
@@ -147,7 +148,7 @@ final class NuProcedure
 	public static function setAccess(string $id, array $accessIds): array
 	{
 		$db = nu_db();
-		$codes = array_column($db->all('SELECT zzzzsys_access_id, sal_code FROM zzzzsys_access'), 'sal_code', 'zzzzsys_access_id');
+		$codes = NuAcl::levelCodes();
 		$want = array_values(array_intersect(array_map('strval', $accessIds), array_keys($codes)));
 		$have = array_column($db->all('SELECT slp_zzzzsys_access_id FROM zzzzsys_access_php WHERE slp_zzzzsys_php_id = ?', [$id]), 'slp_zzzzsys_access_id');
 		$add = array_diff($want, $have);

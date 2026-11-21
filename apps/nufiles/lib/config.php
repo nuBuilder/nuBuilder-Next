@@ -15,7 +15,6 @@ defined('NU_PAGE') || exit;
 final class NufConfig
 {
 	public const RIGHTS = ['view', 'upload', 'mkdir', 'edit', 'rename', 'copy', 'delete', 'zip'];
-	public const WRITES = ['upload', 'mkdir', 'edit', 'rename', 'copy', 'delete', 'zip'];
 
 	/** Absolute data folder (trash, versions, tmp) – set by load(). */
 	public static string $dataDir = '';

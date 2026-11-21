@@ -9,13 +9,7 @@ defined('NU_ROOT') || exit;
  * f = form id; the list's search state comes along as on the list page (q, rf, flt[], adv, nsc, sc, ps). Rights: the list's view + print.
  */
 NuTranslate::activate();
-$json = static function (array $d, int $code = 200): never {
-	http_response_code($code);
-	header('Content-Type: application/json; charset=utf-8');
-	header('X-Content-Type-Options: nosniff');
-	echo json_encode($d, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-	exit;
-};
+$json = static function (array $d, int $code = 200): never { nu_json($d, $code); };
 $meta = NuFormMeta::load((string)($_GET['f'] ?? $_POST['f'] ?? ''));
 if (!nu_is_post() || !$meta || !$meta->hasBrowse() || !NuAcl::can($meta->id, 'browse') || !NuAcl::can($meta->id, 'print')) $json(['ok' => false, 'error' => t('err_forbidden')], 403);
 session_write_close();

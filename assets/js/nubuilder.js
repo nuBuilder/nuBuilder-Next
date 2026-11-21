@@ -172,11 +172,7 @@
 	}
 
 	function api(action, data) {
-		return fetch('index.php?p=builderapi', {
-			method: 'POST', credentials: 'same-origin',
-			headers: {'Content-Type': 'application/json', 'X-CSRF-Token': D.csrf},
-			body: JSON.stringify(Object.assign({action: action}, data || {}))
-		}).then(function (r) { return r.json().catch(function () { return {ok: false, error: 'HTTP ' + r.status}; }); })
+		return NuUtil.post('index.php?p=builderapi', Object.assign({action: action}, data || {}), {csrf: D.csrf})
 			.then(function (j) { if (!j.ok) throw new Error(j.error || 'Error'); return j; });
 	}
 

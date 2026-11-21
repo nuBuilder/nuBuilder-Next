@@ -14,20 +14,11 @@
 	};
 	const boards = [];
 
-	const el = (tag, cls, text) => {
-		const e = document.createElement(tag);
-		if (cls) e.className = cls;
-		if (text !== undefined && text !== null) e.textContent = String(text);
-		return e;
-	};
+	const el = NuUtil.el;
 	const icon = (name) => el('i', 'bi ' + name);
 
 	function post(body) {
-		return fetch(C.url, {
-			method: 'POST', credentials: 'same-origin',
-			headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-Token': C.csrf },
-			body: JSON.stringify(body),
-		}).then((r) => r.json().catch(() => ({ ok: false, error: r.status + ' ' + r.statusText })));
+		return NuUtil.post(C.url, body, {csrf: C.csrf});
 	}
 
 	let apexPromise = null;
@@ -130,7 +121,7 @@
 				custom();
 				const apply = () => {
 					this.range = { range: sel.value, from: from.value, to: to.value };
-					try { localStorage.setItem('nuDash.' + this.code, JSON.stringify(this.range)); } catch (e) { /* private window */ }
+					nuStore.set('nuDash.' + this.code, JSON.stringify(this.range));
 					custom();
 					if (sel.value !== 'custom' || (from.value && to.value)) this.loadAll(false);
 				};

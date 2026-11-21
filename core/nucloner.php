@@ -63,12 +63,12 @@ final class NuCloner
 	 */
 	public static function cloneable(NuDB $db, string $formId): ?string
 	{
-		static $rows = null;
-		if ($rows === null) {
-			$rows = [];
-			foreach ($db->all('SELECT zzzzsys_form_id, sfo_code, sfo_type FROM zzzzsys_form') as $r) $rows[(string)$r['zzzzsys_form_id']] = $r;
+		if ($db === nu_db()) {                                       // the forms of this request (nu_forms(), NuMemo – code review R9)
+			$f = nu_forms()[$formId] ?? null;
+			$r = $f && $f['real'] ? ['sfo_code' => $f['code'], 'sfo_type' => $f['type']] : null;
+		} else {
+			$r = $db->one('SELECT sfo_code, sfo_type FROM zzzzsys_form WHERE zzzzsys_form_id = ?', [$formId]);
 		}
-		$r = $rows[$formId] ?? null;
 		if (!$r) return t('cl_err_source');
 		if ((string)$r['sfo_type'] === 'page' && in_array((string)$r['sfo_code'], NuPage::BUILTIN, true)) return t('cl_err_builtin');
 		return null;

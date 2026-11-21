@@ -438,8 +438,6 @@ final class NuDB
 	/** @var array<string, bool> table-exists answers of this connection (0.8.827: a page asked the catalogue 12–30 times) */
 	private array $tableCache = [];
 
-	public function forgetTables(): void { $this->tableCache = []; }
-
 	public function tableExists(string $table): bool
 	{
 		$key = strtolower($table);
@@ -643,6 +641,22 @@ final class NuMemo
 		foreach ($tables as $t) self::$tables[$t] = true;
 	}
 
+	/** A value kept under this key into $value: true when there is one (for code that builds the value in several steps – see keep()). */
+	public static function find(string $key, mixed &$value): bool
+	{
+		$k = spl_object_id(nu_db()) . '|' . $key;
+		if (self::$off || !array_key_exists($k, self::$data)) return false;
+		$value = self::$data[$k][1];
+		return true;
+	}
+
+	/** Keeps a value and gives it back: `return NuMemo::keep('x', ['table'], $value);` */
+	public static function keep(string $key, array $tables, mixed $value): mixed
+	{
+		self::put($key, $tables, $value);
+		return $value;
+	}
+
 	/** Is a value kept under this key? (null is a value too) */
 	public static function has(string $key): bool
 	{
@@ -668,6 +682,12 @@ final class NuMemo
 	public static function forget(): void
 	{
 		self::$data = [];
+	}
+
+	/** Forgets one value (a change made another way than through NuDB, e.g. a cache file or another connection). */
+	public static function drop(string $key): void
+	{
+		if (self::$data) unset(self::$data[spl_object_id(nu_db()) . '|' . $key]);
 	}
 
 	/** Nothing is kept from now on (the raw connection is in other hands). */

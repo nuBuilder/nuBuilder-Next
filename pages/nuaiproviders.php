@@ -65,7 +65,7 @@ if (nu_is_post()) {
 $test = $_SESSION['nu_aip_test'] ?? null;
 if ($test && (string)$test['id'] !== $id) $test = null;
 unset($_SESSION['nu_aip_test']);
-$tip = static fn(string $text) => '<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="' . h($text) . '" title="' . h($text) . '"><i class="bi bi-info-circle"></i></span>';
+$tip = static fn(string $text) => nu_info_tip($text);
 
 // ------------------------------------------------------------------ list
 if ($id === '') {
@@ -100,7 +100,7 @@ $access = $v('access', 'all');
 $selLevels = nu_is_post() ? array_map('strval', (array)($_POST['levels'] ?? [])) : ($prov['levels'] ?? []);
 $err = static fn(string $k) => isset($errors[$k]) ? '<div class="invalid-feedback d-block">' . h($errors[$k]) . '</div>' : '';
 $inv = static fn(string $k) => isset($errors[$k]) ? ' is-invalid' : '';
-$levels = nu_db()->all('SELECT zzzzsys_access_id id, sal_code code, sal_description d FROM zzzzsys_access ORDER BY sal_code');
+$levels = array_values(array_map(static fn($a) => ['id' => (string)$a['zzzzsys_access_id'], 'code' => $a['sal_code'], 'd' => $a['sal_description']], NuAcl::levels()));
 $title = $prov ? $prov['name'] : t('aip_new');
 $num = static fn($n) => number_format((int)$n, 0, '.', "'");
 $kinds = [];

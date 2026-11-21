@@ -31,8 +31,6 @@ final class NuDashboard
 	public const OPT_DEFAULTS = ['width' => 0, 'height' => 280, 'chart' => 'bar', 'stacked' => false, 'format' => 'number', 'decimals' => 0,
 		'prefix' => '', 'suffix' => '', 'low' => '', 'high' => '', 'higher_better' => true, 'rows' => 10, 'link_type' => '', 'link' => '',
 		'cache' => 60, 'refresh' => 0, 'new_tab' => false];
-	/** Table widgets linked to a form (0.8.682): a column with this name is hidden and opens its row's record. */
-	public const ROW_ID = 'nu_record_id';
 
 	/** Rows handed over by a procedure with nuDashboardData(). */
 	public static ?array $procRows = null;

@@ -277,7 +277,7 @@
 	$$('[data-theme-set]').forEach(function (btn) {
 		btn.addEventListener('click', function () {
 			var mode = btn.getAttribute('data-theme-set');
-			try { localStorage.setItem('nunext-theme', mode); } catch (e) { /* storage blocked */ }
+			nuStore.set('nunext-theme', mode);
 			applyTheme(mode);
 		});
 	});
@@ -484,7 +484,7 @@
 		b.addEventListener('click', function () {
 			var table = $(b.getAttribute('data-nu-copy-table'));
 			if (!table) return;
-			var esc = function (s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+			var esc = NuUtil.esc;
 			var rows = [];
 			table.querySelectorAll('tr').forEach(function (tr) {
 				if (tr.classList.contains('nuFilterRow') || tr.offsetParent === null) return;
@@ -639,7 +639,7 @@
 		var key = el.getAttribute('data-nu-remember-open');
 		var toggles = el.id ? $$('[data-bs-target="#' + el.id + '"]') : [];
 		var saved = null;
-		try { saved = localStorage.getItem(key); } catch (e) { /* storage blocked */ }
+		saved = nuStore.get(key);
 		if (saved === '1' && !el.classList.contains('show')) {
 			el.classList.add('show');
 			toggles.forEach(function (b) { b.classList.remove('collapsed'); b.setAttribute('aria-expanded', 'true'); });
@@ -649,7 +649,7 @@
 			el.classList.remove('show');
 			toggles.forEach(function (b) { b.classList.add('collapsed'); b.setAttribute('aria-expanded', 'false'); });
 		}
-		var store = function (v) { return function (e) { if (e.target !== el) return; try { localStorage.setItem(key, v); } catch (x) { /* storage blocked */ } }; };
+		var store = function (v) { return function (e) { if (e.target !== el) return; nuStore.set(key, v); }; };
 		el.addEventListener('shown.bs.collapse', store('1'));
 		el.addEventListener('hidden.bs.collapse', store('0'));
 	});
@@ -1680,7 +1680,7 @@ window.nuColResize = function (table, opt) {
 		if (!opt.key) return;
 		var o = {};
 		titles().forEach(function (th) { if (shown(th)) o[idOf(th)] = Math.round(th.getBoundingClientRect().width); });
-		try { sessionStorage.setItem(opt.key, JSON.stringify(o)); } catch (x) { /* no storage */ }
+		nuStore.session.set(opt.key, JSON.stringify(o));
 		if (opt.saved) opt.saved(o);                                       // e.g. a cookie, so the server draws the widths (0.8.933)
 	}
 	function restore() {
@@ -1816,7 +1816,7 @@ window.nuColResize = function (table, opt) {
 			if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;   // a new tab / window: no flag
 			// on the start page already (0.8.786): no reload – nuhome.js resets it in place
 			if (typeof window.nuHomeReset === 'function' && b.href && window.nuHomeReset(b.href)) { e.preventDefault(); return; }
-			try { sessionStorage.setItem('nunext-home-focus', '1'); } catch (x) { /* no storage */ }
+			nuStore.session.set('nunext-home-focus', '1');
 		});
 	});
 })();
@@ -2070,7 +2070,7 @@ window.nuPageNoGo = function (value) {
 		try { var a = JSON.parse(sessionStorage.getItem(KEY) || '[]'); return Array.isArray(a) ? a.filter(function (e) { return e && typeof e.u === 'string'; }) : []; }
 		catch (x) { return []; }
 	}
-	function save(a) { try { sessionStorage.setItem(KEY, JSON.stringify(a.slice(-MAX))); } catch (x) { /* no storage */ } }
+	function save(a) { nuStore.session.set(KEY, JSON.stringify(a.slice(-MAX))); }
 	function url(u) { try { return new URL(u, window.location.href); } catch (x) { return null; } }
 	function rel(u) { var x = url(u); return x ? x.pathname + x.search : ''; }
 	function ident(u) {
@@ -2099,7 +2099,7 @@ window.nuPageNoGo = function (value) {
 		var l = e.target && e.target.closest ? e.target.closest('a[href]') : null;
 		if (!l || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || (l.target && l.target !== '_self')) return;
 		if (!(l.hasAttribute('data-nu-back-default') || l.hasAttribute('data-nu-back') || l.matches('.nuBackBtn, #nuBackButton, .nuPhBack, .breadcrumb a, a.nuBreadcrumb'))) return;
-		try { sessionStorage.setItem(GO, rel(l.getAttribute('href') || '')); } catch (x) { /* no storage */ }
+		nuStore.session.set(GO, rel(l.getAttribute('href') || ''));
 	}, true);
 	// the list swapped in place (pushState of nulistsmooth.js / the form runtime) – keep the entry's address current
 	function keepCurrent() {
@@ -2144,7 +2144,7 @@ window.nuPageNoGo = function (value) {
 	var ROW = 'tr[data-href], tr.nuBrowseRow', SEARCH = '#nuSearchField, .nuListSearch input[type=search], #q';
 	var KB = 'nunext-list-kb', BACK = 'nunext-list-kbrow';
 	function store(k, v) { try { if (v === null) sessionStorage.removeItem(k); else sessionStorage.setItem(k, v); } catch (x) { /* no storage */ } }
-	function read(k) { try { return sessionStorage.getItem(k); } catch (x) { return null; } }
+	function read(k) { return nuStore.session.get(k); }
 	function here() { return window.location.pathname + window.location.search; }
 	function ok(r) { return r && r.matches && r.matches(ROW) && !r.closest('.nuDsBrowse, template') && r.getClientRects().length > 0; }
 	function rowsOf(r) { var tb = r.parentNode; return tb ? [].filter.call(tb.children, ok) : []; }
@@ -2388,6 +2388,10 @@ window.nuPageNoGo = function (value) {
 		wrap.appendChild(txt); wrap.appendChild(btn); wrap.appendChild(inp);
 		inp.classList.add('nuDateNative'); inp.tabIndex = -1; inp.setAttribute('aria-hidden', 'true');
 		txt.value = show(inp.value, dt);
+		// hidden / disabled set on the field by code (e.g. the dashboard's From / To only for a custom period) apply to the visible parts
+		var mirror = function () { wrap.hidden = inp.hidden; txt.disabled = inp.disabled; btn.disabled = inp.disabled || inp.readOnly; };
+		mirror();
+		new MutationObserver(mirror).observe(inp, {attributes: true, attributeFilter: ['hidden', 'disabled', 'readonly']});
 		inp.addEventListener('focus', function () { txt.focus(); });   // code that focuses the field by its id
 		var fire = function (type) { inp.dispatchEvent(new Event(type, {bubbles: true})); };
 		var commit = function (final) {

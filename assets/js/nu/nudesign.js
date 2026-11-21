@@ -43,19 +43,7 @@
 
 	function t(k) { return L[k] || k; }
 	function fmt(s) { var a = arguments, i = 1; return String(s).replace(/%(\d\$)?[sd]/g, function (m, pos) { return pos ? a[+pos[0]] : a[i++]; }); }
-	function el(tag, attrs, kids) {
-		var e = document.createElement(tag);
-		Object.keys(attrs || {}).forEach(function (k) {
-			var v = attrs[k];
-			if (v === null || v === undefined || v === false) return;
-			if (k === 'text') e.textContent = v;
-			else if (k === 'class') e.className = v;
-			else if (k.indexOf('on') === 0) e.addEventListener(k.substr(2), v);
-			else e.setAttribute(k, v === true ? '' : v);
-		});
-		(kids || []).forEach(function (c) { if (c) e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); });
-		return e;
-	}
+	function el(tag, attrs, kids) { return NuUtil.el(tag, attrs, kids); }
 	function icon(cls) { return el('i', {'class': 'bi ' + cls, 'aria-hidden': 'true'}); }
 	function post(msg) { window.postMessage(msg, origin); }
 	function nunext(o) { try { var j = JSON.parse(o.sob_all_json || '{}'); return (j && j.nunext) || {}; } catch (e) { return {}; } }
@@ -69,11 +57,7 @@
 	function api(action, data, noDraft) {
 		data = data || {};
 		var body = Object.assign({action: action, form_id: N.form.id}, DR && !noDraft ? {draft_id: DR.id, rev: DR.rev} : {}, data);
-		return fetch('index.php?p=builderapi', {
-			method: 'POST', credentials: 'same-origin',
-			headers: {'Content-Type': 'application/json', 'X-CSRF-Token': N.csrf},
-			body: JSON.stringify(body)
-		}).then(function (r) { return r.json().catch(function () { return {ok: false, error: 'HTTP ' + r.status}; }); }).then(function (j) {
+		return NuUtil.post('index.php?p=builderapi', body).then(function (j) {
 			if (!j.ok && j.code === 'draft_rev') { reloadKeep(); throw new Error(j.error || ''); }
 			if (j.draft) DR = j.draft;
 			return j;
@@ -191,7 +175,7 @@
 	var pubAsk = function () { try { return localStorage.getItem(PUB_ASK) !== '0'; } catch (e) { return true; } };
 	var bPubAsk = el('input', {'class': 'form-check-input', type: 'checkbox', role: 'switch', id: 'nuDsPubAsk'});
 	bPubAsk.checked = pubAsk();
-	bPubAsk.addEventListener('change', function () { try { localStorage.setItem(PUB_ASK, bPubAsk.checked ? '1' : '0'); } catch (e) { /* private window */ } });
+	bPubAsk.addEventListener('change', function () { nuStore.set(PUB_ASK, bPubAsk.checked ? '1' : '0'); });
 	var bPubMenu = el('ul', {'class': 'dropdown-menu dropdown-menu-end nuDsPubMenu', id: 'nuDsPubMenu'}, [
 		el('li', {}, [el('div', {'class': 'dropdown-item-text'}, [el('div', {'class': 'form-check form-switch mb-0', title: t('ds_pub_ask_tip')}, [bPubAsk,
 			el('label', {'class': 'form-check-label', 'for': 'nuDsPubAsk', text: t('ds_pub_ask')})]),
@@ -2644,7 +2628,7 @@
 	}
 	function orderByPos(mode) {
 		if (layout() !== 'absolute' || !S || !S.objects) return;
-		try { localStorage.setItem(ORDER_STORE, mode); } catch (e) { /* no storage */ }
+		nuStore.set(ORDER_STORE, mode);
 		var ids = posOrder(mode), now = S.objects.map(function (x) { return x.zzzzsys_object_id; });
 		if (ids.join('|') === now.join('|')) { say(t('ds_ord_same')); return; }
 		var n = ids.filter(function (id, i) { return id !== now[i]; }).length;
@@ -3407,7 +3391,7 @@
 			return {fields: f, events: ((S.events && S.events[o.zzzzsys_object_id]) || []).map(function (x) { return {event: x.event, js: x.js}; }),
 				ab: o.sob_all_type === 'lookup' ? ((S.lookup_php || {})[o.zzzzsys_object_id] || '') : null};
 		})};
-		try { window.localStorage.setItem(CLIP, JSON.stringify(c)); } catch (e) { say('localStorage', true); return; }
+		nuStore.set(CLIP, JSON.stringify(c));
 		say(fmt(t('ds_copied'), objs.map(function (o) { return o.sob_all_id; }).join(', ')));
 	}
 	function pasteObjs() {
@@ -3618,7 +3602,7 @@
 			showHidden();
 			var v = null;
 			try { v = JSON.parse(window.sessionStorage.getItem(KEY) || 'null'); } catch (e) { v = null; }
-			if (v && v.tab === '__last' && S.tabs && S.tabs.length) { v.tab = S.tabs[S.tabs.length - 1].zzzzsys_tab_id; try { window.sessionStorage.setItem(KEY, JSON.stringify(v)); } catch (e) { /* ignore */ } }
+			if (v && v.tab === '__last' && S.tabs && S.tabs.length) { v.tab = S.tabs[S.tabs.length - 1].zzzzsys_tab_id; nuStore.session.set(KEY, JSON.stringify(v)); }
 			restore();
 		}, 0);
 	}).catch(function (e) { say(e.message, true); });

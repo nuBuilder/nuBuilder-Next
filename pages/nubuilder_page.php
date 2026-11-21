@@ -76,7 +76,7 @@ $v = static fn(string $k, string $def) => array_key_exists($k, $_POST) && nu_is_
 $info = NuPage::fileInfo($meta->code());
 $ro = !$canSave;
 $openUrl = nu_url('form', ['f' => $meta->code()]);
-$tip = static fn(string $text) => '<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="' . h($text) . '" title="' . h($text) . '"><i class="bi bi-info-circle"></i></span>';
+$tip = static fn(string $text) => nu_info_tip($text);
 
 nu_layout_start($meta->description() . ' · ' . t('builder_title'), 'forms', ['head' => '<link rel="stylesheet" href="' . nu_asset('assets/css/nubuilder.css') . '">']);
 ?>
@@ -84,7 +84,7 @@ nu_layout_start($meta->description() . ' · ' . t('builder_title'), 'forms', ['h
 	<li class="breadcrumb-item active" aria-current="page"><?= h($meta->description()) ?></li></ol></nav>
 <div class="nuTitleBar mb-3">
 	<h1 class="h4 mb-0 d-flex align-items-center gap-2"><i class="bi bi-filetype-php"></i><span><?= h($meta->description()) ?></span>
-		<span class="badge nuFormType nuFormType-page fs-6 fw-normal"><?= h(t('form_type_page')) ?></span><span class="nuInfoTip ms-1 fs-6" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('form_type_page_tip')) ?>" title="<?= h(t('form_type_page_tip')) ?>"><i class="bi bi-info-circle"></i></span></h1>
+		<span class="badge nuFormType nuFormType-page fs-6 fw-normal"><?= h(t('form_type_page')) ?></span><?= nu_info_tip(t('form_type_page_tip'), 'ms-1 fs-6') ?></h1>
 	<div class="d-flex flex-wrap gap-2">
 		<?= nu_back_button(null, nu_url('forms')) ?>
 		<?php if (!$ro): ?><button class="btn nuBtnAct nuBtnSave" type="submit" form="pgForm" data-nu-save id="pgSave"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button><?php endif; ?>

@@ -14,19 +14,7 @@
 	}
 	function $(s, r) { return (r || document).querySelector(s); }
 	function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
-	function el(tag, attrs, kids) {
-		var e = document.createElement(tag);
-		Object.keys(attrs || {}).forEach(function (k) {
-			var v = attrs[k];
-			if (v === null || v === undefined || v === false) return;
-			if (k === 'text') e.textContent = v;
-			else if (k === 'class') e.className = v;
-			else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), v);
-			else e.setAttribute(k, v === true ? '' : v);
-		});
-		(kids || []).forEach(function (c) { if (c !== null && c !== undefined) e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); });
-		return e;
-	}
+	function el(tag, attrs, kids) { return NuUtil.el(tag, attrs, kids); }
 	function icon(cls) { return el('i', {'class': 'bi ' + cls, 'aria-hidden': 'true'}); }
 	function store(k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } return null; }
 	function sstore(k, v) { try { if (v === undefined) return sessionStorage.getItem(k); sessionStorage.setItem(k, v); } catch (e) { return null; } return null; }
@@ -49,13 +37,8 @@
 		if (g) c.style.setProperty('--nu-gc', g.getAttribute('data-nu-gcolor'));
 	});
 
-	function toast(msg, ok, undo) {
-		var box = $('#nuHomeToast') || document.body.appendChild(el('div', {id: 'nuHomeToast', 'class': 'position-fixed bottom-0 end-0 p-3 nuHomeToast'}));
-		var a = el('div', {'class': 'alert d-flex align-items-center gap-3 py-2 px-3 small shadow-sm mb-2 ' + (ok ? 'alert-success' : 'alert-danger'), role: ok ? 'status' : 'alert'}, [el('span', {text: msg})]);
-		if (undo) a.appendChild(el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-success py-0 ms-auto', text: t('home_pf_undo'), onclick: function () { a.remove(); undo(); }}));
-		box.appendChild(a);
-		setTimeout(function () { a.remove(); }, undo ? 8000 : (ok ? 2500 : 7000));
-	}
+	function toast(msg, ok, undo) { NuUtil.toast(msg, !!ok, {box: 'nuHomeToast', action: undo ? [t('home_pf_undo'), undo] : null}); }
+
 
 	// procedure tiles: run like the procedure page (window = output in a new tab, hidden = message only)
 	$$('.nuHomeProc').forEach(function (b) {
@@ -396,12 +379,12 @@
 		var btn = $('.nuHomeStripToggle', st);
 		if (!btn) return;
 		var saved = null;
-		try { saved = localStorage.getItem(stripKey(st)); } catch (e) { /* storage blocked */ }
+		saved = nuStore.get(stripKey(st));
 		var folded = saved ? saved === 'folded' : (st.getAttribute('data-nu-strip') === 'recent' && window.matchMedia && window.matchMedia('(max-width: 575.98px)').matches);
 		if (!toggle && stripAuto(st)) folded = true;              // Auto collapse (0.8.828): folded whenever the page opens
 		if (toggle) {
 			folded = !st.classList.contains('nuHomeStripFolded');
-			try { localStorage.setItem(stripKey(st), folded ? 'folded' : 'open'); } catch (e) { /* storage blocked */ }
+			nuStore.set(stripKey(st), folded ? 'folded' : 'open');
 		}
 		st.classList.toggle('nuHomeStripFolded', folded);
 		document.documentElement.classList.remove('nuHomeFold-' + st.getAttribute('data-nu-strip'));   // set in <head> by nutheme.js (0.8.995)
@@ -635,7 +618,7 @@
 		fd.append('_csrf', D.csrf); fd.append('back', location.pathname + location.search);
 		Object.keys(data).forEach(function (k) { fd.append(k, data[k]); });
 		var sq = document.getElementById('nuHomeSearch');
-		if (sq && sq.value.trim()) { try { sessionStorage.setItem('nunext-home-q', sq.value); } catch (x) { /* no storage */ } }
+		if (sq && sq.value.trim()) { nuStore.session.set('nunext-home-q', sq.value); }
 		// redirect manual (0.8.652): following it would load the start page once in the background – and use up a one-time message (Undo of Hide)
 		fetch(url, {method: 'POST', body: fd, credentials: 'same-origin', redirect: 'manual'}).then(function () { location.reload(); }, function () { location.reload(); });
 	}
@@ -1305,7 +1288,7 @@
 	$$('.nuHomeSkind').forEach(function (c) {
 		c.addEventListener('change', function () {
 			if (c.checked) delete off[c.value]; else off[c.value] = true;
-			try { localStorage.setItem(KEY_KINDS, JSON.stringify(Object.keys(off))); } catch (e) { /* kept for this page only */ }
+			nuStore.set(KEY_KINDS, JSON.stringify(Object.keys(off)));
 			syncKindUi();
 			if (search && search.value.trim()) filter();
 		});
@@ -1313,7 +1296,7 @@
 	var skAll = $('#nuHomeSkAll');
 	if (skAll) skAll.addEventListener('click', function () {
 		off = {};
-		try { localStorage.removeItem(KEY_KINDS); } catch (e) { /* ignore */ }
+		nuStore.remove(KEY_KINDS);
 		syncKindUi();
 		if (search && search.value.trim()) filter();
 	});
@@ -1577,8 +1560,7 @@
 		});
 	}
 	function post(body) {
-		return fetch(D.url, {method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': D.csrf}, body: JSON.stringify(body)})
-			.then(function (r) { return r.json(); });
+		return NuUtil.post(D.url, body, {csrf: D.csrf, strict: true});
 	}
 
 	// ---------------------------------------------------------------- drawing (the same markup as the page, plus tools)
@@ -2284,7 +2266,7 @@
 	b.addEventListener('click', function () {
 		var shut = !root.classList.contains('nuNoticesShut');
 		root.classList.toggle('nuNoticesShut', shut);
-		try { localStorage.setItem('nunext-home-notices', shut ? 'shut' : 'open'); } catch (e) { /* storage blocked */ }
+		nuStore.set('nunext-home-notices', shut ? 'shut' : 'open');
 		sync();
 	});
 	sync();

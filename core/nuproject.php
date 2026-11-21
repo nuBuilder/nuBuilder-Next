@@ -162,7 +162,7 @@ final class NuProject
 	{
 		if (!self::ready()) return [];
 		$k = $projectId . '|' . $kind;
-		return self::$cache['refs'][$k] ??= array_map('strval', array_column(nu_db()->all('SELECT ref FROM ' . self::I . ' WHERE project_id = ? AND kind = ?', [$projectId, $kind]), 'ref'));
+		return NuMemo::get('prj:refs:' . $k, [self::I], static fn(): array => array_map('strval', array_column(nu_db()->all('SELECT ref FROM ' . self::I . ' WHERE project_id = ? AND kind = ?', [$projectId, $kind]), 'ref')));
 	}
 
 	/** Label, second line and link of an item; null when it does not exist (any more). */
@@ -223,7 +223,6 @@ final class NuProject
 			$have[$kind . '|' . $ref] = true;
 			$n++;
 		}
-		unset(self::$cache['refs']);
 		if ($n) { self::touch($projectId); NuLog::write('project_items_added', self::T, $projectId, ['count' => $n]); }
 		return $n;
 	}
@@ -233,7 +232,6 @@ final class NuProject
 		$r = nu_db()->one('SELECT kind, ref FROM ' . self::I . ' WHERE zzzzsys_nunext_project_item_id = ? AND project_id = ?', [$itemId, $projectId]);
 		if (!$r) return false;
 		nu_db()->delete(self::I, 'zzzzsys_nunext_project_item_id', $itemId);
-		unset(self::$cache['refs']);
 		self::touch($projectId);
 		NuLog::write('project_item_removed', self::T, $projectId, ['kind' => (string)$r['kind'], 'ref' => (string)$r['ref']]);
 		return true;
@@ -242,15 +240,6 @@ final class NuProject
 	private static function touch(string $projectId): void
 	{
 		nu_db()->update(self::T, ['updated_at' => self::now(), 'updated_by' => self::by()], 'zzzzsys_nunext_project_id', $projectId);
-	}
-
-	/** The projects an item belongs to: id => name. */
-	public static function forItem(string $kind, string $ref): array
-	{
-		if (!self::ready()) return [];
-		$o = [];
-		foreach (nu_db()->all('SELECT p.zzzzsys_nunext_project_id AS id, p.name FROM ' . self::I . ' i JOIN ' . self::T . ' p ON p.zzzzsys_nunext_project_id = i.project_id WHERE i.kind = ? AND i.ref = ? ORDER BY p.name', [$kind, $ref]) as $r) $o[(string)$r['id']] = (string)$r['name'];
-		return $o;
 	}
 
 	/**
@@ -523,8 +512,12 @@ final class NuProject
 			$p = self::load($projectId);
 			$k = nu_db()->one('SELECT * FROM ' . self::K . ' WHERE zzzzsys_nunext_project_task_id = ?', [$taskId]);
 			if (!$p || !$k || (string)$k['assignee'] === '' || !NuNotify::ready()) return;
-			$due = (string)$k['due'] !== '' ? date(nu_dfmt('d.m.Y'), (int)strtotime((string)$k['due'])) : '';
-			NuNotify::save('', ['title' => t($textKey, (string)$k['title']), 'body' => t('prj_ntf_body', (string)$p['name']) . ($due !== '' ? ' · ' . t('prj_due_on', $due) : ''),
+			// in the assignee's language, not in the language of the request / cron run that writes it
+			[$title, $body] = NuWelcome::inLangOf((string)$k['assignee'], static function () use ($k, $p, $textKey): array {
+				$due = (string)$k['due'] !== '' ? date(nu_dfmt('d.m.Y'), (int)strtotime((string)$k['due'])) : '';
+				return [t($textKey, (string)$k['title']), t('prj_ntf_body', (string)$p['name']) . ($due !== '' ? ' · ' . t('prj_due_on', $due) : '')];
+			});
+			NuNotify::save('', ['title' => $title, 'body' => $body,
 				'level' => $textKey === 'prj_ntf_due' ? 'warning' : 'info', 'link' => 'index.php?p=projects&id=' . rawurlencode($projectId) . '&tab=tasks',
 				'audience' => ['users' => [(string)$k['assignee']]], 'mode' => 'fixed'], true, ['id' => '', 'login' => 'projects'], false);
 		} catch (Throwable $e) {

@@ -636,28 +636,34 @@ final class NuRender
 	 */
 	public static function runAllowed(array $run): bool
 	{
-		static $cache = [];
 		$u = NuAuth::user();
 		if (!$u) return false;
 		if (!empty($u['globeadmin'])) return true;
 		$key = $run['type'] . ':' . ($run['type'] === 'F' || $run['type'] === 'U' ? $run['form'] : $run['code']);
-		if (isset($cache[$key])) return $cache[$key];
+		// NuMemo (code review R9, 0.8.1351): a change of rights through NuDB in this request drops the answers
+		return NuMemo::get('runok:' . $u['id'] . ':' . $key, self::RIGHT_TABLES, static fn(): bool => self::runAllowedNow($run, $u));
+	}
+
+	private const RIGHT_TABLES = ['zzzzsys_access', 'zzzzsys_php', 'zzzzsys_report', 'zzzzsys_form', 'zzzzsys_nunext_user_access', 'zzzzsys_nunext_admin'];
+
+	private static function runAllowedNow(array $run, array $u): bool
+	{
 		try {
-			if (NuAcl::can(NuAcl::FORM_FORM, 'save')) return $cache[$key] = true;
-			if ($run['type'] === 'F') return $cache[$key] = $run['form'] === '' || !NuFormMeta::load($run['form']) || NuAcl::can($run['form'], 'view');
-			if ($run['type'] === 'U' && $run['form'] !== '') return $cache[$key] = NuAcl::can($run['form'], 'browse') && NuAcl::can($run['form'], 'print');   // pivot (0.8.1156)
-			if ($run['type'] === 'R') { $r = NuReport::load($run['code']); return $cache[$key] = !$r || NuReport::canRun($r); }
+			if (NuAcl::can(NuAcl::FORM_FORM, 'save')) return true;
+			if ($run['type'] === 'F') return $run['form'] === '' || !NuFormMeta::load($run['form']) || NuAcl::can($run['form'], 'view');
+			if ($run['type'] === 'U' && $run['form'] !== '') return NuAcl::can($run['form'], 'browse') && NuAcl::can($run['form'], 'print');   // pivot (0.8.1156)
+			if ($run['type'] === 'R') { $r = NuReport::load($run['code']); return !$r || NuReport::canRun($r); }
 			if ($run['type'] === 'P') {
 				$db = nu_db();
 				$php = $db->one('SELECT zzzzsys_php_id, sph_global FROM zzzzsys_php WHERE sph_code = ? OR zzzzsys_php_id = ?', [$run['code'], $run['code']]);
-				if (!$php || (string)$php['sph_global'] === '1' || NuAdmin::can('procedures', 'change')) return $cache[$key] = true;
+				if (!$php || (string)$php['sph_global'] === '1' || NuAdmin::can('procedures', 'change')) return true;
 				[$in, $lv] = NuUserAccess::inSql('slp_zzzzsys_access_id', $u);
-				return $cache[$key] = (bool)$db->value("SELECT COUNT(*) FROM zzzzsys_access_php WHERE $in AND slp_zzzzsys_php_id = ?", [...$lv, (string)$php['zzzzsys_php_id']]);
+				return (bool)$db->value("SELECT COUNT(*) FROM zzzzsys_access_php WHERE $in AND slp_zzzzsys_php_id = ?", [...$lv, (string)$php['zzzzsys_php_id']]);
 			}
 		} catch (Throwable) {
-			return $cache[$key] = true;
+			return true;
 		}
-		return $cache[$key] = true;
+		return true;
 	}
 
 	/**
@@ -666,31 +672,34 @@ final class NuRender
 	 */
 	public static function cellAction(array $a): ?array
 	{
-		static $cache = [];
-		$key = json_encode($a);
-		if (array_key_exists($key, $cache)) return $cache[$key];
+		$uid = (string)(NuAuth::user()['id'] ?? '');
+		return NuMemo::get('cellact:' . $uid . ':' . json_encode($a), self::RIGHT_TABLES, static fn(): ?array => self::cellActionNow($a));
+	}
+
+	private static function cellActionNow(array $a): ?array
+	{
 		$out = ['t' => $a['t'], 'pass' => $a['pass'] ?? ''];
 		try {
 			$db = nu_db();
-			if ($a['t'] === 'js') return $cache[$key] = $out + ['fn' => $a['id']];
+			if ($a['t'] === 'js') return $out + ['fn' => $a['id']];
 			if ($a['t'] === 'form' || $a['t'] === 'list') {
-				if (!$db->value('SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id = ?', [$a['id']]) || !self::runAllowed(['type' => 'F', 'form' => $a['id']])) return $cache[$key] = null;
-				return $cache[$key] = $out + ['form' => $a['id'], 'rec' => $a['rec'] ?? 'row', 'open' => $a['open'] ?? '0'];
+				if (!nu_form_exists((string)$a['id']) || !self::runAllowed(['type' => 'F', 'form' => $a['id']])) return null;
+				return $out + ['form' => $a['id'], 'rec' => $a['rec'] ?? 'row', 'open' => $a['open'] ?? '0'];
 			}
 			if ($a['t'] === 'proc') {
 				$php = $db->one('SELECT sph_code, sph_run FROM zzzzsys_php WHERE zzzzsys_php_id = ? OR sph_code = ?', [$a['id'], $a['id']]);
-				if (!$php || !self::runAllowed(['type' => 'P', 'code' => (string)$php['sph_code']])) return $cache[$key] = null;
-				return $cache[$key] = $out + ['code' => (string)$php['sph_code'], 'hidden' => strtolower((string)$php['sph_run']) === 'hide'];
+				if (!$php || !self::runAllowed(['type' => 'P', 'code' => (string)$php['sph_code']])) return null;
+				return $out + ['code' => (string)$php['sph_code'], 'hidden' => strtolower((string)$php['sph_run']) === 'hide'];
 			}
 			if ($a['t'] === 'report') {
 				if (!$db->tableExists('zzzzsys_report') || !$db->value('SELECT COUNT(*) FROM zzzzsys_report WHERE zzzzsys_report_id = ?', [$a['id']])
-					|| !self::runAllowed(['type' => 'R', 'code' => $a['id']])) return $cache[$key] = null;
-				return $cache[$key] = $out + ['code' => $a['id']];
+					|| !self::runAllowed(['type' => 'R', 'code' => $a['id']])) return null;
+				return $out + ['code' => $a['id']];
 			}
 		} catch (Throwable) {
-			return $cache[$key] = null;
+			return null;
 		}
-		return $cache[$key] = null;
+		return null;
 	}
 
 	/** A run object's URL as stored (0.8.830): https:// / http:// or a path of this site; null = not a URL (other schemes, too long). */

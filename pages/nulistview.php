@@ -9,7 +9,7 @@ defined('NU_ROOT') || exit;
  * Every action needs the view right on the list's form; shared views, the list default, share / export / import: NuListView::canManage().
  */
 
-$json = static fn(array $a) => exit(json_encode($a, JSON_UNESCAPED_UNICODE));
+$json = static function (array $a): never { nu_json($a); };
 $action = nu_is_post() ? nu_post('action') : (string)($_GET['action'] ?? '');
 $list = nu_is_post() ? nu_post('list') : (string)($_GET['list'] ?? '');
 try {

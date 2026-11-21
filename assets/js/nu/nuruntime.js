@@ -24,7 +24,7 @@
 
 	function g(id) { return id ? document.getElementById(id) : null; }
 	function arr(x) { return x === undefined || x === null ? [] : (Array.isArray(x) ? x : [x]); }
-	function esc(s) { return String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]; }); }
+	function esc(s) { return NuUtil.esc(s); }
 	// HTML from form code (nuSetTitle, nuSetLabelText, nuMessage) without script (0.8.478, security assessment K2): a record value such
 	// as <img src=x onerror=…> passed to these helpers ran as script in the next user's browser. Parsed in an inert <template> (nothing
 	// loads or runs there), script-like elements, on… attributes and javascript: / vbscript: / non-image data: URLs are removed, and the
@@ -147,7 +147,7 @@
 			fetch(N.base + '?p=recyclebin', {method: 'POST', credentials: 'same-origin', body: fd, headers: {'Accept': 'application/json'}})
 				.then(function (r) { return r.json(); })
 				.then(function (j) {
-					if (j && j.ok) { try { sessionStorage.setItem('nuNextToast', JSON.stringify([j.message, 'success'])); } catch (x) { /* ignore */ } window.location.href = j.url; }
+					if (j && j.ok) { nuStore.session.set('nuNextToast', JSON.stringify([j.message, 'success'])); window.location.href = j.url; }
 					else { nuToast((j && j.message) || 'Error', 'danger', 6000); }
 				}, function () { nuToast('Error', 'danger', 6000); });
 			try { nuBs.toast(t).hide(); } catch (x) { t.remove(); }
@@ -881,11 +881,7 @@
 	// =================================================================== server calls
 	function call(action, data) {
 		data = $.extend({action: action, form_id: N.form.id, record_id: N.record_id, props: N.props, ps: N.ps || ''}, data || {});
-		return fetch(N.base + '?p=formapi', {
-			method: 'POST', credentials: 'same-origin',
-			headers: {'Content-Type': 'application/json', 'X-CSRF-Token': N.csrf, 'Accept': 'application/json'},
-			body: JSON.stringify(data)
-		}).then(function (r) {
+		return NuUtil.post(N.base + '?p=formapi', data, {raw: true}).then(function (r) {
 			// a procedure that sends a file (header('Content-Disposition: attachment …'), NuXlsx::download, PhpSpreadsheet …) – 0.8.756:
 			// nuBuilder Forte runs it in its own window, here the answer is the file itself, saved by nuRunPHP / nuRunPHPHidden
 			var cd = r.headers.get('Content-Disposition') || '';
@@ -1708,7 +1704,7 @@
 			}
 			// nuBuilder runs nuAfterSaveGlobal / nuAfterSave on the rebuilt form: the reloaded page calls them after nuOnLoad (0.8.383)
 			var openId = res.open_id !== undefined && res.open_id !== null ? String(res.open_id) : res.record_id;   // nuReturnNewRecord() in After Save (0.8.443)
-			try { sessionStorage.setItem('nuNextAfterSave', N.form.id + '|' + openId); } catch (x) { afterSaveNow(); }
+			nuStore.session.set('nuNextAfterSave', N.form.id + '|' + openId);
 			winCarrySave(openId);
 			var u = new URL(window.location.href);
 			u.searchParams.set('r', openId);
@@ -1899,9 +1895,7 @@
 		var presenceUrl = N.base + '?p=formapi&presence=1';
 		var ping = function (leave) {
 			var body = JSON.stringify({action: 'presence', form_id: N.form.id, record_id: N.record_id, edited: !!N.edited, leave: leave ? 1 : 0});
-			return fetch(presenceUrl, {method: 'POST', credentials: 'same-origin', keepalive: !!leave,
-				headers: {'Content-Type': 'application/json', 'X-CSRF-Token': N.csrf, 'Accept': 'application/json'}, body: body})
-				.then(function (r) { return r.json(); }).then(function (j) { if (!leave && j && j.ok) showPresence(j.others || []); }).catch(function () { /* ignore */ });
+			return NuUtil.post(presenceUrl, body, {keepalive: !!leave, headers: {'Content-Type': 'application/json'}, strict: true}).then(function (j) { if (!leave && j && j.ok) showPresence(j.others || []); }).catch(function () { /* ignore */ });
 		};
 		var showPresence = function (others) {
 			var box = g('nuPresence');
@@ -2241,7 +2235,7 @@
 	var RD = {own: null, key: 'nunext-rd:' + ((N.form && N.form.id) || '')};
 	api('nuNextRowDetails', function (fn) { RD.own = typeof fn === 'function' ? fn : null; });
 	function rdState() { try { return JSON.parse(sessionStorage.getItem(RD.key) || '{}') || {}; } catch (e) { return {}; } }
-	function rdSave(st) { try { sessionStorage.setItem(RD.key, JSON.stringify(st)); } catch (e) { /* private mode */ } }
+	function rdSave(st) { nuStore.session.set(RD.key, JSON.stringify(st)); }
 	function rdRemember(pk, on) {
 		var st = rdState(), open = st.open || [];
 		var i = open.indexOf(pk);
@@ -2640,12 +2634,8 @@
 		var T = OM.m, menu = null;
 
 		function builderCall(action, data) {
-			return fetch(N.base + '?p=builderapi', {
-				method: 'POST', credentials: 'same-origin',
-				headers: {'Content-Type': 'application/json', 'X-CSRF-Token': N.csrf, 'Accept': 'application/json'},
-				// in a draft preview the label menu changes the draft (0.8.386); a live change while a draft is open is confirmed first
-				body: JSON.stringify($.extend({action: action, form_id: N.form.id}, N.draft ? {draft_id: N.draft.id, rev: N.draft.rev} : {}, data))
-			}).then(function (r) { return r.json().catch(function () { return {ok: false, error: 'HTTP ' + r.status}; }); })
+			// in a draft preview the label menu changes the draft (0.8.386); a live change while a draft is open is confirmed first
+			return NuUtil.post(N.base + '?p=builderapi', $.extend({action: action, form_id: N.form.id}, N.draft ? {draft_id: N.draft.id, rev: N.draft.rev} : {}, data))
 				.then(function (j) {
 					if (!j.ok && j.code === 'draft_open_confirm' && !data.live_ok && window.confirm(j.error)) return builderCall(action, $.extend({}, data, {live_ok: true}));
 					if (!j.ok && j.code === 'draft_rev') { window.location.reload(); }
@@ -2775,7 +2765,7 @@
 					tabs.find('.nav-link').removeClass('active').attr('aria-selected', 'false');
 					b.addClass('active').attr('aria-selected', 'true');
 					panes.children().prop('hidden', true); p.prop('hidden', false);
-					try { localStorage.setItem('nunext-om-set-tab', key); } catch (e) { /* none */ }
+					nuStore.set('nunext-om-set-tab', key);
 				});
 				return p;
 			}
@@ -4115,7 +4105,7 @@
 	(function () {
 		var B = N.browse_sql, btn = document.getElementById('nuBrowseSqlEdit');
 		if (!B || !btn) return;
-		var T = B.m, pane = null, cm = null, PIN = 'nunext-bsq-pin', TAB = 'nunext-bsq-tab', L = B.list || {}, ST = null, COLS = null, names = null;
+		var T = B.m, pane = null, PIN = 'nunext-bsq-pin', TAB = 'nunext-bsq-tab', L = B.list || {}, ST = null, COLS = null, names = null;
 		// code tabs (0.8.1108): browse SQL, PHP Before Browse and the list's JavaScript – one editor each, made when its tab is first shown
 		var TABS = ['sql', 'php', 'js', 'cols'], OPEN = {};
 		var CODE = {sql: {cm: null, orig: B.sql, mode: 'text/x-sql', lang: 'SQL'}, php: {cm: null, orig: L.php || '', mode: 'application/x-httpd-php-open', lang: 'PHP'},
@@ -4144,10 +4134,7 @@
 			b.innerHTML = '<i class="bi ' + (on ? 'bi-pin-angle-fill' : 'bi-pin-angle') + '" aria-hidden="true"></i>';
 		}
 		function post(data, action) {
-			return fetch(N.base + '?p=builderapi', {method: 'POST', credentials: 'same-origin',
-				headers: {'Content-Type': 'application/json', 'X-CSRF-Token': N.csrf, 'Accept': 'application/json'},
-				body: JSON.stringify($.extend({action: action || 'form.save', form_id: N.form.id}, N.draft ? {draft_id: N.draft.id, rev: N.draft.rev} : {}, data))
-			}).then(function (r) { return r.json().catch(function () { return {ok: false, error: 'HTTP ' + r.status}; }); }).then(function (j) {
+			return NuUtil.post(N.base + '?p=builderapi', $.extend({action: action || 'form.save', form_id: N.form.id}, N.draft ? {draft_id: N.draft.id, rev: N.draft.rev} : {}, data)).then(function (j) {
 				if (!j.ok && j.code === 'draft_open_confirm' && !data.live_ok && window.confirm(j.error)) return post($.extend({}, data, {live_ok: true}), action);
 				if (!j.ok) throw new Error(j.error || T.error);
 				if (j.draft && N.draft) N.draft = j.draft;                      // the next call of the same save needs the new rev
@@ -4159,7 +4146,7 @@
 			if (!pane) return;
 			if (!force && dirty() && !window.confirm(T.unsaved)) return;
 			if (!force) setPin(false);                                       // closing it ends "keep open"
-			pane.remove(); pane = null; cm = null; ST = null; COLS = null; OPEN = {};
+			pane.remove(); pane = null; ST = null; COLS = null; OPEN = {};
 			['sql', 'php', 'js'].forEach(function (k) { CODE[k].cm = null; });
 			document.documentElement.classList.remove('nuBsqOpen');
 			btn.focus();
@@ -4217,7 +4204,7 @@
 				ta.value = c.orig;
 				c.cm = CodeMirror.fromTextArea(ta, {mode: c.mode, lineNumbers: true, lineWrapping: true, indentWithTabs: true, tabSize: 4,
 					theme: document.documentElement.getAttribute('data-bs-theme') === 'dark' ? 'default nuCmDark' : 'default'});
-				if (k === 'sql') cm = c.cm; else c.cm.on('change', codeMarks);
+				if (k !== 'sql') c.cm.on('change', codeMarks);
 				if (window.NuCodeTools) NuCodeTools.attach(c.cm, pane.querySelector('.nuBsqTools[data-code="' + k + '"]'), {lang: c.lang, db: N.db_type});
 				size();
 				if (focus) c.cm.focus();
@@ -4335,7 +4322,7 @@
 			var setShow = function (on) { setBody.hidden = !on; setBtn.setAttribute('aria-expanded', on ? 'true' : 'false'); };
 			setBtn.addEventListener('click', function () {
 				setOpen = !setOpen; setShow(setOpen);
-				try { localStorage.setItem('nunext-bsq-settings', setOpen ? '1' : '0'); } catch (e) { /* private mode */ }
+				nuStore.set('nunext-bsq-settings', setOpen ? '1' : '0');
 			});
 			setShow(setOpen);
 			box.appendChild(mk('h3', {'class': 'nuBsqSub'}, [setBtn]));
@@ -4499,7 +4486,7 @@
 		}
 		function setRun(on) {
 			RUN = !!on && !!B.run;
-			try { localStorage.setItem(RUNKEY, RUN ? '1' : '0'); } catch (e) { /* no storage */ }
+			nuStore.set(RUNKEY, RUN ? '1' : '0');
 			if (!pane) return;
 			pane.querySelectorAll('.nuBsqMode button').forEach(function (b) { var a = (b.getAttribute('data-mode') === 'run') === RUN; b.classList.toggle('active', a); b.setAttribute('aria-pressed', a ? 'true' : 'false'); });
 			pane.classList.toggle('nuBsqRunOn', RUN);
@@ -4531,7 +4518,7 @@
 			pane.querySelector('.nuBsqCols').hidden = k !== 'cols';
 			var hint = pane.querySelector('.nuBsqHint');
 			hint.hidden = k === 'cols';
-			try { localStorage.setItem(TAB, k); } catch (e) { /* no storage */ }
+			nuStore.set(TAB, k);
 			if (CODE[k]) { codeOpen(k, focus === true && !(k === 'sql' && RUN)); size(); }
 		}
 		// width by the splitter on the left edge (0.8.947): stored per browser, 360 px … 90 % of the window, double-click = default
@@ -4578,7 +4565,7 @@
 			});
 		}
 		function open(auto, tab) {
-			if (tab) { try { localStorage.setItem(TAB, tab); } catch (e) { /* no storage */ } }
+			if (tab) { nuStore.set(TAB, tab); }
 			if (pane) { if (tab) showTab(tab, true); if (!tab || tab === 'cols') { var cur = lastTab(); if (CODE[cur] && CODE[cur].cm) CODE[cur].cm.focus(); else pane.querySelector('.nuBsqTab.active').focus(); } return; }
 			stInit(); ST0 = JSON.stringify(ST); COLS0 = JSON.stringify(COLS);
 			pane = document.createElement('aside');
@@ -4689,10 +4676,7 @@
 		var dirtyKeys = function () { return C.items.filter(function (x) { return ED[x[0]] && ED[x[0]].getValue() !== x[4]; }).map(function (x) { return x[0]; }); };
 		var cur = function () { var b = pane && pane.querySelector('.nuEcpItem.active'); return b ? b.getAttribute('data-key') : ''; };
 		function post(data) {
-			return fetch(N.base + '?p=builderapi', {method: 'POST', credentials: 'same-origin',
-				headers: {'Content-Type': 'application/json', 'X-CSRF-Token': N.csrf, 'Accept': 'application/json'},
-				body: JSON.stringify($.extend({action: 'form.save', form_id: N.form.id}, N.draft ? {draft_id: N.draft.id, rev: N.draft.rev} : {}, data))
-			}).then(function (r) { return r.json().catch(function () { return {ok: false, error: 'HTTP ' + r.status}; }); }).then(function (j) {
+			return NuUtil.post(N.base + '?p=builderapi', $.extend({action: 'form.save', form_id: N.form.id}, N.draft ? {draft_id: N.draft.id, rev: N.draft.rev} : {}, data)).then(function (j) {
 				if (!j.ok && j.code === 'draft_open_confirm' && !data.live_ok && window.confirm(j.error)) return post($.extend({}, data, {live_ok: true}));
 				if (!j.ok) throw new Error(j.error || T.error);
 				return j;
@@ -4719,7 +4703,7 @@
 			pane.querySelectorAll('.nuEcpItem').forEach(function (b) { var on = b.getAttribute('data-key') === k; b.classList.toggle('active', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); b.tabIndex = on ? 0 : -1; });
 			pane.querySelectorAll('.nuEcpMain [data-code]').forEach(function (el) { el.hidden = el.getAttribute('data-code') !== k; });
 			pane.querySelector('.nuEcpWhat').textContent = item(k)[2] + ' · ' + item(k)[1];
-			try { localStorage.setItem(LAST, k); } catch (e) { /* no storage */ }
+			nuStore.set(LAST, k);
 			if (ED[k]) { ED[k].refresh(); size(); if (focus) ED[k].focus(); return; }
 			loadCodeMirror().then(function () {
 				if (!pane || ED[k]) return;
@@ -4864,10 +4848,7 @@
 			try { return JSON.parse(h.getAttribute('data-nu-fi-texts')) || {}; } catch (e) { return {}; }
 		}
 		function post(fields, live) {
-			return fetch(N.base + '?p=builderapi', {method: 'POST', credentials: 'same-origin',
-				headers: {'Content-Type': 'application/json', 'X-CSRF-Token': N.csrf, 'Accept': 'application/json'},
-				body: JSON.stringify($.extend({action: 'form.save', form_id: N.form.id, fields: fields}, N.draft ? {draft_id: N.draft.id, rev: N.draft.rev} : {}, live ? {live_ok: true} : {}))
-			}).then(function (r) { return r.json().catch(function () { return {ok: false, error: 'HTTP ' + r.status}; }); }).then(function (j) {
+			return NuUtil.post(N.base + '?p=builderapi', $.extend({action: 'form.save', form_id: N.form.id, fields: fields}, N.draft ? {draft_id: N.draft.id, rev: N.draft.rev} : {}, live ? {live_ok: true} : {})).then(function (j) {
 				if (!j.ok && j.code === 'draft_open_confirm' && !live && window.confirm(j.error)) return post(fields, true);
 				if (j.ok && j.draft && N.draft) N.draft = j.draft;
 				return j;
@@ -5992,7 +5973,7 @@
 	});
 	$(document).on('shown.bs.tab', '.nuTab', function (e) {
 		if (N.autoTab) { N.autoTab = false; return; }   // chosen by the page (Notes, 0.8.508), not by the user: not remembered
-		try { sessionStorage.setItem(tabKey(), e.target.getAttribute('data-nu-tab')); } catch (x) { /* ignore */ }
+		nuStore.session.set(tabKey(), e.target.getAttribute('data-nu-tab'));
 		['nuOnTabSelectedGlobal', 'nuOnTabSelected'].forEach(function (fn) {
 			if (typeof window[fn] === 'function') { try { window[fn](e.target); } catch (x) { reportError(x.message, fn); } }
 		});

@@ -29,7 +29,7 @@
 	function fmt(v, j) { return (NF[j] || nf).format(v); }
 
 	function t(k) { return T[k] || k; }
-	function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined && txt !== null) e.textContent = txt; return e; }
+	function el(tag, attrs, kids) { return NuUtil.el(tag, attrs, kids); }
 	function store(k, v) { try { if (v === undefined) return JSON.parse(localStorage.getItem(k) || 'null'); localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* no storage */ } return null; }
 
 	function post(action, extra) {
@@ -44,8 +44,7 @@
 		});
 		Object.keys(extra || {}).forEach(function (k) { fd.append(k, extra[k]); });
 		var url = 'index.php?p=pivot&f=' + encodeURIComponent(S.f) + (S.ps ? '&ps=' + encodeURIComponent(S.ps) : '');
-		return fetch(url, {method: 'POST', body: fd, credentials: 'same-origin', headers: {'X-CSRF-Token': (window.nuNext || {}).csrf || '', 'Accept': 'application/json'}})
-			.then(function (r) { return r.json(); });
+		return NuUtil.post(url, fd, {strict: true});
 	}
 
 	// ------------------------------------------------------------------ labels

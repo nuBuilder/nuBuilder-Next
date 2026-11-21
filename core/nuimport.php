@@ -654,7 +654,7 @@ final class NuImport
 	public static function userLevels(): array
 	{
 		$out = [];
-		foreach (nu_db()->all('SELECT zzzzsys_access_id, sal_code FROM zzzzsys_access ORDER BY sal_code') as $a) {
+		foreach (NuAcl::levels() as $a) {
 			$id = (string)$a['zzzzsys_access_id'];
 			if (NuSecurity::restricted() && NuSecurity::adminRightsOf($id)) continue;
 			$out[(string)($a['sal_code'] ?: $id)] = $id;
@@ -809,7 +809,7 @@ final class NuImport
 		$db = nu_db();
 		$levels = array_change_key_case(self::userLevels(), CASE_LOWER);
 		$allLevels = [];
-		foreach ($db->all('SELECT zzzzsys_access_id, sal_code FROM zzzzsys_access') as $a) {
+		foreach (NuAcl::levels() as $a) {
 			$allLevels[strtolower((string)$a['sal_code'])] = $allLevels[strtolower((string)$a['zzzzsys_access_id'])] = (string)$a['zzzzsys_access_id'];
 		}
 		$existing = [];

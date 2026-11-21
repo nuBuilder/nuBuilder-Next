@@ -82,8 +82,6 @@ return [
 	'theme_k_accent' => 'Accent color',
 	'theme_k_focus' => 'Focus color',
 	'brand_theme_note' => 'Accent color, buttons, fields and other colors:',
-	'brand_accent_on' => 'Own accent color',
-	'brand_accent' => 'Accent color',
 	'brand_env_field_tip' => 'E.g. TEST or DEV: a colored badge in the top bar and on the sign-in pages, a line of its color at the top and the label in the browser tab title – so a test copy is not mistaken for the live system. Empty = no label. $nuConfigEnvironmentLabel (and $nuConfigEnvironmentColor) in nuconfig.php take priority: a database copied to a test server keeps the label of that server.',
 	'brand_env_color' => 'Color of the label',
 	'brand_err_color' => 'Choose a color.',

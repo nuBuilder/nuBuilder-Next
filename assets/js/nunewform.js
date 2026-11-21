@@ -14,7 +14,7 @@
 			if (b) b.hidden = false;
 			c.focus({preventScroll: true});
 		}
-		c.addEventListener('click', function () { try { localStorage.setItem(KEY, k); } catch (e) { /* storage off */ } });
+		c.addEventListener('click', function () { nuStore.set(KEY, k); });
 	});
 	// Custom page (0.8.861): a short dialogue – description, code (= folder custom/pages/<code>/), open mode – then the page's own editor
 	var start = document.getElementById('nuNfStart'), dlg = document.getElementById('nuNfPageDlg'), pcard = document.getElementById('nuNfC_page');
@@ -38,13 +38,11 @@
 		if (!/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(code.value)) { code.classList.add('is-invalid'); bad = true; }
 		if (bad) return;
 		btn.disabled = true;
-		fetch(start.getAttribute('data-api'), {method: 'POST', credentials: 'same-origin',
-			headers: {'Content-Type': 'application/json', 'X-CSRF-Token': start.getAttribute('data-csrf')},
-			body: JSON.stringify({action: 'form.create', type: 'page', code: code.value, description: desc.value.trim(), page_open_mode: document.getElementById('nuNfPageMode').value})})
-			.then(function (r) { return r.json().catch(function () { return {ok: false, error: 'HTTP ' + r.status}; }); })
+		NuUtil.post(start.getAttribute('data-api'), {action: 'form.create', type: 'page', code: code.value, description: desc.value.trim(), page_open_mode: document.getElementById('nuNfPageMode').value},
+			{csrf: start.getAttribute('data-csrf')})
 			.then(function (j) {
 				if (!j.ok) throw new Error(j.error || 'Error');
-				try { localStorage.setItem(KEY, 'page'); } catch (x) { /* storage off */ }
+				nuStore.set(KEY, 'page');
 				window.location.href = 'index.php?p=builder&f=' + encodeURIComponent(j.form_id);
 			})
 			.catch(function (x) { err.textContent = x.message; err.classList.remove('d-none'); btn.disabled = false; });

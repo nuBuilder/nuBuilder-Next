@@ -119,7 +119,7 @@ if ($id !== '') {
 			</div>
 			<div class="col-sm-6">
 				<label class="form-label" for="ufCode"><?= h(t('uf_code')) ?><?= $f ? '' : ' <span class="text-danger">*</span>' ?><?= nu_unique_mark(!$f) ?></label>
-				<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('uf_code_tip')) ?>" title="<?= h(t('uf_code_tip')) ?>"><i class="bi bi-info-circle"></i></span>
+				<?= nu_info_tip(t('uf_code_tip')) ?>
 				<?= $fld('code', '<input class="form-control font-monospace' . $inv('code') . '" id="ufCode" name="code" maxlength="40" pattern="[a-z][a-z0-9_]*" autocomplete="off" spellcheck="false" value="' . h($val('code')) . '"' . ($f ? ' readonly' : ' required') . '>') ?>
 			</div>
 			<div class="col-sm-6 col-lg-4">
@@ -140,12 +140,12 @@ if ($id !== '') {
 			</div>
 			<div class="col-12 ufOnlySelect">
 				<label class="form-label" for="ufOptions"><?= h(t('uf_options')) ?> <span class="text-danger">*</span></label>
-				<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('uf_options_tip')) ?>" title="<?= h(t('uf_options_tip')) ?>"><i class="bi bi-info-circle"></i></span>
+				<?= nu_info_tip(t('uf_options_tip')) ?>
 				<?= $fld('options', '<textarea class="form-control font-monospace' . $inv('options') . '" id="ufOptions" name="options" rows="5" spellcheck="false" placeholder="ZH|Zurich&#10;BE|Bern">' . h($val('options')) . '</textarea>') ?>
 			</div>
 			<div class="col-sm-6">
 				<label class="form-label" for="ufDefault"><?= h(t('uf_default')) ?></label>
-				<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('uf_default_tip')) ?>" title="<?= h(t('uf_default_tip')) ?>"><i class="bi bi-info-circle"></i></span>
+				<?= nu_info_tip(t('uf_default_tip')) ?>
 				<?php
 					$ins = [['today', 'ufd_today'], ['yesterday', 'ufd_yesterday'], ['tomorrow', 'ufd_tomorrow'], ['today+30d', 'ufd_in30'], ['month_end', 'ufd_month_end'], ['year_start', 'ufd_year_start'], ['now', 'ufd_now'], null,
 						['next:{0000}', 'ufd_counter'], ['{first_name}.{last_name}', 'ufd_fields'], ['{email}', 'ufd_email'], ['#USER_NAME#', 'ufd_admin'], null];
@@ -166,7 +166,7 @@ if ($id !== '') {
 				<div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" id="ufRequired" name="required" value="1"<?= $chk('required') ? ' checked' : '' ?>><label class="form-check-label" for="ufRequired"><?= h(t('uf_required')) ?></label></div>
 				<div class="form-check form-switch ufOnlyUnique"><input class="form-check-input" type="checkbox" role="switch" id="ufUnique" name="is_unique" value="1"<?= $chk('is_unique') ? ' checked' : '' ?>><label class="form-check-label" for="ufUnique"><?= h(t('uf_unique')) ?></label></div>
 				<div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" id="ufInList" name="in_list" value="1"<?= $chk('in_list', true) ? ' checked' : '' ?>><label class="form-check-label" for="ufInList"><?= h(t('uf_in_list')) ?></label>
-					<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('uf_in_list_tip')) ?>" title="<?= h(t('uf_in_list_tip')) ?>"><i class="bi bi-info-circle"></i></span></div>
+					<?= nu_info_tip(t('uf_in_list_tip')) ?></div>
 			</div>
 			<?php if ($f): ?>
 				<div class="col-12 small text-body-secondary"><i class="bi bi-database me-1"></i><?= h(t('uf_sql_hint', (string)$f['code'])) ?></div>

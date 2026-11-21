@@ -9,27 +9,14 @@
 	var T = {};
 	try { T = JSON.parse(D.getAttribute('data-t') || '{}'); } catch (e) { T = {}; }
 	function t(k) { return T[k] || k; }
-	function el(tag, attrs, kids) {
-		var e = document.createElement(tag);
-		Object.keys(attrs || {}).forEach(function (k) {
-			var v = attrs[k];
-			if (v === null || v === undefined || v === false) return;
-			if (k === 'text') e.textContent = v; else if (k === 'onclick') e.addEventListener('click', v); else e.setAttribute(k, v === true ? '' : v);
-		});
-		(kids || []).forEach(function (c) { if (c) e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); });
-		return e;
-	}
+	function el(tag, attrs, kids) { return NuUtil.el(tag, attrs, kids); }
 	function api(method, body, query) {
-		return fetch(D.getAttribute('data-url') + (query || ''), {method: method, credentials: 'same-origin',
-			headers: method === 'POST' ? {'Content-Type': 'application/json', 'X-CSRF-Token': D.getAttribute('data-csrf')} : {},
-			body: body ? JSON.stringify(body) : undefined}).then(function (r) { return r.json().catch(function () { return {ok: false}; }); });
+		var url = D.getAttribute('data-url') + (query || '');
+		if (method === 'POST') return NuUtil.post(url, body || {}, {csrf: D.getAttribute('data-csrf')});
+		return fetch(url, {credentials: 'same-origin'}).then(function (r) { return r.json().catch(function () { return {ok: false}; }); });
 	}
-	function toast(msg, ok) {
-		var box = document.getElementById('nuFmsToast') || document.body.appendChild(el('div', {id: 'nuFmsToast', 'class': 'position-fixed bottom-0 end-0 p-3 nuFormStatusToast'}));
-		var a = el('div', {'class': 'alert py-2 px-3 small shadow-sm mb-2 ' + (ok ? 'alert-success' : 'alert-danger'), role: ok ? 'status' : 'alert', text: msg});
-		box.appendChild(a);
-		setTimeout(function () { a.remove(); }, ok ? 3000 : 7000);
-	}
+	function toast(msg, ok) { NuUtil.toast(msg, !!ok, {box: 'nuFmsToast', ms: ok ? 3000 : 7000}); }
+
 	window.nuFormMaintToast = toast;
 
 	function open(opt) {

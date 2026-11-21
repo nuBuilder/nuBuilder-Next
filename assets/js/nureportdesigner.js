@@ -22,19 +22,7 @@
 	var ro = !D.canSave;
 
 	// ================================================================= helpers
-	function el(tag, attrs, kids) {
-		var e = document.createElement(tag);
-		Object.keys(attrs || {}).forEach(function (k) {
-			var v = attrs[k];
-			if (v === null || v === undefined || v === false) return;
-			if (k === 'text') e.textContent = v;
-			else if (k === 'class') e.className = v;
-			else if (k.indexOf('on') === 0 && typeof v === 'function') e.addEventListener(k.slice(2), v);
-			else e.setAttribute(k, v === true ? '' : v);
-		});
-		(kids || []).forEach(function (c) { if (c !== null && c !== undefined && c !== false) e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); });
-		return e;
-	}
+	function el(tag, attrs, kids) { return NuUtil.el(tag, attrs, kids); }
 	function icon(name) { return el('i', {'class': 'bi bi-' + name}); }
 	function btn(iconName, title, fn, extra) {
 		var b = el('button', {type: 'button', 'class': 'btn btn-sm ' + ((extra && extra.cls) || 'btn-outline-secondary'), title: title, 'aria-label': title}, [icon(iconName)]);

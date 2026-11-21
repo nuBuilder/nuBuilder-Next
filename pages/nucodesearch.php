@@ -134,7 +134,7 @@ echo nu_page_header(t('cs_title'), ['icon' => 'bi-search', 'tip' => t('cs_hint')
 		<div class="d-flex flex-wrap gap-2 align-items-center">
 			<div class="input-group csQ">
 				<span class="input-group-text"><i class="bi bi-search" aria-hidden="true"></i></span>
-				<input type="search" class="form-control font-monospace" name="q" id="csQ" value="<?= h($s['q']) ?>" placeholder="<?= h(t('search_ph')) ?>" title="<?= h(t('cs_q_ph')) ?>" aria-label="<?= h(t('cs_title')) ?>" autocomplete="off" spellcheck="false" autofocus>
+				<input type="search" class="form-control font-monospace" name="q" id="csQ" value="<?= h($s['q']) ?>" placeholder="<?= h(t('search_ph')) ?>" title="<?= h(t('cs_q_ph')) ?>" aria-label="<?= h(t('cs_title')) ?>" autocomplete="off" spellcheck="false" data-nu-autofocus>
 				<button class="btn btn-primary" type="submit" id="csGo"><?= h(t('cs_search')) ?></button>
 			</div>
 			<?php // phones (0.8.1241, the owner picked mockup A): Options / Filters open sheets – nucodesearch.js moves the controls into them ?>
@@ -159,7 +159,7 @@ echo nu_page_header(t('cs_title'), ['icon' => 'bi-search', 'tip' => t('cs_hint')
 			<div class="form-check mb-0" data-cs-opt="csR"><input class="form-check-input" type="checkbox" name="r" value="1" id="csR"<?= $chk($s['r']) ?>><label class="form-check-label small" for="csR"><?= h(t('cs_regex')) ?></label></div>
 			<div class="d-flex align-items-center gap-1 csWithout" data-cs-opt="without"><label class="small text-body-secondary" for="csX"><?= h(t('cs_without')) ?></label>
 				<input type="text" class="form-control form-control-sm font-monospace" name="x" id="csX" value="<?= h($s['x']) ?>" autocomplete="off" spellcheck="false">
-				<span class="nuInfoTip" tabindex="0" role="img" data-bs-toggle="tooltip" aria-label="<?= h(t('cs_without_tip')) ?>" title="<?= h(t('cs_without_tip')) ?>"><i class="bi bi-info-circle"></i></span></div>
+				<?= nu_info_tip(t('cs_without_tip'), '', false) ?></div>
 			<?php if ($canReplace): ?><button class="btn btn-sm btn-link px-0 ms-auto csRpBtn" type="button" data-bs-toggle="collapse" data-bs-target="#csRpRow" aria-expanded="<?= $rmode ? 'true' : 'false' ?>" aria-controls="csRpRow" id="csRpToggle"><i class="bi bi-arrow-left-right me-1"></i><?= h(t('cs_replace')) ?></button><?php endif; ?>
 			<button class="btn btn-sm btn-link px-0<?= $canReplace ? '' : ' ms-auto' ?> csFiltersBtn" type="button" data-bs-toggle="collapse" data-bs-target="#csFilters" aria-expanded="<?= $filterCount ? 'true' : 'false' ?>" aria-controls="csFilters">
 				<i class="bi bi-funnel me-1"></i><?= h(t('cs_filters')) ?><?= $filterCount ? ' <span class="badge text-bg-primary" id="csFilterCount">' . $filterCount . '</span>' : '' ?></button>
@@ -171,7 +171,7 @@ echo nu_page_header(t('cs_title'), ['icon' => 'bi-search', 'tip' => t('cs_hint')
 				<input type="text" class="form-control form-control-sm font-monospace csRpInput" name="rp" id="csRp" value="<?= h($rp) ?>" autocomplete="off" spellcheck="false"<?= $rmode ? '' : ' disabled' ?>>
 				<input type="hidden" name="rmode" value="1" id="csRmode"<?= $rmode ? '' : ' disabled' ?>>
 				<button type="submit" class="btn btn-sm btn-outline-danger" id="csRpPreview"><i class="bi bi-eye me-1"></i><?= h(t('cs_rp_preview')) ?></button>
-				<span class="nuInfoTip" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('cs_rp_tip')) ?>" title="<?= h(t('cs_rp_tip')) ?>"><i class="bi bi-info-circle"></i></span>
+				<?= nu_info_tip(t('cs_rp_tip'), '') ?>
 			</div>
 		</div>
 		<?php endif; ?>

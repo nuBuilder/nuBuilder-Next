@@ -161,7 +161,7 @@ curl -s -H 'Authorization: Bearer &lt;access_token&gt;' '<?= h($base) ?>/users?l
 	$users = $db->all("SELECT u.zzzzsys_user_id, u.sus_login_name, u.sus_name, a.sal_code, a.sal_description FROM zzzzsys_user u LEFT JOIN zzzzsys_access a ON a.zzzzsys_access_id = u.sus_zzzzsys_access_id
 		WHERE COALESCE(u.sus_login_name, '') <> '' ORDER BY u.sus_login_name");
 	$taken = array_column($db->all('SELECT user_id, name FROM ' . NuApiClient::CLIENT . ' WHERE zzzzsys_nunext_api_client_id <> ?', [$client ? $id : '']), 'name', 'user_id');
-	$levels = $db->all('SELECT zzzzsys_access_id, sal_code, sal_description FROM zzzzsys_access ORDER BY sal_code');
+	$levels = array_values(NuAcl::levels());
 	$uSel = $v('user_id', $client ? '' : '__new');
 	$suMode = nu_is_post() && in_array(nu_post('su_mode'), ['new', 'existing'], true) ? nu_post('su_mode') : ($uSel === '__new' ? 'new' : 'existing');
 	$active = nu_is_post() ? nu_check('active') === '1' : ($client ? (string)$client['active'] === '1' : true);
@@ -185,7 +185,7 @@ curl -s -H 'Authorization: Bearer &lt;access_token&gt;' '<?= h($base) ?>/users?l
 						<?php if ($client): ?><div class="col-12"><label class="form-label small mb-0">client_id</label><div><code><?= h((string)$client['client_id']) ?></code></div></div><?php endif; ?>
 
 						<div class="col-12"><span class="form-label d-block" id="suModeLabel"><?= h(t('api_user')) ?> <span class="text-danger">*</span>
-							<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('api_user_hint')) ?>" title="<?= h(t('api_user_hint')) ?>"><i class="bi bi-info-circle"></i></span></span>
+							<?= nu_info_tip(t('api_user_hint')) ?></span>
 							<div class="btn-group nuApiSuMode" role="radiogroup" aria-labelledby="suModeLabel"><?php /* 0.8.530: either a new service user or an existing one */ ?>
 								<input type="radio" class="btn-check" name="su_mode" id="suModeNew" value="new"<?= $suMode === 'new' ? ' checked' : '' ?>><label class="btn btn-outline-primary" for="suModeNew"><i class="bi bi-person-plus me-1"></i><?= h(t('api_su_mode_new')) ?></label>
 								<input type="radio" class="btn-check" name="su_mode" id="suModeExisting" value="existing"<?= $suMode === 'existing' ? ' checked' : '' ?>><label class="btn btn-outline-primary" for="suModeExisting"><i class="bi bi-person-check me-1"></i><?= h(t('api_su_mode_existing')) ?></label>
@@ -254,7 +254,7 @@ curl -s -H 'Authorization: Bearer &lt;access_token&gt;' '<?= h($base) ?>/users?l
 							<button class="btn btn-sm btn-outline-secondary w-100" type="submit"><i class="bi bi-x-octagon me-1"></i><?= h(t('api_revoke')) ?></button>
 						</form>
 						<a class="btn btn-sm btn-outline-secondary" href="<?= h(nu_url('apiplayground')) ?>"><i class="bi bi-terminal me-1"></i><?= h(t('apg_title')) ?></a>
-						<a class="btn btn-sm btn-outline-secondary" href="<?= h(nu_url('log', ['q' => (string)($db->value('SELECT sus_login_name FROM zzzzsys_user WHERE zzzzsys_user_id = ?', [(string)$client['user_id']]) ?? $client['name'])])) ?>"><i class="bi bi-journal-text me-1"></i><?= h(t('api_log')) ?></a>
+						<a class="btn btn-sm btn-outline-secondary" href="<?= h(nu_url('log', ['q' => (NuAuth::userLogin((string)$client['user_id']) ?: (string)$client['name'])])) ?>"><i class="bi bi-journal-text me-1"></i><?= h(t('api_log')) ?></a>
 						<form method="post" action="<?= h(nu_url('apiclients', ['id' => $id])) ?>" data-confirm="<?= h(t('api_delete_confirm', (string)$client['name'])) ?>" data-confirm-ok="<?= h(t('delete')) ?>" data-confirm-class="btn btn-danger">
 							<?= nu_csrf_field() ?><input type="hidden" name="action" value="delete">
 							<button class="btn btn-sm btn-outline-danger w-100" type="submit"><i class="bi bi-trash me-1"></i><?= h(t('delete')) ?></button>

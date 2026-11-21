@@ -92,7 +92,7 @@ if ($id === '' && $callId === '') {
 					<input class="form-check-input js-autosubmit" type="checkbox" role="switch" name="allow_private" value="1" id="whAllowPrivate"<?= $set['allow_private'] ? ' checked' : '' ?>>
 					<label class="form-check-label" for="whAllowPrivate"><?= h(t('wh_allow_private')) ?></label>
 				</div>
-				<span class="nuInfoTip" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('wh_allow_private_tip')) ?>" title="<?= h(t('wh_allow_private_tip')) ?>"><i class="bi bi-info-circle"></i></span>
+				<?= nu_info_tip(t('wh_allow_private_tip'), '') ?>
 			</div>
 		</form>
 	<?php }
@@ -166,7 +166,7 @@ $selEvents = nu_is_post() ? array_map('strval', (array)($_POST['events'] ?? []))
 $active = nu_is_post() ? nu_check('active') === '1' : ($hook ? $hook['active'] : true);
 $err = static fn(string $k) => isset($errors[$k]) ? '<div class="invalid-feedback d-block">' . h($errors[$k]) . '</div>' : '';
 $inv = static fn(string $k) => isset($errors[$k]) ? ' is-invalid' : '';
-$tip = static fn(string $text) => '<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="' . h($text) . '" title="' . h($text) . '"><i class="bi bi-info-circle"></i></span>';
+$tip = static fn(string $text) => nu_info_tip($text);
 $formOpts = array_filter(nu_forms(), static fn($f, $fid) => !str_starts_with((string)$fid, 'nu') && in_array($f['type'], ['browseedit', 'edit', 'browse'], true), ARRAY_FILTER_USE_BOTH);
 $title = $hook ? $hook['name'] : t('wh_new');
 nu_body_class('nuRecPage');

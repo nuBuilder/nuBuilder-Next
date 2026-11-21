@@ -26,7 +26,7 @@ What it does (the same steps every release):
      nunext.zip also gets the signed library packs of dev/libsrc/ in _install/ (0.8.409, PHPMailer – installed by the installer)
 Then check the package on a test installation: NuUpdate::inspect('…/nunext.zip') must report no errors.
 """
-import datetime, hashlib, json, os, re, shlex, subprocess, sys, zipfile
+import datetime, hashlib, json, os, re, shlex, shutil, subprocess, sys, time, zipfile
 
 sys.stdout.reconfigure(line_buffering=True)                    # 0.8.768: progress reaches a log file line by line
 
@@ -52,46 +52,121 @@ def all_files():
     return sorted(out)
 
 
+def exe(name):
+    """Full path of a program (DeepSource BAN-B607: never start a process by a partial name); None when it is not installed."""
+    if os.path.isabs(name) or os.sep in name:
+        return os.path.abspath(name)
+    return shutil.which(name)
+
+
 def run(cmd):
-    r = subprocess.run(cmd, capture_output=True, text=True)
+    prog = exe(cmd[0])
+    if not prog:
+        return 127, cmd[0] + ': not found'
+    r = subprocess.run([prog, *cmd[1:]], capture_output=True, text=True, check=False)
     return r.returncode, (r.stdout + r.stderr).strip()
 
 
-def checks(files):
+def lint_php(files):
     bad = []
     for p in files:
         if p.endswith('.php') and not p.startswith('vendor/bundled/'):
             code, out = run(['php', '-l', p])
             if code != 0:
                 bad.append(out)
-    code, out = run(['php', 'dev/check_lang.php'])
-    if code != 0:
-        bad.append(out)
-    bad += library_problems()
+    return bad
+
+
+def phpstan():
     for phar in ('../phpstan.phar', os.path.expanduser('~/phpstan.phar')):      # static analysis when PHPStan is at hand (not in the project)
         if os.path.isfile(phar):
             code, out = run(['php', phar, 'analyse', '-c', 'dev/phpstan.neon', '--no-progress', '--memory-limit=1G', '--error-format=raw'])
             print('phpstan: ' + ('ok' if code == 0 else 'errors'))
-            if code != 0:
-                bad.append(out)
-            break
-    if os.path.exists('dev/eslint.config.mjs') and subprocess.run(['which', 'npx'], capture_output=True).returncode == 0 and os.path.isdir('../node_modules/eslint'):
-        code, out = run(['npx', '--prefix', '..', 'eslint', '-c', 'dev/eslint.config.mjs', 'assets/js'])
-        print('eslint: ' + ('ok' if code == 0 else 'errors'))
-        if code != 0:
-            bad.append(out)
-    if os.path.exists('dev/tests/run.php'):
-        code, out = run(['php', 'dev/tests/run.php'])
-        last = out.splitlines()[-1] if out else 'tests: no output'
-        print(last)
-        if code != 0 or not re.match(r'all \d+ tests passed$', last.strip()):   # 0.8.714: a script that died early (exit 0, an error page) fails too
-            bad.append(out)
+            return [out] if code != 0 else []
+    return []
+
+
+def eslint():
+    tool = os.path.abspath('../node_modules/.bin/eslint')
+    if not (os.path.exists('dev/eslint.config.mjs') and os.path.isfile(tool) and exe('node')):
+        return []
+    code, out = run([tool, '-c', 'dev/eslint.config.mjs', 'assets/js'])
+    print('eslint: ' + ('ok' if code == 0 else 'errors'))
+    return [out] if code != 0 else []
+
+
+def unit_tests():
+    if not os.path.exists('dev/tests/run.php'):
+        return []
+    code, out = run(['php', 'dev/tests/run.php'])
+    last = out.splitlines()[-1] if out else 'tests: no output'
+    print(last)
+    if code != 0 or not re.match(r'all \d+ tests passed$', last.strip()):   # 0.8.714: a script that died early (exit 0, an error page) fails too
+        return [out]
+    return []
+
+
+def checks(files):
+    bad = lint_php(files)
+    code, out = run(['php', 'dev/check_lang.php'])
+    if code != 0:
+        bad.append(out)
+    bad += library_problems() + phpstan() + eslint() + unit_tests()
     if not bad and GATE:
         bad += browser_tests()
     elif not GATE:
         print('browser suites: skipped (fast release – run with --gate for the full release gate)')
     if bad:
         sys.exit('checks failed:\n' + '\n'.join(bad))
+
+
+def sync_site(site):
+    run(['rsync', '-a', '--exclude', '/nuconfig.php', '--exclude', '/vendor/packs', '--exclude', '/_libsrc', '--exclude', '_backup', '--exclude', 'temp', '--exclude', 'third_party',
+         '--exclude', 'dev', '--exclude', '.github', '--exclude', 'CLAUDE.md', '--exclude', 'TODO.md', '--exclude', '.deepsource.toml', './', site.rstrip('/') + '/'])
+    time.sleep(3)                                                       # OPcache
+
+
+def test_env(base, db, nub, site):
+    env = dict(os.environ, BASE=base, DB=db, NUB=nub, SITE=site)
+    if not env.get('PKG') and os.path.exists('../nunext.zip'):                 # the last built package: update_check / libreq run too (0.8.679)
+        env['PKG'] = os.path.abspath('../nunext.zip')
+    code, out = run(['npm', 'root', '-g'])
+    if code == 0:
+        env['NODE_PATH'] = out.splitlines()[-1].strip()
+    return env
+
+
+def suite_list(nub):
+    on = os.environ.get
+    return [('smoke', 'dev/tests/smoke.js'), ('e2e', 'dev/tests/e2e.js')] + ([('compat', 'dev/tests/compat.js')] if nub else []) \
+        + ([('load', 'dev/tests/load.js')] if on('NUNEXT_TEST_LOAD') == '1' else []) \
+        + ([('a11y', 'dev/tests/a11y.js')] if on('NUNEXT_TEST_A11Y') == '1' else []) \
+        + ([('zap', 'dev/tests/zap.js')] if on('NUNEXT_TEST_ZAP', '1') != '0' else [])   # large data / accessibility: ~4 minutes each, on request; ZAP (0.8.883): skipped by itself without ../zap
+
+
+def run_suite(name, f, env, db):
+    """One browser suite; 0.8.768: every test line is streamed as it happens ("e2e   12  ok   home_view  812 ms")."""
+    run(['mysql', *shlex.split(db), '-e', "DELETE FROM zzzzsys_nunext_log WHERE event = 'login_failed'"])   # no shell (DeepSource BAN-B602)
+    start = time.time()
+    print(f'{name}: started {time.strftime("%H:%M:%S")}', flush=True)
+    node = exe('node')
+    if not node:
+        return name + ': node not found'
+    with subprocess.Popen([node, f], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env, bufsize=1) as p:
+        out, n = [], 0
+        for line in p.stdout:
+            line = line.rstrip('\n')
+            out.append(line)
+            if line[:5] in ('ok   ', 'skip ', 'FAIL '):
+                n += 1
+                print(f'  {name} {n:4d}  {line}', flush=True)
+        p.wait()
+    out = [l for l in out if l.strip()]
+    mins = int(time.time() - start) // 60
+    print(name + ': ' + (out[-1] if out else 'no output') + f'  ({mins} min)', flush=True)
+    if p.returncode != 0:
+        return name + ':\n' + '\n'.join(l for l in out if l.startswith('FAIL'))
+    return None
 
 
 def browser_tests():
@@ -104,44 +179,11 @@ def browser_tests():
         return []
     site = os.environ.get('NUNEXT_TEST_SITE', '')
     if site:
-        run(['rsync', '-a', '--exclude', '/nuconfig.php', '--exclude', '/vendor/packs', '--exclude', '/_libsrc', '--exclude', '_backup', '--exclude', 'temp', '--exclude', 'third_party',
-             '--exclude', 'dev', '--exclude', '.github', '--exclude', 'CLAUDE.md', '--exclude', 'TODO.md', '--exclude', '.deepsource.toml', './', site.rstrip('/') + '/'])
-        import time
-        time.sleep(3)                                                   # OPcache
+        sync_site(site)
     db = os.environ.get('NUNEXT_TEST_DB', '-unu -pnu nutest')
     nub = os.environ.get('NUNEXT_TEST_NUB', '')
-    env = dict(os.environ, BASE=base, DB=db, NUB=nub, SITE=site)
-    if not env.get('PKG') and os.path.exists('../nunext.zip'):                 # the last built package: update_check / libreq run too (0.8.679)
-        env['PKG'] = os.path.abspath('../nunext.zip')
-    try:
-        env['NODE_PATH'] = subprocess.run(['npm', 'root', '-g'], capture_output=True, text=True).stdout.strip()
-    except OSError:
-        pass
-    suites = [('smoke', 'dev/tests/smoke.js'), ('e2e', 'dev/tests/e2e.js')] + ([('compat', 'dev/tests/compat.js')] if nub else []) \
-        + ([('load', 'dev/tests/load.js')] if os.environ.get('NUNEXT_TEST_LOAD') == '1' else []) \
-        + ([('a11y', 'dev/tests/a11y.js')] if os.environ.get('NUNEXT_TEST_A11Y') == '1' else []) \
-        + ([('zap', 'dev/tests/zap.js')] if os.environ.get('NUNEXT_TEST_ZAP', '1') != '0' else [])   # large data / accessibility: ~4 minutes each, on request; ZAP (0.8.883): skipped by itself without ../zap
-    bad = []
-    for name, f in suites:
-        subprocess.run(['mysql', *shlex.split(db), '-e', "DELETE FROM zzzzsys_nunext_log WHERE event = 'login_failed'"], capture_output=True)   # no shell (DeepSource BAN-B602)
-        # 0.8.768: stream every test line as it happens ("e2e   12  ok   home_view  812 ms") – a long run shows progress, a crash is seen at once
-        import time
-        start = time.time()
-        print(f'{name}: started {time.strftime("%H:%M:%S")}', flush=True)
-        p = subprocess.Popen(['node', f], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env, bufsize=1)
-        out, n = [], 0
-        for line in p.stdout:
-            line = line.rstrip('\n')
-            out.append(line)
-            if line[:5] in ('ok   ', 'skip ', 'FAIL '):
-                n += 1
-                print(f'  {name} {n:4d}  {line}', flush=True)
-        p.wait()
-        out = [l for l in out if l.strip()]
-        mins = int(time.time() - start) // 60
-        print(name + ': ' + (out[-1] if out else 'no output') + f'  ({mins} min)', flush=True)
-        if p.returncode != 0:
-            bad.append(name + ':\n' + '\n'.join(l for l in out if l.startswith('FAIL')))
+    env = test_env(base, db, nub, site)
+    bad = [r for r in (run_suite(name, f, env, db) for name, f in suite_list(nub)) if r]
     if not nub:
         print('compat: skipped (NUNEXT_TEST_NUB not set)')
     return bad

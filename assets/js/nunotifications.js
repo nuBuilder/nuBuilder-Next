@@ -197,7 +197,7 @@
 	// ---- formatted text (0.8.400): the switch turns the text field into a TinyMCE editor (when installed); the server cleans the HTML
 	var fmt = document.getElementById('ntf_format'), body = document.getElementById('ntf_body'), noTiny = document.getElementById('ntfNoTiny');
 	var editor = null, loading = null;
-	function esc(t) { return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+	function esc(s) { return NuUtil.esc(s); }
 	function textToHtml(t) {
 		t = String(t || '').replace(/\r\n?/g, '\n').trim();
 		if (!t) return '';

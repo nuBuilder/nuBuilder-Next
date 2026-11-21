@@ -931,7 +931,7 @@ TXT;
 			return ['form_id' => $formId, 'draft_id' => $draftId];
 		}
 		// a form never published (status Draft, 0.8.810) is changed directly – as design mode does
-		if ((string)$db->value('SELECT sfo_status FROM zzzzsys_form WHERE zzzzsys_form_id = ?', [$formId]) === '0') {
+		if ((string)(nu_form($formId)['status'] ?? '') === '0') {
 			foreach ($plan['columns'] as $c) NuDDL::addColumn($table, $c['name'], $c['type'], $c['length']);
 			$snap = self::toSnapshot($spec, NuFormSnapshot::capture($formId), $formId, $table, $pk);
 			$snap['form']['sfo_status'] = '0';

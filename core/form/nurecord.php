@@ -100,13 +100,12 @@ final class NuRecord
 		$v = $db->value('SELECT ' . NuDB::ident($col) . ' FROM ' . NuDB::ident($meta->table()) . ' WHERE ' . NuDB::ident($meta->primaryKey()) . ' = ?', [$recordId]);
 		$d = json_decode((string)$v, true);
 		if (!is_array($d)) return ['column' => $col, 'added' => null, 'edited' => null];
-		$one = static function ($e) use ($db): ?array {
+		$one = static function ($e): ?array {
 			if (!is_array($e) || !isset($e['user'])) return null;
 			$user = (string)$e['user'];
 			$name = $user;
 			if ($user !== '' && $user !== 'unknown' && $user !== 'globeadmin') {
-				$r = $db->one('SELECT sus_login_name, sus_name FROM zzzzsys_user WHERE zzzzsys_user_id = ?', [$user]);
-				if ($r) $name = trim((string)$r['sus_name']) !== '' ? $r['sus_name'] . ' (' . $r['sus_login_name'] . ')' : (string)$r['sus_login_name'];
+				$name = NuAuth::userLabel($user) ?: $user;
 			}
 			$time = (int)($e['time'] ?? 0);
 			return ['user' => $user, 'name' => $name, 'time' => $time, 'when' => $time > 0 ? date(nu_dfmt('d.m.Y H:i'), $time) : ''];

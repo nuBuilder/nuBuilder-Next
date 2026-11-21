@@ -57,7 +57,7 @@ def minify(p):
         cmd = [TERSER, src, '--compress', 'passes=1', '--mangle', '--comments', 'false', '--output', dst]
     else:
         cmd = [LCSS, '--minify', src, '-o', dst]
-    r = subprocess.run(cmd, capture_output=True, text=True)
+    r = subprocess.run(cmd, capture_output=True, text=True, check=False)
     if r.returncode != 0 or not os.path.isfile(dst):
         raise RuntimeError(f'{p}: ' + (r.stderr or r.stdout).strip())
     return os.path.getsize(src), os.path.getsize(dst)

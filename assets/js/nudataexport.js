@@ -6,14 +6,7 @@
 	'use strict';
 	var $ = function (s, r) { return (r || document).querySelector(s); };
 	var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
-	function el(tag, attrs, kids) {
-		var e = document.createElement(tag);
-		Object.keys(attrs || {}).forEach(function (k) {
-			if (k === 'text') e.textContent = attrs[k]; else if (k === 'class') e.className = attrs[k]; else if (k === 'html') e.innerHTML = attrs[k]; else e.setAttribute(k, attrs[k]);
-		});
-		(kids || []).forEach(function (c) { if (c) e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); });
-		return e;
-	}
+	function el(tag, attrs, kids) { return NuUtil.el(tag, attrs, kids); }
 
 	// ------------------------------------------------------------------ list: import a JSON file
 	var impBtn = $('#dxpImportBtn'), impFile = $('#dxpImportFile');

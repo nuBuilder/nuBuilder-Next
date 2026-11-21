@@ -203,7 +203,7 @@ final class NuListView
 		if ($shared && !self::canManage()) throw new RuntimeException(t('err_forbidden'));
 		$levels = [];
 		if ($shared) {
-			$known = array_column($db->all('SELECT zzzzsys_access_id FROM zzzzsys_access'), 'zzzzsys_access_id');
+			$known = array_map('strval', array_keys(NuAcl::levels()));
 			foreach ((array)($in['levels'] ?? []) as $l) if (in_array((string)$l, $known, true)) $levels[] = (string)$l;
 		}
 		$def = self::normalize((array)($in['def'] ?? []), $L);
@@ -276,7 +276,7 @@ final class NuListView
 	public static function export(array $L): array
 	{
 		if (!self::canManage()) throw new RuntimeException(t('err_forbidden'));
-		$codes = array_column(nu_db()->all('SELECT zzzzsys_access_id, sal_code FROM zzzzsys_access'), 'sal_code', 'zzzzsys_access_id');
+		$codes = NuAcl::levelCodes();
 		$views = [];
 		$default = self::listDefault($L['key']);
 		$defName = in_array($default, self::BUILTIN, true) ? $default : '';
@@ -293,7 +293,7 @@ final class NuListView
 	{
 		if (!self::canManage()) throw new RuntimeException(t('err_forbidden'));
 		if ((int)($data['nunextListViews'] ?? 0) !== 1 || ($data['list'] ?? '') !== $L['key'] || !is_array($data['views'] ?? null)) throw new RuntimeException(t('lv_err_import'));
-		$ids = array_column(nu_db()->all('SELECT zzzzsys_access_id, sal_code FROM zzzzsys_access'), 'zzzzsys_access_id', 'sal_code');
+		$ids = array_map('strval', array_flip(NuAcl::levelCodes()));
 		$existing = [];
 		foreach (self::views($L) as $v) if ($v['scope'] === 'shared') $existing[mb_strtolower($v['name'])] = $v['id'];
 		$n = 0;
@@ -506,7 +506,7 @@ final class NuListView
 	/** (i) tooltip after the title. */
 	public static function infoTip(string $text): string
 	{
-		return '<span class="nuInfoTip fs-6 fw-normal ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="' . h($text) . '" title="' . h($text) . '"><i class="bi bi-info-circle"></i></span>';
+		return nu_info_tip($text, 'fs-6 fw-normal ms-1');
 	}
 
 	/** Head / foot HTML of a page with a list (Tom Select, the editor). */
@@ -871,7 +871,7 @@ final class NuListView
 			$filters[] = ['key' => $k, 'label' => $f['label'], 'options' => $o, 'input' => $input ? ($f['type'] === 'text' ? 'text' : 'date') : ''];
 		}
 		$levels = self::canManage() ? array_map(static fn($a) => ['id' => (string)$a['zzzzsys_access_id'], 'code' => (string)$a['sal_code']],
-			nu_db()->all('SELECT zzzzsys_access_id, sal_code FROM zzzzsys_access ORDER BY sal_code')) : [];
+			array_values(NuAcl::levels())) : [];
 		$texts = [];
 		foreach (['lv_edit_title', 'lv_new_title', 'lv_tab_columns', 'lv_tab_phone', 'lv_tab_filters', 'lv_tab_general', 'lv_name', 'lv_visible', 'lv_width', 'lv_align',
 			'lv_width_auto', 'lv_width_narrow', 'lv_width_wide', 'lv_align_auto', 'lv_align_start', 'lv_align_center', 'lv_align_end', 'lv_card_title', 'lv_card_badge',

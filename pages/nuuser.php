@@ -326,7 +326,7 @@ if (nu_is_post() && nu_post('action') === 'save') {
 
 	if ($v['sus_zzzzsys_access_id'] === '') {
 		$errors['sus_zzzzsys_access_id'] = t('err_required');
-	} elseif (!(int)$db->value('SELECT COUNT(*) FROM zzzzsys_access WHERE zzzzsys_access_id = ?', [$v['sus_zzzzsys_access_id']])) {
+	} elseif (!NuAcl::levelExists((string)$v['sus_zzzzsys_access_id'])) {
 		$errors['sus_zzzzsys_access_id'] = t('err_invalid');
 	} elseif (NuSecurity::restricted()) {
 		// nobody changes his own access level; admin-equivalent levels are given by the globeadmin only (Admin tools → Security check)
@@ -341,7 +341,7 @@ if (nu_is_post() && nu_post('action') === 'save') {
 	// additional access levels (0.8.585): existing levels, valid dates; restricted admins: not for the own record, no admin-equivalent new ones
 	$xaOldIds = array_column($xaOld, 0);
 	foreach ($xaSel as [$xa, $xu]) {
-		if (!(int)$db->value('SELECT COUNT(*) FROM zzzzsys_access WHERE zzzzsys_access_id = ?', [$xa])) { $errors['xa'] = t('err_invalid'); break; }
+		if (!NuAcl::levelExists((string)$xa)) { $errors['xa'] = t('err_invalid'); break; }
 		if ($xu !== '' && !nu_valid_date($xu)) { $errors['xa'] = t('xa_err_date'); break; }
 		if (NuSecurity::restricted() && !in_array($xa, $xaOldIds, true) && NuSecurity::adminRightsOf($xa)) { $errors['xa'] = t('secchk_err_admin_level'); break; }
 	}
@@ -463,7 +463,7 @@ if (nu_is_post() && nu_post('action') === 'save') {
 }
 
 // ------------------------------------------------------------------ view data
-$accessLevels = $db->all('SELECT zzzzsys_access_id, sal_code, sal_description, sal_group FROM zzzzsys_access ORDER BY sal_group, sal_code');
+$accessLevels = array_values(NuAcl::levelsByGroup());
 // Position / Department / Team: HTML5 datalist with the values of the OTHER, ACTIVE users (Valid until empty, a zero date or today
 // or later – archived / expired users are left out), trimmed, without duplicates (ignoring case), sorted alphabetically
 $suggest = [];
@@ -503,7 +503,7 @@ $input = static function (string $col, string $type = 'text', array $attr = []) 
 	if (isset(NU_USER_LABELS[$lk])) {
 		$own = nu_user_label($lk) !== '';
 		$tipTxt = $own ? t('user_lbl_tip_own', nu_text($lk), '$' . NU_USER_LABELS[$lk]) : t('user_lbl_tip', '$' . NU_USER_LABELS[$lk]);
-		$ren = '<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="' . h($tipTxt) . '" title="' . h($tipTxt) . '"><i class="bi bi-info-circle"></i></span>';
+		$ren = nu_info_tip($tipTxt);
 		if (NuUserLabel::canRename()) $ren .= '<button type="button" class="btn btn-link btn-sm p-0 ms-1 align-baseline nuUserLblEdit" data-key="' . h($lk) . '" data-for="' . h($col) . '" data-value="' . h(NuUserLabel::stored($lk)) . '" data-builtin="' . h(nu_text($lk)) . '" title="' . h(t('user_lbl_edit')) . '" aria-label="' . h(t('user_lbl_edit')) . '"><i class="bi bi-pencil" aria-hidden="true"></i></button>';
 	}
 	$html = '<label class="form-label" for="' . $col . '"><span class="nuUserLblText">' . h(t($lk)) . '</span>' . (!empty($attr['required']) ? ' <span class="text-danger">*</span>' : '') . ($uni ? nu_unique_mark(!empty($attr['required'])) : '') . '</label>' . $ren
@@ -652,7 +652,7 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 								$ltNew = ($_SESSION['nu_ltok_link']['id'] ?? '') === $id ? (string)$_SESSION['nu_ltok_link']['link'] : '';
 								unset($_SESSION['nu_ltok_link']); ?>
 								<details class="mt-2" id="loginTokenBox" data-nu-noguard<?= $ltNew !== '' ? ' open' : '' ?>><summary class="small"><i class="bi bi-key me-1"></i><?= h(t('ltok_title')) ?>
-									<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('ltok_tip')) ?>" title="<?= h(t('ltok_tip')) ?>"><i class="bi bi-info-circle"></i></span></summary>
+									<?= nu_info_tip(t('ltok_tip')) ?></summary>
 									<div class="small text-body-secondary mt-1" id="loginTokenState"><?= h($ltState === null ? t('ltok_state_none') : ($ltState === 0 ? t('ltok_state_open') : ($ltState < time() ? t('ltok_state_expired', date(nu_dfmt('d.m.Y H:i'), $ltState)) : t('ltok_state_until', date(nu_dfmt('d.m.Y H:i'), $ltState))))) ?></div>
 									<?php if ($ltNew !== ''): ?>
 										<div class="input-group input-group-sm mt-1">
@@ -788,7 +788,7 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 					<div>
 					<?php if ($admRoleMay || $admRoleCur !== ''): $admRoles = NuAdmin::roles(); ?>
 					<div class="mb-3" id="admRoleField">
-						<label class="form-label" for="admin_role"><?= h(t('adm_role_field')) ?></label><span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('adm_role_field_tip')) ?>" title="<?= h(t('adm_role_field_tip')) ?>"><i class="bi bi-info-circle"></i></span>
+						<label class="form-label" for="admin_role"><?= h(t('adm_role_field')) ?></label><?= nu_info_tip(t('adm_role_field_tip')) ?>
 						<?php $canOpenRole = NuAdmin::can('adminroles', 'view'); $roleUrl = nu_url('adminroles', ['id' => '__ID__']);   // open the role in a new tab (0.8.738) ?>
 						<div class="<?= $canOpenRole ? 'input-group' : '' ?>">
 						<select class="form-select" id="admin_role" name="admin_role"<?= $admRoleMay ? '' : ' disabled' ?>>
@@ -805,7 +805,7 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 					<?php endif; ?>
 					</div>
 					<div class="userCardAccount">
-							<label class="form-label" for="sus_expires_on"><?= h(t('user_expires')) ?></label><span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('user_expires_hint')) ?>" title="<?= h(t('user_expires_hint')) ?>"><i class="bi bi-info-circle"></i></span>
+							<label class="form-label" for="sus_expires_on"><?= h(t('user_expires')) ?></label><?= nu_info_tip(t('user_expires_hint')) ?>
 							<input type="date" class="form-control<?= nu_invalid($errors, 'sus_expires_on') ?>" id="sus_expires_on" name="sus_expires_on" value="<?= h($v['sus_expires_on']) ?>">
 							<?= nu_feedback($errors, 'sus_expires_on') ?>
 					</div>
@@ -855,7 +855,7 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 					<div class="mb-3" id="xaBox">
 						<input type="hidden" name="xa_sent" value="1">
 						<div class="d-flex align-items-center gap-2 mb-1">
-							<span class="form-label mb-0"><?= h(t('xa_title')) ?></span><span class="nuInfoTip" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('xa_tip')) ?>" title="<?= h(t('xa_tip')) ?>"><i class="bi bi-info-circle"></i></span>
+							<span class="form-label mb-0"><?= h(t('xa_title')) ?></span><?= nu_info_tip(t('xa_tip'), '') ?>
 							<span class="ms-auto d-flex gap-2"><button type="button" class="btn btn-sm btn-outline-secondary<?= $xaSel ? '' : ' d-none' ?>" id="xaEff" data-bs-toggle="modal" data-bs-target="#xaEffDlg"><i class="bi bi-shield-check me-1"></i><?= h(t('eff_btn')) ?></button>
 							<button type="button" class="btn btn-sm btn-outline-secondary" id="xaAdd"<?= $canSave ? '' : ' disabled' ?>><i class="bi bi-plus-lg me-1"></i><?= h(t('xa_add')) ?></button></span>
 						</div>
@@ -993,7 +993,7 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 			<div class="form-check form-switch">
 				<input class="form-check-input" type="checkbox" role="switch" id="pwrBlock" name="pwr_block" value="1">
 				<label class="form-check-label" for="pwrBlock"><?= h(t('pwr_block')) ?></label>
-				<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('pwr_block_tip')) ?>" title="<?= h(t('pwr_block_tip')) ?>"><i class="bi bi-info-circle"></i></span>
+				<?= nu_info_tip(t('pwr_block_tip')) ?>
 			</div>
 			<?php if ($pwrPk > 0): ?>
 				<div class="form-check ms-4">
@@ -1104,7 +1104,7 @@ $effT = ['view' => t('view'), 'add' => t('add'), 'save' => t('save'), 'delete' =
 	<div class="modal-dialog modal-xl modal-dialog-scrollable"><div class="modal-content">
 		<div class="modal-header">
 			<h2 class="modal-title h5" id="xaEffTitle"><i class="bi bi-shield-check me-2"></i><?= h(t('eff_title')) ?></h2>
-			<span class="nuInfoTip ms-2" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('eff_hint')) ?>" title="<?= h(t('eff_hint')) ?>"><i class="bi bi-info-circle"></i></span>
+			<?= nu_info_tip(t('eff_hint'), 'ms-2') ?>
 			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?= h(t('close')) ?>"></button>
 		</div>
 		<div class="modal-body">

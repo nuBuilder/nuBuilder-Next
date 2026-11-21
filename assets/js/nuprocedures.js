@@ -12,12 +12,7 @@
 	var ro = !!form.querySelector('fieldset[disabled]');
 	var editors = {};
 
-	function el(tag, attrs, kids) {
-		var e = document.createElement(tag);
-		Object.keys(attrs || {}).forEach(function (k) { if (k === 'text') e.textContent = attrs[k]; else if (k === 'class') e.className = attrs[k]; else e.setAttribute(k, attrs[k]); });
-		(kids || []).forEach(function (c) { if (c) e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); });
-		return e;
-	}
+	function el(tag, attrs, kids) { return NuUtil.el(tag, attrs, kids); }
 
 	// ------------------------------------------------------------------ code editors (CodeMirror 5)
 	$$('textarea.procCode').forEach(function (ta) {
@@ -113,7 +108,7 @@
 		var tb = last && $('#procTabs [data-tab="' + last + '"]');
 		if (tb && nuBs.ready() && !form.querySelector('.is-invalid')) nuBs.tab(tb).show();
 	} catch (e) { /* ignore */ }
-	$$('#procTabs [data-tab]').forEach(function (b) { b.addEventListener('shown.bs.tab', function () { try { localStorage.setItem(TAB_KEY, b.getAttribute('data-tab')); } catch (e) { /* ignore */ } }); });
+	$$('#procTabs [data-tab]').forEach(function (b) { b.addEventListener('shown.bs.tab', function () { nuStore.set(TAB_KEY, b.getAttribute('data-tab')); }); });
 
 	// ------------------------------------------------------------------ test run (saved version), with nuOnProcedureRun() first
 	var dirty = false;

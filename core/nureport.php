@@ -95,7 +95,8 @@ final class NuReport
 		$granted = $id !== '' && $db->tableExists(self::ACCESS)
 			? array_flip(array_column($db->all('SELECT sre_zzzzsys_access_id FROM zzzzsys_access_report WHERE sre_zzzzsys_report_id = ?', [$id]), 'sre_zzzzsys_access_id')) : [];
 		$out = [];
-		foreach ($db->all('SELECT zzzzsys_access_id, sal_code, sal_description, sal_group FROM zzzzsys_access ORDER BY sal_group, sal_code') as $a) {
+		foreach (NuAcl::levelsByGroup() as $a) {
+			$a = ['zzzzsys_access_id' => (string)$a['zzzzsys_access_id'], 'sal_code' => $a['sal_code'], 'sal_description' => $a['sal_description'], 'sal_group' => $a['sal_group'] ?? null];
 			$out[] = $a + ['granted' => isset($granted[$a['zzzzsys_access_id']])];
 		}
 		return $out;
@@ -105,7 +106,7 @@ final class NuReport
 	public static function setAccess(string $id, array $accessIds): array
 	{
 		$db = nu_db();
-		$codes = array_column($db->all('SELECT zzzzsys_access_id, sal_code FROM zzzzsys_access'), 'sal_code', 'zzzzsys_access_id');
+		$codes = NuAcl::levelCodes();
 		$want = array_values(array_intersect(array_map('strval', $accessIds), array_keys($codes)));
 		$have = array_column($db->all('SELECT sre_zzzzsys_access_id FROM zzzzsys_access_report WHERE sre_zzzzsys_report_id = ?', [$id]), 'sre_zzzzsys_access_id');
 		$add = array_diff($want, $have);
@@ -132,7 +133,7 @@ final class NuReport
 		if ($row['sre_description'] === '') $errors['sre_description'] = t('err_required');
 		if ($row['sre_zzzzsys_php_id'] === '') $errors['sre_zzzzsys_php_id'] = t('err_required');
 		elseif (!preg_match('/^(PROCEDURE|TABLE|SQL):\S+$/', $row['sre_zzzzsys_php_id'])) $errors['sre_zzzzsys_php_id'] = t('rpt_err_source');
-		if ($row['sre_zzzzsys_form_id'] !== null && !$db->value('SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id = ?', [$row['sre_zzzzsys_form_id']])) $errors['sre_zzzzsys_form_id'] = t('form_err_not_found');
+		if ($row['sre_zzzzsys_form_id'] !== null && !nu_form_exists((string)$row['sre_zzzzsys_form_id'])) $errors['sre_zzzzsys_form_id'] = t('form_err_not_found');
 		if (array_key_exists('sre_layout', $in)) {
 			$row['sre_layout'] = self::layoutJson($in['sre_layout']);
 			if ($id !== '') $row['sre_layout'] = self::keepTypes($row['sre_layout'], (string)$db->value('SELECT sre_layout FROM zzzzsys_report WHERE zzzzsys_report_id = ?', [$id]));

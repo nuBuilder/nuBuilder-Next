@@ -42,7 +42,7 @@ $checks = NuSecurity::checks();
 $count = static fn(string $st) => count(array_filter($checks, static fn($c) => $c['status'] === $st));
 $set = NuSecurity::settings();
 $icon = ['ok' => 'bi-check-circle-fill text-success', 'warn' => 'bi-exclamation-triangle-fill text-warning', 'bad' => 'bi-x-octagon-fill text-danger', 'info' => 'bi-info-circle-fill text-info'];
-$tip = static fn(string $text): string => '<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="' . h($text) . '" title="' . h($text) . '"><i class="bi bi-info-circle"></i></span>';
+$tip = static fn(string $text): string => nu_info_tip($text);
 
 $secTab = ($_GET['tab'] ?? '') === 'settings' ? 'settings' : 'checks';
 nu_layout_start(t('secchk_title'), 'home', ['container' => 'nuContainer', 'settings' => 'security']);

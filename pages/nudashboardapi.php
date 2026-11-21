@@ -16,9 +16,7 @@ header('Cache-Control: no-store');
 
 function nu_dash_out(array $data, int $status = 200): never
 {
-	http_response_code($status);
-	echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
-	exit;
+	nu_json($data, $status);
 }
 
 if (!nu_is_post()) nu_dash_out(['ok' => false, 'error' => 'POST required'], 405);

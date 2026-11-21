@@ -186,15 +186,6 @@ final class NuFormat
 		return $m[3] ? $m[0] : $value;
 	}
 
-	/** Value to store for a masked input ("store": masked|raw). */
-	public static function maskStoreValue(string $value, string $fmt): string
-	{
-		if ($value === '') return '';
-		[$masked, $raw, , $fits] = self::mask($value, substr($fmt, 2));
-		if (!$fits) return $value;
-		return self::options($fmt)['store'] === 'raw' ? $raw : $masked;
-	}
-
 	/** False when a text mask must be complete and the value is not. */
 	public static function maskComplete(string $value, string $fmt): bool
 	{

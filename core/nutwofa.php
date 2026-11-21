@@ -190,17 +190,6 @@ final class NuTwoFA
 		return $n;
 	}
 
-	/** Number of authenticator secrets stored without encryption (Security check). */
-	public static function plainCount(): int
-	{
-		try {
-			NuSchema::ensure();
-			return (int)nu_db()->value("SELECT COUNT(*) FROM zzzzsys_nunext_user_2fa WHERE totp_secret IS NOT NULL AND totp_secret <> '' AND totp_secret NOT LIKE 'enc:%'");
-		} catch (Throwable) {
-			return 0;
-		}
-	}
-
 	private static function open(string $s): string
 	{
 		return NuSecret::open($s, '');

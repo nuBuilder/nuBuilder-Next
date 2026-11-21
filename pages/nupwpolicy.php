@@ -34,8 +34,7 @@ if (nu_is_post() && nu_post('action') === 'save') {
 
 $s = NuPwPolicy::settings();
 $cfgMin = max(1, (int)nu_cfg('nuConfigPasswordMinLength'));
-$levels = [];
-try { foreach (nu_db()->all('SELECT zzzzsys_access_id, sal_code, sal_description FROM zzzzsys_access ORDER BY sal_code') as $r) $levels[] = $r; } catch (Throwable) { /* none */ }
+$levels = array_values(NuAcl::levels());
 [$nExp, $nSoon] = NuPwPolicy::counts();
 $dis = $canChange ? '' : ' disabled';
 $tip = static fn(string $text): string => NuListView::infoTip($text);
@@ -94,7 +93,7 @@ nu_layout_start(t('pwp_title'), 'home', ['container' => 'nuContainer', 'settings
 				<p class="small text-body-secondary mt-2"><?= h(t('pwp_levels_tip')) ?></p>
 				<div class="table-responsive"><table class="table table-sm nu-table align-middle mb-0"><tbody>
 				<?php foreach ($levels as $l): $id = (string)$l['zzzzsys_access_id']; ?>
-					<tr><td><code><?= h((string)$l['sal_code']) ?></code> <span class="small text-body-secondary"><?= h((string)$l['sal_description']) ?></span></td>
+					<tr><td><label for="<?= h('pwp_lv_' . $id) ?>"><code><?= h((string)$l['sal_code']) ?></code> <span class="small text-body-secondary"><?= h((string)$l['sal_description']) ?></span></label></td>
 						<td class="nuPwpLevelSel"><?= $every('lv[' . $id . ']', 0, 'pwp_lv_' . $id, true, $s['levels'][$id] ?? null) ?></td></tr>
 				<?php endforeach; ?>
 				</tbody></table></div>

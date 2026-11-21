@@ -424,7 +424,7 @@ final class NuCompat
 			$cols = array_values(array_filter(['slf_data_mode', 'slf_form_type'], static fn($c) => isset($ac[$c])));
 			if ($cols) {
 				$acc = [];
-				foreach ($db->all('SELECT zzzzsys_access_id, sal_code FROM zzzzsys_access') as $a) $acc[(string)$a['zzzzsys_access_id']] = (string)$a['sal_code'];
+				foreach (NuAcl::levels() as $a) $acc[(string)$a['zzzzsys_access_id']] = (string)$a['sal_code'];
 				foreach ($db->all('SELECT slf_zzzzsys_access_id, slf_zzzzsys_form_id, ' . implode(', ', $cols) . ' FROM zzzzsys_access_form') as $r) {
 					$fid = (string)$r['slf_zzzzsys_form_id'];
 					$dm = (string)($r['slf_data_mode'] ?? ''); $ft = (string)($r['slf_form_type'] ?? '');
@@ -498,7 +498,7 @@ final class NuCompat
 		try {
 			$miss = NuFormEveryone::missing();
 			if ($miss) {
-				$codes = array_column($db->all('SELECT zzzzsys_access_id, sal_code FROM zzzzsys_access'), 'sal_code', 'zzzzsys_access_id');
+				$codes = NuAcl::levelCodes();
 				foreach ($miss as $fid => $lv) $hit('FE', 'Form · ' . ($forms[$fid]['sfo_code'] ?? $fid), $fid, implode(', ', array_map(static fn($a) => (string)($codes[$a] ?? $a), $lv)));
 			}
 		} catch (Throwable) { /* no settings table */ }

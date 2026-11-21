@@ -34,6 +34,7 @@ function nu_head(string $title, string $extraHead = ''): void
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<?php if (session_status() === PHP_SESSION_ACTIVE): // the form token for page scripts (assets/js/nuutil.js NuUtil.csrf) ?><meta name="nu-csrf" content="<?= h(nu_csrf_token()) ?>"><?php endif; ?>
 	<title><?= $env !== '' ? '[' . h($env) . '] ' : '' ?><?= h($title) ?> · <?= h(nu_app_title()) ?></title>
 	<script src="<?= nu_asset('assets/js/nutheme.js') ?>"></script>
 	<link rel="stylesheet" href="<?= nu_asset(NU_BS . (nu_lang_rtl() ? '/css/bootstrap.rtl.min.css' : '/css/bootstrap.min.css')) ?>">
@@ -497,6 +498,7 @@ function nu_layout_end(string $extraBody = '', bool $bare = false): void
 </div>
 <script src="<?= nu_asset(NU_BS . '/js/bootstrap.bundle.min.js') ?>"></script>
 <script src="<?= nu_asset('assets/js/nubs.js') ?>"></script>
+<script src="<?= nu_asset('assets/js/nuutil.js') ?>"></script>
 <script src="<?= nu_asset('assets/js/nuapp.js') ?>"></script>
 <?= NuCustomCode::page() !== 'form' ? NuCustomCode::jsTag() : '' /* Global JS (0.8.523) – form pages load it in pages/nuform.php before Setup → Header */ ?>
 <?php if (!$bare && NuAdmin::any()): ?><script src="<?= nu_asset('assets/js/nupalette.js') ?>"></script><?php endif; ?>
@@ -618,6 +620,7 @@ function nu_page_minimal(string $title, string $detail = '', bool $withHome = fa
 </main>
 <script src="<?= nu_asset(NU_BS . '/js/bootstrap.bundle.min.js') ?>"></script>
 <script src="<?= nu_asset('assets/js/nubs.js') ?>"></script>
+<script src="<?= nu_asset('assets/js/nuutil.js') ?>"></script>
 <script src="<?= nu_asset('assets/js/nuapp.js') ?>"></script>
 </body>
 </html>
@@ -761,7 +764,7 @@ function nu_ai_context_menu(string $id, string $tipKey = 'fai_ctx_tip'): string
 		. '<li><div class="dropdown-item-text"><div class="form-check form-switch mb-0"><input class="form-check-input" type="checkbox" role="switch" id="' . h($id) . 'Full" data-nu-ctx-full>'
 		. '<label class="form-check-label" for="' . h($id) . 'Full">' . h(t('fai_ctx_full')) . '</label></div></div></li>'
 		. '</ul></div>'
-		. '<span class="nuInfoTip" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="' . h($tip) . '" title="' . h($tip) . '"><i class="bi bi-info-circle"></i></span>';
+		. nu_info_tip($tip, '');
 }
 
 function nu_back_button(?string $route = null, ?string $url = null, string $class = ''): string
@@ -784,6 +787,17 @@ function nu_back_button(?string $route = null, ?string $url = null, string $clas
  * Home and the page – default: Settings / section inside the settings centre, else the Back target's title), id (of the bar),
  * h1_id, class (more classes of the bar). List pages keep NuListView's card with the title bar inside.
  */
+/**
+ * (i) tooltip next to a label or title – the one markup of the info icon (UI pattern; 0.8.1350, code review R3). Outside the <label>, so a
+ * click does not toggle a switch. $cls: classes of the span (ms-1 by default); $wide: the wide tooltip; $trigger: e.g. 'hover focus click'.
+ */
+function nu_info_tip(string $text, string $cls = 'ms-1', bool $wide = true, string $trigger = ''): string
+{
+	return '<span class="nuInfoTip' . ($cls !== '' ? ' ' . h($cls) : '') . '" tabindex="0" role="' . ($trigger !== '' ? 'button' : 'img') . '" data-bs-toggle="tooltip"'
+		. ($trigger !== '' ? ' data-bs-trigger="' . h($trigger) . '"' : '') . ($wide ? ' data-bs-custom-class="nuTipWide"' : '')
+		. ' aria-label="' . h($text) . '" title="' . h($text) . '"><i class="bi bi-info-circle"></i></span>';
+}
+
 function nu_page_header(string $title, array $o = []): string
 {
 	static $label = ['forms' => 'nav_forms', 'users' => 'nav_users', 'reports' => 'rpt_title_list', 'apiclients' => 'api_title', 'dashboards' => 'dash_title',
@@ -889,6 +903,7 @@ function nu_center_end(string $extraBody = ''): void
 </main>
 <script src="<?= nu_asset(NU_BS . '/js/bootstrap.bundle.min.js') ?>"></script>
 <script src="<?= nu_asset('assets/js/nubs.js') ?>"></script>
+<script src="<?= nu_asset('assets/js/nuutil.js') ?>"></script>
 <script src="<?= nu_asset('assets/js/nuapp.js') ?>"></script>
 <?= NuCustomCode::jsTag() ?>
 <?= $extraBody ?>

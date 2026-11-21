@@ -66,7 +66,7 @@ if ($isNew && ($_GET['start'] ?? '') !== 'wizard') {
 			<div class="mb-3"><label class="form-label" for="nuNfPageDesc"><?= h(t('builder_description')) ?></label>
 				<input class="form-control" id="nuNfPageDesc" maxlength="300" required></div>
 			<div class="mb-3"><label class="form-label" for="nuNfPageCode"><?= h(t('builder_code')) ?></label>
-				<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('page_code_tip')) ?>" title="<?= h(t('page_code_tip')) ?>"><i class="bi bi-info-circle"></i></span>
+				<?= nu_info_tip(t('page_code_tip')) ?>
 				<div class="input-group"><span class="input-group-text small">custom/pages/</span><input class="form-control font-monospace" id="nuNfPageCode" maxlength="64" pattern="[A-Za-z0-9][A-Za-z0-9_-]{0,63}" required autocomplete="off" spellcheck="false"></div></div>
 			<div class="mb-1"><label class="form-label" for="nuNfPageMode"><?= h(t('page_open_mode')) ?></label>
 				<select class="form-select" id="nuNfPageMode"><?php foreach (NuPage::MODES as $m): ?><option value="<?= $m ?>"><?= h(t('page_mode_' . $m)) ?></option><?php endforeach; ?></select></div>
@@ -189,7 +189,7 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 						</div>
 						<div class="col-sm-5 nbNew d-none">
 							<label class="form-label" for="nb_new_pk"><?= h(t('builder_primary_key')) ?></label><?php // the help as (i) next to the label (0.8.656, was a line below the field) ?>
-							<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('builder_new_pk_help')) ?>" title="<?= h(t('builder_new_pk_help')) ?>"><i class="bi bi-info-circle"></i></span>
+							<?= nu_info_tip(t('builder_new_pk_help')) ?>
 							<div class="input-group">
 								<input class="form-control" id="nb_new_pk" maxlength="64" autocomplete="off" spellcheck="false">
 								<select class="form-select flex-grow-0 w-auto" id="nb_new_pk_type" aria-label="<?= h(t('builder_pk_type')) ?>">
@@ -222,7 +222,7 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 							<div class="form-check form-switch mt-2">
 								<input class="form-check-input" type="checkbox" role="switch" id="nb_nulog" value="1">
 								<label class="form-check-label" for="nb_nulog"><?= h(t('builder_nulog')) ?></label>
-								<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('builder_nulog_tip')) ?>" title="<?= h(t('builder_nulog_tip')) ?>"><i class="bi bi-info-circle"></i></span>
+								<?= nu_info_tip(t('builder_nulog_tip')) ?>
 							</div>
 						</div>
 					</div>
@@ -239,7 +239,7 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 					</div>
 					<?php // after creating (0.8.602): run button on nuBuilder Forte's User Home, rights + start page tile for access levels
 					$uhOk = NuUserHome::available();
-					$nbLevels = NuAcl::can(NuAcl::FORM_ACCESS, 'save') ? nu_db()->all('SELECT zzzzsys_access_id, sal_code, sal_description, sal_group FROM zzzzsys_access ORDER BY sal_code') : null;
+					$nbLevels = NuAcl::can(NuAcl::FORM_ACCESS, 'save') ? array_values(NuAcl::levels()) : null;
 					if ($uhOk || $nbLevels !== null): ?>
 					<fieldset class="nbAfter border-top mt-4 pt-3">
 						<legend class="form-label fs-6 fw-semibold mb-2"><?= h(t('builder_after')) ?></legend>
@@ -247,11 +247,11 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 						<div class="form-check form-switch mb-3">
 							<input class="form-check-input" type="checkbox" role="switch" id="nb_userhome" value="1" checked>
 							<label class="form-check-label" for="nb_userhome"><?= h(t('builder_userhome')) ?></label>
-							<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('builder_userhome_tip')) ?>" title="<?= h(t('builder_userhome_tip')) ?>"><i class="bi bi-info-circle"></i></span>
+							<?= nu_info_tip(t('builder_userhome_tip')) ?>
 						</div>
 						<?php endif; ?>
 						<?php if ($nbLevels !== null): ?>
-						<div class="mb-1"><span class="form-label"><?= h(t('builder_levels')) ?></span><span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('builder_levels_tip')) ?>" title="<?= h(t('builder_levels_tip')) ?>"><i class="bi bi-info-circle"></i></span></div>
+						<div class="mb-1"><span class="form-label"><?= h(t('builder_levels')) ?></span><?= nu_info_tip(t('builder_levels_tip')) ?></div>
 						<?php if (!$nbLevels): ?>
 							<div class="small text-body-secondary"><?= h(t('builder_levels_none')) ?></div>
 						<?php else: ?>

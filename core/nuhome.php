@@ -796,7 +796,7 @@ final class NuHome
 			$id = (string)$own['zzzzsys_nunext_list_view_id'];
 			$db->update(NuListView::TABLE, ['definition' => $def, 'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => mb_substr($login, 0, 50)], 'zzzzsys_nunext_list_view_id', $id);
 		} else {
-			$name = $acc === self::ALL_LEVELS ? t('home_u_default') : (string)($db->value('SELECT sal_code FROM zzzzsys_access WHERE zzzzsys_access_id = ?', [$acc]) ?? $acc);
+			$name = $acc === self::ALL_LEVELS ? t('home_u_default') : (string)(NuAcl::level($acc)['sal_code'] ?? $acc);
 			$id = nu_id();
 			$db->insert(NuListView::TABLE, ['zzzzsys_nunext_list_view_id' => $id, 'list_key' => self::LIST_USER, 'scope' => 'shared', 'owner' => '', 'name' => mb_substr($name, 0, 100),
 				'access_ids' => json_encode([$acc]), 'definition' => $def, 'sort_order' => 0, 'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => mb_substr($login, 0, 50)]);
@@ -1244,7 +1244,7 @@ final class NuHome
 		}
 		$db = nu_db();
 		$forms = nu_forms();
-		$home = (string)($db->value('SELECT sal_zzzzsys_form_id FROM zzzzsys_access WHERE zzzzsys_access_id = ?', [$access]) ?? '');
+		$home = (string)(NuAcl::level($access)['sal_zzzzsys_form_id'] ?? '');
 		$fTiles = [];
 		// the signed-in user's own page (not the editor's preview): also the forms / reports of his additional access levels (0.8.585)
 		$u = NuAuth::user();
@@ -1465,16 +1465,16 @@ final class NuHome
 	/** A report by id: ['code', 'label', 'row'] or null. */
 	public static function report(string $id): ?array
 	{
-		static $cache = [];
 		if ($id === '') return null;
-		if (array_key_exists($id, $cache)) return $cache[$id];
-		try {
-			$db = nu_db();
-			$r = $db->tableExists(NuReport::TABLE) ? $db->one('SELECT * FROM zzzzsys_report WHERE zzzzsys_report_id = ?', [$id]) : null;
-		} catch (Throwable) {
-			$r = null;
-		}
-		return $cache[$id] = $r ? ['code' => (string)$r['sre_code'], 'label' => (string)($r['sre_description'] ?: $r['sre_code']), 'row' => $r] : null;
+		return NuMemo::get('report:' . $id, ['zzzzsys_report'], static function () use ($id): ?array {
+			try {
+				$db = nu_db();
+				$r = $db->tableExists(NuReport::TABLE) ? $db->one('SELECT * FROM zzzzsys_report WHERE zzzzsys_report_id = ?', [$id]) : null;
+			} catch (Throwable) {
+				$r = null;
+			}
+			return $r ? ['code' => (string)$r['sre_code'], 'label' => (string)($r['sre_description'] ?: $r['sre_code']), 'row' => $r] : null;
+		});
 	}
 
 	/**
@@ -1486,7 +1486,7 @@ final class NuHome
 		$rows = self::userRows();
 		$empty = static fn(string $k): bool => isset($rows[$k]) && self::layoutEmpty((string)$rows[$k]['definition']);   // 0.8.1279: own, but no tiles
 		$out = [self::ALL_LEVELS => ['label' => t('home_u_default'), 'source' => isset($rows[self::ALL_LEVELS]) ? 'level' : 'auto', 'empty' => $empty(self::ALL_LEVELS)]];
-		foreach (nu_db()->all('SELECT zzzzsys_access_id, sal_code, sal_description FROM zzzzsys_access ORDER BY sal_code') as $a) {
+		foreach (NuAcl::levels() as $a) {
 			$id = (string)$a['zzzzsys_access_id'];
 			$out[$id] = ['label' => $a['sal_code'] . ($a['sal_description'] ? ' – ' . $a['sal_description'] : ''),
 				'source' => isset($rows[$id]) ? 'level' : (isset($rows[self::ALL_LEVELS]) ? 'default' : 'auto'), 'empty' => $empty($id)];
@@ -1603,7 +1603,7 @@ final class NuHome
 			if (is_string($j) && preg_match('/"prefix"\s*:\s*"([A-Za-z0-9_]+)"/', $j, $m)) $pre[] = $m[1];
 		}
 		$own = static fn(string $id): bool => (bool)array_filter($pre, static fn($p) => str_starts_with($id, $p));
-		$all = array_filter($db->all('SELECT zzzzsys_access_id, sal_zzzzsys_form_id FROM zzzzsys_access'), static fn($r) => !$own((string)$r['zzzzsys_access_id']));
+		$all = array_filter(NuAcl::levels(), static fn($r) => !$own((string)$r['zzzzsys_access_id']));
 		if (!$all) return 0;
 		$lv = self::startLevels();
 		$n = 0;
@@ -1636,7 +1636,7 @@ final class NuHome
 		if (!$u || !empty($u['globeadmin'])) return null;
 		$acc = (string)($u['access_id'] ?? '');
 		if (self::startMode($acc) !== 'form') return null;
-		$fid = (string)(nu_db()->value('SELECT sal_zzzzsys_form_id FROM zzzzsys_access WHERE zzzzsys_access_id = ?', [$acc]) ?? '');
+		$fid = (string)(NuAcl::level($acc)['sal_zzzzsys_form_id'] ?? '');
 		if ($fid === '' || $fid === 'nuhome') return null;
 		$f = nu_forms()[$fid] ?? null;
 		if (!$f || $f['type'] === 'subform') return null;

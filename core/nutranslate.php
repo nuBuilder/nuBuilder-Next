@@ -353,8 +353,8 @@ final class NuTranslate
 			if ($have) $e['existing'] = $have;
 			$texts[] = $e;
 		}
-		$f = nu_db()->one('SELECT sfo_code, sfo_description FROM zzzzsys_form WHERE zzzzsys_form_id = ?', [$formId]) ?: [];
-		return ['format' => self::AI_FORMAT, 'form' => trim((string)($f['sfo_code'] ?? '') . ' – ' . (string)($f['sfo_description'] ?? ''), ' –'),
+		$f = nu_form($formId) ?? [];
+		return ['format' => self::AI_FORMAT, 'form' => trim((string)($f['code'] ?? '') . ' – ' . (string)($f['description'] ?? ''), ' –'),
 			'source_language' => 'English', 'target_languages' => array_values($langs), 'texts' => $texts];
 	}
 

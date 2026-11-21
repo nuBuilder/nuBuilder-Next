@@ -150,7 +150,7 @@ final class NuAuth
 		if ($state !== 'ok') return $fail('login_err_invalid');
 		if (nu_is_expired($row['sus_expires_on'])) return $fail('login_err_expired');
 		$accessId = (string)$row['sus_zzzzsys_access_id'];
-		if ($accessId === '' || !nu_db()->one('SELECT zzzzsys_access_id FROM zzzzsys_access WHERE zzzzsys_access_id = ?', [$accessId])) return $fail('login_err_no_access');
+		if ($accessId === '' || !NuAcl::levelExists($accessId)) return $fail('login_err_no_access');
 		if (!NuIpAccess::allowsLogin(['id' => (string)$row['zzzzsys_user_id'], 'globeadmin' => false, 'login' => (string)$row['sus_login_name']], 'token')) return $fail('login_err_ip');   // before the token is used up (0.8.722)
 		if (!NuLoginToken::rotate($row)) return $fail('login_err_invalid');                                 // used by a second click at the same moment
 		self::applyLanguage((string)$row['sus_language'], (string)$row['zzzzsys_user_id'], true);
@@ -193,7 +193,7 @@ final class NuAuth
 		if (class_exists('NuApiClient') && NuApiClient::isServiceUser($id)) return $fail('login_err_invalid');
 		if (nu_is_expired($row['sus_expires_on'])) return $fail('login_err_expired');
 		$accessId = (string)$row['sus_zzzzsys_access_id'];
-		if ($accessId === '' || !nu_db()->one('SELECT zzzzsys_access_id FROM zzzzsys_access WHERE zzzzsys_access_id = ?', [$accessId])) return $fail('login_err_no_access');
+		if ($accessId === '' || !NuAcl::levelExists($accessId)) return $fail('login_err_no_access');
 		$auth = ['id' => $id, 'globeadmin' => false, 'fp' => self::fingerprint((string)$row['sus_login_password']), 'login' => $login];
 		if (!NuIpAccess::allowsLogin($auth, 'sso')) return $fail('login_err_ip');
 		self::applyLanguage((string)$row['sus_language'], $id, true);
@@ -231,7 +231,7 @@ final class NuAuth
 			if (class_exists('NuApiClient') && NuApiClient::isServiceUser($userId)) return $fail('login_err_invalid', $userId, $login);
 			if (nu_is_expired($row['sus_expires_on'])) return $fail('login_err_expired', $userId, $login);
 			$accessId = (string)$row['sus_zzzzsys_access_id'];
-			if ($accessId === '' || !nu_db()->one('SELECT zzzzsys_access_id FROM zzzzsys_access WHERE zzzzsys_access_id = ?', [$accessId])) return $fail('login_err_no_access', $userId, $login);
+			if ($accessId === '' || !NuAcl::levelExists($accessId)) return $fail('login_err_no_access', $userId, $login);
 			if (!NuDemo::isDemoUser($userId) && self::ssoOnly($userId, $accessId, $login)) return $fail('login_err_sso_only', $userId, $login);
 			$auth = ['id' => $userId, 'globeadmin' => false, 'fp' => self::fingerprint((string)$row['sus_login_password']), 'login' => $login];
 			if (!NuIpAccess::allowsLogin($auth, 'passkey')) return $fail('login_err_ip', $userId, $login);
@@ -383,7 +383,7 @@ final class NuAuth
 		if (!$byHash && !NuDemo::isDemoUser((string)$row['zzzzsys_user_id'])) NuPwPolicy::onLogin((string)$row['zzzzsys_user_id'], $password, (string)$row['sus_login_password']);   // password policy (0.8.745): leaked / expired → forced change
 
 		$accessId = (string)$row['sus_zzzzsys_access_id'];
-		$access   = $accessId !== '' ? $db->one('SELECT zzzzsys_access_id, sal_use_2fa FROM zzzzsys_access WHERE zzzzsys_access_id = ?', [$accessId]) : null;
+		$access   = NuAcl::level($accessId);
 		if (!$access) return 'login_err_no_access';
 		if (!NuDemo::isDemoUser((string)$row['zzzzsys_user_id']) && self::ssoOnly((string)$row['zzzzsys_user_id'], $accessId, (string)$row['sus_login_name'])) {
 			return 'login_err_sso_only';                    // single sign-on only (0.8.863): the password is refused, the globeadmin is never asked
@@ -464,7 +464,8 @@ final class NuAuth
 		if ($main) return true;
 		$extra = NuUserAccess::extraIds($userId);
 		if (!$extra) return false;
-		return (bool)nu_db()->value('SELECT COUNT(*) FROM zzzzsys_access WHERE sal_use_2fa = ? AND zzzzsys_access_id IN (' . implode(', ', array_fill(0, count($extra), '?')) . ')', ['1', ...$extra]);
+		foreach ($extra as $lid) if ((string)(NuAcl::level((string)$lid)['sal_use_2fa'] ?? '') === '1') return true;
+		return false;
 	}
 
 	/** Password was correct: log in now, or ask for the second factor. */
@@ -793,6 +794,26 @@ final class NuAuth
 		return NuMemo::get('user:' . $userId, ['zzzzsys_user'], static fn(): ?array => nu_db()->one('SELECT * FROM zzzzsys_user WHERE zzzzsys_user_id = ?', [$userId]));
 	}
 
+	/** Is there a row of zzzzsys_user with this id? (NuMemo, code review R6, 0.8.1351) */
+	public static function userExists(string $userId): bool
+	{
+		return self::userRow($userId) !== null;
+	}
+
+	/** The login name of a user ('' when there is no such row). */
+	public static function userLogin(string $userId): string
+	{
+		return (string)(self::userRow($userId)['sus_login_name'] ?? '');
+	}
+
+	/** "Name (login)" – or the login alone when the name is empty; '' when there is no such row. */
+	public static function userLabel(string $userId): string
+	{
+		$r = self::userRow($userId);
+		if (!$r) return '';
+		return trim((string)$r['sus_name']) !== '' ? $r['sus_name'] . ' (' . $r['sus_login_name'] . ')' : (string)$r['sus_login_name'];
+	}
+
 	/** Call after the current user's hash was changed elsewhere in this request (keeps the session valid). */
 	public static function refreshFingerprint(string $newHash): void
 	{
@@ -809,7 +830,7 @@ final class NuAuth
 	{
 		// nuBuilder Next's password policy first (0.8.745, NuPwPolicy – Settings → Sign-in & security → Password policy), then nuBuilder Forte's hook
 		if ($userId !== '' && !isset($ctx['login'])) {
-			try { $r = nu_db()->one('SELECT sus_login_name, sus_name, sus_first_name, sus_last_name, sus_email FROM zzzzsys_user WHERE zzzzsys_user_id = ?', [$userId]); } catch (Throwable) { $r = null; }
+			try { $r = self::userRow($userId); } catch (Throwable) { $r = null; }
 			if ($r) $ctx += ['login' => (string)$r['sus_login_name'], 'name' => trim((string)($r['sus_first_name'] ?? '') . ' ' . (string)($r['sus_last_name'] ?? '') . ' ' . (string)$r['sus_name']), 'email' => (string)$r['sus_email']];
 		}
 		$v = NuPwPolicy::violations($new, $ctx);

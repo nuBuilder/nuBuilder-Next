@@ -8,14 +8,7 @@
 	try { D = JSON.parse($('#apgData').textContent); } catch (e) { return; }
 	var T = D.t || {};
 	function t(k, a) { var s = T[k] || k; return a === undefined ? s : s.replace('%s', a); }
-	function el(tag, attrs, kids) {
-		var e = document.createElement(tag);
-		Object.keys(attrs || {}).forEach(function (k) {
-			if (k === 'text') e.textContent = attrs[k]; else if (k === 'class') e.className = attrs[k]; else e.setAttribute(k, attrs[k]);
-		});
-		(kids || []).forEach(function (c) { if (c) e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); });
-		return e;
-	}
+	function el(tag, attrs, kids) { return NuUtil.el(tag, attrs, kids); }
 	var BADGE = {GET: 'text-bg-success', POST: 'text-bg-primary', PUT: 'text-bg-warning', PATCH: 'text-bg-info', DELETE: 'text-bg-danger'};
 
 	var state = {
@@ -31,24 +24,12 @@
 
 	// ---------------------------------------------------------------- server calls (same page, JSON + CSRF)
 	function call(action, data) {
-		return fetch(D.url, {
-			method: 'POST', credentials: 'same-origin',
-			headers: {'Content-Type': 'application/json', 'X-CSRF-Token': D.csrf},
-			body: JSON.stringify(Object.assign({action: action}, data || {}))
-		}).then(function (r) {
+		return NuUtil.post(D.url, Object.assign({action: action}, data || {}), {csrf: D.csrf, raw: true}).then(function (r) {
 			return r.json().catch(function () { throw new Error(r.redirected || r.status === 200 ? t('apg_session') : 'HTTP ' + r.status); });
 		});
 	}
-	function toast(msg, ok) {
-		var box = $('#apgToast');
-		if (!box) {
-			box = el('div', {id: 'apgToast', class: 'position-fixed bottom-0 end-0 p-3 apgToast'});
-			document.body.appendChild(box);
-		}
-		var a = el('div', {class: 'alert py-2 px-3 small shadow-sm mb-2 ' + (ok === false ? 'alert-danger' : 'alert-success'), role: ok === false ? 'alert' : 'status', text: msg});
-		box.appendChild(a);
-		setTimeout(function () { a.remove(); }, ok === false ? 6000 : 2200);
-	}
+	function toast(msg, ok) { NuUtil.toast(msg, ok !== false, {box: 'apgToast', ms: ok === false ? 6000 : 2200}); }
+
 
 	// ---------------------------------------------------------------- settings (client, scope, If-Match, variables) per login
 	function clientOf(ref) { return (D.clients || []).filter(function (c) { return c.ref === ref; })[0] || null; }

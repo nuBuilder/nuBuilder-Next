@@ -13,7 +13,7 @@
 	var M = N.messages || {};
 	function g(id) { return id ? document.getElementById(id) : null; }
 	function api(name, fn) { window[name] = fn; }
-	function esc(s) { return String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]; }); }
+	function esc(s) { return NuUtil.esc(s); }
 	function post(url, data) {                       // a real form POST (logout etc.) with the CSRF token
 		var f = document.createElement('form');
 		f.method = 'post'; f.action = url;
@@ -390,7 +390,7 @@
 		if (!nuIsSaved()) c++;
 		return c;
 	});
-	api('nuLogout', function () { try { sessionStorage.removeItem('nukeepalive'); } catch (e) { /* ignore */ } post(N.base + '?p=logout', {_csrf: N.csrf}); });
+	api('nuLogout', function () { nuStore.session.remove('nukeepalive'); post(N.base + '?p=logout', {_csrf: N.csrf}); });
 	api('nuAskLogout', function () {
 		if (nuFormsUnsaved() > 0 && !window.confirm(nuTranslate('There are unsaved changes. Do you really want to leave the page?'))) return;
 		nuLogout();
@@ -957,7 +957,7 @@
 	function fixOpts(plugin, opts, inst) {
 		var U = window.Uppy;
 		if (plugin === U.XHRUpload && opts && typeof opts.endpoint === 'string' && ENDPOINT.test(opts.endpoint)) {
-			var headers = Object.assign({}, typeof opts.headers === 'object' && opts.headers ? opts.headers : {}, {'X-CSRF-Token': N.csrf || ''});
+			var headers = Object.assign({}, typeof opts.headers === 'object' && opts.headers ? opts.headers : {}, {'X-CSRF-Token': N.csrf || NuUtil.csrf()});
 			opts = Object.assign({}, opts, {endpoint: 'index.php?p=upload', headers: headers});
 			if (inst && typeof inst.setMeta === 'function') inst.setMeta({form_id: N.form ? N.form.id : ''});
 		}

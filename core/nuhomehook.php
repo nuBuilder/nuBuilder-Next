@@ -75,12 +75,16 @@ final class NuHomeHook
 	/** The procedure nu_home (or null): code, PHP, JavaScript (when active), status. */
 	public static function procedure(): ?array
 	{
-		static $cache = [];
-		if (array_key_exists(self::$code, $cache)) return $cache[self::$code];
+		$code = self::$code;
+		return NuMemo::get('homehook:' . $code, ['zzzzsys_php'], static fn(): ?array => self::readProcedure($code));
+	}
+
+	private static function readProcedure(string $code): ?array
+	{
 		$p = null;
 		try {
 			$db = nu_db();
-			$row = $db->tableExists('zzzzsys_php') ? $db->one('SELECT * FROM zzzzsys_php WHERE sph_code = ?', [self::$code]) : null;
+			$row = $db->tableExists('zzzzsys_php') ? $db->one('SELECT * FROM zzzzsys_php WHERE sph_code = ?', [$code]) : null;
 			if ($row && !in_array((string)($row['sph_status'] ?? '1'), ['0', '3'], true)) {     // draft / archived: not run
 				$js = (string)($row['sph_javascript_active'] ?? '1') !== '0' ? (string)($row['sph_javascript'] ?? '') : '';
 				$p = ['id' => (string)$row['zzzzsys_php_id'], 'php' => (string)($row['sph_php'] ?? ''), 'js' => trim($js) !== '' ? $js : ''];
@@ -88,7 +92,7 @@ final class NuHomeHook
 		} catch (Throwable) {
 			$p = null;
 		}
-		return $cache[self::$code] = $p;
+		return $p;
 	}
 
 	/** URL of the hook's JavaScript (?p=homejs&v=<first 12 of its SHA-256>) or null – not in safe mode, not when switched off (0.8.379). */
@@ -133,7 +137,7 @@ final class NuHomeHook
 		$view = NuHome::effectiveView($layout, NuHome::overlay((string)$cur['id']));
 		[$size, $display] = NuHome::compat($view);                  // what this person sees (a personal view changes it too)
 		$for = NuHome::target();
-		$acc = $for === null ? '' : ($for['access'] === NuHome::ALL_LEVELS ? NuHome::ALL_LEVELS : (string)(nu_db()->value('SELECT sal_code FROM zzzzsys_access WHERE zzzzsys_access_id = ?', [$for['access']]) ?? ''));
+		$acc = $for === null ? '' : ($for['access'] === NuHome::ALL_LEVELS ? NuHome::ALL_LEVELS : (string)(NuAcl::level((string)$for['access'])['sal_code'] ?? ''));
 		return NuHash::plain([], ['ADMIN_ROLE' => (string)($role['name'] ?? ''), 'HOME_LAYOUT' => (string)($cur['name'] ?? ''),
 			'HOME_SIZE' => $size, 'HOME_DISPLAY' => $display, 'HOME_VIEW' => (string)json_encode($view, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 'PROCEDURE_CODE' => self::$code,
 			'HOME_PAGE' => $for === null ? 'admin' : 'user', 'HOME_ACCESS' => $acc]);

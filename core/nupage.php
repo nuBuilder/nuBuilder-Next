@@ -132,8 +132,11 @@ final class NuPage
 	/** Settings of a page form (defaults when it has no row yet). */
 	public static function settings(string $formId): array
 	{
-		static $cache = [];
-		if (isset($cache[$formId])) return $cache[$formId];
+		return NuMemo::get('page:' . $formId, [self::TABLE], static fn(): array => self::readSettings($formId));
+	}
+
+	private static function readSettings(string $formId): array
+	{
 		$row = null;
 		try {
 			if (nu_db()->tableExists(self::TABLE)) $row = nu_db()->one('SELECT * FROM ' . self::TABLE . ' WHERE zzzzsys_nunext_page_id = ?', [$formId]);
@@ -147,7 +150,7 @@ final class NuPage
 			$d['note'] = (string)($row['note'] ?? '');
 			$d['tables'] = $row['tables_json'] ?? null;
 		}
-		return $cache[$formId] = $d;
+		return $d;
 	}
 
 	public static function validHeight(string $h): bool
@@ -778,12 +781,12 @@ class NuPageContext
 			'access_name' => '', 'globeadmin' => !empty($u['globeadmin']), 'impersonated' => NuImpersonate::active() !== null];
 		if (!$out['globeadmin'] && $out['id'] !== '') {
 			$db = nu_db();
-			$row = $db->one('SELECT * FROM zzzzsys_user WHERE zzzzsys_user_id = ?', [$out['id']]) ?? [];
+			$row = NuAuth::userRow((string)$out['id']) ?? [];
 			foreach (['name' => 'sus_name', 'first_name' => 'sus_first_name', 'last_name' => 'sus_last_name', 'email' => 'sus_email', 'team' => 'sus_team',
 					  'department' => 'sus_department', 'position' => 'sus_position', 'code' => 'sus_code'] as $k => $col) {
 				$out[$k] = trim((string)($row[$col] ?? ''));
 			}
-			$acc = $out['access_id'] !== '' ? $db->one('SELECT sal_code, sal_description FROM zzzzsys_access WHERE zzzzsys_access_id = ?', [$out['access_id']]) : null;
+			$acc = NuAcl::level((string)$out['access_id']);
 			$out['access_code'] = (string)($acc['sal_code'] ?? '');
 			$out['access_name'] = (string)($acc['sal_description'] ?? '');
 			$out['permissions'] = array_values(array_map('strval', NuPermission::idents($out['id'])));

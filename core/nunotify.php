@@ -32,9 +32,7 @@ final class NuNotify
 	{
 		$u = NuAuth::user();
 		if (!$u || $u['globeadmin']) return false;
-		static $cache = [];
-		$cache[$u['id']] ??= NuPermission::idents((string)$u['id']);
-		return in_array($ident, $cache[$u['id']], true);
+		return in_array($ident, NuPermission::idents((string)$u['id']), true);   // kept per request by NuHash::permissions (NuMemo)
 	}
 
 	/** May send to anyone (globeadmin, admin role "notifications" = change, NUNEXT_NOTIFY). */
@@ -90,8 +88,11 @@ final class NuNotify
 	/** Active users (login, not expired): id => [id, login, name, department, team, position, access, email]. */
 	public static function people(): array
 	{
-		static $all = null;
-		if ($all !== null) return $all;
+		return NuMemo::get('notify:people', ['zzzzsys_user'], static fn(): array => self::readPeople());
+	}
+
+	private static function readPeople(): array
+	{
 		$db = nu_db();
 		$cols = array_change_key_case($db->columns('zzzzsys_user'));
 		$c = static fn(string $k) => isset($cols[$k]) ? $k : "''";
@@ -198,8 +199,7 @@ final class NuNotify
 	/** access level id => code */
 	public static function accessLevels(): array
 	{
-		static $a = null;
-		return $a ??= array_column(nu_db()->all('SELECT zzzzsys_access_id, sal_code FROM zzzzsys_access ORDER BY sal_code'), 'sal_code', 'zzzzsys_access_id');
+		return NuAcl::levelCodes();
 	}
 
 	/** Choices of the audience fields (own senders: their department / team only). */

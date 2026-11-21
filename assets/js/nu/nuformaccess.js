@@ -8,7 +8,7 @@
 (function () {
 	'use strict';
 	var N = window.nuNext || {};
-	function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined && text !== null) e.textContent = text; return e; }
+	function el(tag, attrs, kids) { return NuUtil.el(tag, attrs, kids); }
 	function url(q) { return (N.base || 'index.php') + '?p=formaccess' + (q || ''); }
 	// own pages without window.nuNext (the forms list, 0.8.688): the token from #nuFacData
 	function csrf() { var d = document.getElementById('nuFacData'); return N.csrf || (d ? d.getAttribute('data-csrf') : '') || ''; }
@@ -250,9 +250,7 @@
 			if (ev.checked || evDirty()) payload.everyone = evState();        // on: every level (also ones still missing it); off: the switch only
 			if (!ch.length && !('everyone' in payload)) return;
 			save.disabled = true;
-			fetch(url(), {method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-Token': csrf()},
-				body: JSON.stringify(payload)})
-				.then(function (r) { return r.json(); })
+			NuUtil.post(url(), payload, {csrf: csrf(), strict: true})
 				.then(function (res) {
 					if (!res || !res.ok) { toast((res && res.message) || 'Error', 'danger'); save.disabled = false; return; }
 					toast(res.message, 'success');

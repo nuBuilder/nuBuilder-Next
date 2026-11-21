@@ -84,7 +84,7 @@ final class NuLoginToken
 	 */
 	public static function create(string $userId, int $minutes = 0, string $form = '', string $record = '', string $via = 'user form'): string
 	{
-		$row = nu_db()->one('SELECT zzzzsys_user_id, sus_login_name FROM zzzzsys_user WHERE zzzzsys_user_id = ?', [$userId]);
+		$row = NuAuth::userRow($userId);
 		if (!$row) throw new RuntimeException(t('err_not_found'));
 		if (!NuUserJson::available()) throw new RuntimeException(t('user_autologin_no_json'));
 		if (class_exists('NuApiClient') && NuApiClient::isServiceUser($userId)) throw new RuntimeException(t('ltok_err_service'));
@@ -151,7 +151,7 @@ final class NuLoginToken
 	/** Sends the link to the user's e-mail address, in the user's language. null = sent, otherwise the error. */
 	public static function mail(string $userId, string $link, int $minutes): ?string
 	{
-		$u = nu_db()->one('SELECT zzzzsys_user_id, sus_login_name, sus_name, sus_email, sus_language FROM zzzzsys_user WHERE zzzzsys_user_id = ?', [$userId]);
+		$u = NuAuth::userRow($userId);
 		$email = trim((string)($u['sus_email'] ?? ''));
 		if (!$u || $email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) return t('welcome_err_email');
 		if (!NuMail::configured()) return t('welcome_err_mail');

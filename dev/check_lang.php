@@ -37,5 +37,25 @@ foreach (glob($dir . '/*.php') as $f) {
 }
 exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(__DIR__ . '/lang_variants.php') . ' --check 2>&1', $vo, $vc);   // language variants
 if ($vc !== 0) { $bad++; echo implode("\n", $vo), "\n"; }
+// keys that no file names (0.8.1349, code review D3): reported, not an error. A key counts as used when its name appears anywhere in the
+// code, the docs or the tests, or when it starts with a prefix that the code completes at run time ('ev_' . $event, 'as_op_' + op …).
+$words = []; $prefixes = [];
+$it = new RecursiveIteratorIterator(new RecursiveCallbackFilterIterator(new RecursiveDirectoryIterator(NU_ROOT, FilesystemIterator::SKIP_DOTS),
+	static fn($f) => !$f->isDir() || !in_array($f->getFilename(), ['lang', 'vendor', '.git', 'node_modules', '_backup', '_update', '_install', '_libsrc', 'temp', '__pycache__'], true)));
+foreach ($it as $f) {
+	$n = $f->getFilename();
+	if (!preg_match('/\.(php|js|mjs|json|htm|html|py)$/', $n) || preg_match('/\.min\.js$/', $n)) continue;
+	$src = (string)file_get_contents($f->getPathname());
+	foreach (preg_split('/[^A-Za-z0-9_]+/', $src) as $w) if ($w !== '') $words[$w] = true;
+	preg_match_all('/[\'"`]([a-z][a-z0-9_]*_)[\'"`]\s*[.+]|`([a-z][a-z0-9_]*_)\$\{|str_starts_with\(\$k, \'([a-z][a-z0-9_]*_)\'\)/', $src, $m);
+	foreach (array_merge($m[1], $m[2], $m[3]) as $pfx) if ($pfx !== '') $prefixes[$pfx] = true;
+}
+$unref = [];
+foreach (array_keys($en) as $k) {
+	if (isset($words[$k])) continue;
+	foreach (array_keys($prefixes) as $pfx) if (str_starts_with($k, $pfx)) continue 2;
+	$unref[] = $k;
+}
+if ($unref) echo 'note: ' . count($unref) . ' key(s) without a reference (remove them, or name them where they are built): ' . implode(', ', $unref) . "\n";
 echo $bad ? "$bad language file(s) need work\n" : count($en) . " keys – all languages complete (language variants ok)\n";
 exit($bad ? 1 : 0);

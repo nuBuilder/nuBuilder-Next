@@ -266,12 +266,12 @@ if (!function_exists('db_fetch_value')) {
 	/** Code (sfo_code) of a form. */
 	function nuFormCode($f): string
 	{
-		return (string)(nu_db()->value('SELECT sfo_code FROM zzzzsys_form WHERE zzzzsys_form_id = ?', [(string)$f]) ?? '');
+		return (string)(nu_form((string)$f)['code'] ?? '');
 	}
 
 	function nuIsForm($i): bool
 	{
-		return (bool)nu_db()->value('SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id = ?', [(string)$i]);
+		return nu_form_exists((string)$i);
 	}
 
 	function nuIsProcedure($i): bool
@@ -298,7 +298,7 @@ if (!function_exists('db_fetch_value')) {
 	function nuUser($userId = null): object|false
 	{
 		$id = $userId === null ? nuUserId() : (string)$userId;
-		$r = nu_db()->one('SELECT * FROM zzzzsys_user WHERE zzzzsys_user_id = ?', [$id]);
+		$r = NuAuth::userRow($id);
 		return $r ? (object)$r : false;
 	}
 

@@ -9,12 +9,7 @@
    Returns {el, busy()} or null when there is nothing to mount. */
 (function () {
 	'use strict';
-	function el(tag, attrs, kids) {
-		var e = document.createElement(tag);
-		Object.keys(attrs || {}).forEach(function (k) { if (k === 'text') e.textContent = attrs[k]; else e.setAttribute(k, attrs[k]); });
-		(kids || []).forEach(function (c) { e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); });
-		return e;
-	}
+	function el(tag, attrs, kids) { return NuUtil.el(tag, attrs, kids); }
 	var n = 0;
 	function mount(host, opt) {
 		if (!host || host.getAttribute('data-nu-ai-on') === '1') return null;
@@ -26,7 +21,7 @@
 		var sel = el('select', {'class': 'form-select form-select-sm nuAiAskSel', 'aria-label': M.aip_config, id: uid + 'Sel'});
 		D.configs.forEach(function (c) { sel.appendChild(el('option', {value: c.id, text: c.name + (c.model ? ' · ' + c.model : '')})); });
 		var saved = null;
-		try { saved = window.localStorage.getItem('nunext-ai-config'); } catch (e) { saved = null; }
+		saved = nuStore.get('nunext-ai-config');
 		if (saved && D.configs.some(function (c) { return c.id === saved; })) sel.value = saved;
 		var btn = el('button', {type: 'button', 'class': 'btn btn-sm btn-primary nuAiAskBtn', title: M.aip_ask_tip}, [el('i', {'class': 'bi bi-stars me-1', 'aria-hidden': 'true'}), M.aip_ask]);
 		var stop = el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary nuAiAskStop', hidden: 'hidden'}, [M.aip_cancel]);
@@ -46,7 +41,7 @@
 			var locked = !!cfg().locked;
 			pwBox.hidden = !locked || busy;
 			btn.hidden = locked;
-			try { window.localStorage.setItem('nunext-ai-config', sel.value); } catch (e) { /* private window */ }
+			nuStore.set('nunext-ai-config', sel.value);
 		}
 		sel.addEventListener('change', function () { say(''); sync(); });
 		function post(data, signal) {

@@ -34,7 +34,7 @@ final class NuHomeForms
 		$tiles = [];
 		$all = [];
 		$n = 0;
-		foreach ($db->all('SELECT zzzzsys_access_id, sal_code, sal_description, sal_zzzzsys_form_id FROM zzzzsys_access ORDER BY sal_code') as $r) {
+		foreach (NuAcl::levels() as $r) {
 			$n++;
 			$id = (string)$r['zzzzsys_access_id'];
 			$lv = ['id' => $id, 'code' => (string)$r['sal_code'], 'title' => (string)$r['sal_description'], 'users' => $users[$id] ?? 0,

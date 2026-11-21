@@ -21,7 +21,7 @@
 	function t(k) { return T[k] || k; }
 	function col(i) { for (var k = 0; k < cols.length; k++) if (String(cols[k].i) === String(i)) return cols[k]; return null; }
 	function need(c, op) { return c && A.ops[c.y] ? A.ops[c.y][op] : undefined; }
-	function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined && text !== null) e.textContent = text; return e; }
+	function el(tag, attrs, kids) { return NuUtil.el(tag, attrs, kids); }
 	function opt(sel, v, label, on) { var o = new Option(label, v); if (on) o.selected = true; sel.appendChild(o); return o; }
 
 	/** The URL with the given search (null = none), q = the search field, back to page 1. */
@@ -108,8 +108,7 @@
 	function apply() { go(collect()); }
 
 	function post(body) {
-		return fetch(A.url, {method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': A.csrf || N.csrf, 'Accept': 'application/json'},
-			body: JSON.stringify(Object.assign({f: A.form}, body))}).then(function (r) { return r.json(); });
+		return NuUtil.post(A.url, Object.assign({f: A.form}, body), {csrf: A.csrf || N.csrf, strict: true});
 	}
 	function drawSaved(box) {
 		box.textContent = '';

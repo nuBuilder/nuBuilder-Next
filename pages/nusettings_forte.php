@@ -164,12 +164,12 @@ nu_layout_start(t('sh_forte'), 'home', ['container' => 'nuContainer', 'settings'
 				$eff = (string)$r['cfg_effective'];
 				$desc = (string)$r['cfg_description']; ?>
 				<tr data-category="<?= h((string)$r['cfg_category']) ?>" data-status="<?= h($st) ?>">
-					<td class="small text-body-secondary text-nowrap"><?= h((string)$r['cfg_category']) ?></td>
-					<td class="fw-semibold"><?= h(NuSettings::title($r)) ?>
+					<td class="small text-body-secondary text-nowrap setCatCell"><?= h((string)$r['cfg_category']) ?></td>
+					<td class="fw-semibold setNameCell"><?= h(NuSettings::title($r)) ?>
 						<?php if ($desc !== ''): // narrow screens (< 800 px): the description column is hidden – (i) shows it on tap / click (0.8.242) ?><span class="nuInfoTip setDescTip ms-1" tabindex="0" role="button" data-bs-toggle="tooltip" data-bs-trigger="hover focus click" data-bs-custom-class="nuTipWide" aria-label="<?= h($desc) ?>" title="<?= h($desc) ?>"><i class="bi bi-info-circle"></i></span><?php endif; ?>
 						<?php if ($st !== ''): // what the setting means for nuBuilder Next (0.8.279) ?><span class="badge border fw-normal ms-1 setSt setSt-<?= $st ?>" tabindex="0" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" title="<?= h(t('set_r_' . $why)) ?>"><?= h(t('set_st_' . $st)) ?></span><?php endif; ?>
 						<?php if ($eff === '2' || $eff === '3'): ?><i class="bi bi-arrow-repeat text-body-secondary ms-1" role="img" title="<?= h(t($eff === '2' ? 'set_effective_login' : 'set_effective_browser')) ?>" aria-label="<?= h(t($eff === '2' ? 'set_effective_login' : 'set_effective_browser')) ?>"></i><?php endif; ?></td>
-					<td><code class="small text-break"><?= h((string)$r['cfg_setting']) ?></code></td>
+					<td class="setKeyCell"><code class="small text-break"><?= h((string)$r['cfg_setting']) ?></code></td>
 					<td class="setValueCol"><?= $control($r, $value, isset($errors[$id])) ?><?php if (isset($errors[$id])): ?><div class="invalid-feedback d-block"><?= h($errors[$id]) ?></div><?php endif; ?></td>
 					<td class="small text-body-secondary setDesc setDescCol" title="<?= h($desc) ?>"><?= h($desc) ?></td>
 				</tr>

@@ -109,7 +109,7 @@ $tableLabels = ['zzzzsys_form' => t('cl_t_form'), 'zzzzsys_tab' => t('cl_t_tab')
 	'zzzzsys_event' => t('cl_t_event'), 'zzzzsys_php' => t('cl_t_php'), 'zzzzsys_select' => t('cl_t_select'), 'zzzzsys_select_clause' => t('cl_t_select'), 'zzzzsys_access_form' => t('cl_t_access')];
 
 nu_layout_start(t('cl_title'), 'forms', ['head' => nu_ts_head()]);
-$tip = static fn(string $text) => '<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="' . h($text) . '" title="' . h($text) . '"><i class="bi bi-info-circle"></i></span>';
+$tip = static fn(string $text) => nu_info_tip($text);
 $heading = $row ? nu_form_label((string)$row['clo_form_source']) : t('cl_new_settings');
 ?>
 <nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li class="breadcrumb-item"><a href="<?= h(nu_url('forms')) ?>"><?= h(t('nav_forms')) ?></a></li>

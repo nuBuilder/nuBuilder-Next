@@ -85,7 +85,7 @@
 	if (dataEl) {
 		var TPL = JSON.parse(dataEl.getAttribute('data-json') || '{}'), TT = JSON.parse(dataEl.getAttribute('data-t') || '{}');
 		var dlg = document.getElementById('scodeTplDlg'), list = document.getElementById('scodeTplList'), dlgTab = null, dlgSel = null;
-		var el = function (tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
+		var el = NuUtil.el;
 		var insert = function (tab, code) {
 			var cm = byTab[tab], ta = document.getElementById('scode-' + tab);
 			var text = code.replace(/\s+$/, '') + '\n';

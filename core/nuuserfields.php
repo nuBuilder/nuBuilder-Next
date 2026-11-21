@@ -29,28 +29,28 @@ final class NuUserFields
 	private const RESERVED = ['id', 'code', 'name', 'email', 'login', 'department', 'team', 'position', 'additional1', 'additional2', 'first_name',
 		'last_name', 'language', 'permissions', 'zzzzsys_user_id', 'user_id'];
 
-	private static ?array $all = null;
-
+	/** Forgets the definitions read in this request (they are kept by NuMemo: a write to the table through NuDB drops them anyway). */
 	public static function reset(): void
 	{
-		self::$all = null;
+		NuMemo::drop('uf:all');
 	}
 
 	/** Field definitions, in their order (code => row). [] when the table is missing. */
 	public static function all(): array
 	{
-		if (self::$all !== null) return self::$all;
-		self::$all = [];
-		try {
-			$db = nu_db();
-			if (!$db->tableExists(self::TABLE)) return self::$all;
-			foreach ($db->all('SELECT * FROM ' . self::TABLE . ' ORDER BY sort, code') as $r) {
-				if (!isset(self::TYPES[(string)$r['type']])) continue;
-				self::$all[(string)$r['code']] = $r;
+		return NuMemo::get('uf:all', [self::TABLE], static function (): array {
+			$all = [];
+			try {
+				$db = nu_db();
+				if (!$db->tableExists(self::TABLE)) return [];
+				foreach ($db->all('SELECT * FROM ' . self::TABLE . ' ORDER BY sort, code') as $r) {
+					if (!isset(self::TYPES[(string)$r['type']])) continue;
+					$all[(string)$r['code']] = $r;
+				}
+			} catch (Throwable) {
 			}
-		} catch (Throwable) {
-		}
-		return self::$all;
+			return $all;
+		});
 	}
 
 	/** Fields exist and their table is there. */
@@ -264,9 +264,13 @@ final class NuUserFields
 	/** Choices of a select field: value => label (lines "value|label" / "value", or a SELECT: first column value, second label). */
 	public static function options(array $f): array
 	{
-		static $cache = [];
 		$o = (string)($f['options'] ?? '');
-		if (isset($cache[$o])) return $cache[$o];
+		// NuMemo (code review R9, 0.8.1351): a query's choices come from any table – every write through NuDB drops them ('*')
+		return NuMemo::get('uf:opt:' . md5($o), self::isSql($o) ? ['*'] : [], static fn(): array => self::readOptions($o));
+	}
+
+	private static function readOptions(string $o): array
+	{
 		$out = [];
 		if (self::isSql($o)) {
 			if (!NuDemo::readOnlySql($o)) throw new RuntimeException(t('uf_err_sql_read'));
@@ -284,7 +288,7 @@ final class NuUserFields
 				if ($v !== '') $out[$v] = trim((string)($l ?? $v)) ?: $v;
 			}
 		}
-		return $cache[$o] = array_slice($out, 0, 1000, true);
+		return array_slice($out, 0, 1000, true);
 	}
 
 	/** Value as stored: numbers with a dot, yes / no 1 / 0, dates YYYY-MM-DD. */
@@ -420,8 +424,7 @@ final class NuUserFields
 		$tpl = (string)($f['default_value'] ?? '');
 		if (str_contains($tpl, '#') && NuUserDefault::usesFields($tpl)) $tpl = (string)NuHash::replace($tpl, NuHash::plain());   // hash variables now, {fields} in the browser
 		if ($value === '' && NuUserDefault::usesFields($tpl) && !$readOnly) $attr .= ' data-uf-tpl="' . h($tpl) . '"';   // filled while the user's fields are typed (nuuser.js, 0.8.1074)
-		$tip = self::hint($f) !== '' ? ' <span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="' . h(self::hint($f))
-			. '" title="' . h(self::hint($f)) . '"><i class="bi bi-info-circle"></i></span>' : '';
+		$tip = self::hint($f) !== '' ? ' ' . nu_info_tip(self::hint($f)) : '';
 		$kind = $showType ? ' <span class="text-body-secondary small nuUfType">(' . h(t('uf_type_' . $type)) . ')</span>' : '';   // user form (0.8.508)
 		$label = '<label class="form-label" for="' . h($id) . '">' . h(self::label($f)) . $kind . ($req ? ' <span class="text-danger">*</span>' : '') . '</label>' . $tip;
 		$max = self::TYPES[$type][2];
@@ -452,10 +455,10 @@ final class NuUserFields
 	/** Values of the signed-in user (hash variables, nuNextUserField in JavaScript); [] for the globeadmin. */
 	public static function mine(): array
 	{
-		static $m = null;
-		if ($m !== null) return $m;
 		$u = NuAuth::user();
-		return $m = (!$u || !empty($u['globeadmin'])) ? [] : self::values((string)$u['id']);
+		if (!$u || !empty($u['globeadmin'])) return [];
+		$id = (string)$u['id'];
+		return NuMemo::get('uf:mine:' . $id, [self::TABLE, self::EXT], static fn(): array => self::values($id));
 	}
 
 	/** One value: of the signed-in user or of $userId; null = no such field. */

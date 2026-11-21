@@ -229,7 +229,7 @@ final class NuConflict
 				if (!is_array($e) || !isset($e['user'])) break;
 				$user = (string)$e['user'];
 				$name = $user;
-				if ($user !== '' && $user !== 'unknown' && $user !== 'globeadmin') $name = (string)($db->value('SELECT sus_login_name FROM zzzzsys_user WHERE zzzzsys_user_id = ?', [$user]) ?: $user);
+				if ($user !== '' && $user !== 'unknown' && $user !== 'globeadmin') $name = NuAuth::userLogin($user) ?: $user;
 				$time = (int)($e['time'] ?? 0);
 				return [$name === 'unknown' ? '' : $name, $time > 0 ? date(nu_dfmt('d.m.Y H:i'), $time) : ''];
 			}

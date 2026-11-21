@@ -15,9 +15,7 @@ require_once NU_ROOT . '/core/form/nuhistory.php';
 
 function nb_out(array $d, int $status = 200): never
 {
-	http_response_code($status);
-	echo json_encode($d, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
-	exit;
+	nu_json($d, $status);
 }
 
 function nb_err(string $msg, int $status = 400): never

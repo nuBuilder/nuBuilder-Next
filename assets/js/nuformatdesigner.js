@@ -28,11 +28,7 @@
 		return e;
 	}
 	function api(action, data) {
-		return fetch('index.php?p=formatapi', {
-			method: 'POST', credentials: 'same-origin',
-			headers: {'Content-Type': 'application/json', 'X-CSRF-Token': D.csrf},
-			body: JSON.stringify(Object.assign({action: action}, data || {}))
-		}).then(function (r) { return r.json().catch(function () { return {ok: false, error: 'HTTP ' + r.status}; }); });
+		return NuUtil.post('index.php?p=formatapi', Object.assign({action: action}, data || {}), {csrf: D.csrf});
 	}
 	function pad(n) { return String(n).padStart(2, '0'); }
 	function nowIso() { var d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()); }

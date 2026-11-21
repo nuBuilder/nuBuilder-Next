@@ -145,7 +145,7 @@ nu_layout_start(t('proc_title'), 'forms', ['head' => $head]);
 	$row = static fn(string $k, string $label, string $control, bool $req = false, string $tip = '') =>
 		'<div class="procField pf_' . substr($k, 4) . '"><label class="form-label procLabel" for="' . $k . '">' . h($label)
 		. ($req ? ' <span class="text-danger">*</span>' : '') . ($k === 'sph_code' ? nu_unique_mark($req) : '') . '</label>'
-		. ($tip !== '' ? '<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="' . h($tip) . '" title="' . h($tip) . '"><i class="bi bi-info-circle"></i></span>' : '')
+		. ($tip !== '' ? nu_info_tip($tip) : '')
 		. $control . '</div>';   // key: unique (0.8.627)
 	$distinct = static fn(string $c) => array_column($db->all("SELECT DISTINCT $c AS v FROM $T WHERE $c IS NOT NULL AND $c <> '' AND " . NuProcedure::listCondition() . " ORDER BY $c"), 'v');
 	$forms = $db->all("SELECT zzzzsys_form_id, sfo_code, sfo_description FROM zzzzsys_form WHERE COALESCE(sfo_type,'') <> 'subform' ORDER BY sfo_code");
@@ -229,12 +229,12 @@ nu_layout_start(t('proc_title'), 'forms', ['head' => $head]);
 				</div>
 				</details>
 				<div class="procRunRow d-flex flex-wrap gap-2 align-items-center">
-					<label class="form-label procLabel mb-0" for="sph_run"><?= h(t('proc_run_mode')) ?></label><span class="nuInfoTip me-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('proc_run_mode_tip')) ?>" title="<?= h(t('proc_run_mode_tip')) ?>"><i class="bi bi-info-circle"></i></span>
+					<label class="form-label procLabel mb-0" for="sph_run"><?= h(t('proc_run_mode')) ?></label><?= nu_info_tip(t('proc_run_mode_tip'), 'me-1') ?>
 						<select class="form-select w-auto" id="sph_run" name="sph_run">
 							<?php foreach (NuProcedure::RUN as $k => $l): ?><option value="<?= h($k) ?>"<?= $k === $v('sph_run') ? ' selected' : '' ?>><?= h(t($l)) ?></option><?php endforeach; ?>
 						</select>
 						<?php if ($proc): ?>
-							<span class="procTestRun d-inline-flex flex-wrap align-items-center gap-2"><span class="small text-body-secondary"><?= h(t('proc_test_run')) ?></span><span class="nuInfoTip" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('proc_test_run_tip')) ?>" title="<?= h(t('proc_test_run_tip')) ?>"><i class="bi bi-info-circle"></i></span>
+							<span class="procTestRun d-inline-flex flex-wrap align-items-center gap-2"><span class="small text-body-secondary"><?= h(t('proc_test_run')) ?></span><?= nu_info_tip(t('proc_test_run_tip'), '') ?>
 							<button class="btn btn-outline-secondary procRunBtn" type="button" data-run="hide" id="procRunHidden"><i class="bi bi-eye-slash me-1"></i><?= h(t('proc_run_hidden')) ?></button>
 							<button class="btn btn-outline-secondary procRunBtn" type="button" data-run="window" id="procRunWindow"><i class="bi bi-box-arrow-up-right me-1"></i><?= h(t('proc_run_window')) ?></button></span>
 						<?php else: ?><span class="small text-body-secondary"><?= h(t('proc_run_after_save')) ?></span><?php endif; ?>

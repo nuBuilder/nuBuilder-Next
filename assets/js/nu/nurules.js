@@ -152,7 +152,7 @@
 		});
 	});
 
-	function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]; }); }
+	function esc(s) { return NuUtil.esc(s); }
 	function askWarnings(list, onOk) {
 		var details = list.map(function (w) { return w.message; });
 		if (typeof window.nuConfirmAsk === 'function') {

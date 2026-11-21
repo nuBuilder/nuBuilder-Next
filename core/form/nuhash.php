@@ -73,7 +73,7 @@ final class NuHash
 				$h['USER_' . $k] = (string)($row[$col] ?? '');
 			}
 			$h['USER_A11Y'] = (string)($row['sus_accessibility_features'] ?? '') === '1';
-			$acc = $db->one('SELECT sal_code, sal_group, sal_zzzzsys_form_id FROM zzzzsys_access WHERE zzzzsys_access_id = ?', [$u['access_id']]);
+			$acc = NuAcl::level((string)$u['access_id']);
 			$h['ACCESS_LEVEL_CODE']  = (string)($acc['sal_code'] ?? '');
 			$h['ACCESS_LEVEL_GROUP'] = (string)($acc['sal_group'] ?? '');
 			$h['HOME_ID']            = (string)($acc['sal_zzzzsys_form_id'] ?? '');

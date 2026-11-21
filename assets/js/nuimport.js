@@ -24,7 +24,7 @@
 	var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
 	var csrf = $('input[name="_csrf"]', app).value;
 	var tx = function (k) { var a = Array.prototype.slice.call(arguments, 1), s = T[k] || k, i = 0; return s.replace(/%[sd]/g, function () { return a[i++]; }); };
-	var esc = function (s) { return String(s).replace(/[&<>"']/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]; }); };
+	var esc = NuUtil.esc;
 
 	var S = {headers: [], rows: [], count: 0, dates: [], columns: [], mapping: {}, table: '', config: null, lastResult: null, step: 1, sheet: null};
 

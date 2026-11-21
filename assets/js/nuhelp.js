@@ -287,7 +287,7 @@
 			var on = b.getAttribute('data-nu-fn-tab') === paneId;
 			b.classList.toggle('active', on); b.setAttribute('aria-selected', on ? 'true' : 'false');
 		});
-		try { localStorage.setItem('nunext-help-fntab', paneId); } catch (e) { /* storage blocked */ }
+		nuStore.set('nunext-help-fntab', paneId);
 	}
 
 	// ================================================================== reading level: essentials / standard / everything
@@ -304,7 +304,7 @@
 		levelRadios.forEach(function (r) { r.checked = r.value === lv; });
 		if (guide) guide.renumber();   // undefined while the level is restored at start (declared further down)
 		if (typeof ref !== 'undefined' && ref) ref.renumber();
-		if (!keep) { try { localStorage.setItem('nunext-help-level', lv); } catch (e) { /* storage blocked */ } }
+		if (!keep) { nuStore.set('nunext-help-level', lv); }
 	}
 	(function () {
 		var lv = 'standard';
@@ -512,5 +512,20 @@
 	start.then(function (t) {
 		if (input.value.trim()) run();
 		if (t && t.nodeType) { jump(t); window.addEventListener('load', function () { setTimeout(function () { jump(t); }, 50); }); }
+	});
+})();
+
+// phones and tablets (< 992 px): the index folds behind "Contents" so the text starts at the top; a chosen entry closes it again.
+// From 992 px it is always open (the summary is hidden by CSS).
+(function () {
+	'use strict';
+	var fold = document.getElementById('helpTocFold');
+	if (!fold) return;
+	var narrow = window.matchMedia('(max-width: 991.98px)');
+	var sync = function () { fold.open = !narrow.matches; };
+	sync();
+	if (narrow.addEventListener) narrow.addEventListener('change', sync);
+	fold.addEventListener('click', function (e) {
+		if (narrow.matches && e.target.closest && e.target.closest('.nuHelpToc a')) fold.open = false;
 	});
 })();

@@ -172,7 +172,7 @@ nu_layout_start(t('sess_title'), 'log', ['head' => nu_ts_head()]);
 <div class="card shadow-sm nuListCard mb-4">
 	<div class="card-header nuListHead nuTitleBar">
 	<h1 class="h5 mb-0 fw-semibold"><?= h(t('sess_title')) ?><?php $tip = t('sess_hint', $timeout, $timeoutAdmin); ?>
-		<span class="nuInfoTip fs-6 fw-normal ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h($tip) ?>" title="<?= h($tip) ?>"><i class="bi bi-info-circle"></i></span></h1>
+		<?= nu_info_tip($tip, 'fs-6 fw-normal ms-1') ?></h1>
 	<div class="d-flex flex-wrap gap-2 align-items-center"><?= nu_back_button() ?>
 		<a class="btn nuBtnAct" href="<?= h(nu_url('sessions', (isset($_GET['sort']) ? ['sort' => $sort, 'dir' => $dir] : []) + $qp)) ?>"><i class="bi bi-arrow-clockwise me-1"></i><?= h(t('debug_refresh')) ?></a>
 		<?php $others = count(array_filter($allRows, static fn($r) => (string)$r['zzzzsys_nunext_session_id'] !== $me)); ?>

@@ -25,7 +25,7 @@
 	}
 	function syncButton() { if (btn) btn.classList.toggle('d-none', !currentCode()); }
 
-	function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; return e; }
+	function el(tag, attrs, kids) { return NuUtil.el(tag, attrs, kids); }
 	function build() {
 		if (panel) return;
 		panel = el('aside', 'nuUhPanel');

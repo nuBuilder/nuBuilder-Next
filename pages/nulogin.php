@@ -132,6 +132,7 @@ if ($custom !== null) {
 <p class="text-center small text-body-secondary mt-3 mb-0">nuBuilder Next <?= NU_VERSION ?></p>
 <script src="<?= nu_asset(NU_BS . '/js/bootstrap.bundle.min.js') ?>"></script>
 <script src="<?= nu_asset('assets/js/nubs.js') ?>"></script>
+<script src="<?= nu_asset('assets/js/nuutil.js') ?>"></script>
 <script src="<?= nu_asset('assets/js/nuapp.js') ?>"></script>
 <script src="<?= nu_asset('assets/js/nulogincustom.js') ?>"></script>
 <?= NuPasskey::loginReady() ? NuPasskey::script() : '' ?>
@@ -208,6 +209,7 @@ nu_head(t('login_title'));
 </main>
 <script src="<?= nu_asset(NU_BS . '/js/bootstrap.bundle.min.js') ?>"></script>
 <script src="<?= nu_asset('assets/js/nubs.js') ?>"></script>
+<script src="<?= nu_asset('assets/js/nuutil.js') ?>"></script>
 <script src="<?= nu_asset('assets/js/nuapp.js') ?>"></script>
 <?= NuPasskey::loginReady() ? NuPasskey::script() : '' ?>
 <?= NuCustomCode::jsTag() ?>

@@ -76,10 +76,9 @@ final class NuUserHome
 		try {
 			// the Home forms of the user's levels, read once per request (0.8.1341: was one COUNT per form asked about – 7 on a form page)
 			$homes = NuMemo::get('homeforms:' . implode('|', $lv), ['zzzzsys_access'], static function () use ($lv): array {
-				$qm = implode(', ', array_fill(0, count($lv), '?'));
 				$out = [];
-				foreach (nu_db()->all("SELECT sal_zzzzsys_form_id AS f FROM zzzzsys_access WHERE zzzzsys_access_id IN ($qm)", $lv) as $r) {
-					$f = mb_strtolower(rtrim((string)($r['f'] ?? ''), ' '));
+				foreach ($lv as $lid) {
+					$f = mb_strtolower(rtrim((string)(NuAcl::level((string)$lid)['sal_zzzzsys_form_id'] ?? ''), ' '));
 					if ($f !== '') $out[$f] = true;
 				}
 				return $out;

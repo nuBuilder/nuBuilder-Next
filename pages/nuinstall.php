@@ -576,7 +576,7 @@ nu_head($title, nu_ts_head());   // time zone: searchable (0.8.536)
 						<div class="form-text"><?= h(t('ins_opt_nub_hint')) ?></div></div>
 					<div class="col-12"><div class="form-check"><input class="form-check-input<?= $err('shared') ?>" type="checkbox" id="shared" name="shared" value="1"<?= $o['shared'] ? ' checked' : '' ?>><label class="form-check-label" for="shared"><?= h(t('ins_opt_shared')) ?></label><?= $fb('shared') ?></div></div>
 					<?php // languages to include (0.8.693): the welcome e-mail templates are created for these only ?>
-					<fieldset class="col-12" id="insLangs"><legend class="form-label fs-6 mb-1"><?= h(t('ins_opt_langs')) ?><?= $req ?><span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('ins_opt_langs_tip')) ?>" title="<?= h(t('ins_opt_langs_tip')) ?>"><i class="bi bi-info-circle"></i></span></legend>
+					<fieldset class="col-12" id="insLangs"><legend class="form-label fs-6 mb-1"><?= h(t('ins_opt_langs')) ?><?= $req ?><?= nu_info_tip(t('ins_opt_langs_tip')) ?></legend>
 						<div class="d-flex flex-wrap gap-3<?= $err('langs') ?>"><?php foreach (NU_LANGS as $lc => [$native]): $lsel = in_array($lc, (array)($o['langs'] ?? []), true); ?>
 							<div class="form-check"><input class="form-check-input" type="checkbox" id="lang_<?= h($lc) ?>" name="langs[]" value="<?= h($lc) ?>"<?= $lsel ? ' checked' : '' ?>><label class="form-check-label" for="lang_<?= h($lc) ?>"><?= h($native) ?></label></div>
 						<?php endforeach; ?></div><?= $fb('langs') ?></fieldset>
@@ -656,6 +656,7 @@ nu_head($title, nu_ts_head());   // time zone: searchable (0.8.536)
 </main>
 <script src="<?= nu_asset(NU_BS . '/js/bootstrap.bundle.min.js') ?>"></script>
 <script src="<?= nu_asset('assets/js/nubs.js') ?>"></script>
+<script src="<?= nu_asset('assets/js/nuutil.js') ?>"></script>
 <script src="<?= nu_asset('assets/js/nuapp.js') ?>"></script>
 <?= nu_ts_foot() ?>
 <script src="<?= nu_asset('assets/js/nuinstall.js') ?>"></script>

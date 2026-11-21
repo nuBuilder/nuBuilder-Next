@@ -17,19 +17,18 @@ final class NuIpAccess
 	public const KEY = 'ip_access';
 	public const GA_MODES = ['default', 'any', 'ranges'];
 	public const LEVEL_MODES = ['default', 'any', 'ranges'];
-	private static ?array $cache = null;
 
 	/** The stored settings (defaults while there is no row / no table). */
 	public static function settings(): array
 	{
-		if (self::$cache !== null) return self::$cache;
+		if (NuMemo::find('set:ipaccess', $kept)) return $kept;   // NuMemo (code review R9): a write to the settings drops it
 		$s = null;
 		try {
 			$v = nu_setting_value(self::KEY);
 			$s = is_string($v) ? json_decode($v, true) : null;
 		} catch (Throwable) {
 		}
-		return self::$cache = self::clean(is_array($s) ? $s : []);
+		return NuMemo::keep('set:ipaccess', ['zzzzsys_nunext_setting'], self::clean(is_array($s) ? $s : []));
 	}
 
 	/** Settings in their stored shape: known keys only, valid rules only, levels without an entry dropped. */
@@ -60,7 +59,7 @@ final class NuIpAccess
 		$db = nu_db();
 		$row = ['setting_value' => json_encode($s, JSON_UNESCAPED_SLASHES), 'updated_at' => date('Y-m-d H:i:s'), 'updated_by' => $by];
 		nu_setting_save(self::KEY, $row, $db);
-		self::$cache = null;
+		NuMemo::drop('set:ipaccess');
 		return $s;
 	}
 
@@ -188,7 +187,7 @@ final class NuIpAccess
 	{
 		try {
 			return array_map(static fn($r) => ['id' => (string)$r['zzzzsys_access_id'], 'code' => (string)$r['sal_code'], 'name' => (string)$r['sal_description'], 'group' => (string)($r['sal_group'] ?? '')],
-				nu_db()->all('SELECT * FROM zzzzsys_access ORDER BY sal_code'));
+				array_values(NuAcl::levels()));
 		} catch (Throwable) {
 			return [];
 		}
@@ -207,6 +206,6 @@ final class NuIpAccess
 	/** For tests: forget the cached settings. */
 	public static function reset(): void
 	{
-		self::$cache = null;
+		NuMemo::drop('set:ipaccess');
 	}
 }

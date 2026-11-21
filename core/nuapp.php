@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 define('NU_ROOT', dirname(__DIR__));
-define('NU_VERSION', '0.8.1345');
+define('NU_VERSION', '0.8.1352');
 // third-party code (0.8.409): vendor/bundled/ comes with nunext.zip (an update replaces it), vendor/packs/ = library packs (NuLibs,
 // an update never touches them). Bundled paths only through these constants.
 define('NU_VENDOR', 'vendor/bundled');
@@ -388,6 +388,22 @@ function nu_url(string $page, array $params = []): string
 {
 	$q = http_build_query(['p' => $page] + array_filter($params, static fn($v) => $v !== null && $v !== ''));
 	return 'index.php?' . $q;
+}
+
+/**
+ * A JSON answer and the end of the request (0.8.1350, code review R4) – the one place for the headers: status (null = as set before), JSON in UTF-8, nosniff, never
+ * cached; text that is not valid UTF-8 is replaced instead of failing.
+ */
+function nu_json(mixed $data, ?int $status = null): never
+{
+	if (!headers_sent()) {
+		if ($status !== null) http_response_code($status);   // null: the status set before (e.g. http_response_code(403) of the page)
+		header('Content-Type: application/json; charset=utf-8');
+		header('X-Content-Type-Options: nosniff');
+		header('Cache-Control: no-store');
+	}
+	echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+	exit;
 }
 
 function nu_redirect(string $url): never
@@ -934,30 +950,61 @@ function nu_fatal(string $title, string $detail = '', bool $withHome = false): n
 // ===================================================================== form list (zzzzsys_form)
 
 /**
- * All forms an access level can be given rights to: [id => ['code','description','type','system']].
- * Falls back to the two system forms this app uses when zzzzsys_form is absent.
+ * All forms an access level can be given rights to: [id => ['code','description','type','system','status','table','real']].
+ * Falls back to the two system forms this app uses when zzzzsys_form is absent ('real' false = not a row of zzzzsys_form).
+ * Read once per request (code review R6 / R9, 0.8.1351: NuMemo – a write to zzzzsys_form through NuDB drops it).
  */
 function nu_forms(): array
 {
-	static $forms = null;
-	if ($forms !== null) return $forms;
-
-	$forms = [];
-	$db    = nu_db();
-	if ($db->tableExists('zzzzsys_form')) {
-		foreach ($db->all('SELECT zzzzsys_form_id, sfo_code, sfo_description, sfo_type FROM zzzzsys_form ORDER BY sfo_code') as $r) {
-			$forms[$r['zzzzsys_form_id']] = [
-				'code'        => (string)$r['sfo_code'],
-				'description' => (string)$r['sfo_description'],
-				'type'        => (string)$r['sfo_type'],
-				'system'      => str_starts_with((string)$r['zzzzsys_form_id'], 'nu'),
-			];
+	return NuMemo::get('forms:all', ['zzzzsys_form'], static function (): array {
+		$forms = [];
+		$db    = nu_db();
+		if ($db->tableExists('zzzzsys_form')) {
+			$sql = 'SELECT zzzzsys_form_id, sfo_code, sfo_description, sfo_type, sfo_table%s FROM zzzzsys_form ORDER BY sfo_code';
+			try { $rows = $db->all(sprintf($sql, ', sfo_status')); } catch (Throwable) { $rows = $db->all(sprintf($sql, '')); }   // older databases: no status
+			foreach ($rows as $r) {
+				$forms[$r['zzzzsys_form_id']] = [
+					'code'        => (string)$r['sfo_code'],
+					'description' => (string)$r['sfo_description'],
+					'type'        => (string)$r['sfo_type'],
+					'system'      => str_starts_with((string)$r['zzzzsys_form_id'], 'nu'),
+					'status'      => (string)($r['sfo_status'] ?? ''),
+					'table'       => (string)($r['sfo_table'] ?? ''),
+					'real'        => true,
+				];
+			}
 		}
+		foreach ([NuAcl::FORM_USER => 'Users', NuAcl::FORM_ACCESS => 'Access Levels', NuAcl::FORM_FORM => 'Forms', NuAcl::FORM_LOG => 'nuBuilder Next Log', NuAcl::FORM_SETUP => 'Setup', NuAcl::FORM_EMAILLOG => 'E-Mail Log', NuAcl::FORM_FORMAT => 'Formats', NuAcl::FORM_EMAILTEMPLATE => 'Email Templates', NuAcl::FORM_ITEM => 'Items', NuAcl::FORM_FILE => 'Files', NuAcl::FORM_TRANSLATE => 'Translation', NuAcl::FORM_DEBUG => 'Debug Results', NuAcl::FORM_PROCEDURE => 'Procedures', NuAcl::FORM_PERMISSION => 'Permission Items'] as $id => $desc) {
+			$forms[$id] ??= ['code' => $id, 'description' => $desc, 'type' => 'browseedit', 'system' => true, 'status' => '', 'table' => '', 'real' => false];
+		}
+		return $forms;
+	});
+}
+
+/**
+ * One form of zzzzsys_form as nu_forms() keeps it (code, description, type, status, table), or null when there is no such row – ids are
+ * compared as the database does (case and trailing spaces do not count). Code review R6, 0.8.1351: instead of a SELECT per place.
+ */
+function nu_form(string $id): ?array
+{
+	if ($id === '') return null;
+	$all = nu_forms();
+	$f = $all[$id] ?? null;
+	if ($f === null) {
+		$k = mb_strtolower(rtrim($id, ' '));
+		$map = NuMemo::get('forms:lower', ['zzzzsys_form'], static function () use ($all): array {
+			$m = [];
+			foreach (array_keys($all) as $fid) $m[mb_strtolower(rtrim((string)$fid, ' '))] ??= (string)$fid;
+			return $m;
+		});
+		$f = isset($map[$k]) ? $all[$map[$k]] : null;
 	}
-	foreach ([NuAcl::FORM_USER => 'Users', NuAcl::FORM_ACCESS => 'Access Levels', NuAcl::FORM_FORM => 'Forms', NuAcl::FORM_LOG => 'nuBuilder Next Log', NuAcl::FORM_SETUP => 'Setup', NuAcl::FORM_EMAILLOG => 'E-Mail Log', NuAcl::FORM_FORMAT => 'Formats', NuAcl::FORM_EMAILTEMPLATE => 'Email Templates', NuAcl::FORM_ITEM => 'Items', NuAcl::FORM_FILE => 'Files', NuAcl::FORM_TRANSLATE => 'Translation', NuAcl::FORM_DEBUG => 'Debug Results', NuAcl::FORM_PROCEDURE => 'Procedures', NuAcl::FORM_PERMISSION => 'Permission Items'] as $id => $desc) {
-		$forms[$id] ??= ['code' => $id, 'description' => $desc, 'type' => 'browseedit', 'system' => true];
-	}
-	return $forms;
+	return $f && $f['real'] ? $f : null;
+}
+
+function nu_form_exists(string $id): bool
+{
+	return nu_form($id) !== null;
 }
 
 function nu_form_label(string $id): string

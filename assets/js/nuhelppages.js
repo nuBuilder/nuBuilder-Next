@@ -106,7 +106,7 @@
 	});
 
 	// ---------------------------------------------------------------- Insert menu
-	var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]; }); };
+	var esc = NuUtil.esc;
 	var levelPh = function () { return (tx('levels').split(',')[0] || '').trim() || tx('level-ph'); };
 	function linkPicker() {
 		var dlg = document.getElementById('uhLinkDlg');
@@ -187,7 +187,7 @@
 	if (aiLang) {
 		try { var keep = localStorage.getItem('nunext-uh-ai-lang'); if (keep && aiLang.querySelector('option[value="' + keep + '"]')) aiLang.value = keep; } catch (e) { /* no storage */ }
 		aiLang.addEventListener('change', function () {
-			try { localStorage.setItem('nunext-uh-ai-lang', aiLang.value); } catch (e) { /* no storage */ }
+			nuStore.set('nunext-uh-ai-lang', aiLang.value);
 			var pb = document.getElementById('uhAiPrompt'), cp = document.getElementById('uhAiCopied');
 			if (pb) { pb.value = ''; pb.classList.add('d-none'); }
 			if (cp) cp.classList.add('d-none');

@@ -216,7 +216,7 @@ $tcpdf = NuReport::tcpdfDir();
 					<div class="d-flex flex-wrap gap-2 align-items-center">
 						<button class="btn btn-outline-primary" type="submit" name="then" value="design"><i class="bi bi-vector-pen me-1"></i><?= h(t('rpt_save_design')) ?></button>
 						<button class="btn btn-outline-primary" type="submit" name="then" value="ai" id="rptSaveAi"><i class="bi bi-stars me-1"></i><?= h(t('rai_save_ai')) ?></button>
-						<span class="nuInfoTip" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('rai_save_ai_tip')) ?>" title="<?= h(t('rai_save_ai_tip')) ?>"><i class="bi bi-info-circle"></i></span>
+						<?= nu_info_tip(t('rai_save_ai_tip'), '') ?>
 					</div>
 				<?php endif; ?>
 			</div>
@@ -255,7 +255,7 @@ $tcpdf = NuReport::tcpdfDir();
 			</div>
 			<div class="tab-pane fade" id="rptTabHistory" role="tabpanel">
 				<?php if ($versions): ?>
-					<h2 class="h6"><?= h(t('rai_versions')) ?> <span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('rai_versions_tip')) ?>" title="<?= h(t('rai_versions_tip')) ?>"><i class="bi bi-info-circle"></i></span></h2>
+					<h2 class="h6"><?= h(t('rai_versions')) ?> <?= nu_info_tip(t('rai_versions_tip')) ?></h2>
 					<table class="table table-sm align-middle mb-4" id="rptVersions">
 						<tbody><?php foreach ($versions as $ver): ?>
 							<tr><td class="small fw-semibold text-nowrap"><?= h(date(nu_dfmt('d.m.Y H:i:s'), strtotime((string)$ver['saved_at']))) ?></td>

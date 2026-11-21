@@ -21,7 +21,7 @@
 	if (fold) {
 		var KEY = 'nunext-emt-head-open';
 		try { if (!fold.hasAttribute('data-nu-force-open')) { var st = localStorage.getItem(KEY); if (st !== null) fold.open = st === '1'; } } catch (e) { /* no storage */ }
-		fold.addEventListener('toggle', function () { try { localStorage.setItem(KEY, fold.open ? '1' : '0'); } catch (e) { /* no storage */ } });
+		fold.addEventListener('toggle', function () { nuStore.set(KEY, fold.open ? '1' : '0'); });
 		fold.addEventListener('invalid', function () { fold.open = true; }, true);
 		var info = function () {
 			var val = function (id) { var f = document.getElementById(id); return f ? f.value.trim() : ''; };
@@ -31,16 +31,7 @@
 		['emt_code', 'emt_description', 'emt_to'].forEach(function (id) { var f = document.getElementById(id); if (f) f.addEventListener('input', info); });
 	}
 
-	function el(tag, attrs, kids) {
-		var e = document.createElement(tag);
-		Object.keys(attrs || {}).forEach(function (k) {
-			if (k === 'text') e.textContent = attrs[k];
-			else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), attrs[k]);
-			else e.setAttribute(k, attrs[k]);
-		});
-		(kids || []).forEach(function (c) { if (c) e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); });
-		return e;
-	}
+	function el(tag, attrs, kids) { return NuUtil.el(tag, attrs, kids); }
 
 	// the field that receives placeholders: the last focused one
 	document.querySelectorAll('.emtTarget').forEach(function (f) {
@@ -117,8 +108,7 @@
 		fd.set('action', action);
 		Object.keys(extra || {}).forEach(function (k) { fd.set(k, extra[k]); });
 		if (formSel.disabled) fd.set('emt_form_id', formSel.value);
-		return fetch(form.getAttribute('action') || window.location.href, {method: 'POST', body: fd, credentials: 'same-origin', headers: {'X-CSRF-Token': D.csrf}})
-			.then(function (r) { return r.json(); });
+		return NuUtil.post(form.getAttribute('action') || window.location.href, fd, {csrf: D.csrf, strict: true});
 	}
 	var head = document.getElementById('emtPreviewHead'), frame = document.getElementById('emtPreview'), rec = document.getElementById('emtRecord');
 	function preview() {

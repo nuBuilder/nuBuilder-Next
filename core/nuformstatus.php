@@ -20,8 +20,6 @@ final class NuFormStatus
 	public const ALL = [self::ACTIVE, self::DRAFT, self::MAINT, self::ARCHIVED];
 	public const KEY = 'form_maintenance';
 	public const TEXT_LEN = 500;
-	/** @var array<string, string>|null form id => status (only forms that are not Active) */
-	private static ?array $map = null;
 	private static ?array $info = null;
 
 	public static function norm(mixed $v): string
@@ -30,20 +28,14 @@ final class NuFormStatus
 		return in_array($v, self::ALL, true) ? $v : self::ACTIVE;
 	}
 
-	/** Status of a form by id (cached for the request). */
+	/** Status of a form by id (nu_forms(): read once per request, a write to zzzzsys_form drops it). */
 	public static function of(string $formId): string
 	{
-		if (self::$map === null) {
-			self::$map = [];
-			try {
-				foreach (nu_db()->all("SELECT zzzzsys_form_id, sfo_status FROM zzzzsys_form WHERE sfo_status IN ('0', '2', '3')") as $r) self::$map[(string)$r['zzzzsys_form_id']] = (string)$r['sfo_status'];
-			} catch (Throwable) {
-			}
-		}
-		return self::$map[$formId] ?? self::ACTIVE;
+		try { $f = nu_form($formId); } catch (Throwable) { $f = null; }
+		return self::norm($f['status'] ?? '');
 	}
 
-	public static function forget(): void { self::$map = null; self::$info = null; }
+	public static function forget(): void { self::$info = null; NuMemo::drop('forms:all'); NuMemo::drop('forms:lower'); }
 
 	/** May open forms in Maintenance / Archived: the globeadmin and form designers. */
 	public static function bypass(): bool

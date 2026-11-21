@@ -118,7 +118,7 @@ if ($action === 'export' && $dbOk) {
 $listMode = $id === '' && !nu_is_post();
 $tableList = $dbOk && !$listMode ? NuAppCloner::objects($db) : [];
 nu_layout_start(t('ac_title'), 'home');
-$tip = static fn(string $text) => '<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="' . h($text) . '" title="' . h($text) . '"><i class="bi bi-info-circle"></i></span>';
+$tip = static fn(string $text) => nu_info_tip($text);
 ?>
 <nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li class="breadcrumb-item"><a href="<?= h(nu_url('home')) ?>"><?= h(t('nav_home')) ?></a></li>
 	<?php if ($listMode): ?><li class="breadcrumb-item active" aria-current="page"><?= h(t('ac_title')) ?></li>

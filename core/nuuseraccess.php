@@ -16,9 +16,6 @@ final class NuUserAccess
 {
 	public const TABLE = 'zzzzsys_nunext_user_access';
 
-	/** @var array<string, list<string>> user id => active extra level ids */
-	private static array $cache = [];
-
 	public static function ready(): bool
 	{
 		static $ok = null;
@@ -35,12 +32,14 @@ final class NuUserAccess
 	public static function extraIds(string $userId): array
 	{
 		if ($userId === '' || !self::ready()) return [];
-		if (isset(self::$cache[$userId])) return self::$cache[$userId];
-		$out = [];
-		foreach (nu_db()->all('SELECT access_id, valid_until FROM ' . self::TABLE . ' WHERE user_id = ?', [$userId]) as $r) {
-			if (self::active($r['valid_until'] ?? null) && (string)$r['access_id'] !== '') $out[] = (string)$r['access_id'];
-		}
-		return self::$cache[$userId] = array_values(array_unique($out));
+		// NuMemo (code review R9, 0.8.1351): a write to the table through NuDB drops it
+		return NuMemo::get('ua:' . $userId, [self::TABLE], static function () use ($userId): array {
+			$out = [];
+			foreach (nu_db()->all('SELECT access_id, valid_until FROM ' . self::TABLE . ' WHERE user_id = ?', [$userId]) as $r) {
+				if (self::active($r['valid_until'] ?? null) && (string)$r['access_id'] !== '') $out[] = (string)$r['access_id'];
+			}
+			return array_values(array_unique($out));
+		});
 	}
 
 	/** Main level + active extra levels of the signed-in user (empty for the globeadmin). @return list<string> */
@@ -82,7 +81,7 @@ final class NuUserAccess
 		$ids = array_values(array_unique(array_filter(array_merge([$main], array_keys($until)), static fn($x) => $x !== '')));
 		if (!$ids) return [];
 		$rows = [];
-		foreach ($db->all('SELECT zzzzsys_access_id, sal_code, sal_description, sal_group FROM zzzzsys_access WHERE zzzzsys_access_id IN (' . implode(', ', array_fill(0, count($ids), '?')) . ')', $ids) as $r) $rows[(string)$r['zzzzsys_access_id']] = $r;
+		foreach ($ids as $lid) if ($l = NuAcl::level($lid)) $rows[$lid] = $l;
 		$out = [];
 		foreach ($ids as $id) {
 			if (!isset($rows[$id])) continue;                // a level that was deleted
@@ -160,7 +159,7 @@ final class NuUserAccess
 		foreach ($db->all('SELECT zzzzsys_nunext_user_access_id AS id, access_id, valid_until FROM ' . self::TABLE . ' WHERE user_id = ?', [$userId]) as $r) {
 			$have[(string)$r['access_id']] = ['id' => (string)$r['id'], 'until' => substr(trim((string)($r['valid_until'] ?? '')), 0, 10)];
 		}
-		$codes = array_column($db->all('SELECT zzzzsys_access_id, sal_code FROM zzzzsys_access'), 'sal_code', 'zzzzsys_access_id');
+		$codes = NuAcl::levelCodes();
 		$label = static fn(string $a, string $u) => '✓' . ($u !== '' ? ' ' . $u : '');
 		$who = mb_substr((string)(NuAuth::currentRaw()['login'] ?? ''), 0, 50);
 		$changes = [];
@@ -180,7 +179,6 @@ final class NuUserAccess
 				$changes[(string)($codes[$acc] ?? $acc)] = ['', $label($acc, $until)];
 			}
 		}
-		unset(self::$cache[$userId]);
 		return $changes;
 	}
 
@@ -188,7 +186,6 @@ final class NuUserAccess
 	public static function forgetUser(string $userId): void
 	{
 		if (self::ready()) nu_db()->delete(self::TABLE, 'user_id', $userId);
-		unset(self::$cache[$userId]);
 	}
 
 	/**
@@ -200,7 +197,7 @@ final class NuUserAccess
 	public static function effective(string $main, array $rows): array
 	{
 		$db = nu_db();
-		$all = array_column($db->all('SELECT zzzzsys_access_id, sal_code, sal_description FROM zzzzsys_access'), null, 'zzzzsys_access_id');
+		$all = NuAcl::levels();
 		$levels = [];
 		$add = static function (string $a, bool $isMain, string $until) use (&$levels, $all): void {
 			if ($a === '' || !isset($all[$a]) || isset($levels[$a])) return;

@@ -3,6 +3,69 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.1352 – Release gate
+- Release gate: full test run (smoke, all end-to-end tests, the cross-tests against nuBuilder Forte, OWASP ZAP) over 0.8.1346–0.8.1351.
+
+## 0.8.1351 – Repeated database reads
+- Code review: repeated database reads (R5, R6, R9). The list of access levels is read once per request through one set of functions
+  (all levels, one level by id, the codes, the levels ordered by group) instead of by hand in about sixty places; the forms list now
+  also carries each form's status and table, with small functions for one form and "does this form exist", which replace the plain
+  single-form reads (code, status, table, counts); one user's login name, label and "does this user exist" come from the user row
+  that is already kept for the request.
+- Values that were kept in static variables of functions or classes and came from the database are now kept for the request in the
+  same place as the other shared reads: a change of the table in the same request drops them, and tests can start over. This covers
+  custom user fields and their choices, reports of start page tiles, the e-mail log's user links, the people of the notification
+  centre, the start page hook procedure, settings of custom pages, the rights of run buttons and list click actions, additional access
+  levels of users, permission item types, help pages, project items, the form status, and the settings of the password policy, single
+  sign-on, IP access, jQuery, forms for everyone and SMTP with OAuth 2.
+- Developers: see CLAUDE.md, Conventions → Performance (1).
+
+## 0.8.1350 – Code review: shared helpers
+- Code review R1–R4 and Q4 – shared helpers instead of a copy in every file; nothing changes for users:
+  - assets/js/nuutil.js, loaded on every page before the page's own script: creating elements, HTML escaping, the form token, a
+    POST with the token, short messages, and browser storage that never throws. The page scripts call these instead of their own
+    copies (37 files); the form token is no longer written into requests by hand (26 places); one escape function to review.
+  - The form token is also in a meta tag of every page, so scripts find it without a data attribute.
+  - One PHP helper for the (i) tooltip next to labels (about 75 hand-written copies replaced) and one for JSON answers (17 pages):
+    every JSON answer now has the same headers (JSON in UTF-8, not cached, no content sniffing).
+
+## 0.8.1349 – Code review: dead code removed
+- Code review D1–D4 and Q2 – dead code removed, nothing changes for users:
+  - Methods that nothing called (a masked-value helper, a table-cache reset, the projects of one item, a count of unencrypted
+    authenticator secrets) and three constants nothing read.
+  - 58 texts without a reader, in all eleven languages. The language check (dev/check_lang.php) now reports texts that no file names –
+    also counting the prefixes the code completes at run time – as a note.
+  - Style rules of the former form builder and other rules no page uses any more (toolbar groups, list and column editors, a sticky
+    action bar, a notifications column, …).
+  - ESLint warns about unused variables inside functions; the one it found is removed.
+
+## 0.8.1348 – Usability: page-by-page fixes
+- Usability review, page by page – ten fixes:
+  - Notifications the system writes (a to-do that is due or newly assigned) are in the language of the person who gets them,
+    not of the request or cron run that wrote them.
+  - Help pages for users: the "View as" select has a label (the only critical finding of the accessibility check), and the page
+    has one main area instead of one inside another.
+  - Password policy: each select per access level is labelled with its access level.
+  - IP access on phones: in Exceptions per access level the rule is shown below the name at full width (only its arrow showed).
+  - Shared settings on phones: one card per setting – name, setting and category, then the value – instead of a table wider than
+    the screen.
+  - Documentation on phones and tablets: the index folds behind "Contents", so the text starts at the top; choosing an entry
+    closes it again. On the desktop nothing changes.
+  - Dashboards: From / To show only for a custom period again – date fields now follow when code hides or disables them; on
+    phones the table rows no longer make the page scroll sideways, and the period select and refresh share one row.
+  - Code search: the search field gets the focus only with a keyboard, so the on-screen keyboard no longer covers half the page.
+  - Debug results: every message folds after a few lines with "more" / "less", as the log's details do.
+  - E-mail settings: Save is in the header, as on the other settings pages.
+
+## 0.8.1347 – DeepSource Python: release script
+- Release script and minifier (development tools only, nothing changes on a server): every program is started with its full
+  path and an explicit result check; the checks and the browser test run are split into smaller functions; ESLint runs from
+  its own folder instead of through npx.
+
+## 0.8.1346 – Notes
+- Notes for development only: the published GitHub release is recorded (v0.8.1345), and the author of the commits pushed at a release
+  gate is fixed in the development notes
+
 ## 0.8.1345 – Release gate
 - Release gate (full test run: smoke, end-to-end, cross-tests against nuBuilder Forte, security scan). Before it the documentation was
   brought up to date: "Sign in" / "Sign out" in the help pages and the tutorial (as in the texts of 0.8.1344), the feature list (one

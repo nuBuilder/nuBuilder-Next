@@ -68,7 +68,7 @@ if (($_GET['step'] ?? '') === 'done') {
 	if ($manual === '') nu_redirect(nu_url('home'));
 }
 
-$tip = static fn(string $text) => '<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="' . h($text) . '" title="' . h($text) . '"><i class="bi bi-info-circle"></i></span>';
+$tip = static fn(string $text) => nu_info_tip($text);
 $inv = static fn(string $k) => isset($errors[$k]) ? ' is-invalid' : '';
 $fb = static fn(string $k) => isset($errors[$k]) ? '<div class="invalid-feedback">' . h($errors[$k]) . '</div>' : '';
 $icons = ['basics' => 'bi-sliders', 'look' => 'bi-palette', 'security' => 'bi-shield-lock', 'samples' => 'bi-box-seam', 'summary' => 'bi-check2-square'];

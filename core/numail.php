@@ -910,6 +910,31 @@ final class NuWelcome
 	}
 
 	/**
+	 * Runs $fn in the language of the user who will read the text (notifications written by the system, e.g. a due to-do): the user's
+	 * language and English / German variant, 'globeadmin' = the language the globeadmin chose last; nothing known = the current one.
+	 */
+	public static function inLangOf(string $userId, callable $fn): mixed
+	{
+		if ($userId === 'globeadmin') {
+			$v = NuAuth::gaLanguage();
+			if ($v === null) return $fn();
+			$base = NU_LANG_VARIANTS[$v][0] ?? $v;
+			$prev = $_SESSION['nu_lang'] ?? null;
+			$prevVar = $_SESSION['nu_lang_variant'] ?? null;
+			$_SESSION['nu_lang'] = $base;
+			if ($base !== $v) $_SESSION['nu_lang_variant'] = $v; elseif (isset(NU_LANG_VARIANT_DEFAULT[$base])) $_SESSION['nu_lang_variant'] = NuLanguages::defaultVariant($base); else unset($_SESSION['nu_lang_variant']);
+			try {
+				return $fn();
+			} finally {
+				if ($prev === null) unset($_SESSION['nu_lang']); else $_SESSION['nu_lang'] = $prev;
+				if ($prevVar === null) unset($_SESSION['nu_lang_variant']); else $_SESSION['nu_lang_variant'] = $prevVar;
+			}
+		}
+		$u = NuAuth::userRow($userId);
+		return $u ? self::inUserLang($u, static fn() => $fn()) : $fn();
+	}
+
+	/**
 	 * What send() will use (0.8.508, toast of the user form): {proc: code|null, tpl: {emt_language: "code (language) – description"},
 	 * std: {emt_language: "nu_send_welcome_email_template (language)"} (0.8.658), fallback: database language of the current session
 	 * (used when the user has none), code: TEMPLATE}.

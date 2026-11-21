@@ -229,6 +229,7 @@ final class NuListExport
 </main>
 <script src="<?= nu_asset(NU_BS . '/js/bootstrap.bundle.min.js') ?>"></script>
 <script src="<?= nu_asset('assets/js/nubs.js') ?>"></script>
+<script src="<?= nu_asset('assets/js/nuutil.js') ?>"></script>
 <script src="<?= nu_asset('assets/js/nuapp.js') ?>"></script>
 <script src="<?= nu_asset('assets/js/nuprintlist.js') ?>"></script>
 </body>

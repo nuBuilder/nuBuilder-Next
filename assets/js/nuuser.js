@@ -108,7 +108,7 @@
 		th.querySelector('button').addEventListener('click', function () {
 			var col = th.getAttribute('data-sort'), dir = th.getAttribute('aria-sort') === 'ascending' ? 'desc' : 'asc';
 			sortBy(col, dir);
-			try { localStorage.setItem(SORT_STORE, col + ':' + dir); } catch (e) { /* no storage */ }
+			nuStore.set(SORT_STORE, col + ':' + dir);
 		});
 	});
 	try {
@@ -230,7 +230,7 @@
 		setDesc();
 		descToggle.addEventListener('change', function () {
 			setDesc();
-			try { localStorage.setItem(DESC_STORE, descToggle.checked ? '1' : '0'); } catch (e) { /* no storage */ }
+			nuStore.set(DESC_STORE, descToggle.checked ? '1' : '0');
 		});
 	}
 })();
@@ -560,7 +560,7 @@
 	try { T = JSON.parse(dlg.getAttribute('data-t') || '{}'); } catch (e) { T = {}; }
 	var KEYS = ['view', 'add', 'save', 'delete', 'clone', 'print'], data = null, mainCode = '';
 	var $ = function (id) { return document.getElementById(id); };
-	function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
+	function el(tag, attrs, kids) { return NuUtil.el(tag, attrs, kids); }
 	function badge(text, cls) { return el('span', 'badge ' + (cls || 'text-bg-info') + ' fw-normal ms-1', text); }
 
 	// the button only while there is an additional level row
@@ -681,7 +681,7 @@
 	var $ = function (id) { return document.getElementById(id); };
 	var KEY = 'nunext-welcome-preview';
 	try { if (!pv.disabled && localStorage.getItem(KEY) === '1') pv.checked = true; } catch (e) { /* private mode */ }
-	pv.addEventListener('change', function () { try { localStorage.setItem(KEY, pv.checked ? '1' : '0'); } catch (e) { /* ignore */ } });
+	pv.addEventListener('change', function () { nuStore.set(KEY, pv.checked ? '1' : '0'); });
 	function syncWrap() { wrap.hidden = !box.checked; }
 	box.addEventListener('change', syncWrap);
 	syncWrap();

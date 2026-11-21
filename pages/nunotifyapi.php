@@ -14,9 +14,7 @@ if (!nu_is_post()) session_write_close();                     // the check every
 
 function nu_ntf_out(array $d, int $status = 200): never
 {
-	http_response_code($status);
-	echo json_encode($d, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
-	exit;
+	nu_json($d, $status);
 }
 
 if (nu_is_post()) {

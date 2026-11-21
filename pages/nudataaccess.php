@@ -134,7 +134,7 @@ $colRow = static function (string $bid, string $n, array $r) use ($sel, $typeOpt
 		. '<td>' . $sel($p . '[mode]', ['hide' => t('da_hide'), 'show' => t('da_show')], (string)($r['mode'] ?? 'hide'), 'form-select form-select-sm', $ro . ' aria-label="' . h(t('da_mode')) . '"') . '</td>'
 		. '<td class="text-center"><input class="form-check-input" type="checkbox" name="' . h($p . '[remove]') . '" value="1" aria-label="' . h(t('da_remove')) . '"' . $ro . '></td></tr>';
 };
-$tip = static fn(string $text): string => '<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="' . h($text) . '" title="' . h($text) . '"><i class="bi bi-info-circle"></i></span>';
+$tip = static fn(string $text): string => nu_info_tip($text);
 
 nu_layout_start(t('da_title_form', $meta->description()), 'forms');
 ?>

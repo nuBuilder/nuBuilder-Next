@@ -37,7 +37,7 @@
 <li data-level="detail">Kept: the table <code>zzzzsys_nunext_recycle</code> (one row per deleted record, the data as JSON; at most 8 MB per record). Housekeeping removes entries after their days. Deletes made in nuBuilder Forte, by SQL or by procedures are not kept. With the <a href="#audit-trail">audit trail</a> on, the restore is recorded as an insert.</li>
 </ul>
 <h3 id="debug">Debug results</h3>
-<p><em>Log → Debug</em>: messages written by <code>nuDebug()</code> in PHP code (hooks, procedures). Newest first; filter by flag, user, text and date; long messages are collapsed; copy button; delete selected or all; optional auto refresh.</p>
+<p><em>Log → Debug</em>: messages written by <code>nuDebug()</code> in PHP code (hooks, procedures). Newest first; filter by flag, user, text and date; every message folds after a few lines (<em>more</em> / <em>less</em> below it); copy button; delete selected or all; optional auto refresh.</p>
 </div>
 	<p class="doc-see">See also: <a href="#save-flow">How a save works</a></p>
 	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nuaudit.php</code></li><li><code>core/nudebug.php</code></li><li><code>pages/nulog.php</code></li></ul></details>

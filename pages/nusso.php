@@ -125,7 +125,7 @@ if (nu_is_post() && nu_post('action') === 'save') {
 
 $testRes = $_SESSION['nunext_sso_test'] ?? null;
 unset($_SESSION['nunext_sso_test']);
-$tip = static fn(string $text): string => '<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="' . h($text) . '" title="' . h($text) . '"><i class="bi bi-info-circle"></i></span>';
+$tip = static fn(string $text): string => nu_info_tip($text);
 $err = static fn(string $k): string => isset($errors[$k]) ? '<div class="invalid-feedback d-block">' . h($errors[$k]) . '</div>' : '';
 $inv = static fn(string $k): string => isset($errors[$k]) ? ' is-invalid' : '';
 $v = static function (string $k) use ($form, $s) {

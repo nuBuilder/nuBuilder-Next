@@ -25,7 +25,6 @@ final class NuJquery
 		'now' => 'Date.now()', 'camelCase' => '-', 'nodeName' => 'el.nodeName.toLowerCase()', 'unique' => 'jQuery.uniqueSort()', 'cssProps' => '-',
 		'cssNumber' => '-', 'proxy' => 'Function.prototype.bind()', 'holdReady' => '-'];
 
-	private static ?array $cache = null;
 
 	public static function dir(): string
 	{
@@ -35,13 +34,13 @@ final class NuJquery
 	/** @return array{jq: string, migrate: string, ga_jq: string, ga_warn: bool} */
 	public static function settings(): array
 	{
-		if (self::$cache !== null) return self::$cache;
+		if (NuMemo::find('set:jquery', $kept)) return $kept;   // NuMemo (code review R9): a write to the settings drops it
 		$s = [];
 		try {
 			$v = nu_setting_value(self::KEY);
 			$s = is_string($v) ? (json_decode($v, true) ?: []) : [];
 		} catch (Throwable) { /* no settings table yet */ }
-		return self::$cache = self::clean($s);
+		return NuMemo::keep('set:jquery', ['zzzzsys_nunext_setting'], self::clean($s));
 	}
 
 	/** @param array<string, mixed> $s */
@@ -58,7 +57,7 @@ final class NuJquery
 		$new = self::clean($s);
 		if ($new === $old) return false;
 		self::write(self::KEY, $new);
-		self::$cache = $new;
+		NuMemo::put('set:jquery', ['zzzzsys_nunext_setting'], $new);
 		NuLog::write('jquery_changed', 'zzzzsys_nunext_setting', self::KEY, ['from' => $old, 'to' => $new]);
 		return true;
 	}

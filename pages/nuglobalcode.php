@@ -135,7 +135,7 @@ nu_layout_start(t('scode_title'), 'home', ['container' => 'nuContainer', 'settin
 			<div class="tab-pane fade<?= $k === $scTab ? ' show active' : '' ?>" id="scodePane-<?= $k ?>" role="tabpanel" aria-labelledby="scodeTabBtn-<?= $k ?>" tabindex="0">
 				<div class="d-flex flex-wrap align-items-start gap-2 mb-2">
 					<p class="small text-body-secondary mb-0 scodeHint nuCodeFullHide"><?= h(t('scode_hint_' . $k)) ?><?php if (!$global): $nbTip = t('scode_nb_field', ['header' => 'Header', 'style' => 'Style', 'include' => 'Include'][$k], NU_SETUP_CODE[$k] ?? $k); // nuBuilder's name of the field (0.8.525) ?>
-						<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h($nbTip) ?>" title="<?= h($nbTip) ?>"><i class="bi bi-info-circle"></i></span><?php endif; ?></p>
+						<?= nu_info_tip($nbTip) ?><?php endif; ?></p>
 					<div class="w-100 nuCodeFullHide" aria-hidden="true"></div>
 					<span class="scodeTools d-flex gap-2" data-for="scode-<?= $k ?>"></span><?php // hint on its own line, the toolbar below it on the left, right above the editor (0.8.592) ?><?php // editor toolbar (0.8.554): undo / redo, search, comment, format, full screen – nucodetools.js ?>
 					<?php if ($canChange && !empty($tplData['tabs'][$k])): // templates (0.8.524, core/nucodetemplates.php): insert at the cursor or preview ?>

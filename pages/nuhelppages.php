@@ -158,7 +158,7 @@ $title = $row ? ((string)$row['title'] ?: (string)$row['code']) : ($isTr ? t('uh
 $err = static fn(string $k) => isset($errors[$k]) ? '<div class="invalid-feedback d-block">' . h($errors[$k]) . '</div>' : '';
 $inv = static fn(string $k) => isset($errors[$k]) ? ' is-invalid' : '';
 $tip = static fn(string $text) => NuListView::infoTip($text);
-$levels = $db->all('SELECT zzzzsys_access_id, sal_code, sal_description FROM zzzzsys_access ORDER BY sal_code');
+$levels = array_values(NuAcl::levels());
 $bases = NuUserHelp::bases();
 $usage = NuUserHelp::usage()[$code] ?? [];
 $langs = array_values(array_filter(NuLanguages::installed(), static fn($l) => $l !== ''));

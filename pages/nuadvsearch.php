@@ -11,7 +11,7 @@ header('X-Content-Type-Options: nosniff');
 $in = json_decode((string)file_get_contents('php://input'), true);
 $in = is_array($in) ? $in : $_POST;
 $form = is_string($in['f'] ?? null) ? $in['f'] : '';
-$out = static function (array $d): never { echo json_encode($d, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); exit; };
+$out = static function (array $d): never { nu_json($d); };
 // f = a form id, or list:<key> for a system list (0.8.769) – the user must be allowed to open it
 $okTarget = false;
 if (str_starts_with($form, 'list:')) {

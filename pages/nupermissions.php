@@ -189,7 +189,7 @@ nu_layout_start($title, 'users', ['head' => $head]);
 				<?php // type of the item (0.8.773, core/nupermtype.php): plain = a flag for code; Data import = tables the user may import into ?>
 				<div class="card shadow-sm" id="permTypeCard">
 					<div class="card-header fw-semibold d-flex align-items-center gap-2"><i class="bi bi-diagram-3"></i><span><?= h(t('ptype_title')) ?></span>
-						<span class="nuInfoTip" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('ptype_tip')) ?>" title="<?= h(t('ptype_tip')) ?>"><i class="bi bi-info-circle"></i></span></div>
+						<?= nu_info_tip(t('ptype_tip'), '') ?></div>
 					<div class="card-body">
 						<div class="d-flex flex-wrap gap-2 mb-2" role="radiogroup" aria-label="<?= h(t('ptype_title')) ?>" id="permTypeChoice">
 							<?php foreach (NuPermType::TYPES as $tk => [$tl, $ti]): ?>

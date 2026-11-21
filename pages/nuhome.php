@@ -12,7 +12,7 @@ $admin = NuAdmin::any();                                   // globeadmin or a us
 $for = $admin && isset($_GET['for']) ? (string)$_GET['for'] : null;
 if ($for !== null) {
 	if (!NuHome::canManage()) { http_response_code(403); nu_fatal(t('err_forbidden'), t('err_forbidden_hint'), true); }
-	if ($for !== NuHome::ALL_LEVELS && !(int)$db->value('SELECT COUNT(*) FROM zzzzsys_access WHERE zzzzsys_access_id = ?', [$for])) nu_redirect(nu_url('home', ['for' => NuHome::ALL_LEVELS]));
+	if ($for !== NuHome::ALL_LEVELS && !NuAcl::levelExists($for)) nu_redirect(nu_url('home', ['for' => NuHome::ALL_LEVELS]));
 	NuHome::forLevel($for, true);
 } elseif (!$admin) {
 	NuHome::forLevel((string)($u['access_id'] ?? ''), false);
@@ -125,7 +125,7 @@ $access = null;
 $forms  = [];
 $showRights = !$u['globeadmin'] && NuImpersonate::active() !== null;
 if (!$u['globeadmin']) {
-	$access = $db->one('SELECT sal_code, sal_description, sal_group, sal_zzzzsys_form_id FROM zzzzsys_access WHERE zzzzsys_access_id = ?', [$u['access_id']]);
+	$access = NuAcl::level((string)$u['access_id']);
 }
 if ($showRights) {
 	// main + additional access levels (0.8.585): one row per form, a right ticked when any level grants it

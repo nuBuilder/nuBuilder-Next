@@ -22,7 +22,7 @@
 	var secs = Array.prototype.slice.call(document.querySelectorAll('.nuTodoSec'));
 	if (!secs.length) return;
 	var btn = document.getElementById('nuTodoAll');
-	try { localStorage.removeItem('nunext-todo-closed'); } catch (e) { /* storage blocked */ }   // remembered state of 0.8.467–0.8.508
+	nuStore.remove('nunext-todo-closed');   // remembered state of 0.8.467–0.8.508
 	/** All open → "Collapse all"; otherwise "Expand all". */
 	function label() {
 		if (!btn) return;

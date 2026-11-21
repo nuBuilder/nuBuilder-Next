@@ -15,7 +15,7 @@
 	var btn = document.getElementById('nuBellBtn'), badge = box.querySelector('.nuBellBadge'), list = box.querySelector('.nuBellList'), allBtn = box.querySelector('.nuBellAll');
 	var timer = 0, busy = false, confirmOpen = false, last = null;
 
-	function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
+	function el(tag, attrs, kids) { return NuUtil.el(tag, attrs, kids); }
 	function icon(cls) { var i = el('i', 'bi ' + cls); i.setAttribute('aria-hidden', 'true'); return i; }
 	function seen(ids) {                                  // ids already announced by a toast in this browser session
 		try {
@@ -26,9 +26,8 @@
 	}
 
 	function request(body) {
-		var o = {credentials: 'same-origin', headers: {'Accept': 'application/json'}};
-		if (body) { o.method = 'POST'; o.headers['Content-Type'] = 'application/json'; o.headers['X-CSRF-Token'] = csrf; o.body = JSON.stringify(body); }
-		return fetch(url, o).then(function (r) { if (r.status === 401) { stop(); throw new Error('login'); } return r.json(); });
+		var p = body ? NuUtil.post(url, body, {csrf: csrf, raw: true}) : fetch(url, {credentials: 'same-origin', headers: {'Accept': 'application/json'}});
+		return p.then(function (r) { if (r.status === 401) { stop(); throw new Error('login'); } return r.json(); });
 	}
 
 	function setBadge(n) {

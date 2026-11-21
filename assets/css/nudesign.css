@@ -84,7 +84,6 @@
 .nuDsField .form-label.nuDsLabel { margin-bottom: .2rem; font-size: .78rem; font-weight: 600; color: var(--bs-secondary-color); }
 .nuDsGrid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; }
 .nuDsMono { font-family: var(--bs-font-monospace); font-size: .82rem; }
-.nuDsRo { display: block; margin-top: .2rem; font-size: .75rem; color: var(--bs-secondary-color); }
 .nuDsAdv { align-self: flex-start; border: 0; background: none; padding: 0; color: var(--bs-link-color); font-size: .82rem; }
 .nuDsAdv:hover { text-decoration: underline; }
 .nuDsEvents { font-size: .82rem; }
@@ -286,22 +285,12 @@ html.nuDsWorkOpen body { overflow: hidden; }
 .nuDsCond.nuDsCondBad { border-color: var(--bs-danger); box-shadow: 0 0 0 .2rem rgba(var(--bs-danger-rgb), .2); }
 
 /* List flyout (0.8.820) */
-.nuDsFlyList { padding: .5rem .75rem 1rem; overflow: auto; }
 .nuDsFlySub { font-size: .8rem; text-transform: uppercase; letter-spacing: .03em; color: var(--bs-secondary-color); margin: .9rem 0 .4rem; }
 .nuDsFlySub:first-child { margin-top: .25rem; }
 .nuDsListCols { display: flex; flex-direction: column; gap: .35rem; }
 .nuDsListCol { border: 1px solid var(--bs-border-color); border-radius: .375rem; padding: .35rem .4rem; }
 .nuDsListColOff { opacity: .6; }
-.nuDsListColHead, .nuDsListColBody { display: flex; gap: .3rem; align-items: center; }
-.nuDsListColBody { margin-top: .3rem; }
-.nuDsListColHead > input { flex: 1 1 auto; min-width: 0; }
-.nuDsListColBody > input[data-lc="display"] { flex: 1 1 auto; min-width: 0; }
-.nuDsListColBody > input[data-lc="width"] { flex: 0 0 4.5rem; }
-.nuDsListColBody > select { flex: 0 0 6.5rem; width: auto; }
 .nuDsListColNo { font-size: .75rem; color: var(--bs-secondary-color); min-width: 1rem; text-align: end; }
-.nuDsListColBody { flex-wrap: wrap; }
-.nuDsListColBody > input[data-lc="display"] { flex: 1 1 100%; }
-.nuDsListColBody > select { flex: 1 1 auto; }
 
 /* Browse list in the workspace (0.8.822): settings and code on the left, the columns as a table on the right */
 .nuDsWorkList { display: grid; grid-template-columns: minmax(16rem, 22rem) minmax(0, 1fr); gap: 1.5rem; padding: 1rem 1.25rem; align-items: start; overflow: auto; }

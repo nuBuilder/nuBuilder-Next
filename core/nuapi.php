@@ -429,7 +429,7 @@ final class NuApi
 		if (array_key_exists('access_level_id', $in) || !$old) {
 			$a = (string)($in['access_level_id'] ?? '');
 			if ($a === '') $errors['access_level_id'] = 'required';
-			elseif (!(int)$db->value('SELECT COUNT(*) FROM zzzzsys_access WHERE zzzzsys_access_id = ?', [$a])) $errors['access_level_id'] = 'unknown access level';
+			elseif (!NuAcl::levelExists((string)$a)) $errors['access_level_id'] = 'unknown access level';
 			elseif (in_array($a, NuApiClient::serviceAccessLevels(), true)) $errors['access_level_id'] = 'access level of an API service user';
 			elseif (NuSecurity::restricted() && $a !== (string)($old['sus_zzzzsys_access_id'] ?? '') && NuSecurity::adminRightsOf($a)) {
 				$errors['access_level_id'] = 'access level with admin-equivalent rights – only the globeadmin assigns it';

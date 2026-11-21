@@ -14,7 +14,7 @@
 	var URL_ = A('data-url'), T = {};
 	try { T = JSON.parse(A('data-texts') || '{}'); } catch (e) { T = {}; }
 	function t(k) { return T[k] || k; }
-	function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined && txt !== null) e.textContent = txt; return e; }
+	function el(tag, attrs, kids) { return NuUtil.el(tag, attrs, kids); }
 	function csrf() { return (window.nuNext || {}).csrf || A('data-csrf'); }
 	function store(k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { /* no storage */ } return null; }
 	var VIEWS = {month: 'dayGridMonth', week: 'timeGridWeek', day: 'timeGridDay', list: 'listWeek'};
@@ -49,8 +49,7 @@
 			else if (v !== null && v !== undefined) fd.append(k, v);
 		});
 		Object.keys(extra || {}).forEach(function (k) { fd.append(k, extra[k]); });
-		return fetch(URL_, {method: 'POST', body: fd, credentials: 'same-origin', headers: {'X-CSRF-Token': csrf(), 'Accept': 'application/json'}})
-			.then(function (r) { return r.json(); });
+		return NuUtil.post(URL_, fd, {csrf: csrf(), strict: true});
 	}
 
 	// ------------------------------------------------------------------ records in a dialogue

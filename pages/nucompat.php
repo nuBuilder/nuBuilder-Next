@@ -152,7 +152,7 @@ if (nu_db()->type === 'sqlsrv' || (NuHash::devMode() && isset($_GET['mssql']))):
 <div class="card shadow-sm mb-4" id="compat_mssql">
 	<div class="card-header d-flex flex-wrap gap-2 align-items-center">
 		<span class="fw-semibold me-auto"><i class="bi bi-database-exclamation me-1"></i><?= h(t('compat_ms_title')) ?>
-			<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('compat_ms_tip')) ?>" title="<?= h(t('compat_ms_tip')) ?>"><i class="bi bi-info-circle"></i></span></span>
+			<?= nu_info_tip(t('compat_ms_tip')) ?></span>
 		<span class="badge <?= $ms ? 'text-bg-warning' : 'text-bg-success' ?>" id="compatMsCount"><?= $msN ?></span>
 	</div>
 	<div class="table-responsive">
@@ -186,7 +186,7 @@ if (nu_db()->type === 'sqlsrv' || (NuHash::devMode() && isset($_GET['mssql']))):
 <div class="card shadow-sm mb-4" id="compat_hash">
 	<div class="card-header d-flex flex-wrap gap-2 align-items-center">
 		<span class="fw-semibold me-auto"><i class="bi bi-shield-exclamation me-1"></i><?= h(t('compat_hash_title')) ?>
-			<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('compat_hash_tip')) ?>" title="<?= h(t('compat_hash_tip')) ?>"><i class="bi bi-info-circle"></i></span></span>
+			<?= nu_info_tip(t('compat_hash_tip')) ?></span>
 		<span class="badge <?= $unq ? 'text-bg-warning' : 'text-bg-success' ?>"><?= count($unq) ?></span>
 	</div>
 	<div class="table-responsive">

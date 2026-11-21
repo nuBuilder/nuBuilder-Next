@@ -568,19 +568,19 @@ if (!$devUploadFirst) echo $finishedHtml; ?>
 									<option value="all"><?= h(t('upd_bk_db_all', NuFile::size(NuSqlDump::estimate('all', true)))) ?></option>
 									<option value="none"><?= h(t('upd_bk_db_none')) ?></option>
 								</select>
-								<span class="nuInfoTip" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('upd_install_db_hint')) ?>" title="<?= h(t('upd_install_db_hint')) ?>"><i class="bi bi-info-circle"></i></span>
+								<?= nu_info_tip(t('upd_install_db_hint'), '') ?>
 							</div>
 							<input type="hidden" name="backup_nologs" value="1">
 						<?php endif; ?>
 						<?php if ($hasPages): // page forms (0.8.387): the installation's page folders as a copy in the backup (off by default) ?>
 							<div class="form-check me-2"><input class="form-check-input" type="checkbox" id="updBkPages" name="backup_pages" value="1">
 								<label class="form-check-label small" for="updBkPages"><?= h(t('upd_bk_pages')) ?></label>
-								<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('upd_bk_pages_hint')) ?>" title="<?= h(t('upd_bk_pages_hint')) ?>"><i class="bi bi-info-circle"></i></span></div>
+								<?= nu_info_tip(t('upd_bk_pages_hint')) ?></div>
 						<?php endif; ?>
 						<?php if (!empty($check['sample'])): $sv = $check['sample']; $sNewer = $sv['to'] > $sv['from']; ?>
 							<div class="form-check me-2"><input class="form-check-input" type="checkbox" id="updSample" name="sample_refresh" value="1"<?= $sNewer ? ' checked' : '' ?>>
 								<label class="form-check-label small" for="updSample"><?= h($sNewer ? t('upd_sample_refresh', $sv['from'], $sv['to']) : t('upd_sample_refresh_same')) ?></label>
-								<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('upd_sample_refresh_tip')) ?>" title="<?= h(t('upd_sample_refresh_tip')) ?>"><i class="bi bi-info-circle"></i></span></div>
+								<?= nu_info_tip(t('upd_sample_refresh_tip')) ?></div>
 						<?php endif; ?>
 						<div class="w-100" aria-hidden="true"></div><?php // Install and Cancel on their own row below the options (0.8.505) ?>
 						<button class="btn btn-primary" type="submit" id="updInstall" data-nu-busy="<?= h(t('upd_installing')) ?>"><i class="bi bi-download me-1"></i><?= h(t('upd_install')) ?></button>
@@ -664,14 +664,14 @@ if (!$devUploadFirst) echo $finishedHtml; ?>
 				<?php if (isset($check['dbc'])): ?>
 				<div class="border rounded p-3 mb-3" id="updDbChanges">
 					<div class="fw-semibold small mb-2"><i class="bi bi-database-exclamation me-1"></i><?= h(t('upd_dbc_title')) ?>
-						<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('upd_dbc_tip')) ?>" title="<?= h(t('upd_dbc_tip')) ?>"><i class="bi bi-info-circle"></i></span></div>
+						<?= nu_info_tip(t('upd_dbc_tip')) ?></div>
 					<?= $dbcList($check['dbc']) ?>
 				</div>
 				<?php endif; ?>
 				<?php if (!empty($check['pages'])): $pgBad = array_values(array_filter($check['pages'], static fn($x) => $x['issues'])); ?>
 				<div class="border rounded p-3 mb-3" id="updPages">
 					<div class="fw-semibold small mb-2"><i class="bi bi-filetype-php me-1"></i><?= h(t('upd_pages_title')) ?>
-						<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('upd_pages_tip')) ?>" title="<?= h(t('upd_pages_tip')) ?>"><i class="bi bi-info-circle"></i></span></div>
+						<?= nu_info_tip(t('upd_pages_tip')) ?></div>
 					<?php if (!$pgBad): ?>
 						<p class="small text-success mb-0" id="updPagesOk"><i class="bi bi-check-circle me-1"></i><?= h(t('upd_pages_ok', count($check['pages']))) ?></p>
 					<?php else: ?>
@@ -875,12 +875,12 @@ if (!$devUploadFirst) echo $finishedHtml; ?>
 					<?php if ($sqlOk): ?>
 						<div class="form-check mb-0 small"><input class="form-check-input" type="checkbox" id="updBkNologs" name="nologs" value="1" checked>
 							<label class="form-check-label" for="updBkNologs"><?= h(t('upd_bk_nologs')) ?></label>
-							<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('upd_bk_nologs_hint', implode(', ', NuSqlDump::LOG_TABLES))) ?>" title="<?= h(t('upd_bk_nologs_hint', implode(', ', NuSqlDump::LOG_TABLES))) ?>"><i class="bi bi-info-circle"></i></span></div>
+							<?= nu_info_tip(t('upd_bk_nologs_hint', implode(', ', NuSqlDump::LOG_TABLES))) ?></div>
 					<?php endif; ?>
 					<?php if ($hasPages): ?>
 						<div class="form-check mb-0 small"><input class="form-check-input" type="checkbox" id="updBkPages2" name="pages" value="1">
 							<label class="form-check-label" for="updBkPages2"><?= h(t('upd_bk_pages')) ?></label>
-							<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('upd_bk_pages_hint')) ?>" title="<?= h(t('upd_bk_pages_hint')) ?>"><i class="bi bi-info-circle"></i></span></div>
+							<?= nu_info_tip(t('upd_bk_pages_hint')) ?></div>
 					<?php endif; ?>
 					<button class="btn btn-sm btn-outline-secondary ms-auto" type="submit" data-nu-busy="<?= h(t('upd_backup_running')) ?>"><i class="bi bi-archive me-1"></i><?= h(t('upd_backup_now')) ?></button>
 				</form>
@@ -994,7 +994,7 @@ if (!$devUploadFirst) echo $finishedHtml; ?>
 					<label for="updKeep"><?= h(t('upd_keep_label')) ?></label>
 					<input type="number" class="form-control form-control-sm updKeepNum" id="updKeep" name="keep" min="0" max="999" value="<?= NuUpdate::keepSql() ?>">
 					<span><?= h(t('upd_keep_suffix')) ?></span>
-					<span class="nuInfoTip" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('upd_keep_hint')) ?>" title="<?= h(t('upd_keep_hint')) ?>"><i class="bi bi-info-circle"></i></span>
+					<?= nu_info_tip(t('upd_keep_hint'), '') ?>
 					<button class="btn btn-sm btn-outline-secondary" type="submit"><?= h(t('save')) ?></button>
 				</form>
 			<?php endif; ?>
@@ -1155,7 +1155,7 @@ $lpTip = static fn(string $tip, string $icon = 'bi-info-circle'): string => '<sp
 <details class="card shadow-sm mb-4" id="updLibraries">
 	<summary class="card-header fw-semibold d-flex align-items-center gap-2"><span class="me-auto"><i class="bi bi-chevron-right nuLibChevron me-1" aria-hidden="true"></i><?= h(t('upd_libs') . ' · ' . t('upd_libs_bundled')) ?>
 		<span class="badge text-bg-secondary ms-1"><?= count($libs) ?></span><?php if ($libProblems): ?><span class="badge text-bg-warning ms-1"><i class="bi bi-exclamation-triangle me-1"></i><?= $libProblems ?></span><?php endif; ?></span>
-		<span class="nuInfoTip" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="<?= h(t('upd_libs_hint')) ?>" title="<?= h(t('upd_libs_hint')) ?>"><i class="bi bi-info-circle"></i></span></summary>
+		<?= nu_info_tip(t('upd_libs_hint'), '') ?></summary>
 	<div class="table-responsive">
 		<table class="table table-sm nu-table mb-0 small" data-nu-phcards>
 			<thead><tr><th><?= h(t('upd_libs_name')) ?></th><th><?= h(t('upd_libs_version')) ?></th><th><?= h(t('upd_libs_where')) ?></th><th class="d-none d-md-table-cell"><?= h(t('upd_libs_use')) ?></th><th class="d-none d-lg-table-cell"><?= h(t('upd_libs_license')) ?></th><th><?= h(t('upd_libs_state')) ?></th></tr></thead>

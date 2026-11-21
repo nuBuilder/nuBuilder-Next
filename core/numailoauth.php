@@ -27,12 +27,11 @@ final class NuMailOAuth
 	public const SERVERS = ['google' => ['smtp.gmail.com', 587], 'microsoft' => ['smtp.office365.com', 587]];
 	private const SECRET = ['client_secret', 'refresh_token', 'access_token'];
 
-	private static ?array $cache = null;
 
 	/** The stored settings, secrets decrypted. */
 	public static function settings(): array
 	{
-		if (self::$cache !== null) return self::$cache;
+		if (NuMemo::find('set:mailoauth', $kept)) return $kept;   // NuMemo (code review R9): a write to the settings drops it
 		$v = [];
 		try {
 			$raw = nu_setting_value(self::SETTING);
@@ -43,7 +42,7 @@ final class NuMailOAuth
 		$v += ['provider' => 'google', 'tenant' => 'common', 'client_id' => '', 'account' => '', 'connected_at' => '', 'access_expires' => 0,
 			'auth_url' => '', 'token_url' => '', 'scope' => ''];
 		if (!in_array($v['provider'], self::PROVIDERS, true)) $v['provider'] = 'google';
-		return self::$cache = $v;
+		return NuMemo::keep('set:mailoauth', ['zzzzsys_nunext_setting'], $v);
 	}
 
 	/** Writes the settings (secrets encrypted). */
@@ -56,7 +55,7 @@ final class NuMailOAuth
 		$row = ['setting_value' => json_encode($out, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), 'updated_at' => date('Y-m-d H:i:s'),
 			'updated_by' => (string)(NuAuth::user()['login'] ?? '')];
 		nu_setting_save(self::SETTING, $row, $db);
-		self::$cache = null;
+		NuMemo::drop('set:mailoauth');
 	}
 
 	/**

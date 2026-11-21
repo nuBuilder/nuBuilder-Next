@@ -40,8 +40,7 @@ if (nu_is_post()) {
 			http_response_code(400);
 			$out = ['ok' => false, 'error' => 'Unknown action'];
 	}
-	echo json_encode($out, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-	exit;
+	nu_json($out);
 }
 
 // ------------------------------------------------------------------ page

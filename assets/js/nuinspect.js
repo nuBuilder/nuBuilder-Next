@@ -24,7 +24,7 @@
 	search.addEventListener('input', apply);
 	filter.addEventListener('change', apply);
 	try { var saved = localStorage.getItem('nuInspectFilter'); if (saved) filter.value = saved; } catch (e) { /* storage off */ }
-	filter.addEventListener('change', function () { try { localStorage.setItem('nuInspectFilter', filter.value); } catch (e) { /* ignore */ } });
+	filter.addEventListener('change', function () { nuStore.set('nuInspectFilter', filter.value); });
 
 	// ------------------------------------------------------------------ sort (# · column · type · value), click again = reverse
 	var collator = new Intl.Collator(undefined, {numeric: true, sensitivity: 'base'});

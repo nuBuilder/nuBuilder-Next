@@ -12,13 +12,7 @@ defined('NU_ROOT') || exit;
  * The settings are read here, never taken from the browser. Rights: the list's browse right; moving: the edit form's save right.
  */
 NuTranslate::activate();
-$json = static function (array $d, int $code = 200): never {
-	http_response_code($code);
-	header('Content-Type: application/json; charset=utf-8');
-	header('X-Content-Type-Options: nosniff');
-	echo json_encode($d, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-	exit;
-};
+$json = static function (array $d, int $code = 200): never { nu_json($d, $code); };
 if (!nu_is_post()) $json(['ok' => false, 'error' => t('err_forbidden')], 405);
 $meta = NuFormMeta::load((string)($_POST['f'] ?? ''));
 if (!$meta || !NuAcl::can($meta->id)) $json(['ok' => false, 'error' => t('err_forbidden')], 403);

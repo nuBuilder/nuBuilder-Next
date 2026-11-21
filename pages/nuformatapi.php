@@ -11,9 +11,7 @@ header('Content-Type: application/json; charset=utf-8');
 
 function nf_out(array $d, int $status = 200): never
 {
-	http_response_code($status);
-	echo json_encode($d, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
-	exit;
+	nu_json($d, $status);
 }
 
 if (!nu_is_post()) nf_out(['ok' => false, 'error' => 'POST required'], 405);

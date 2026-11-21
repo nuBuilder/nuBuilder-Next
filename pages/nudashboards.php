@@ -23,7 +23,7 @@ $w = $d && $wid !== '' && $wid !== 'new' ? NuDashboard::widget($wid) : null;
 if ($w && (string)$w['dashboard_id'] !== $id) $w = null;
 if ($d && $wid !== '' && $wid !== 'new' && !$w) { http_response_code(404); nu_fatal(t('record_not_found'), '', true); }
 $errors = [];
-$tip = static fn(string $text) => '<span class="nuInfoTip ms-1" tabindex="0" role="img" data-bs-toggle="tooltip" data-bs-custom-class="nuTipWide" aria-label="' . h($text) . '" title="' . h($text) . '"><i class="bi bi-info-circle"></i></span>';
+$tip = static fn(string $text) => nu_info_tip($text);
 
 if (nu_is_post()) {
 	$action = nu_post('action');
@@ -60,7 +60,7 @@ if (nu_is_post()) {
 // after the POST: arrow functions take $errors as it is when they are created
 $inv = static fn(string $k) => isset($errors[$k]) ? ' is-invalid' : '';
 $fb = static fn(string $k) => isset($errors[$k]) ? '<div class="invalid-feedback">' . h($errors[$k]) . '</div>' : '';
-$accessLevels = $db->tableExists('zzzzsys_access') ? $db->all('SELECT zzzzsys_access_id, sal_code, sal_description, sal_group FROM zzzzsys_access ORDER BY sal_code') : [];
+$accessLevels = array_values(NuAcl::levels());
 $accName = [];
 foreach ($accessLevels as $a) $accName[(string)$a['zzzzsys_access_id']] = (string)$a['sal_code'];
 $foot = '';

@@ -28,7 +28,6 @@ final class NuUserHelp
 	/** Hash variables never filled into a help page. */
 	private const NO_HASH = ['SESSION_ID', 'TABLE_ID'];
 
-	private static ?array $rows = null;
 	private static ?array $codes = null;
 	private static ?array $ctx = null;
 
@@ -39,17 +38,16 @@ final class NuUserHelp
 
 	public static function forget(): void
 	{
-		self::$rows = null;
 		self::$codes = null;
+		NuMemo::drop('uhelp:rows');
 	}
 
 	/** Every row (cached per request), without the text. @return list<array<string, mixed>> */
 	public static function rows(): array
 	{
-		if (self::$rows !== null) return self::$rows;
-		if (!self::ready()) return self::$rows = [];
-		return self::$rows = nu_db()->all('SELECT zzzzsys_nunext_help_id AS id, code, lang, title, format, parent, sort_order, access, keywords, active, updated_at, updated_by FROM '
-			. self::T . ' ORDER BY sort_order, title');
+		if (!self::ready()) return [];
+		return NuMemo::get('uhelp:rows', [self::T], static fn(): array => nu_db()->all('SELECT zzzzsys_nunext_help_id AS id, code, lang, title, format, parent, sort_order, access, keywords, active, updated_at, updated_by FROM '
+			. self::T . ' ORDER BY sort_order, title'));
 	}
 
 	/** The pages themselves (lang ''), by code. */
@@ -113,8 +111,7 @@ final class NuUserHelp
 		if ($editor && $as !== null && $as !== '') $levels = $as === '*' ? [] : [$as];   // "*" = a user without any of the levels
 		$codes = [];
 		if ($levels) {
-			$in = implode(',', array_fill(0, count($levels), '?'));
-			foreach (nu_db()->all("SELECT sal_code FROM zzzzsys_access WHERE zzzzsys_access_id IN ($in)", $levels) as $a) $codes[] = mb_strtolower(trim((string)$a['sal_code']));
+			foreach ($levels as $lid) if ($a = NuAcl::level((string)$lid)) $codes[] = mb_strtolower(trim((string)$a['sal_code']));
 		}
 		if ($ga && ($as === null || $as === '')) $codes[] = 'globeadmin';
 		$viewAs = $editor && $as !== null && $as !== '';
@@ -627,7 +624,7 @@ final class NuUserHelp
 	public static function export(): string
 	{
 		$acc = [];
-		foreach (nu_db()->all('SELECT zzzzsys_access_id, sal_code FROM zzzzsys_access') as $a) $acc[(string)$a['zzzzsys_access_id']] = (string)$a['sal_code'];
+		foreach (NuAcl::levels() as $a) $acc[(string)$a['zzzzsys_access_id']] = (string)$a['sal_code'];
 		$pages = [];
 		foreach (nu_db()->all('SELECT * FROM ' . self::T . ' ORDER BY code, lang') as $r) {
 			$p = ['code' => (string)$r['code'], 'lang' => (string)$r['lang'], 'title' => (string)$r['title'], 'format' => (string)$r['format'], 'body' => self::inlineImages((string)$r['body']),
@@ -652,7 +649,7 @@ final class NuUserHelp
 		if (!is_array($j) || ($j['format'] ?? '') !== 'nunext-help-1' || !is_array($j['pages'] ?? null)) { $res['errors'][] = t('uh_err_import'); return $res; }
 		NuSchema::ensure();
 		$byCode = [];
-		foreach (nu_db()->all('SELECT zzzzsys_access_id, sal_code FROM zzzzsys_access') as $a) $byCode[mb_strtolower((string)$a['sal_code'])] = (string)$a['zzzzsys_access_id'];
+		foreach (NuAcl::levels() as $a) $byCode[mb_strtolower((string)$a['sal_code'])] = (string)$a['zzzzsys_access_id'];
 		$pages = array_values(array_filter($j['pages'], 'is_array'));
 		usort($pages, static fn($a, $b) => ((string)($a['lang'] ?? '') === '' ? 0 : 1) <=> ((string)($b['lang'] ?? '') === '' ? 0 : 1));   // pages before translations
 		$parents = [];

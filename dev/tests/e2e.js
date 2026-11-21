@@ -21133,6 +21133,144 @@ T.usability_g = async (s) => {
 	expect(/Sign out/.test(await p.locator('body').innerHTML()), 'G13 "Sign out" not in the menu');
 };
 
+// 0.8.1348: usability review, page list – help reader label / one main area, password policy labels, IP access rules on phones,
+// shared settings as cards, documentation index folded, dashboard date fields follow hidden, Debug results fold, e-mail Save in the
+// header, code search focus only with a keyboard, system notifications in the recipient's language
+T.usability_page_list = async (s) => {
+	const p = s.ga;
+	await open(p, 'index.php?p=userhelp');
+	const uh = await p.evaluate(() => { const sel = document.getElementById('nuUhAs'); return {lab: sel ? sel.labels.length : -1, mains: document.querySelectorAll('main').length}; });
+	expect(uh.lab !== 0 && uh.mains === 1, 'help reader: ' + JSON.stringify(uh));
+	await open(p, 'index.php?p=pwpolicy');
+	const pw = await p.evaluate(() => [...document.querySelectorAll('.nuPwpLevelSel select')].filter(x => !x.labels.length).length);
+	expect(pw === 0, 'password policy selects without a label: ' + pw);
+	await open(p, 'index.php?p=email&tab=settings');
+	const ml = await p.evaluate(() => { const b = document.getElementById('nuMailSave'); return b ? {form: b.getAttribute('form'), inForm: !!b.closest('#nuMailForm'), more: document.querySelectorAll('#nuMailForm [data-nu-save]').length} : null; });
+	expect(!ml || (ml.form === 'nuMailForm' && !ml.inForm && ml.more === 0), 'e-mail Save not in the header: ' + JSON.stringify(ml));
+	await open(p, 'index.php?p=codesearch');
+	expect(await p.locator('#csQ[autofocus]').count() === 0 && await p.locator('#csQ[data-nu-autofocus]').count() === 1, 'code search field still with autofocus');
+	// Debug results: a long message folds with "more"
+	const did = 'e2edeb' + Date.now();
+	sql(`INSERT INTO zzzzsys_debug (zzzzsys_debug_id, deb_message, deb_added) VALUES ('${did}', '${Array.from({length: 30}, (_, i) => 'line ' + i).join('\\n')}', ${Math.floor(Date.now() / 1000)})`);
+	try {
+		await open(p, 'index.php?p=debug');
+		const db = await p.evaluate(() => { const pre = [...document.querySelectorAll('.debugMsg')].find(x => /line 29/.test(x.textContent)); const b = pre && pre.nextElementSibling; return pre ? {coll: pre.classList.contains('debugCollapsed'), btn: !!(b && b.classList.contains('debugMore')), h: pre.clientHeight} : null; });
+		expect(db && db.coll && db.btn && db.h < 160, 'Debug message not folded: ' + JSON.stringify(db));
+		await p.click('.debugMore');
+		expect(await p.evaluate(() => [...document.querySelectorAll('.debugMsg')].some(x => /line 29/.test(x.textContent) && !x.classList.contains('debugCollapsed'))), 'Debug "more" did not open the message');
+	} finally { sql(`DELETE FROM zzzzsys_debug WHERE zzzzsys_debug_id = '${did}'`); }
+	// phone
+	const st = await p.context().storageState();
+	const ctx = await p.context().browser().newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, storageState: st, locale: 'en-GB' });
+	const ph = await ctx.newPage();
+	try {
+		await open(ph, 'index.php?p=ipaccess');
+		const ipa = await ph.evaluate(() => { const x = document.querySelector('#ipaLevels .ipaMode'); return {w: x ? x.getBoundingClientRect().width : 999, sw: document.documentElement.scrollWidth}; });
+		expect(ipa.w > 200 && ipa.sw <= 390, 'IP access rule select on a phone: ' + JSON.stringify(ipa));
+		await open(ph, 'index.php?p=settings&s=forte');
+		const set = await ph.evaluate(() => { const r = [...document.querySelectorAll('#setTable tbody tr[data-category]')].find(x => !x.hidden); return {d: r ? getComputedStyle(r).display : '', w: r ? r.getBoundingClientRect().width : 0, sw: document.documentElement.scrollWidth}; });
+		expect(set.d === 'grid' && set.w <= 390 && set.sw <= 390, 'shared settings on a phone: ' + JSON.stringify(set));
+		await open(ph, 'index.php?p=help');
+		const hp = await ph.evaluate(() => { const f = document.getElementById('helpTocFold'); return f ? {open: f.open, sum: getComputedStyle(f.querySelector('summary')).display} : null; });
+		expect(hp && !hp.open && hp.sum !== 'none', 'documentation index not folded on a phone: ' + JSON.stringify(hp));
+		// a date field whose visible parts follow hidden (dashboard From / To only for a custom period)
+		const dt = await ph.evaluate(() => new Promise((res) => {
+			const i = document.createElement('input'); i.type = 'date'; i.hidden = true; document.querySelector('main').appendChild(i);
+			setTimeout(() => { const w = i.closest('.nuDateWrap'); const a = w ? w.hidden : null; i.hidden = false;
+				setTimeout(() => { const b = w ? w.hidden : null; w && w.remove(); res([a, b]); }, 50); }, 100);
+		}));
+		expect(dt[0] === true && dt[1] === false, 'date field parts do not follow hidden: ' + JSON.stringify(dt));
+	} finally { await ctx.close(); }
+	await open(p, 'index.php?p=help');
+	expect(await p.evaluate(() => document.getElementById('helpTocFold').open), 'documentation index folded on the desktop');
+	// a due to-do is written in the assignee's language, not in the language of the run
+	if (SITE && sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'zzzzsys_nunext_project_task'") === '1') {
+		const prj = sql('SELECT zzzzsys_nunext_project_id FROM zzzzsys_nunext_project ORDER BY 1 LIMIT 1');
+		const lang = sql("SELECT sus_language FROM zzzzsys_user WHERE zzzzsys_user_id = 'sample_anna'");
+		if (prj) {
+			sql(`UPDATE zzzzsys_user SET sus_language = 'German' WHERE zzzzsys_user_id = 'sample_anna'; INSERT INTO zzzzsys_nunext_project_task (zzzzsys_nunext_project_task_id, project_id, title, status, assignee, due) VALUES ('e2elangtask', '${prj}', 'E2E lang', 'open', 'sample_anna', NOW() - INTERVAL 1 DAY)`);
+			try {
+				require('child_process').spawnSync('php', ['-r', "require 'core/nuapp.php'; $_SESSION['nu_lang'] = 'en'; NuProject::dueHousekeeping();"], { cwd: SITE });
+				const title = sql("SELECT title FROM zzzzsys_nunext_notification WHERE title LIKE '%E2E lang' ORDER BY created_at DESC LIMIT 1");
+				expect(/^Aufgabe/.test(title), 'due to-do not in the assignee\'s language: ' + title);
+			} finally {
+				sql(`DELETE FROM zzzzsys_nunext_project_task WHERE zzzzsys_nunext_project_task_id = 'e2elangtask'; DELETE u FROM zzzzsys_nunext_notification_user u JOIN zzzzsys_nunext_notification n ON n.zzzzsys_nunext_notification_id = u.notification_id WHERE n.title LIKE '%E2E lang'; DELETE FROM zzzzsys_nunext_notification WHERE title LIKE '%E2E lang'; UPDATE zzzzsys_user SET sus_language = ${lang === '' || lang === 'NULL' ? 'NULL' : "'" + lang + "'"} WHERE zzzzsys_user_id = 'sample_anna'`);
+			}
+		}
+	}
+};
+
+// 0.8.1350: shared script helpers (assets/js/nuutil.js) – NuUtil.el / esc / csrf / post / toast and nuStore on every page; the form
+// token in <meta name="nu-csrf">; a JSON answer through nu_json (headers); the (i) tooltip through nu_info_tip
+T.shared_helpers = async (s) => {
+	const p = s.ga;
+	await open(p, 'index.php?p=home');
+	const r = await p.evaluate(async () => {
+		const U = window.NuUtil, out = {};
+		out.has = !!U && !!window.nuStore && !!window.nuStore.session;
+		const a = U.el('a', {'class': 'x y', href: '#z', text: 'T', 'aria-pressed': false, disabled: false, onclick: function () { out.clicked = true; }}, null);
+		a.click();
+		out.el = [a.className, a.getAttribute('href'), a.textContent, a.getAttribute('aria-pressed'), a.hasAttribute('disabled'), out.clicked === true];
+		const b = U.el('div', 'c', [U.el('span', null, 'one'), 'two', null, 3]);
+		out.kids = [b.className, b.textContent, b.children.length];
+		out.text = U.el('b', 'k', 5).textContent;
+		out.esc = U.esc('<a href="x">\'&</a>');
+		out.csrf = U.csrf().length > 20 && !!document.querySelector('meta[name="nu-csrf"]');
+		nuStore.set('e2e-store', 1); out.store = [nuStore.get('e2e-store'), nuStore.get('e2e-none', 'd')]; nuStore.remove('e2e-store'); out.store.push(nuStore.get('e2e-store'));
+		nuStore.session.set('e2e-s', 'v'); out.sess = sessionStorage.getItem('e2e-s'); nuStore.session.remove('e2e-s');
+		const j = await U.post('index.php?p=notifyapi', {action: 'none'});
+		out.post = typeof j === 'object' && j !== null;
+		const res = await U.post('index.php?p=notifyapi', {action: 'none'}, {raw: true});
+		out.headers = [res.headers.get('content-type'), res.headers.get('cache-control'), res.headers.get('x-content-type-options')];
+		const t = U.toast('E2E toast', false, {box: 'e2eToastBox', ms: 50000});
+		out.toast = [!!document.querySelector('#e2eToastBox.nuToastStack .alert-danger'), t.getAttribute('role')];
+		t.remove();
+		return out;
+	});
+	expect(r.has, 'NuUtil / nuStore missing');
+	expect(JSON.stringify(r.el) === JSON.stringify(['x y', '#z', 'T', 'false', false, true]), 'NuUtil.el attributes: ' + JSON.stringify(r.el));
+	expect(JSON.stringify(r.kids) === JSON.stringify(['c', 'onetwo3', 1]) && r.text === '5', 'NuUtil.el children: ' + JSON.stringify(r.kids) + ' ' + r.text);
+	expect(r.esc === '&lt;a href=&quot;x&quot;&gt;&#39;&amp;&lt;/a&gt;', 'NuUtil.esc: ' + r.esc);
+	expect(r.csrf, 'no form token for scripts');
+	expect(JSON.stringify(r.store) === JSON.stringify(['1', 'd', null]) && r.sess === 'v', 'nuStore: ' + JSON.stringify(r.store) + ' ' + r.sess);
+	expect(r.post, 'NuUtil.post did not answer JSON');
+	expect(/application\/json/.test(r.headers[0] || '') && /no-store/.test(r.headers[1] || '') && r.headers[2] === 'nosniff', 'nu_json headers: ' + JSON.stringify(r.headers));
+	expect(r.toast[0] && r.toast[1] === 'alert', 'NuUtil.toast: ' + JSON.stringify(r.toast));
+	// pages that use the helpers still work: a toast with Undo on the start page, the form status menu, the (i) tooltips
+	await open(p, 'index.php?p=email&tab=settings');
+	expect(await p.locator('.nuInfoTip[data-bs-toggle="tooltip"][aria-label]').count() > 0, 'no (i) tooltips on the e-mail page');
+};
+
+// 0.8.1351: repeated database reads (code review R5 / R6 / R9) – the access levels (NuAcl::levels / level / levelCodes / levelsByGroup),
+// forms (nu_forms / nu_form / nu_form_exists, NuFormStatus::of) and users (NuAuth::userExists / userLogin / userLabel) are read once per
+// request through NuMemo; a write to the table through NuDB drops them, NuMemo::reset() too; then the pages that use them open
+T.db_read_helpers = async (s) => {
+	if (!SITE) return 'skip: needs SITE';
+	const file = path.join(SITE, 'e2e_dbread_' + process.pid + '.php');
+	fs.writeFileSync(file, "<?php\nrequire 'core/nuapp.php';\n$o = [];\n$db = nu_db();\n$n0 = NuDB::$statements; $a = NuAcl::levels(); $n1 = NuDB::$statements; NuAcl::levels(); NuAcl::levelCodes(); NuAcl::level(array_key_first($a)); $n2 = NuDB::$statements;\n$o['lv_count'] = count($a); $o['lv_db'] = (int)$db->value('SELECT COUNT(*) FROM zzzzsys_access');\n$o['lv_first'] = $n1 - $n0; $o['lv_again'] = $n2 - $n1;\n$id = (string)array_key_first($a);\n$o['lv_case'] = NuAcl::level(strtoupper($id) . ' ') !== null; $o['lv_none'] = NuAcl::levelExists('e2e_nope_x');\n$db->run('UPDATE zzzzsys_access SET sal_code = sal_code WHERE 1 = 0');\n$n3 = NuDB::$statements; NuAcl::levels(); $o['lv_after_write'] = NuDB::$statements - $n3;\n$g = array_values(array_map(fn($r) => (string)($r['sal_group'] ?? ''), NuAcl::levelsByGroup()));\n$s = $g; usort($s, fn($x, $y) => strcmp(mb_strtolower($x), mb_strtolower($y))); $o['lv_group_sorted'] = $g === $s;\n$fid = (string)$db->value(\"SELECT zzzzsys_form_id FROM zzzzsys_form WHERE zzzzsys_form_id LIKE 'sample%' ORDER BY zzzzsys_form_id LIMIT 1\");\n$o['f_code'] = (nu_form($fid)['code'] ?? '') === (string)$db->value('SELECT sfo_code FROM zzzzsys_form WHERE zzzzsys_form_id = ?', [$fid]);\n$o['f_exists'] = nu_form_exists($fid); $o['f_pseudo'] = nu_form_exists('nunextlog'); $o['f_none'] = nu_form_exists('e2e_nope_x');\n$o['f_status'] = NuFormStatus::of($fid) === NuFormStatus::norm($db->value('SELECT sfo_status FROM zzzzsys_form WHERE zzzzsys_form_id = ?', [$fid]));\n$n4 = NuDB::$statements; nu_forms(); nu_form($fid); NuFormStatus::of($fid); $o['f_again'] = NuDB::$statements - $n4;\n$o['u_login'] = NuAuth::userLogin('sample_anna'); $o['u_exists'] = NuAuth::userExists('sample_anna'); $o['u_none'] = NuAuth::userExists('e2e_nope_x');\n$o['u_label'] = NuAuth::userLabel('sample_anna');\n$n5 = NuDB::$statements; NuUserFields::all(); NuUserFields::all(); $o['uf_twice'] = NuDB::$statements - $n5;\nNuMemo::reset(); $n6 = NuDB::$statements; NuAcl::levels(); $o['lv_after_reset'] = NuDB::$statements - $n6;\necho json_encode($o);\n");
+	let o;
+	try {
+		const r = require('child_process').spawnSync('php', [path.basename(file)], { cwd: SITE, encoding: 'utf8' });
+		try { o = JSON.parse(r.stdout); } catch (e) { throw new Error('no JSON: ' + r.stdout + r.stderr); }
+	} finally { fs.unlinkSync(file); }
+	expect(o.lv_count === o.lv_db && o.lv_count > 0, 'all access levels: ' + JSON.stringify(o));
+	expect(o.lv_again === 0, 'access levels read again in the same request: ' + o.lv_again);
+	expect(o.lv_case && !o.lv_none, 'level(): ids as the database compares them');
+	expect(o.lv_after_write === 1, 'a write to zzzzsys_access did not drop the levels: ' + o.lv_after_write);
+	expect(o.lv_group_sorted, 'levelsByGroup() not ordered by group');
+	expect(o.f_code && o.f_exists && !o.f_pseudo && !o.f_none && o.f_status, 'form helpers: ' + JSON.stringify(o));
+	expect(o.f_again === 0, 'forms read again in the same request: ' + o.f_again);
+	expect(o.u_login === 'sample_anna' && o.u_exists && !o.u_none && /\(sample_anna\)$/.test(o.u_label), 'user helpers: ' + JSON.stringify(o));
+	expect(o.uf_twice <= 1, 'custom user fields read twice: ' + o.uf_twice);
+	expect(o.lv_after_reset === 1, 'NuMemo::reset() did not forget the levels');
+	const p = s.ga;
+	for (const u of ['index.php?p=access', 'index.php?p=users', 'index.php?p=user&id=sample_anna', 'index.php?p=accesslevel&id=' + encodeURIComponent(sql("SELECT zzzzsys_access_id FROM zzzzsys_access ORDER BY sal_code LIMIT 1")), 'index.php?p=formaccess&f=nuuser', 'index.php?p=home&for=*', 'index.php?p=notifications&tab=edit']) {
+		const res = await open(p, u);
+		expect(res.status() < 400, u + ' answered ' + res.status());
+		expect(!/(Warning|Notice|Fatal error|Deprecated)<\/b>:/.test(await p.content()), u + ' shows a PHP message');
+	}
+};
+
 T.access_delete_expired = async (s) => {
 	// 0.8.1250: expired users do not block deleting an access level; their level is emptied, extra assignments go with it
 	const p = s.ga;

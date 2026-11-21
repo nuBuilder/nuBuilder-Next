@@ -8,12 +8,7 @@ defined('NU_ROOT') || exit;
  *   POST {forms: [ids], on: true|false, text, until} (X-CSRF-Token) → {ok, changed: [ids]}
  * Who may switch: those who may change a form's status (NuFormDraft::canEdit), not while acting as a user (read only), not in demo mode.
  */
-$out = static function (array $d, int $code = 200): never {
-	http_response_code($code);
-	header('Content-Type: application/json; charset=utf-8');
-	header('X-Content-Type-Options: nosniff');
-	exit((string)json_encode($d, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE));
-};
+$out = static function (array $d, int $code = 200): never { nu_json($d, $code); };
 if (!NuAcl::can(NuAcl::FORM_FORM)) $out(['ok' => false, 'message' => t('err_forbidden')], 403);
 
 if (!nu_is_post()) {

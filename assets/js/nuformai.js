@@ -12,7 +12,7 @@
 	var reqEl = $('faRequest'), ansEl = $('faAnswer');
 	form.addEventListener('submit', function (e) { e.preventDefault(); });
 
-	function esc(s) { return String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]; }); }
+	function esc(s) { return NuUtil.esc(s); }
 	function fmt(t) { var a = Array.prototype.slice.call(arguments, 1), i = 0; return String(t || '').replace(/%[sd]/g, function () { return a[i++]; }); }
 	function kind() { var r = document.querySelector('input[name=faKind]:checked'); return r ? r.value : 'form'; }
 	function post(data) {
