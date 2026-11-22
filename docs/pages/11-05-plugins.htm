@@ -1,0 +1,95 @@
+<section id="plugins" data-doc="admin">
+	<h2 id="plugins-h">Plugins</h2>
+	<p class="doc-lead">Extensions written by other developers: a folder of PHP code that adds pages, tiles, rights, events and REST routes.</p>
+	<p class="doc-for">For: the globeadmin (installing) and developers (writing plugins)</p>
+	<p>A <strong>plugin</strong> is a folder <code>plugins/&lt;id&gt;/</code> with a <code>plugin.json</code> (name, version, what it needs) and a <code>plugin.php</code>. Its PHP talks to nuBuilder Next only through one object, <code>$plugin</code> – a fixed interface with a version number, so a plugin keeps working across updates. Plugins change nuBuilder Next only: nuBuilder Forte on the same database does not see them, and a plugin's data goes into tables of its own.</p>
+	<p><strong>A plugin runs with full rights</strong>, like a procedure: install only plugins whose author you trust. The signature, the check before installing and the safe mode below limit the risk, but cannot remove it.</p>
+	<div class="doc-sub">
+<h3 id="plugins-install">Installing and switching on</h3>
+<ol>
+<li><strong>Copy the folder</strong> to <code>plugins/</code> on the server (FTP, SFTP, file manager of the host). This works always and is the safer way.</li>
+<li>Or <strong>upload the package</strong> (a .zip) on <em>Update → Plugins</em>. Uploading is off until you switch on <em>Allow uploading plugins</em> on that tab – switch it on only while you install, so no PHP code can arrive through the browser otherwise. <em>Check package</em> shows the plugin's name, version, signature, tables and what it needs before <em>Install</em>; a newer version replaces the installed one (a plugin that was on stays on).</li>
+<li><em>Switch on</em> in the list. The plugin must fit this installation (plugin API version, nuBuilder Next version, PHP version and extensions, MySQL or SQL Server); a plugin without a signature asks once more.</li>
+</ol>
+<p>The list shows every plugin with its version, its status (<em>On</em>, <em>Off</em>, <em>Switched off after an error</em> with the message) and its signature. <em>Settings</em> appears for plugins that have settings. <em>Remove</em> deletes the folder; with <em>Also delete its tables and stored data</em> its tables (<code>zzzzsys_nunext_plg_&lt;id&gt;_…</code>), stored values and data folder go too.</p>
+</div>
+	<div class="doc-sub">
+<h3 id="plugins-safety">Signatures, errors and safe mode</h3>
+<ul>
+<li><strong>Signature</strong>: a signed plugin lists the hash of every file in <code>plugin.json</code>, signed with an Ed25519 key. Keys nuBuilder Next trusts: its own and the keys you add under <em>Trusted signing keys</em>. <em>Files changed since signing</em> = the plugin cannot be switched on. <em>Not signed</em> or <em>Signed with a key that is not trusted here</em> = allowed after a question (add the developer's key to trust it).</li>
+<li><strong>Errors</strong>: a plugin whose code throws an error – or ends PHP with a fatal error inside its folder – is switched off at once and the error is logged (<em>Log</em>, event <em>Plugin switched off after an error</em>); the page goes on without it. Switch it on again after the author fixed it.</li>
+<li><strong>Safe mode</strong>: <code>?safe=1</code> at the end of an address loads no plugin on that page (globeadmin only).</li>
+<li><strong>Locked out</strong>: <code>php nucron.php plugins off</code> switches every plugin off from the server's command line (<code>plugins off &lt;id&gt;</code> one, <code>plugins list</code>, <code>plugins on &lt;id&gt;</code>).</li>
+<li><strong>Updates</strong> never touch <code>plugins/</code>. <em>Check package</em> on the update page lists the plugins the new version would stop because it no longer supports their plugin API version.</li>
+<li><strong>Admin rights</strong>: rights a plugin adds appear in the admin roles in the group <em>Plugins</em>; a plugin's REST routes need the scope <code>plugin:&lt;id&gt;</code> of the API client.</li>
+</ul>
+</div>
+	<div class="doc-sub">
+<h3 id="plugins-write">Writing a plugin</h3>
+<p>The example plugin of the development package (<code>dev/plugin-skeleton/</code>) uses every part below: copy it to <code>plugins/&lt;your id&gt;/</code>, change the id in <code>plugin.json</code> and switch it on.</p>
+<pre><code>{
+  "id": "notes",                    // = the folder: a–z, 0–9, _, starting with a letter, up to 20
+  "name": "Notes",
+  "version": "1.0.0",
+  "description": "Short notes for the team",
+  "author": "…", "url": "https://…",
+  "api": 1,                         // plugin API version it was written for
+  "requires": { "nunext": "…", "php": "8.1", "extensions": [], "db": ["mysql", "sqlsrv"] },
+  "tables": ["notes"],              // short names – removed with "also delete its data"
+  "network": false                  // shown before installing: does it call other servers?
+}</code></pre>
+<p><code>plugin.php</code> runs once per request while the plugin is on, with <code>$plugin</code> in scope. It registers what the plugin adds; the work happens in the functions it registers:</p>
+<pre><code>&lt;?php
+declare(strict_types=1);
+/** @var NuPluginApi $plugin */
+$plugin-&gt;right('use', $plugin-&gt;t('right_use'));
+$plugin-&gt;route('main', fn(array $req) =&gt; '&lt;p&gt;' . h($plugin-&gt;t('hello')) . '&lt;/p&gt;', ['title' =&gt; $plugin-&gt;t('title'), 'right' =&gt; 'use']);
+$plugin-&gt;tile('main', ['label' =&gt; $plugin-&gt;t('title'), 'icon' =&gt; 'bi-sticky', 'route' =&gt; 'main', 'right' =&gt; 'use']);
+$plugin-&gt;on('record.before_save', fn(array $e) =&gt; str_contains(json_encode($e['values']), 'forbidden') ? 'Not saved: forbidden word.' : null);</code></pre>
+</div>
+	<div class="doc-sub" data-level="advanced">
+<h3 id="plugins-api">The plugin API</h3>
+<table class="table table-sm">
+<thead><tr><th>Method</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>on($event, $fn, $priority = 10)</code></td><td>Listens to an event (below). Lower priority runs first.</td></tr>
+<tr><td><code>route($name, $fn, $opt)</code></td><td>A page <code>index.php?p=plugin&amp;id=&lt;id&gt;&amp;r=&lt;name&gt;</code>. <code>$fn(['method', 'get', 'post'])</code> returns HTML (shown in nuBuilder Next's page frame), an array (sent as JSON) or <code>null</code> (it sent the answer itself). Options <code>title</code>, <code>icon</code>, <code>right</code> (a right of the plugin – view on GET, change on POST – or <code>globeadmin</code>; empty = every signed-in user).</td></tr>
+<tr><td><code>url($route, $params)</code></td><td>The address of one of its pages.</td></tr>
+<tr><td><code>tile($key, $t)</code> · <code>menu($key, $m)</code></td><td>A start page tile (admin start page; new tiles go to the last group) or an entry of the user menu: <code>label</code>, <code>icon</code> (Bootstrap Icons), <code>hint</code>, <code>route</code> or <code>url</code>, <code>right</code>.</td></tr>
+<tr><td><code>right($key, $label, $levels = 'vc')</code> · <code>can($key, $level)</code></td><td>An admin right of the plugin (group Plugins of the admin roles; <code>'c'</code> = one level) and the check for the signed-in user.</td></tr>
+<tr><td><code>js($file, $where)</code> · <code>css($file, $where)</code> · <code>asset($file)</code></td><td>Files of <code>assets/</code> on every page (<code>app</code>), the form pages (<code>form</code>) or both (<code>all</code>); the address of such a file. The strict Content-Security-Policy applies: no inline scripts or styles in the plugin's HTML.</td></tr>
+<tr><td><code>t($key, ...$args)</code></td><td>A text of <code>lang/&lt;language&gt;.php</code> (English when missing).</td></tr>
+<tr><td><code>get($key)</code> · <code>set($key, $value)</code> · <code>all()</code></td><td>Stored values of the plugin.</td></tr>
+<tr><td><code>settings($render, $save)</code></td><td>A settings page (Update → Plugins → Settings): <code>$render($values)</code> returns the HTML of the fields named <code>plg[&lt;key&gt;]</code>, <code>$save($posted)</code> stores them and returns <code>null</code> or an error.</td></tr>
+<tr><td><code>db()</code> · <code>table($name)</code></td><td>The database connection (<code>run</code>, <code>all</code>, <code>one</code>, <code>value</code>, <code>insert</code>, <code>update</code>, <code>delete</code>) and the name of a table of the plugin, <code>zzzzsys_nunext_plg_&lt;id&gt;_&lt;name&gt;</code>.</td></tr>
+<tr><td><code>dataDir()</code></td><td>A folder for files (<code>custom/plugindata/&lt;id&gt;/</code>, closed to the web, kept by updates).</td></tr>
+<tr><td><code>api($method, $pattern, $fn)</code></td><td>A REST route <code>api.php/v1/plugins/&lt;id&gt;/&lt;pattern&gt;</code> (<code>items/{item}</code>); <code>$fn($parts, $body)</code> returns the answer or <code>[status, body, headers]</code>. Scope <code>plugin:&lt;id&gt;</code>; it runs as the client's service user.</td></tr>
+<tr><td><code>task($name, $fn)</code></td><td>A task for the server's cron: <code>php nucron.php plugin &lt;id&gt; &lt;name&gt; [name=value …]</code> (runs as the globeadmin).</td></tr>
+<tr><td><code>onEnable($fn)</code> · <code>onDisable($fn)</code> · <code>onRemove($fn)</code></td><td>When it is switched on (create its tables), off, or removed with its data.</td></tr>
+<tr><td><code>log($event, $details)</code> · <code>user()</code> · <code>csrfField()</code> · <code>path($file)</code> · <code>nunext()</code></td><td>A log entry, the signed-in user, the form token for its POST forms (every POST is checked), a file of its folder, nuBuilder Next's version and plugin API version.</td></tr>
+</tbody>
+</table>
+<table class="table table-sm">
+<thead><tr><th>Event</th><th>The listener gets</th><th>Return</th></tr></thead>
+<tbody>
+<tr><td><code>record.before_save</code></td><td><code>form</code>, <code>form_id</code>, <code>table</code>, <code>record_id</code> ('' for a new record), <code>new</code>, <code>values</code></td><td>A text refuses the save (shown as the error)</td></tr>
+<tr><td><code>record.after_save</code></td><td><code>form</code>, <code>form_id</code>, <code>table</code>, <code>record_id</code>, <code>new</code></td><td>–</td></tr>
+<tr><td><code>record.before_delete</code></td><td><code>form</code>, <code>form_id</code>, <code>table</code>, <code>record_id</code>, <code>row</code></td><td>A text refuses the delete</td></tr>
+<tr><td><code>record.after_delete</code></td><td><code>form</code>, <code>form_id</code>, <code>table</code>, <code>record_id</code></td><td>–</td></tr>
+<tr><td><code>login</code></td><td><code>user_id</code>, <code>login</code>, <code>via</code></td><td>–</td></tr>
+<tr><td><code>mail.before_send</code></td><td><code>to</code>, <code>cc</code>, <code>bcc</code>, <code>subject</code>, <code>tag</code></td><td>A text stops the e-mail</td></tr>
+<tr><td><code>housekeeping</code></td><td><code>source</code> (<code>cron</code> or a page view)</td><td>A number (rows cleaned) or nothing</td></tr>
+<tr><td><code>list.def</code></td><td>The definition of a system list and its key</td><td>The changed definition (a filter: columns, filters, views)</td></tr>
+</tbody>
+</table>
+<p data-level="detail">The record events run for saves of forms (also through the REST API and the calendars) after the validation rules and the hook procedure <code>nu_before_save</code>, before the form's Before Save / Before Delete.</p>
+</div>
+	<div class="doc-sub" data-level="advanced">
+<h3 id="plugins-sign">Signing and packaging</h3>
+<ol>
+<li><code>php dev/plugin_sign.php --keygen my-plugins.key</code> once: the secret key into the file (keep it), the public key printed – the installations add it under <em>Trusted signing keys</em>.</li>
+<li><code>php dev/plugin_sign.php plugins/notes my-plugins.key --zip=notes-1.0.0.zip</code> after the last change: hashes and signature into <code>plugin.json</code>, and the package to upload.</li>
+</ol>
+<p>The interface keeps its methods within a plugin API version: new methods may be added, none is changed or removed. A new version is announced (marked as outdated on the update page) before an older one is dropped.</p>
+</div>
+</section>

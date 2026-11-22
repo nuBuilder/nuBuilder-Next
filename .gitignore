@@ -16,7 +16,6 @@ node_modules/
 phpstan.phar
 .DS_Store
 __pycache__/
-# minified copies, made by dev/minify.py during a release (0.8.1342) – the sources are in the repository
-assets/**/*.min.js
-assets/**/*.min.css
-assets/min.json
+# plugins and their data belong to an installation (the folder's .htaccess and README.md come with the package; no "!" lines – the git mirror's rsync reads this file)
+/plugins/*/
+/custom/plugindata/

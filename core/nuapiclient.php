@@ -79,10 +79,21 @@ final class NuApiClient
 			JOIN zzzzsys_user u ON ' . $db->sameText('u.zzzzsys_user_id', 'c.user_id')), 'a'))));
 	}
 
+	/** SCOPES plus plugin:<id> of the switched-on plugins with REST routes. */
+	public static function scopes(): array
+	{
+		try {
+			return self::SCOPES + NuPlugin::scopes();
+		} catch (Throwable $ig) {
+			nu_ignored($ig, 'plugin scopes');
+			return self::SCOPES;
+		}
+	}
+
 	public static function scopesOf(array $client): array
 	{
 		$s = json_decode((string)$client['scopes'], true);
-		return is_array($s) ? array_values(array_intersect(array_keys(self::SCOPES), $s)) : [];
+		return is_array($s) ? array_values(array_intersect(array_keys(self::scopes()), $s)) : [];
 	}
 
 	/** Validates and saves name, scopes, service user, IP list, rate limit, expiry. @return array{0: ?string, 1: array, 2: ?array} [id, errors, credentials of a new client] */
@@ -94,7 +105,7 @@ final class NuApiClient
 		$name = trim((string)($in['name'] ?? ''));
 		if ($name === '') $errors['name'] = t('err_required');
 		nu_maxlen($errors, 'name', $name, 100);
-		$scopes = array_values(array_intersect(array_keys(self::SCOPES), array_map('strval', (array)($in['scopes'] ?? []))));
+		$scopes = array_values(array_intersect(array_keys(self::scopes()), array_map('strval', (array)($in['scopes'] ?? []))));
 		$userId = trim((string)($in['user_id'] ?? ''));
 		$user = $userId !== '' ? $db->one('SELECT zzzzsys_user_id, sus_zzzzsys_access_id FROM zzzzsys_user WHERE zzzzsys_user_id = ?', [$userId]) : null;
 		if (!$user) $errors['user_id'] = t('err_required');

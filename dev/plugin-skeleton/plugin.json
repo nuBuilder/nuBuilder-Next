@@ -1,0 +1,12 @@
+{
+	"id": "example",
+	"name": "Example plugin",
+	"version": "1.0.0",
+	"description": "Shows what a plugin can add: a page, a start page tile, a menu entry, an admin right, settings, events, a REST route and a cron task.",
+	"author": "",
+	"url": "",
+	"api": 1,
+	"requires": { "nunext": "0.8.1364", "php": "8.1", "extensions": [], "db": ["mysql", "sqlsrv"] },
+	"tables": ["notes"],
+	"network": false
+}

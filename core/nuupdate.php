@@ -88,7 +88,8 @@ final class NuUpdate
 		return $rel === 'nuconfig.php' || str_starts_with($rel, NU_PACKS . '/') || str_starts_with($rel, 'third_party/') || str_starts_with($rel, '_backup/')
 			|| str_starts_with($rel, '_update/') || str_starts_with($rel, '_install/') || str_starts_with($rel, '_libsrc/') || str_starts_with($rel, 'temp/')
 			|| $rel === 'install.allow'
-			|| (str_starts_with($rel, 'custom/') && !self::shippedCustom($rel));
+			|| (str_starts_with($rel, 'custom/') && !self::shippedCustom($rel))
+			|| (str_starts_with($rel, 'plugins/') && !in_array($rel, ['plugins/.htaccess', 'plugins/index.html', 'plugins/README.md'], true));   // plugins of the installation
 	}
 
 	/**
@@ -306,7 +307,7 @@ final class NuUpdate
 			if (class_exists('ZipArchive')) {
 				$z = new ZipArchive();
 				if ($z->open($f) === true) {
-					$prefix = $z->locateName(self::MANIFEST) !== false ? '' : ($z->locateName('nunext/' . self::MANIFEST) !== false ? 'nunext/' : null);
+					$prefix = self::packagePrefix($z);
 					$m = $prefix !== null ? json_decode((string)$z->getFromName($prefix . self::MANIFEST), true) : null;
 					$z->close();
 					if (is_array($m) && ($m['product'] ?? '') === 'nuNext' && isset($m['version'])) {
@@ -322,6 +323,26 @@ final class NuUpdate
 		return $out;
 	}
 
+	/**
+	 * Folder of the package inside a zip: '' (manifest at the top), 'nunext/' (nunext.zip), or the ONE top folder of a GitHub archive
+	 * (nuBuilder-Next-main/ of …/archive/refs/heads/main.zip) when the manifest is directly in it – null when none.
+	 * The archive's other files (dev/, notes, tests) are never copied: install takes only the files the signed manifest lists.
+	 */
+	public static function packagePrefix(ZipArchive $z): ?string
+	{
+		if ($z->locateName(self::MANIFEST) !== false) return '';
+		if ($z->locateName('nunext/' . self::MANIFEST) !== false) return 'nunext/';
+		$top = null;
+		for ($i = 0; $i < $z->numFiles; $i++) {
+			$n = str_replace('\\', '/', (string)$z->getNameIndex($i));
+			$first = explode('/', $n, 2)[0] . '/';
+			if (!str_contains($n, '/') || $first === '/' || $first === '../') return null;   // a file at the top: not one folder
+			if ($top === null) $top = $first;
+			elseif ($first !== $top) return null;
+		}
+		return $top !== null && preg_match('~^[A-Za-z0-9._-]{1,100}/$~', $top) && $z->locateName($top . self::MANIFEST) !== false ? $top : null;
+	}
+
 	public static function inspect(string $zipFile): array
 	{
 		$out = ['ok' => false, 'errors' => [], 'version' => '', 'manifest' => [], 'prefix' => ''];
@@ -329,7 +350,7 @@ final class NuUpdate
 		$z = new ZipArchive();
 		if ($z->open($zipFile) !== true) { $out['errors'][] = t('upd_err_zip'); return $out; }
 		try {
-			$prefix = $z->locateName(self::MANIFEST) !== false ? '' : ($z->locateName('nunext/' . self::MANIFEST) !== false ? 'nunext/' : null);
+			$prefix = self::packagePrefix($z);
 			if ($prefix === null) { $out['errors'][] = t('upd_err_manifest'); return $out; }
 			$m = json_decode((string)$z->getFromName($prefix . self::MANIFEST), true);
 			if (!is_array($m) || !isset($m['version'], $m['files']) || !is_array($m['files']) || ($m['product'] ?? '') !== 'nuNext') { $out['errors'][] = t('upd_err_manifest'); return $out; }

@@ -3,6 +3,59 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.1369 – main follows every release
+- From now on every version is also pushed to the branch main on GitHub, so the update page's "Get branch main" brings the
+  newest version. GitHub releases stay at the release gates; versions between them are marked "Not fully tested".
+
+## 0.8.1368 – Update from the branch main
+- Update from the branch main: the update page's GitHub card has a button "Get branch main" that downloads the repository's
+  branch main instead of a release and checks it exactly like a release (signature of its manifest, every listed file). A GitHub
+  archive downloaded by hand (…/archive/refs/heads/main.zip, one top folder) can also be uploaded; its other files are never copied.
+- The repository now also holds the minified copies of the scripts and styles, so an archive of main is a complete package.
+
+## 0.8.1367 – Save in records added from a lookup
+- Fix: a record added from the list of a lookup (the + in the lookup window, e.g. a new category while editing a note) showed
+  no Save button. It now shows the record's buttons; after saving, the window closes with the new record chosen.
+
+## 0.8.1366 – File Manager toolbar on phones
+- File Manager on phones: the toolbar buttons have the same width with and without selected files; they only get narrower
+  when the row has no room for them.
+
+## 0.8.1365 – Plugin documentation
+- Documentation of plugins completed: a tip in the tutorial (Updates and backups), and the help pages of the update page,
+  the command line, the REST API and admin roles now name what plugins add there.
+
+## 0.8.1364 – Plugins
+- Plugins: extensions written by other developers, each in a folder of its own in plugins/ (plugin.json + plugin.php). A plugin
+  talks to nuBuilder Next only through one versioned interface ($plugin) and can add pages, start page tiles, user menu entries,
+  admin rights (group Plugins of the admin roles), a settings page, scripts and styles, its own tables and stored values, REST
+  routes (scope plugin:<id>) and tasks for the server's cron, and listen to events: before / after a record is saved or deleted
+  (it can refuse), sign-in, before an e-mail is sent, housekeeping, and changes to the system lists.
+- Update → Plugins (globeadmin): the installed plugins with version, status and signature; switch on / off, settings, remove (also
+  with its tables and data). Plugins arrive by copying their folder onto the server, or by uploading a package – uploading is off
+  until it is switched on. Before installing, the package is checked (name, version, signature, tables, what it needs).
+- Signatures: a signed plugin lists the hash of every file; nuBuilder Next's own key and the trusted keys added on the tab count.
+  A plugin whose files changed after signing cannot be switched on; an unsigned one asks once more.
+- Safety: a plugin that throws an error, or ends PHP with a fatal error inside its folder, is switched off by itself and logged;
+  ?safe=1 loads no plugin on a page; php nucron.php plugins off switches every plugin off from the command line. Updates never touch
+  plugins/, and Check package lists the plugins a new version would stop.
+- For plugin developers (development package): an example plugin that uses every part (dev/plugin-skeleton/) and a tool to create a
+  signing key, sign a plugin and build its package (dev/plugin_sign.php). Documentation: Help → Customisation → Plugins.
+
+## 0.8.1363 – Release script clean-up
+- The release script cleaned up after a code analysis report (files closed properly, the main function split into steps);
+  packages are built as before.
+
+## 0.8.1362 – Code analysis follow-up
+- Internal names of a few one-time values in the session renamed after a code analysis report (no change of behaviour).
+
+## 0.8.1361 – Script clean-up
+- Development scripts for style sheets and the form runtime cleaned up after a code analysis report (files closed
+  properly, long functions split); their results are unchanged.
+
+## 0.8.1360 – Notes
+- Notes only: the published GitHub release recorded (v0.8.1359).
+
 ## 0.8.1359 – Release gate
 - Release gate: smoke test, all end-to-end tests, the comparison with nuBuilder Forte and the security scan.
 

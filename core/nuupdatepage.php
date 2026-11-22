@@ -52,13 +52,14 @@ final class NuUpdatePage
 	{
 		try {
 			// $nuConfigEnableDatabaseUpdate = false: no update, rollback or structure change – checked here, not only in the page
-			if (!NuUpdate::enabled() && in_array($action, ['upload', 'install', 'rollback', 'restore_db', 'schema_apply', 'github_download'], true)) throw new RuntimeException(t('upd_disabled'));
+			if (!NuUpdate::enabled() && in_array($action, ['upload', 'install', 'rollback', 'restore_db', 'schema_apply', 'github_download', 'github_branch'], true)) throw new RuntimeException(t('upd_disabled'));
 			if (str_starts_with($action, 'lp_')) self::libraryPacks($action);
 			match ($action) {
 				'upload'          => self::upload(),
 				'github_settings' => self::githubSettings(),
 				'github_check'    => self::githubCheck(),
 				'github_download' => self::githubDownload(),
+				'github_branch' => self::githubBranch(),
 				'folder_check'    => self::folderCheck(nu_post('name')),
 				'install', 'discard' => self::install($action),
 				'backup'          => self::backup(),
@@ -139,6 +140,12 @@ final class NuUpdatePage
 			nu_flash($cmp > 0 ? 'success' : 'info', $cmp > 0 ? t('gh_found', (string)$gl['version']) : ($cmp === 0 ? t('gh_uptodate', NU_VERSION) : t('gh_ahead', NU_VERSION, (string)$gl['version'])), true);
 		}
 		nu_redirect(nu_url('update'));
+	}
+
+	private static function githubBranch(): never
+	{
+		if (!NuUpdate::enabled()) throw new RuntimeException(t('upd_disabled'));
+		self::folderCheck(NuGitHub::downloadBranch());                        // the branch main of the repository, checked like a release
 	}
 
 	private static function githubDownload(): never

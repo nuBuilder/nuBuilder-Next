@@ -188,6 +188,9 @@ final class NuHome
 		if (NuHash::devMode()) $c['todo'] = ['todo', 'bi-list-check', t('todo_title'), t('todo_card_hint'), ['Dev', 'secondary']];
 		if (NuHash::devMode()) $c['selftest'] = ['selftest', 'bi-clipboard2-pulse', t('st_title'), t('st_card_hint'), ['Dev', 'secondary']];
 		if (NuHash::devMode() && NuDbReset::available()) $c['dbreset'] = ['dbreset', 'bi-database-x', t('dbr_title'), t('dbr_card_hint'), ['Dev', 'secondary']];
+		try {
+			$c += NuPlugin::tiles();                                 // tiles of the switched-on plugins
+		} catch (Throwable $ig) { nu_ignored($ig, 'plugin tiles'); }
 		return $c;
 	}
 
@@ -858,6 +861,7 @@ final class NuHome
 			if ($r === 'any') return NuAdmin::any();
 			return $r === 'acl' ? NuAcl::can($lvl) : NuAdmin::can($r, $lvl);
 		}
+		if (($pv = NuPlugin::tileVisible($key)) !== null) return $pv;   // a tile of a plugin
 		if ($key === 'notes') return NuAcl::can('nunotes');
 		if ($key === 'userhome') return NuAcl::can(NuUserHome::FORM);
 		$c = (array)(((array)$layout['custom'])[$key] ?? []);
@@ -1106,7 +1110,7 @@ final class NuHome
 			[$route, $icon, $label, $hint] = $cat[$key];
 			$badge = $cat[$key][4] ?? null;
 			$post = is_array($route) && isset($route['post']) ? $route['post'] : null;
-			$href = $post ? null : (is_array($route) ? nu_url($route[0], $route[1]) : nu_url($route));
+			$href = $post ? null : (is_array($route) ? (isset($route['url']) ? (string)$route['url'] : nu_url($route[0], $route[1])) : nu_url($route));
 			// File Manager: in a new tab, like the database tools – it is a work area of its own
 			return ['href' => $href, 'post' => $post, 'icon' => $icon, 'label' => $label, 'hint' => $hint, 'color' => '', 'newtab' => (bool)$post || $key === 'tfm', 'proc' => null, 'run' => '',
 				'action' => self::actions()[$key] ?? null, 'badge' => $badge, 'kind' => $post ? 'post' : 'page'];

@@ -1129,3 +1129,167 @@ T.health_check = async (s) => {
 	}
 	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
 };
+
+// plugins: install from the folder and by upload, switch on, page / tile / menu / JSON / asset / settings / events / REST-free parts,
+// a failing plugin switched off by itself, safe mode, removal with its data, the command line
+T.plugins = async (s) => {
+	if (!SITE) return 'skip';
+	const p = s.ga;
+	const dir = path.join(SITE, 'plugins');
+	const ids = ['e2e_ex', 'e2e_bad', 'e2e_up'];
+	const cleanup = () => {
+		for (const id of ids) fs.rmSync(path.join(dir, id), { recursive: true, force: true });
+		sql("DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'plugins' OR zzzzsys_nunext_setting_id LIKE 'plg:%'");
+		for (const id of ids) sql('DROP TABLE IF EXISTS zzzzsys_nunext_plg_' + id + '_notes');
+	};
+	const copy = (id, name) => {
+		const to = path.join(dir, id);
+		fs.cpSync(path.join(__dirname, '..', 'plugin-skeleton'), to, { recursive: true });   // dev/plugin-skeleton (e2e.js lives in dev/tests)
+		const m = JSON.parse(fs.readFileSync(path.join(to, 'plugin.json'), 'utf8'));
+		m.id = id; m.name = name; m.requires.nunext = '0.8.1';
+		fs.writeFileSync(path.join(to, 'plugin.json'), JSON.stringify(m, null, 1));
+		return to;
+	};
+	const reauth = async () => {
+		if (!/p=reauth/.test(p.url())) return false;
+		await p.fill('input[type=password]', GA[1]);
+		await Promise.all([p.waitForNavigation(), p.click('button[type=submit]')]);
+		return true;
+	};
+	const act = async (id, action, before) => {   // a button of a plugin's row, through the confirmation dialogue when there is one
+		await open(p, 'index.php?p=update&tab=plugins');
+		if (before) await before();
+		const btn = p.locator(`tr[data-plugin="${id}"] [data-plg-act="${action}"]`);
+		if (await btn.count() === 0) throw new Error('no ' + action + ' button for ' + id + ': ' + ((await p.locator(`tr[data-plugin="${id}"]`).count()) ? await p.locator(`tr[data-plugin="${id}"]`).evaluate((r) => r.outerHTML.slice(0, 1500)) : (await p.locator('#updPane-plugins').innerText()).slice(0, 400)));
+		const hasConfirm = await btn.evaluate((b) => !!b.closest('form').dataset.confirm);
+		if (hasConfirm) {
+			await btn.click();
+			await p.waitForSelector('#nuConfirm.show .js-confirm-ok');
+			await Promise.all([p.waitForNavigation(), p.click('#nuConfirm.show .js-confirm-ok')]);
+		} else await Promise.all([p.waitForNavigation(), btn.click()]);
+		if (await reauth()) return act(id, action, before);
+	};
+	try {
+		cleanup();
+		fs.mkdirSync(dir, { recursive: true });
+		copy('e2e_ex', 'E2E example');
+		await open(p, 'index.php?p=update&tab=plugins');
+		expect(await p.locator('#updTabBtn-plugins').count() === 1, 'tab Plugins on the update page');
+		const row = p.locator('tr[data-plugin="e2e_ex"]');
+		expect(await row.locator('[data-status="off"]').count() === 1 && await row.locator('.nuPlgSig[data-sig="unsigned"]').count() === 1, 'listed: off, not signed');
+		await act('e2e_ex', 'enable');
+		expect(await p.locator('tr[data-plugin="e2e_ex"] [data-status="on"]').count() === 1, 'switched on: ' + (await p.locator('.alert').allTextContents()).join(' | '));
+		expect(sql("SHOW TABLES LIKE 'zzzzsys_nunext_plg_e2e_ex_notes'") !== '', 'onEnable created its table');
+		// start page tile, user menu, page, JSON, asset
+		await open(p, 'index.php?p=home');
+		expect(await p.locator('a[href*="p=plugin&id=e2e_ex&r=main"]').count() >= 1, 'tile and menu entry of the plugin');
+		expect(await p.evaluate(() => document.documentElement.getAttribute('data-example-plugin')) === '1', 'the plugin script ran on the page');
+		await open(p, 'index.php?p=plugin&id=e2e_ex&r=main');
+		await p.fill('#exNote', 'First note');
+		await Promise.all([p.waitForNavigation(), p.click('#exAdd')]);
+		expect((await p.locator('#exNotes li').allTextContents()).join('').includes('First note'), 'note added on the plugin page');
+		expect(await p.locator('h1').first().textContent() === 'Notes', 'title of the route');
+		const cnt = await p.evaluate(async (u) => (await fetch(u)).json(), BASE + 'index.php?p=plugin&id=e2e_ex&r=count');
+		expect(cnt.notes === 1, 'JSON route: ' + JSON.stringify(cnt));
+		const asset = await p.evaluate(async (u) => { const r = await fetch(u); return [r.status, r.headers.get('content-type')]; }, BASE + 'index.php?p=pluginasset&id=e2e_ex&f=example.js');
+		expect(asset[0] === 200 && /javascript/.test(asset[1]), 'asset served: ' + asset);
+		const bad = await p.evaluate(async (u) => (await fetch(u)).status, BASE + 'index.php?p=pluginasset&id=e2e_ex&f=../plugin.php');
+		expect(bad === 404, 'no file outside assets/ (' + bad + ')');
+		// settings + the event record.before_save
+		await open(p, 'index.php?p=plugins&settings=e2e_ex');
+		if (await reauth()) await open(p, 'index.php?p=plugins&settings=e2e_ex');
+		await p.fill('#exSetBlock', 'zzblock');
+		await Promise.all([p.waitForNavigation(), p.click('button[form=plgSettingsForm]')]);
+		if (await reauth()) { await p.fill('#exSetBlock', 'zzblock'); await Promise.all([p.waitForNavigation(), p.click('button[form=plgSettingsForm]')]); }
+		expect(/zzblock/.test(sql("SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'plg:e2e_ex'")), 'setting stored');
+		const cid = sql("SELECT sample_customer_id FROM sample_customer ORDER BY sample_customer_id LIMIT 1");
+		const before = sql("SELECT cus_name FROM sample_customer WHERE sample_customer_id = '" + cid + "'");
+		await open(p, 'index.php?p=form&f=samplecustomer&r=' + cid);
+		await setField(p, '#cus_name', 'Name zzblock');
+		await save(p);
+		expect(sql("SELECT cus_name FROM sample_customer WHERE sample_customer_id = '" + cid + "'") === before, 'the plugin refused the save');
+		expect((await p.content()).includes('does not save records containing'), 'its message is shown');
+		p.errors.length = 0;
+		// safe mode: no plugin on the page
+		await open(p, 'index.php?p=home&safe=1');
+		expect(await p.locator('script[src*="p=pluginasset"]').count() === 0, 'safe mode: no plugin scripts');
+		// a plugin that fails is switched off by itself
+		const badDir = copy('e2e_bad', 'E2E failing');
+		fs.writeFileSync(path.join(badDir, 'plugin.php'), "<?php\n/** @var NuPluginApi $plugin */\n$plugin->route('main', function () { throw new RuntimeException('e2e boom'); });\n");
+		execSync('php nucron.php plugins on e2e_bad', { cwd: SITE });
+		const st = await p.evaluate(async (u) => (await fetch(u)).status, BASE + 'index.php?p=plugin&id=e2e_bad&r=main');
+		expect(st === 500, 'failing route: 500 (' + st + ')');
+		const state = JSON.parse(sql("SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'plugins'"));
+		expect(!state.on.e2e_bad && /e2e boom/.test(state.failed.e2e_bad.error), 'switched off with the error: ' + JSON.stringify(state));
+		await open(p, 'index.php?p=update&tab=plugins');
+		expect(await p.locator('tr[data-plugin="e2e_bad"] [data-status="failed"]').count() === 1, 'listed as switched off after an error');
+		// upload: off by default, then on
+		expect(await p.locator('#plgUploadOff').count() === 1, 'upload is off by default');
+		await Promise.all([p.waitForNavigation(), p.click('#plgUploadSet')]);
+		if (await reauth()) { await open(p, 'index.php?p=update&tab=plugins'); await Promise.all([p.waitForNavigation(), p.click('#plgUploadSet')]); }
+		const upSrc = copy('e2e_up', 'E2E uploaded');
+		const zip = path.join(os.tmpdir(), 'nunext-e2e-plugin.zip');
+		fs.rmSync(zip, { force: true });
+		execSync(`cd ${JSON.stringify(dir)} && python3 -c "import zipfile,os,sys; z=zipfile.ZipFile(sys.argv[1],'w'); [z.write(os.path.join(r,f), os.path.join(r,f)) for r,_,fs in os.walk('e2e_up') for f in fs]; z.close()" ${JSON.stringify(zip)}`);
+		fs.rmSync(upSrc, { recursive: true, force: true });
+		await open(p, 'index.php?p=update&tab=plugins');
+		await p.setInputFiles('#plgZip', zip);
+		await Promise.all([p.waitForNavigation(), p.click('#plgUploadBtn')]);
+		expect(await p.locator('#plgCheck').count() === 1 && await p.locator('#plgUnsigned').count() === 1, 'package checked, warning for no signature');
+		await Promise.all([p.waitForNavigation(), p.click('#plgCheck [data-plg-act="install"]')]);
+		expect(fs.existsSync(path.join(dir, 'e2e_up', 'plugin.php')), 'installed into plugins/e2e_up');
+		expect(await p.locator('tr[data-plugin="e2e_up"]').count() === 1, 'listed after the upload');
+		// remove with its data
+		await act('e2e_ex', 'remove', () => p.check('#plgData-e2e_ex'));
+		expect(!fs.existsSync(path.join(dir, 'e2e_ex')), 'folder removed');
+		expect(sql("SHOW TABLES LIKE 'zzzzsys_nunext_plg_e2e_ex_notes'") === '', 'its table dropped');
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'plg:e2e_ex'") === '0', 'its stored values removed');
+		// the command line
+		execSync('php nucron.php plugins on e2e_up', { cwd: SITE });
+		execSync('php nucron.php plugins off', { cwd: SITE });
+		expect(!/"e2e_up"/.test(JSON.stringify(JSON.parse(sql("SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'plugins'")).on)), 'plugins off from the command line');
+	} finally {
+		cleanup();
+	}
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
+// a GitHub archive of a branch (one top folder, e.g. nuBuilder-Next-main/, plus files the manifest does not list) passes Check package;
+// a zip with more than one top folder does not; the button "Get branch main" is on the GitHub card
+T.update_branch_archive = async (s) => {
+	const pkg = process.env.PKG;
+	if (!pkg || !fs.existsSync(pkg)) return 'skip';
+	const p = s.ga;
+	const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'nunext-e2e-branch-'));
+	const build = (name, extraTop) => {
+		const out = path.join(tmp, name);
+		execSync(`python3 -I -c "
+import zipfile, sys
+src = zipfile.ZipFile(sys.argv[1]); out = zipfile.ZipFile(sys.argv[2], 'w', zipfile.ZIP_DEFLATED)
+out.writestr('nuBuilder-Next-main/', '')
+for i in src.infolist():
+    if i.filename.startswith('nunext/_install/'): continue
+    out.writestr('nuBuilder-Next-main/' + i.filename[len('nunext/'):], src.read(i))
+out.writestr('nuBuilder-Next-main/dev/not-copied.txt', 'x')
+if sys.argv[3] == '1': out.writestr('README-extra.txt', 'a second top entry')
+out.close()" ${JSON.stringify(pkg)} ${JSON.stringify(out)} ${extraTop ? '1' : '0'}`);
+		return out;
+	};
+	const check = async (file) => {
+		await open(p, 'index.php?p=update');
+		if (!(await p.locator('#updOther').isVisible())) { await p.click('#updOtherBtn'); await p.waitForTimeout(500); }
+		await p.setInputFiles('#updPackage', file);
+		await Promise.all([p.waitForLoadState('networkidle'), p.click('#updUpload')]);
+		await p.waitForTimeout(400);
+		return p.locator('#updInstallForm').count();
+	};
+	try {
+		expect(await p.locator('#updGitHubBranch').count() === 1 || await (async () => { await open(p, 'index.php?p=update'); return p.locator('#updGitHubBranch').count(); })() === 1,
+			'button Get branch main on the GitHub card');
+		expect(await check(build('main.zip', false)) === 1, 'archive with one top folder accepted: ' + (await p.locator('.alert-danger').allTextContents()).join(' | '));
+		expect(await check(build('two.zip', true)) === 0, 'zip with a second top entry refused');
+	} finally {
+		fs.rmSync(tmp, { recursive: true, force: true });
+		for (const f of fs.readdirSync(path.join(SITE || '.', '_update')).filter(f => /^(main|two)\.zip$/.test(f))) fs.rmSync(path.join(SITE, '_update', f), { force: true });
+	}
+};

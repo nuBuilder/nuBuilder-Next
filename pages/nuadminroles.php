@@ -104,7 +104,7 @@ nu_layout_start(t('adm_title'), 'home', $canTest ? ['head' => nu_ts_head()] : []
 					<?php foreach (['' => 'adm_none', 'view' => 'adm_view', 'change' => 'adm_change'] as $lv => $lk): ?><?= $sortTh('lvl:' . $lv, t($lk), ' text-center') ?><?php endforeach; ?></tr></thead>
 				<tbody>
 				<?php $gi = 0; foreach (NuAdmin::GROUPS as $g => $gLabel): $gi++; ?>
-					<?php foreach (NuAdmin::RIGHTS as $k => [$grp, $label, $full, $levels]): if ($grp !== $g) continue;
+					<?php foreach (NuAdmin::rights() as $k => [$grp, $label, $full, $levels]): if ($grp !== $g) continue;
 						$cur = $role['rights'][$k] ?? '';
 						$may = $grant[$k] ?? '';                       // what the editing user may give
 						$dis = static fn(string $lvl) => $own || ($lvl !== '' && $may !== 'change' && !($may === 'view' && $lvl === 'view') && $cur !== $lvl) ? ' disabled' : ''; ?>

@@ -175,6 +175,9 @@ final class NuRecord
 		// global hook nu_before_save, then the form's Before Save (as nuBuilder 4.9)
 		// $nudata = nuBuilder Forte's variable of these hooks (nuEvalSafe($code, $nudata)) – the same objects as #nuFORMdata#
 		if (!NuProcedure::hook('nu_before_save', $hash, ['nudata' => $formData])) return ['ok' => false] + self::hookResult();
+		$plg = NuPlugin::emit('record.before_save', ['form' => $meta->code(), 'form_id' => $meta->id, 'table' => $meta->table(), 'record_id' => $isNew ? '' : $recordId,
+			'new' => $isNew, 'values' => $values]);
+		if ($plg !== null) return self::fail($plg);                 // a plugin refused the save
 		if (!NuPhp::run($meta->php('BS'), $hash, 'Before Save', ['nudata' => $formData])) return ['ok' => false] + NuPhp::result();
 		$jsBefore = NuPhp::$js;
 		self::applyFormData($formData, $values, $edited, $posted);   // nuSetNuDataValue() in Before Save changes what is saved
@@ -232,6 +235,7 @@ final class NuRecord
 		$hash[$meta->primaryKey()] = $newId;
 		NuPhp::$openRecord = null;
 		NuPhp::run($meta->php('AS'), $hash, 'After Save', ['nudata' => $formData]);
+		NuPlugin::emit('record.after_save', ['form' => $meta->code(), 'form_id' => $meta->id, 'table' => $meta->table(), 'record_id' => (string)$newId, 'new' => $isNew]);
 		$open = NuPhp::$openRecord !== null && NuPhp::$openRecord !== (string)$newId ? ['open_id' => NuPhp::$openRecord] : [];   // nuReturnNewRecord()
 
 		return ['ok' => true, 'record_id' => $newId] + $open + NuPhp::result();
@@ -404,6 +408,8 @@ final class NuRecord
 		$hash = NuHash::forForm($meta, $recordId, $row, $props);
 		if (!NuProcedure::hook('nu_before_delete', $hash)) return ['ok' => false] + self::hookResult();   // global hook
 		if (!NuPhp::run($meta->php('BD'), $hash, 'Before Delete')) return ['ok' => false] + NuPhp::result();
+		$plg = NuPlugin::emit('record.before_delete', ['form' => $meta->code(), 'form_id' => $meta->id, 'table' => $meta->table(), 'record_id' => $recordId, 'row' => $row]);
+		if ($plg !== null) return self::fail($plg);                 // a plugin refused the delete
 
 		NuAudit::begin();
 		$recycleId = null;
@@ -445,6 +451,7 @@ final class NuRecord
 			NuLog::write('record_deleted', $meta->code(), $recordId, ['table' => $meta->table(), 'fields' => NuLog::diff([], $row)]);
 		}
 		NuPhp::run($meta->php('AD'), $hash, 'After Delete');
+		NuPlugin::emit('record.after_delete', ['form' => $meta->code(), 'form_id' => $meta->id, 'table' => $meta->table(), 'record_id' => $recordId]);
 		return ['ok' => true] + ($recycleId !== null ? ['recycle' => $recycleId] : []) + NuPhp::result();
 	}
 

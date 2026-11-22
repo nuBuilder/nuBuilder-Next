@@ -84,12 +84,24 @@ final class NuAdmin
 		'compat' => ['compat', []],
 	];
 	public const GROUPS = ['system' => 'home_group_system', 'data' => 'home_group_data', 'dev' => 'home_group_dev', 'users' => 'home_group_users',
-		'look' => 'home_group_look', 'comm' => 'home_group_comm', 'integration' => 'home_group_integration', 'logs' => 'adm_group_logs'];
+		'look' => 'home_group_look', 'comm' => 'home_group_comm', 'integration' => 'home_group_integration', 'logs' => 'adm_group_logs',
+		'plugins' => 'adm_group_plugins'];
+
+	/** RIGHTS plus the rights the switched-on plugins add (group plugins, keys plg_<id>_<key>). */
+	public static function rights(): array
+	{
+		try {
+			return self::RIGHTS + NuPlugin::rights();
+		} catch (Throwable $ig) {
+			nu_ignored($ig, 'plugin rights');
+			return self::RIGHTS;
+		}
+	}
 
 	/** Default roles (created once, then editable): code => rights. */
 	public static function defaults(): array
 	{
-		$all = array_map(static fn() => 'change', self::RIGHTS);
+		$all = array_map(static fn() => 'change', self::rights());
 		$system = ['update', 'configfile', 'settings', 'globalcode', 'dbtool', 'filemanager', 'appcloner', 'apiclients', 'webhooks', 'aiproviders', 'adminroles'];
 		return [
 			'full_admin'      => $all,
@@ -179,7 +191,7 @@ final class NuAdmin
 		$r = self::role();
 		if (!$r || (NuImpersonate::active() && !NuImpersonate::testRole())) return '';
 		$best = '';
-		foreach (self::RIGHTS as $k => $def) {
+		foreach (self::rights() as $k => $def) {
 			if (!in_array($formId, $def[4], true)) continue;
 			$have = $r['rights'][$k] ?? '';
 			if ($have === 'change') return 'change';
@@ -207,8 +219,8 @@ final class NuAdmin
 		$rights = json_decode((string)($r['rights'] ?? ''), true);
 		$clean = [];
 		foreach (is_array($rights) ? $rights : [] as $k => $v) {
-			if (!isset(self::RIGHTS[$k]) || !in_array($v, ['view', 'change'], true)) continue;
-			$clean[$k] = self::RIGHTS[$k][3] === 'c' ? 'change' : $v;   // one-level rights are either there or not
+			if (!isset(self::rights()[$k]) || !in_array($v, ['view', 'change'], true)) continue;
+			$clean[$k] = self::rights()[$k][3] === 'c' ? 'change' : $v;   // one-level rights are either there or not
 		}
 		$code = (string)($r['code'] ?? '');
 		$name = trim((string)($r['name'] ?? ''));
@@ -251,7 +263,7 @@ final class NuAdmin
 	/** Does the role give a right of full access? */
 	public static function hasFull(array $rights): bool
 	{
-		foreach ($rights as $k => $_) if (self::RIGHTS[$k][2] ?? false) return true;
+		foreach ($rights as $k => $_) if (self::rights()[$k][2] ?? false) return true;
 		return false;
 	}
 
@@ -265,7 +277,7 @@ final class NuAdmin
 	public static function grantable(): array
 	{
 		$u = NuAuth::user();
-		if ($u && $u['globeadmin']) return array_map(static fn() => 'change', self::RIGHTS);
+		if ($u && $u['globeadmin']) return array_map(static fn() => 'change', self::rights());
 		return self::role()['rights'] ?? [];
 	}
 
@@ -294,13 +306,13 @@ final class NuAdmin
 		if (!preg_match('/^[a-z][a-z0-9_]{0,49}$/', $code)) $errors['code'] = t('adm_err_code');
 		elseif ((int)$db->value('SELECT COUNT(*) FROM ' . self::ROLE_TABLE . ' WHERE code = ? AND ' . self::ROLE_TABLE . '_id <> ?', [$code, (string)$id])) $errors['code'] = t('adm_err_code_taken');
 		$rights = [];
-		foreach ((array)($in['rights'] ?? []) as $k => $v) if (isset(self::RIGHTS[$k]) && in_array($v, ['view', 'change'], true)) $rights[$k] = self::RIGHTS[$k][3] === 'c' ? 'change' : $v;
+		foreach ((array)($in['rights'] ?? []) as $k => $v) if (isset(self::rights()[$k]) && in_array($v, ['view', 'change'], true)) $rights[$k] = self::rights()[$k][3] === 'c' ? 'change' : $v;
 		$old = $id !== null ? self::get($id) : null;
 		if ($id !== null && !$old) $errors['code'] = t('err_not_found');
 		// nobody raises rights beyond his own – also not by editing a role (only the changed rights count)
 		$changed = $rights;
 		if ($old) foreach ($changed as $k => $v) if (($old['rights'][$k] ?? '') === $v) unset($changed[$k]);
-		if ($bad = self::overGrant($changed)) $errors['rights'] = t('adm_err_over', implode(', ', array_map(static fn($k) => t(self::RIGHTS[$k][1]), $bad)));
+		if ($bad = self::overGrant($changed)) $errors['rights'] = t('adm_err_over', implode(', ', array_map(static fn($k) => t(self::rights()[$k][1]), $bad)));
 		$mine = self::role();
 		if ($mine && $old && $mine['id'] === $old['id']) $errors['rights'] = t('adm_err_own_role');
 		if ($errors) return [null, $errors];

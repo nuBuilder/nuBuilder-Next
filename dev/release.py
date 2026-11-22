@@ -7,7 +7,7 @@ nuBuilder Next – make a release (run from the nunext folder):
   --gate       full release gate: also the browser suites (smoke, e2e, compat – see browser_tests()); the manifest says "gated": true.
                Without it (0.8.389, the usual fast release) the browser suites are skipped, the package says "gated": false and the
                update page shows "Not fully tested". The owner says when to gate (CLAUDE.md "How work is delivered"); the script
-               prints how many releases came since the last gate and reminds after GATE_REMIND of them.
+               prints how many releases came since the last gate.
 
   version      e.g. 0.8.202 (must be higher than core/nuapp.php's NU_VERSION)
   title        short title, lower case start, e.g. "user form: welcome e-mail hint behind an (i) icon"
@@ -198,6 +198,14 @@ def page_api():
     return json.loads(out)
 
 
+def plugin_api():
+    """NuPlugin::apiInfo() of this version: Check package lists the installed plugins the new version would stop."""
+    code, out = run(['php', '-r', "define('NU_ROOT', getcwd()); require 'core/nuplugin.php'; echo json_encode(NuPlugin::apiInfo());"])
+    if code != 0:
+        sys.exit('plugin_api: ' + out)
+    return json.loads(out)
+
+
 LIBRARIES = 'vendor/bundled/libraries.json'
 
 
@@ -205,7 +213,7 @@ def libraries():
     """The bundled libraries (vendor/bundled/libraries.json) for the manifest: name, version, dir, license."""
     if not os.path.isfile(LIBRARIES):
         return []
-    return [{k: l[k] for k in ('name', 'version', 'dir', 'license')} for l in json.load(open(LIBRARIES, encoding='utf-8'))]
+    return [{k: l[k] for k in ('name', 'version', 'dir', 'license')} for l in read_json(LIBRARIES)]
 
 
 REQUIRED_LIBS = 'install/libraries-required.json'
@@ -217,7 +225,7 @@ def required_libs():
     if not os.path.isfile(REQUIRED_LIBS):
         return {}
     out = {}
-    for k, v in json.load(open(REQUIRED_LIBS, encoding='utf-8')).items():
+    for k, v in read_json(REQUIRED_LIBS).items():
         if k.startswith('_'):
             continue
         if k not in LIB_SLOTS or not isinstance(v, dict) or not re.match(r'^[0-9][0-9A-Za-z.+_-]{0,40}$', str(v.get('min', ''))):
@@ -231,13 +239,13 @@ def library_problems():
     bad = []
     if not os.path.isfile(LIBRARIES):
         return [LIBRARIES + ' missing']
-    for l in json.load(open(LIBRARIES, encoding='utf-8')):
+    for l in read_json(LIBRARIES):
         f = os.path.join('vendor/bundled', l['dir'], l['file'])
         if not os.path.isfile(f):
             bad.append(f'library {l["name"]}: {f} missing')
             continue
         if l.get('detect'):
-            m = re.search(l['detect'], open(f, encoding='utf-8', errors='replace').read(400000))
+            m = re.search(l['detect'], read_text(f, errors='replace')[:400000])
             if not m or m.group(1) != l['version']:
                 bad.append(f'library {l["name"]}: registry says {l["version"]}, the file says {m.group(1) if m else "nothing"}')
     print('libraries: ' + ('ok' if not bad else 'errors'))
@@ -303,106 +311,111 @@ def signing_key():
     return None
 
 
-GATE = '--gate' in sys.argv
-GATE_REMIND = 5          # releases without the gate before the reminder
+def read_text(path: str, **kw) -> str:
+    with open(path, encoding='utf-8', **kw) as fh:
+        return fh.read()
 
 
-def main():
-    args = [a for a in sys.argv[1:] if a not in ('--no-checks', '--gate')]
-    if len(args) != 3:
-        sys.exit(__doc__)
-    version, title, changes_file = args[0], args[1].strip(), args[2]
-    changes_file = os.path.abspath(changes_file)
-    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    os.chdir(root)
-    text = open(changes_file, encoding='utf-8').read().strip('\n')
-    if not re.fullmatch(r'\d+\.\d+\.\d+', version):
-        sys.exit('version must look like 0.8.202')
+def write_text(path: str, text: str) -> None:
+    with open(path, 'w', encoding='utf-8') as fh:
+        fh.write(text)
 
-    app = open('core/nuapp.php', encoding='utf-8').read()
-    m = re.search(r"define\('NU_VERSION', '([^']+)'\);", app)
-    old = m.group(1)
-    key = lambda v: tuple(int(x) for x in v.split('.'))
-    if key(version) <= key(old):
-        sys.exit(f'{version} is not higher than the current {old}')
-    code, out = run(['php', 'dev/lang_variants.php'])   # lang/en-US.php from lang/en.php, lang/de-CH.php from lang/de.php
-    print(out.strip())
-    if code != 0:
-        sys.exit(out)
-    code, out = run(['python3', '-I', 'dev/nuruntime_join.py'])   # assets/js/nu/nuruntime.js from dev/src/nuruntime/ (code review L1)
-    if out.strip():
+
+def read_json(path: str):
+    with open(path, encoding='utf-8') as fh:
+        return json.load(fh)
+
+
+def write_json(path: str, data) -> None:
+    with open(path, 'w', encoding='utf-8') as fh:
+        json.dump(data, fh, ensure_ascii=False, indent=1)
+
+
+def version_key(v: str) -> tuple:
+    return tuple(int(x) for x in v.split('.'))
+
+
+def step(cmd: list, quiet_empty: bool = False) -> None:
+    """Run a build step; print its output, stop the release when it fails."""
+    code, out = run(cmd)
+    if out.strip() or not quiet_empty:
         print(out.strip())
     if code != 0:
         sys.exit(out)
-    if '--no-checks' not in sys.argv:
-        checks(all_files())
 
-    # 1. README title + CHANGELOG.md section (0.8.373: the changelog moved out of the README)
-    readme = open('README.md', encoding='utf-8').read()
-    readme, n = re.subn(r'^# nuBuilder Next \S+ –', f'# nuBuilder Next {version} –', readme, count=1)
+
+GATE = '--gate' in sys.argv
+
+
+def changelog(version: str, title: str, text: str) -> None:
+    """1. README title + CHANGELOG.md section."""
+    readme, n = re.subn(r'^# nuBuilder Next \S+ –', f'# nuBuilder Next {version} –', read_text('README.md'), count=1)
     if n != 1:
         sys.exit('README.md: first line "# nuBuilder Next <version> – …" not found')
-    log = open('CHANGELOG.md', encoding='utf-8').read()
+    log = read_text('CHANGELOG.md')
     first = re.search(r'^## \d+\.\d+\.\d+ – ', log, flags=re.M)
     if not first:
         sys.exit('CHANGELOG.md: no changelog section "## x.y.z – …" found')
     log = log[:first.start()] + f'## {version} – {title}\n{text}\n\n' + log[first.start():]
-    open('README.md', 'w', encoding='utf-8').write(readme)
-    open('CHANGELOG.md', 'w', encoding='utf-8').write(log)
+    write_text('README.md', readme)
+    write_text('CHANGELOG.md', log)
 
-    # 2. version
-    open('core/nuapp.php', 'w', encoding='utf-8').write(app.replace(m.group(0), f"define('NU_VERSION', '{version}');"))
 
-    # 2b. database changes of this version for the update preview (install/db_changes.json, 0.8.346)
-    code, out = run(['php', 'dev/db_changes.php', version])
-    print(out.strip())
-    if code != 0:
-        sys.exit(out)
-
-    # 2c. minified copies of assets/ (0.8.1342, dev/minify.py): shipped beside the sources, nu_asset() serves them outside developer mode
-    code, out = run(['python3', '-I', 'dev/minify.py'])
-    print(out.strip())
-    if code != 0:
-        sys.exit(out)
-
-    # 3. manifest (deployed files only)
-    man = json.load(open('nunext-manifest.json', encoding='utf-8'))
-    files = {}
-    everything = all_files()
-    # 0.8.481: installed versions refuse a package with files under custom/ other than these (NuUpdate::isProtected of 0.8.387+)
-    bad_custom = [p for p in everything if deployed(p) and p.startswith('custom/') and p not in ('custom/.htaccess', 'custom/PAGE_GUIDE.md') and not p.startswith('custom/pages/_template/')]
+def file_hashes(everything: list) -> dict:
+    """sha256 + size of every deployed file; stops when files under custom/ would make the package uninstallable."""
+    # installed versions refuse a package with files under custom/ other than these (NuUpdate::isProtected)
+    bad_custom = [p for p in everything if deployed(p) and p.startswith('custom/') and p not in ('custom/.htaccess', 'custom/PAGE_GUIDE.md')
+                  and not p.startswith('custom/pages/_template/')]
     if bad_custom:
         sys.exit('files under custom/ would make the package uninstallable for installed versions: ' + ', '.join(bad_custom[:5]))
+    plugins = [p for p in everything if p.startswith('plugins/') and p not in ('plugins/.htaccess', 'plugins/README.md')]
+    if plugins:                             # plugins belong to an installation, never to the package
+        sys.exit('files under plugins/ must not be packaged: ' + ', '.join(plugins[:5]))
+    files = {}
     for p in everything:
-        if not deployed(p):
-            continue
-        b = open(p, 'rb').read()
-        files[p] = {'sha256': hashlib.sha256(b).hexdigest(), 'size': len(b)}
-    man['files'] = dict(sorted(files.items()))
+        if deployed(p):
+            with open(p, 'rb') as fh:
+                b = fh.read()
+            files[p] = {'sha256': hashlib.sha256(b).hexdigest(), 'size': len(b)}
+    return dict(sorted(files.items()))
+
+
+def manifest(version: str, old: str, title: str, text: str, everything: list):
+    """3. manifest (deployed files only), signed when a key is found. Returns (manifest, key file or None)."""
+    man = read_json('nunext-manifest.json')
+    man['files'] = file_hashes(everything)
     man['version'] = version
     man['built'] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
-    man['libraries'] = libraries()          # bundled libraries with versions: the update page shows which change (0.8.229)
-    man['requires_libs'] = required_libs()  # library packs this version needs: Check package warns (0.8.406)
-    man['page_api'] = page_api()            # page forms: API versions and methods – "Check package" lists pages that would break (0.8.388)
+    man['libraries'] = libraries()          # bundled libraries with versions: the update page shows which change
+    man['requires_libs'] = required_libs()  # library packs this version needs: Check package warns
+    man['page_api'] = page_api()            # custom pages: API versions and methods – "Check package" lists pages that would break
+    man['plugin_api'] = plugin_api()        # plugins: API versions – "Check package" lists plugins the new version would stop
     man.pop('signature', None)
-    man['gated'] = GATE                     # full release gate passed (0.8.389) – the update page warns for packages without it
+    man['gated'] = GATE                     # full release gate passed – the update page warns for packages without it
     if GATE:
         man['last_gate'] = version
     versions = [c.get('version') for c in man['changes']]
     at = versions.index(old) if old in versions else 0          # newest first (the list is not strictly sorted further down)
     man['changes'].insert(at, {'version': version, 'title': title, 'text': text})
-    json.dump(man, open('nunext-manifest.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+    write_json('nunext-manifest.json', man)
     keyfile = signing_key()
     if keyfile:
         code, out = run(['php', 'dev/sign.php', 'nunext-manifest.json', keyfile])
         if code != 0:
             sys.exit('signing failed: ' + out)
         man['signature'] = out.strip()
-        json.dump(man, open('nunext-manifest.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+        write_json('nunext-manifest.json', man)
     else:
         print('WARNING: no signing key found – the package is unsigned (the update page will warn)')
+    return man, keyfile
 
-    # 4. zips
+
+INSTALL_HTACCESS = ('# nuBuilder Next – never served directly\n<IfModule mod_authz_core.c>\n\tRequire all denied\n</IfModule>\n'
+                    '<IfModule !mod_authz_core.c>\n\tOrder allow,deny\n\tDeny from all\n</IfModule>\n')
+
+
+def zips(root: str, everything: list, keyfile) -> None:
+    """4. nunext.zip (install package) and nunext-dev.zip (everything) next to the project folder."""
     parent = os.path.dirname(root)
     packs = bundled_packs(keyfile)
     for name, sel in (('nunext.zip', [p for p in everything if deployed(p)]), ('nunext-dev.zip', everything)):
@@ -413,19 +426,49 @@ def main():
             for p in ['nunext-manifest.json'] + sel:
                 z.write(p, 'nunext/' + p)
             if name == 'nunext.zip':
-                for f in packs:                  # library packs for the installer (0.8.409): not in the manifest – _install/ is never updated
+                for f in packs:                  # library packs for the installer: not in the manifest – _install/ is never updated
                     z.write(f, 'nunext/_install/' + os.path.basename(f))
-                if packs:                        # 0.8.478 (security assessment K5): the folder is closed to the web from the start
-                    z.writestr('nunext/_install/.htaccess', '# nuBuilder Next – never served directly\n<IfModule mod_authz_core.c>\n\tRequire all denied\n</IfModule>\n<IfModule !mod_authz_core.c>\n\tOrder allow,deny\n\tDeny from all\n</IfModule>\n')
+                if packs:                        # the folder is closed to the web from the start
+                    z.writestr('nunext/_install/.htaccess', INSTALL_HTACCESS)
                     z.writestr('nunext/_install/index.html', '')
-        print(f'{name}: {len(sel)} files, {os.path.getsize(out) // 1024} KB' + (f' + {len(packs)} library pack(s) in _install/' if name == 'nunext.zip' and packs else ''))
+        extra = f' + {len(packs)} library pack(s) in _install/' if name == 'nunext.zip' and packs else ''
+        print(f'{name}: {len(sel)} files, {os.path.getsize(out) // 1024} KB' + extra)
+
+
+def main():
+    args = [a for a in sys.argv[1:] if a not in ('--no-checks', '--gate')]
+    if len(args) != 3:
+        sys.exit(__doc__)
+    version, title, changes_file = args[0], args[1].strip(), os.path.abspath(args[2])
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    os.chdir(root)
+    text = read_text(changes_file).strip('\n')
+    if not re.fullmatch(r'\d+\.\d+\.\d+', version):
+        sys.exit('version must look like 0.8.202')
+
+    app = read_text('core/nuapp.php')
+    m = re.search(r"define\('NU_VERSION', '([^']+)'\);", app)
+    old = m.group(1)
+    if version_key(version) <= version_key(old):
+        sys.exit(f'{version} is not higher than the current {old}')
+    step(['php', 'dev/lang_variants.php'])                        # lang/en-US.php from lang/en.php, lang/de-CH.php from lang/de.php
+    step(['python3', '-I', 'dev/nuruntime_join.py'], True)        # assets/js/nu/nuruntime.js from dev/src/nuruntime/
+    if '--no-checks' not in sys.argv:
+        checks(all_files())
+
+    changelog(version, title, text)
+    write_text('core/nuapp.php', app.replace(m.group(0), f"define('NU_VERSION', '{version}');"))     # 2. version
+    step(['php', 'dev/db_changes.php', version])     # 2b. database changes of this version for the update preview (install/db_changes.json)
+    step(['python3', '-I', 'dev/minify.py'])         # 2c. minified copies of assets/: nu_asset() serves them outside developer mode
+
+    everything = all_files()
+    man, keyfile = manifest(version, old, title, text, everything)
+    zips(root, everything, keyfile)
     print(f'{old} → {version}' + (' (signed)' if keyfile else ' (UNSIGNED)') + (' – gated' if GATE else ' – not gated'))
-    if not GATE:
+    if not GATE:      # the owner's rule: no gate reminders, only the count
         last = man.get('last_gate', '')
-        since = [c['version'] for c in man['changes'] if not last or key(c['version']) > key(last)]
+        since = [c['version'] for c in man['changes'] if not last or version_key(c['version']) > version_key(last)]
         print(f'releases since the last gate ({last or "none"}): {len(since)}')
-        if len(since) >= GATE_REMIND:
-            pass   # the owner's rule (0.8.451): no gate reminders – this account has no GitHub connection
 
 
 if __name__ == '__main__':

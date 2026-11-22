@@ -561,6 +561,11 @@
      "id": "bundled-libraries",
      "title": "Bundled libraries",
      "file": "11-04-bundled-libraries.htm"
+    },
+    {
+     "id": "plugins",
+     "title": "Plugins",
+     "file": "11-05-plugins.htm"
     }
    ]
   },

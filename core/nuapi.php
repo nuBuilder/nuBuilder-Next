@@ -188,6 +188,10 @@ final class NuApi
 			return self::$fn(...$args);
 		}
 		if ($allowed) throw new NuApiError(405, 'Method not allowed.', [], ['Allow' => implode(', ', array_unique($allowed))]);
+		if (preg_match('#^/v1/plugins/([a-z][a-z0-9_]{1,19})(/.*)?$#', $path, $pm)) {   // routes of a plugin (NuPluginApi::api)
+			$r = NuPlugin::api($method, $pm[1], $pm[2] ?? '/', self::$ctx['scopes']);
+			if ($r !== null) return $r;
+		}
 		throw new NuApiError(404, 'Not found.');
 	}
 

@@ -28,7 +28,7 @@ final class NuApiclientsPage
 					[$newId, $e, $cred] = NuApiClient::save($in, $client ? $id : '');
 					$errors += $e;
 					if (!$errors) {
-						if ($cred) $_SESSION[NuSess::API_SECRET] = ['id' => $newId] + $cred;
+						if ($cred) $_SESSION[NuSess::API_SHOWN] = ['id' => $newId] + $cred;
 						nu_flash('success', t('saved'));
 						nu_redirect(nu_url('apiclients', ['id' => $newId]));
 					}
@@ -36,7 +36,7 @@ final class NuApiclientsPage
 			}
 			if ($client && $action === 'rotate') {
 				$secret = NuApiClient::rotate($id, nu_post('grace') === '0' ? 0 : 24);
-				$_SESSION[NuSess::API_SECRET] = ['id' => $id, 'client_id' => $client['client_id'], 'client_secret' => $secret];
+				$_SESSION[NuSess::API_SHOWN] = ['id' => $id, 'client_id' => $client['client_id'], 'client_secret' => $secret];
 				nu_redirect(nu_url('apiclients', ['id' => $id]));
 			}
 			if ($client && $action === 'revoke') {

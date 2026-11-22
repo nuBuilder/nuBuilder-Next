@@ -77,7 +77,7 @@ final class NuSettingsPage
 				NuSecurity::requireRecentAuth(nu_url('settings', ['s' => 'data']) . '#shHealth');
 				$remove = nu_post('key_op') === 'remove';
 				$k = NuHealth::newKey($remove);
-				if (!$remove) $_SESSION[NuSess::HEALTH_KEY] = $k;
+				if (!$remove) $_SESSION[NuSess::HEALTH_SHOWN] = $k;
 				nu_flash('success', t($remove ? 'hc_key_removed' : 'hc_key_saved'));
 				$back('data', 'shHealth');
 			}

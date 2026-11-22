@@ -1670,6 +1670,28 @@ check('NuFormat::kind: date / number / text from the format', NuFormat::kind('D|
 	&& NuFormat::kind('') === 'text' && NuFormat::kind('T|X') === 'text' && NuAdvSearch::typeOf(['format' => 'N|1']) === 'number'
 	&& NuAdvSearch::typeOf(['type' => 'bool', 'format' => 'N|1']) === 'bool');
 
+// plugins: manifest shape, payload over the file hashes, the signature of dev/plugin_sign.php, requirements, the API's names
+[$pm] = NuPlugin::cleanManifest(['id' => 'demo_x', 'name' => 'Demo', 'version' => '1.2.0', 'api' => 1, 'tables' => ['notes', 'Bad-Name'], 'entry' => '../x.php', 'url' => 'http://x']);
+check('NuPlugin::cleanManifest: tables checked, entry and url made safe', $pm !== null && $pm['tables'] === ['notes'] && $pm['entry'] === 'plugin.php' && $pm['url'] === '');
+check('NuPlugin: id pattern (= folder name, short enough for the settings row plg:<id>)', preg_match(NuPlugin::ID_RE, 'demo_x') === 1
+	&& preg_match(NuPlugin::ID_RE, 'Demo') === 0 && preg_match(NuPlugin::ID_RE, str_repeat('a', 21)) === 0 && strlen('plg:' . str_repeat('a', 20)) <= 25);
+$kp = sodium_crypto_sign_keypair();
+$pm['files'] = ['plugin.php' => ['sha256' => hash('sha256', 'a'), 'size' => 1], 'lang/en.php' => ['sha256' => hash('sha256', 'bb'), 'size' => 2]];
+$sig = base64_encode(sodium_crypto_sign_detached(NuPlugin::payload($pm), sodium_crypto_sign_secretkey($kp)));
+$pm2 = $pm; $pm2['files'] = array_reverse($pm['files'], true);
+check('NuPlugin::payload: order of the files does not matter, a signature verifies with its key', NuPlugin::payload($pm) === NuPlugin::payload($pm2)
+	&& NuLibs::verify(NuPlugin::payload($pm2), $sig, base64_encode(sodium_crypto_sign_publickey($kp))) === 'valid');
+$pm3 = $pm; $pm3['files']['plugin.php']['size'] = 2;
+check('NuPlugin::payload: a changed file breaks the signature', NuLibs::verify(NuPlugin::payload($pm3), $sig, base64_encode(sodium_crypto_sign_publickey($kp))) === 'invalid');
+check('NuPlugin::requirements: nothing missing for a plugin of this API version', NuPlugin::requirements(['api' => 1, 'requires' => ['php' => '8.1']]) === []);
+$papi = new NuPluginApi(['id' => 'demo_x', 'name' => 'Demo', 'version' => '1.0']);
+$papi->api('GET', 'items/{item}', static fn() => []);
+$bad = false;
+try { $papi->on('no.event', static fn() => null); } catch (InvalidArgumentException) { $bad = true; }
+check('NuPluginApi: table prefix, REST pattern with named parts, unknown events refused', $papi->table('notes') === 'zzzzsys_nunext_plg_demo_x_notes'
+	&& preg_match($papi->apiRoutes()[0][1], '/items/42', $mm) === 1 && $mm['item'] === '42' && $bad);
+check('NuPlugin::report: the API versions of a new release', NuPlugin::apiInfo()['current'] === NuPlugin::API_VERSION);
+
 @unlink($cfg);
 echo ($fails ? "$fails of $n tests FAILED" : "all $n tests passed") . "\n";
 exit($fails ? 1 : 0);

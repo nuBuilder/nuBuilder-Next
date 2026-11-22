@@ -47,6 +47,11 @@ declare(strict_types=1);
  * Health check – the same checks as index.php?p=health with the key (database, disk, last backup, last cron run):
  *     php nucron.php health [--json]      Exit code: 0 = ok, 1 = a warning, 2 = failed (the database does not answer)
  *
+ * Plugins (Update → Plugins) – list them, switch one on / off; off without an id switches every plugin off (a plugin that breaks the pages):
+ *     php nucron.php plugins list | on <id> | off [<id>]
+ * A task of a plugin (NuPluginApi::task), e.g. from the server's cron – runs as the globeadmin:
+ *     php nucron.php plugin <id> <task> [name=value …]      Exit code: 0 = done, 1 = failed, 2 = wrong call.
+ *
  * IP access – switched off when the rules lock everybody out (they stay stored):
  *     php nucron.php iprules off
  *
@@ -229,6 +234,44 @@ if (($args[0] ?? '') === 'secrets') {
 	}
 	fwrite(STDERR, "Usage: php nucron.php secrets status|seal|rekey …\n");
 	exit(2);
+}
+if (($args[0] ?? '') === 'plugins') {
+	$sub = (string)($args[1] ?? 'list');
+	$pid = (string)($args[2] ?? '');
+	if ($sub === 'list') {
+		$st = NuPlugin::state();
+		foreach (NuPlugin::installed() as $id => $p) {
+			$m = $p['manifest'];
+			echo str_pad($id, 22) . str_pad($m ? (string)$m['version'] : '?', 12) . (isset($st['on'][$id]) ? 'on' : (isset($st['failed'][$id]) ? 'off after an error: ' . $st['failed'][$id]['error'] : 'off'))
+				. ($m ? '' : '  ' . $p['error']) . "\n";
+		}
+		exit(0);
+	}
+	if ($sub === 'off') {
+		$ids = $pid !== '' ? [$pid] : array_keys((array)NuPlugin::state()['on']);
+		foreach ($ids as $id) { NuPlugin::disable((string)$id); echo "Plugin $id switched off.\n"; }
+		if (!$ids) echo "No plugin is switched on.\n";
+		exit(0);
+	}
+	if ($sub === 'on' && $pid !== '') {
+		$err = NuPlugin::enable($pid);
+		if ($err !== null) { fwrite(STDERR, $err . "\n"); exit(1); }
+		echo "Plugin $pid switched on.\n";
+		exit(0);
+	}
+	fwrite(STDERR, "Usage: php nucron.php plugins list | on <id> | off [<id>]\n");
+	exit(2);
+}
+if (($args[0] ?? '') === 'plugin') {
+	$pid = (string)($args[1] ?? '');
+	$task = (string)($args[2] ?? '');
+	if ($pid === '' || $task === '') { fwrite(STDERR, "Usage: php nucron.php plugin <id> <task> [name=value …]\n"); exit(2); }
+	$kv = [];
+	foreach (array_slice($args, 3) as $a) if (preg_match('/^([A-Za-z_][\w]*)=(.*)$/s', $a, $m)) $kv[$m[1]] = $m[2];
+	NuAuth::cliGlobeadmin();
+	[$ok, $msg] = NuPlugin::runTask($pid, $task, $kv);
+	if ($msg !== '') { if ($ok) echo $msg . "\n"; else fwrite(STDERR, $msg . "\n"); }
+	exit($ok ? 0 : 1);
 }
 if (($args[0] ?? '') === 'iprules') {
 	if (($args[1] ?? '') !== 'off') { fwrite(STDERR, "Usage: php nucron.php iprules off\n"); exit(2); }

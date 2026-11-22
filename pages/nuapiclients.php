@@ -22,9 +22,9 @@ $errors = [];
 ['errors' => $errors, 'client' => $client, 'id' => $id]
 	= NuApiclientsPage::post(get_defined_vars());   // the POST actions (code review R7, nuapiclientspage.php)
 
-$secret = $_SESSION[NuSess::API_SECRET] ?? null;
+$secret = $_SESSION[NuSess::API_SHOWN] ?? null;
 if ($secret && (string)$secret['id'] !== $id) $secret = null;
-unset($_SESSION[NuSess::API_SECRET]);                                   // shown once
+unset($_SESSION[NuSess::API_SHOWN]);                                   // shown once
 $base = nu_base_url() . '/api.php/v1';
 
 $lvState = $id === '' ? NuListView::prepare('apiclients') : null;   // the list: a system list – views, filters, print / export, cards on phones
@@ -187,7 +187,7 @@ curl -s -H 'Authorization: Bearer &lt;access_token&gt;' '<?= h($base) ?>/users?l
 						</div></div>
 
 						<div class="col-12"><span class="form-label d-block"><?= h(t('api_scopes')) ?></span>
-							<?php foreach (NuApiClient::SCOPES as $s => $desc): ?>
+							<?php foreach (NuApiClient::scopes() as $s => $desc): ?>
 								<div class="form-check"><input class="form-check-input" type="checkbox" name="scopes[]" value="<?= h($s) ?>"
 									id="sc_<?= h(str_replace(':', '_', $s)) ?>"<?= in_array($s, $scopes, true) ? ' checked' : '' ?>>
 									<label class="form-check-label small" for="sc_<?= h(str_replace(':', '_', $s)) ?>"><code><?= h($s) ?></code> – <?= h(t('api_scope_' . str_replace(':', '_', $s))) ?></label></div>

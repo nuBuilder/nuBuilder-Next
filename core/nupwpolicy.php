@@ -13,7 +13,7 @@ defined('NU_ROOT') || exit;
 final class NuPwPolicy
 {
 	public const KEY = 'pw_policy';
-	public const GA_KEY = 'pw_policy_ga';                 // {fp, since, leak: {fp, at, hit}} of the globeadmin password
+	public const GA_SETTING = 'pw_policy_ga';   // skipcq: SCT-A000 – a settings row id, not a credential; {fp, since, leak: {fp, at, hit}} of the globeadmin password
 	public const DEFAULTS = ['min_len' => 0, 'upper' => false, 'lower' => false, 'digit' => false, 'symbol' => false, 'not_name' => true,
 		'leak' => 'both', 'leak_login' => true, 'expire' => 0, 'warn' => 14, 'ga_expire' => 0, 'levels' => [], 'leak_url' => ''];
 	public const LEAK_MODES = ['both', 'online', 'offline', 'off'];
@@ -294,13 +294,13 @@ final class NuPwPolicy
 	{
 		try {
 			$s = self::settings();
-			$g = self::readJson(self::GA_KEY);
+			$g = self::readJson(self::GA_SETTING);
 			$fp = substr(hash('sha256', 'ga|' . $password), 0, 16);
 			if (($g['fp'] ?? '') !== $fp) $g = ['fp' => $fp, 'since' => time(), 'leak' => null];
 			if ($s['leak'] !== 'off' && $s['leak_login'] && (!is_array($g['leak'] ?? null) || (int)$g['leak']['at'] < time() - self::RECHECK_DAYS * 86400)) {
 				$g['leak'] = ['at' => time(), 'hit' => self::leaked($password) !== 0];
 			}
-			self::write(self::GA_KEY, $g);
+			self::write(self::GA_SETTING, $g);
 			$msgs = [];
 			if (!empty($g['leak']['hit'])) $msgs[] = t('ga_pw_leaked');
 			if ($s['ga_expire'] > 0 && (int)$g['since'] + $s['ga_expire'] * 86400 < time()) $msgs[] = t('ga_pw_expired', $s['ga_expire']);

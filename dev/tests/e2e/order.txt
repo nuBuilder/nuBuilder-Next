@@ -562,4 +562,7 @@ db_read_helpers
 review_q1_q5
 access_delete_expired
 code_review_l4_d5
+plugins
+lookup_add_record
+update_branch_archive
 logout

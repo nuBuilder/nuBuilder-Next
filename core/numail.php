@@ -421,6 +421,9 @@ final class NuMailer
 	public static function send(array $o): array
 	{
 		if (NuDemo::active()) return [false, t('demo_not_available'), 'demo mode', '', []];   // demo mode: no e-mails (core/nudemo.php)
+		$plg = NuPlugin::emit('mail.before_send', ['to' => $o['to'] ?? [], 'cc' => $o['cc'] ?? [], 'bcc' => $o['bcc'] ?? [], 'subject' => (string)($o['subject'] ?? ''),
+			'tag' => (string)($o['tag'] ?? '')]);
+		if ($plg !== null) return [false, $plg, 'plugin', '', []];      // a plugin stopped the e-mail
 		$rejected = [];
 		$lists = [];
 		foreach (['to', 'cc', 'bcc', 'reply_to'] as $kind) {

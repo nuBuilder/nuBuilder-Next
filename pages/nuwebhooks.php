@@ -25,9 +25,9 @@ $test = null;
 ['call' => $call, 'callId' => $callId, 'errors' => $errors, 'hook' => $hook, 'id' => $id]
 	= NuWebhooksPage::post(get_defined_vars());   // the POST actions (code review R7, nuwebhookspage.php)
 
-$secret = $_SESSION[NuSess::WEBHOOK_SECRET] ?? null;
+$secret = $_SESSION[NuSess::WEBHOOK_SHOWN] ?? null;
 if ($secret && (string)$secret['id'] !== $id) $secret = null;
-unset($_SESSION[NuSess::WEBHOOK_SECRET]);                                   // shown once
+unset($_SESSION[NuSess::WEBHOOK_SHOWN]);                                   // shown once
 $test = $_SESSION[NuSess::WEBHOOK_TEST] ?? null;
 if ($test && (string)$test['id'] !== $id) $test = null;
 unset($_SESSION[NuSess::WEBHOOK_TEST]);

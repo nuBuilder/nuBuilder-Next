@@ -39,7 +39,7 @@ final class NuTutorial
 		if ($right === '') return true;
 		if ($right === 'ga') return false;
 		if (str_starts_with($right, 'acl:')) return NuAcl::can(substr($right, 4));
-		return isset(NuAdmin::RIGHTS[$right]) && NuAdmin::can($right, 'view');
+		return isset(NuAdmin::rights()[$right]) && NuAdmin::can($right, 'view');
 	}
 
 	/**

@@ -567,7 +567,7 @@ final class NuApiRecords
 			'servers' => [['url' => $base]],
 			'components' => ['securitySchemes' => [
 				'bearer' => ['type' => 'http', 'scheme' => 'bearer'],
-				'oauth2' => ['type' => 'oauth2', 'flows' => ['clientCredentials' => ['tokenUrl' => $base . '/v1/token', 'scopes' => array_map(static fn($k) => t('api_scope_' . str_replace(':', '_', $k)), array_combine(array_keys(NuApiClient::SCOPES), array_keys(NuApiClient::SCOPES)))]]]],
+				'oauth2' => ['type' => 'oauth2', 'flows' => ['clientCredentials' => ['tokenUrl' => $base . '/v1/token', 'scopes' => array_map(static fn($k) => t('api_scope_' . str_replace(':', '_', $k)), array_combine(array_keys(NuApiClient::scopes()), array_keys(NuApiClient::scopes())))]]]],
 				'schemas' => $schemas],
 			'security' => [['bearer' => []], ['oauth2' => []]], 'paths' => $paths ?: (object)[]], []];
 	}

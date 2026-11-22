@@ -177,6 +177,9 @@ $routes = [
 	'dataaccess'  => [],                     // field data access + column visibility of a form
 	'libpack'     => [],                     // library packs: build and sign (developer mode)
 	'builderapi'  => ['json' => true],
+	'plugins'     => [],                 // plugins: managed on Update → Plugins (pages/nuplugins.php)
+	'plugin'      => [],                 // a page of a plugin (NuPlugin::route)
+	'pluginasset' => [],                 // scripts, styles, pictures of a plugin's assets/ folder
 	'page'        => [],                 // form type "page": the page file's own output (core/nupage.php)
 	'pageasset'   => [],                 // css / js / images of a page folder
 ];

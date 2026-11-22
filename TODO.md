@@ -361,6 +361,7 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **Tom Select 2.7.0** (0.8.1131) – searchable selects in light / dark (caret, empty option first, search with ß / umlauts).
 
 ## Update page, backups and admin tools
+- [ ] **Plugins, please verify** (0.8.1364) – on a live server: upload into plugins/ (folder rights of the web server; with an unwritable folder the copy by FTP), a plugin's REST route through a real API client, a plugin's tables on SQL Server (dropping them with Remove), a fatal PHP error inside a plugin's file (switched off at the end of the request), and a real third-party plugin against the API – which events / hooks are still missing.
 - [ ] **File Manager, please verify** (0.8.1309 / 0.8.1314 / 0.8.1315) – on a phone the toolbar follows the selection; ticking several files no longer unticks the others; the globeadmin starts in the share webroot.
 - [ ] **Please verify: Getting ready checklist** (0.8.1310) – on a fresh installation and on the live servers: the points that check themselves show the right state (backup, cron, mail, libraries, HTTPS), the links lead to the right page, hide for 7 days / for good, and a new red security or backup point brings the bar back.
 - [ ] **System info, page width, compact settings, code search on phones** (0.8.1226–0.8.1242) – please verify: System info… in the user menu (Copy for support), Customise → Appearance → page width on a large monitor, Settings → Compact, code search on a phone (Options / Filters sheets, chips).
@@ -582,4 +583,4 @@ Checked against what nuBuilder Next already has (October 2026) – only real gap
 - [ ] **3 · Multi-tenancy** – see the proposal above.
 - [ ] **2 · GraphQL API** besides REST – decided 0.8.1337 (the owner): records over REST + OpenAPI first (built); GraphQL read-only on top of NuApiRecords only when a client asks for it (schema from the forms, depth / cost limits, own scope).
 - [ ] **Records over the API, please verify** (0.8.1337) – SQL Server (paging, IN (list query)); forms whose Before Browse builds #TABLE_ID# (the list runs it once per request); a form whose Before Edit writes output.
-- [ ] **2 · Plugin system** for third-party extensions.
+- [x] **2 · Plugin system** – built in 0.8.1364 (plugins/<id>/, NuPlugin + NuPluginApi, Update → Plugins).

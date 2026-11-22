@@ -24,13 +24,16 @@ one file per page in `docs/pages/`, listed in reading order in `docs/toc.json` (
   ../nunext.zip`** (= `NuUpdate::inspect`): `ok=true`, the new version, `signature=valid`, `errors=[]`.
 - **Fast releases, gate on request (0.8.389, the owner's rule):** a normal request ends with a FAST release – `dev/release.py` WITHOUT
   `--gate` (php -l, check_lang, unit tests, PHPStan, ESLint; browser suites skipped; manifest `"gated": false` → the update page shows
-  "Not fully tested") plus the e2e tests of the changed areas (`ONLY=…`) and a browser look; both zips are sent; **no git push**.
+  "Not fully tested") plus the e2e tests of the changed areas (`ONLY=…`) and a browser look; both zips are sent. **Push after every
+  release (the owner, 0.8.1369):** after `dev/inspect.php` sync to the git mirror (`rsync -a --delete --exclude .git --filter=':- .gitignore'
+  nunext/ nubuilder-next/`), commit "<version>: <title>" (author below + attribution lines) and `git push origin main` – then send the zips;
+  `main` = the newest delivered version (update page *Get branch main*); fast releases carry `"gated": false`.
   **Before every gate (the owner's rule, 0.8.549): bring the documentation up to date first** – the help pages of everything changed
   since the last gate (`docs/pages/`), FEATURES.md (new features as one line each), README.md (only when a highlight, requirement or install step changes), this file ("Where things stand", architecture,
   conventions), TODO.md (remove what is done) and the tutorial where it is affected – then run the gate, so the push carries current docs.
   Only when the owner says **"gate"**: a new version with `python3 dev/release.py <version> "<title>" <file> --gate` (full gate: smoke,
   all e2e, compat, ZAP when ../zap exists; manifest `"gated": true`, `last_gate`), then sync to the git mirror, commit and `git push origin main` (everything since
-  the last gate in one push). **Commit author** (the owner, 0.8.1346): `nuBuilder Next <noreply@nubuilder.com>` –
+  the last gate – usually only the gate's own commit now). **Commit author** (the owner, 0.8.1346): `nuBuilder Next <noreply@nubuilder.com>` –
   `git -c user.name="nuBuilder Next" -c user.email="noreply@nubuilder.com" commit …`, plus the attribution lines. **Account without a GitHub connection (since 0.8.451, the owner's rule):** a gate runs the full test
   suite locally and releases with `--gate`, but nothing is synced, committed or pushed; do **not** remind the owner about gates
   (release.py only prints the count).
@@ -339,6 +342,7 @@ core/nupwa.php       NuPwa (0.8.1136): installable app – manifest, icons, serv
 core/form/nucalendar.php NuCalendar (0.8.1165): calendars with FullCalendar 6 (vendor/bundled/fullcalendar-*, NU_FULLCALENDAR, built by dev/fullcalendar_build.py – CSS extracted, style injection patched out for the CSP) – list view (sfo_json nunext.calendar {start, end, title, color, group = browse ids, view, allday, edit, drag, min, max}; ofForm() maps ids → list positions; button #nuCalendarOpen in pages/nuform.php), calendar objects (HTML object with sob_all_json nunext.calendar {src form|sql, form, filter, sql, edit_form, start_field, end_field, view, height, edit, drag}; NuRender html case → host()), dashboard widget type calendar (NuDashboard::run adds events via fromRows); JSON route ?p=calendar (pages/nucalendar.php: events / move – move = NuRecord::save with the stored record + sub-form rows, only start / end edited), ?p=form&r=-1&nv={field: value} prefills a new record (newValues); assets/js/nu/nucalendar.js (NuCalendar.mount, record dialogue .nuCalRecDlg, group chips); design mode Browse list → Calendar view, Add → Calendar (#nuDsAddCalendar) + panel section calendar; e2e list_calendar / calendar_object / design_calendar
 core/nucodesearch.php NuCodeSearch (0.8.1172–0.8.1176): code search + replace over every code place (?p=codesearch, admin right codesearch, replace globeadmin only, batches in zzzzsys_nunext_code_replace with undo); see "Where things stand" 0.8.1172 / 0.8.1174
 docker/              Docker image + compose (0.8.1137, not in nunext.zip): Dockerfile, entrypoint.sh, setup.php, compose.yml / compose.sample.yml; see "Where things stand" 0.8.1137
+core/nuplugin.php    NuPlugin + core/nupluginapi.php NuPluginApi (0.8.1364): plugins in plugins/<id>/ (plugin.json + plugin.php with $plugin) – setting 'plugins' {upload, keys, on, failed}, lazy boot(), events emit() / filter(), tiles / menu / rights / scopes / assets, ?p=plugin / pluginasset / plugins, REST /v1/plugins/<id>/…, nucron plugins / plugin; Update → Plugins = core/nupluginspage.php; see "Where things stand" 0.8.1364
 core/nuhealth.php    NuHealth (0.8.1335): ?p=health for monitoring tools, key + limits in Settings → Data & logs, nucron.php health; see "Where things stand" 0.8.1335
 core/nusecret.php    NuSecret (0.8.1326): encryption of stored secrets with $nuConfigSecretKey, SMTP password copy, status / seal / rekey (nucron.php secrets); see "Where things stand" 0.8.1326
 core/nusso.php       NuSso (0.8.863): single sign-on with OpenID Connect – setting sso, page ?p=sso (pages/nusso.php), return via oauth.php (state sso.*), NuAuth::loginSso / ssoOnly; see "Where things stand" 0.8.863
@@ -734,8 +738,38 @@ Last gate 0.8.1359 (smoke, e2e 563, compat 84, ZAP 0 unknown; pushed 0.8.1353–
 Gate 0.8.979 (full test run: smoke, e2e, compat, ZAP; pushed: 0.8.964–0.8.979 in one push; docs 12-02 / 10-03 / 04-05, tutorial Forte track, TODO checked first). Comparison of a second nuBuilder Forte database form by form (0.8.965–0.8.978): scratch scripts cmp.js / cmpdiff.js / flow.js in the session scratchpad (not in the project), findings in a Claude Doc (no names of the owner's application in any project file). The test site of that dump sends mail into a file ($nuConfigMailLog) – keep it so.
 
 Since the gate, newest first:
-
-(none yet)
+- 0.8.1369 the owner: push to main after every release (rule in "How work is delivered"); this push also brings the minified files (0.8.1368) and every version since the gate 0.8.1359
+- 0.8.1368 update from the branch main (the owner: B – button + uploaded archives): NuUpdate::packagePrefix(ZipArchive) = '' | 'nunext/' | the ONE top folder of a GitHub archive with the manifest in it (inspect, folderPackages, NuDbReset); NuGitHub::BRANCH 'main', branchUrl() = codeload.github.com/<repo>/zip/refs/heads/main, downloadBranch() → _update/nunext-main-<Ymd-His>.zip (refused unless a signed nuBuilder Next manifest), update action github_branch (button #updGitHubBranch on the GitHub card, texts gh_branch_*); .gitignore no longer ignores assets/**/*.min.* / assets/min.json – the manifest lists them, so a main archive without them failed Check package (files missing; tried with the real main of 0.8.1359: prefix and signature fine, 136 minified files missing) – they come with the next push; docs 01-04 #update-branch; e2e update_branch_archive. Open: the owner decides whether main gets a push after every release (then the button gives the newest version) or stays at gates
+- 0.8.1367 FIX a record added from a lookup's list (+) had no Save button (phone and wide screen): pages/nuform.php body class nuLookupPage only in browse mode – its rule hides .nuFormHeader, which holds #nuActionHolder on record pages; e2e lookup_add_record
+- 0.8.1366 File Manager on phones: toolbar buttons without a selection as wide as with one (apps/nufiles app.css: flex 1 1 0, max 3.25rem, min 2.25rem; Upload 3.25rem) – they shrink only when the row is too narrow; Forte build rebuilt; e2e file_manager_toolbar_row checks the widths
+- 0.8.1365 docs for plugins: tutorial tip in the lesson update, 01-04 (Check package + tab Plugins), 08-02 (nucron plugins / plugin), 10-05 (scope plugin:<id>), 07-04 (group Plugins)
+- 0.8.1364 plugin system (the owner: A2 · B1 · C1 + C2 · D1 · E1 · F1 of the proposal): core/nuplugin.php NuPlugin – folders plugins/<id>/
+  (ID_RE a-z0-9_ ≤ 20 – settings row plg:<id> ≤ 25), plugin.json cleanManifest() {id, name, version, api, requires {nunext, php, extensions, db},
+  tables, network, entry, files, signature}, requirements(), payload() = 'nunext-plugin|id|version|sha256(sorted "rel sha256 size")', signature()
+  official | trusted (keys of the setting) | unsigned | unknown (no trusted key verifies – allowed after a question) | modified (blocked) |
+  unchecked; setting 'plugins' {upload (default off), keys [{name, key}], on {id: {at, by, version, sig}}, failed {id: {at, error}}}; boot() lazy
+  on first use (not in the installer, not with ?safe=1 of the globeadmin), load() requires plugin.php with $plugin; call() = try/catch → fail()
+  (off + log plugin_failed), afterFatal() shutdown for fatal errors in plugins/<id>/; emit(event, ctx) (first text = refusal) / filter('list.def');
+  EVENTS record.before_save / after_save / before_delete / after_delete (core/form/nurecord.php after nu_before_save / nu_before_delete, after
+  AS / AD), login (NuLog::write event login), mail.before_send (NuMailer::send), housekeeping (NuHousekeeping step plugins), list.def
+  (NuListDefs::get → builtIn()); rights() → NuAdmin::rights() (RIGHTS + group plugins; every self::RIGHTS / NuAdmin::RIGHTS reader uses it),
+  scopes() → NuApiClient::scopes(), tiles() → NuHome::catalog (+ visible() via tileVisible, resolve() route ['url' => …]), menuItems() → user
+  menu (nu_plugin_menu), jsTags / cssTags (nu_plugin_tags in nu_head / nu_layout_end, pages/nuform.php before Global JS); route() = ?p=plugin
+  (string = page frame, array = JSON, null = sent), serveAsset() = ?p=pluginasset (assets/ only, types ASSET_TYPES), api() = NuApi::route
+  /v1/plugins/<id>/… (scope plugin:<id>), runTask(); enable / disable / remove(data: tables with the prefix, plg:<id>, custom/plugindata/<id>)
+  / setUpload / addKey / removeKey; checkZip / installZip (one folder or root, no .. / absolute / links, MAX_ZIP 20 MB, temp folder + rename);
+  apiInfo() → manifest plugin_api (release.py; files under plugins/ other than .htaccess / README.md stop the release), report() → Check
+  package card #updPlugins. core/nupluginapi.php NuPluginApi (API_VERSION 1 – the contract: only add methods). Update page tab Plugins
+  (globeadmin, NuPluginsPage::tab(): #plgTable rows tr[data-plugin] [data-status] .nuPlgSig[data-sig] [data-plg-act], #plgCheck,
+  #plgUploadCard / #plgUploadSet, #plgKeysCard), pages/nuplugins.php (POST actions → tab; ?settings=<id> = the plugin's settings form,
+  plg[…] posted), session NuSess::PLUGIN_UPLOAD (_update/plugin-<token>.zip); NuUpdate::isProtected plugins/ (shipped: .htaccess, README.md),
+  nginx rule + docs 07-07; nucron.php plugins list | on <id> | off [<id>], plugin <id> <task> [k=v]; dev/plugin-skeleton/ (example id example:
+  page, JSON route, tile, menu, right, settings, events, REST, task, js / css, onEnable table) + dev/plugin_sign.php (--keygen, sign, --zip);
+  texts plg_* / upd_plugins_* / adm_group_plugins / ev_plugin_*; docs 11-05-plugins (#plugins); run.php + e2e plugins
+- 0.8.1363 DeepSource Python report on dev/release.py: files read / written through read_text / write_text / read_json / write_json (with-blocks), version_key() instead of a lambda, the empty gate-reminder branch and GATE_REMIND removed, main() split into step() / changelog() / file_hashes() / manifest() / zips(); this release was built with the new script
+- 0.8.1362 DeepSource secrets report (SCT-A000, all false positives): session keys renamed NuSess::API_SECRET / WEBHOOK_SECRET / HEALTH_KEY → API_SHOWN / WEBHOOK_SHOWN / HEALTH_SHOWN (values nu_api_shown / nu_wh_shown / nu_health_shown – sessions only, nothing stored); NuPwPolicy::GA_KEY → GA_SETTING (row id pw_policy_ga kept – stored data) with a skipcq comment, likewise the list_view SQL line of NuSample::sampleCond; the hits in nunext-manifest.json (old changelog texts) are left – the secrets scan ignores exclude_patterns, mark them as false positives in DeepSource
+- 0.8.1361 DeepSource Python report of the 0.8.1359 push (dev/css_fold.py / css_group.py / nuruntime_join.py): files opened with with-blocks, lambdas → def, unused variable / argument removed (decl_text(d)), type annotations of moved / keep, fold() split into plan / movable / target_of / fam_keys / add_edit / remove_edit, css_group.py sections() / group() split (add_at_rule, place_of, piece); checked: both scripts give byte-identical results on the style sheets of before the grouping (scratch pyref/)
+- 0.8.1360 notes (v0.8.1359 published)
 
 Up to the gate 0.8.1359, newest first:
 - 0.8.1359 release gate (FEATURES: folded filters on tablets). Three runs stopped before it passed: notify_exclude (a click timed out – the

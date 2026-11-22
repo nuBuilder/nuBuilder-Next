@@ -418,6 +418,10 @@ final class NuLog
 {
 	public static function write(string $event, string $object = '', string $recordId = '', array $details = [], ?array $user = null): void
 	{
+		if ($event === 'login' && class_exists('NuPlugin', true)) {   // plugins: every successful sign-in passes here
+			$who = $user ?? NuAuth::user() ?? [];
+			NuPlugin::emit('login', ['user_id' => (string)($who['id'] ?? ''), 'login' => (string)($who['login'] ?? ''), 'via' => (string)($details['via'] ?? 'password')]);
+		}
 		try {
 			NuSchema::ensure();
 			$u = $user ?? NuAuth::currentRaw();

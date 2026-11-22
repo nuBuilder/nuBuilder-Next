@@ -49,7 +49,7 @@ def specificity(sel: str):
             i = j
             rest, more = strip_fn(s[i:], name)
             return out + rest, [args] + more
-    s, where = strip_fn(sel, 'where')
+    s = strip_fn(sel, 'where')[0]
     extra = (0, 0, 0)
     for nm in ('is', 'not', 'has', 'matches'):
         s, args = strip_fn(s, nm)
@@ -117,7 +117,9 @@ def rule_end(text: str, i: int) -> int:
 
 def collect(text: str):
     ls = offsets(text)
-    pos = lambda node: ls[node.source_line - 1] + node.source_column - 1
+
+    def pos(node) -> int:
+        return ls[node.source_line - 1] + node.source_column - 1
     out = []
 
     def walk(nodes, ctx):
@@ -143,70 +145,89 @@ def collect(text: str):
     return out
 
 
-def decl_text(text: str, d) -> str:
+def decl_text(d) -> str:
     return d.name + ': ' + tinycss2.serialize(d.value).strip() + (' !important' if d.important else '')
+
+
+def fam_keys(decls, specs) -> set:
+    return {(family(d.name), sp, bool(d.important)) for d in decls for sp in specs}
+
+
+def target_of(rules: list, b: int, keep: dict):
+    """The first earlier rule of the same selector and context – one that gave declarations away itself is never a target."""
+    rb = rules[b]
+    return next((k for k in range(b) if rules[k]['sel'] == rb['sel'] and rules[k]['ctx'] == rb['ctx'] and k not in keep), None)
+
+
+def movable(rules: list, fams: list, a: int, b: int, mine: list):
+    """The declarations of rule b that may move to rule a, with the specificities of b's selector."""
+    between = set().union(*fams[a + 1:b])
+    if any(x[0] in ('*', 'all') for x in between):
+        return [], set()
+    # a declaration moves when nothing in between sets its family with the same specificity and importance: only rules of equal
+    # specificity and importance are decided by their order
+    specs = {specificity(x) for x in split_list(rules[b]['sel'])}
+    return [d for d in mine if family(d.name) != 'all' and not fam_keys([d], specs) & between], specs
+
+
+def plan(rules: list):
+    """Which declarations move: {index of A: [decl text]}, {index of B: remaining decls}, count."""
+    moved: dict[int, list[str]] = {}
+    keep: dict[int, list] = {}
+    folded = 0
+    fams = [set(r['fam']) for r in rules]     # families each rule sets NOW (what it gave away gone, what it got added)
+    for b, rb in enumerate(rules):
+        a = target_of(rules, b, keep) if rb['sel'] is not None and rb['decls'] else None
+        mine = keep.get(b) or rb['decls']
+        go, specs = movable(rules, fams, a, b, mine) if a is not None else ([], set())
+        if not go:
+            continue
+        rest = [d for d in mine if d not in go]
+        moved.setdefault(a, []).extend(decl_text(d) for d in go)
+        keep[b] = rest
+        fams[b] = fam_keys(rest, specs)
+        fams[a] |= fam_keys(go, specs)
+        folded += len(go)
+    return moved, keep, folded
+
+
+def add_edit(text: str, ra: dict, add: list):
+    """The edit that appends the declarations add to rule ra, in the rule's own layout (one line or one per line)."""
+    close = ra['end'] - 1
+    inner = text[ra['open'] + 1:close]
+    sep = '' if inner.rstrip().endswith(';') or inner.strip() == '' else ';'
+    if '\n' not in inner:
+        return ra['open'] + 1, close, inner.rstrip() + sep + ' ' + '; '.join(add) + '; '
+    parts = inner.split('\n')
+    prev = parts[-2] if inner.rstrip('\t ').endswith('\n') and len(parts) > 1 else ''
+    indent = re.match(r'\s*', prev).group(0) or '\t'
+    tail = inner[len(inner.rstrip()):].lstrip('\n')
+    return ra['open'] + 1, close, inner.rstrip() + sep + ''.join('\n' + indent + x + ';' for x in add) + '\n' + tail
+
+
+def remove_edit(text: str, rb: dict):
+    """The edit that removes rule rb with the rest of its line when it stood alone on it."""
+    s, e = rb['start'], rb['end']
+    while e < len(text) and text[e] in ' \t':
+        e += 1
+    if e < len(text) and text[e] == '\n' and (s == 0 or text[s - 1] == '\n'):
+        e += 1
+    return s, e, ''
 
 
 def fold(text: str):
     rules = collect(text)
-    moved = {}      # index of A -> [decl text]
-    keep = {}       # index of B -> remaining decls (list) or None when untouched
-    folded = 0
-    fams = [set(r['fam']) for r in rules]     # families each rule sets NOW (what it gave away gone, what it got added)
-    for b, rb in enumerate(rules):
-        if rb['sel'] is None or not rb['decls']:
-            continue
-        # the first earlier rule of the same selector and context – one that gave declarations away itself is never a target
-        a = next((k for k in range(b) if rules[k]['sel'] == rb['sel'] and rules[k]['ctx'] == rb['ctx'] and k not in keep), None)
-        if a is None:
-            continue
-        between = set()
-        for k in range(a + 1, b):
-            between |= fams[k]
-        if any(x[0] in ('*', 'all') for x in between):
-            continue
-        # a declaration moves when nothing in between sets its family with the same specificity and importance: only rules of equal
-        # specificity and importance are decided by their order
-        specs = {specificity(x) for x in split_list(rb['sel'])}
-        go = [d for d in (keep.get(b) or rb['decls']) if family(d.name) != 'all'
-              and not any((family(d.name), sp, bool(d.important)) in between for sp in specs)]
-        if not go:
-            continue
-        rest = [d for d in (keep.get(b) or rb['decls']) if d not in go]
-        moved.setdefault(a, []).extend(decl_text(text, d) for d in go)
-        keep[b] = rest
-        fams[b] = {(family(d.name), sp, bool(d.important)) for d in rest for sp in specs}
-        fams[a] |= {(family(d.name), sp, bool(d.important)) for d in go for sp in specs}
-        folded += len(go)
-    # rebuild: replace from the end so offsets stay valid
-    edits = []
-    for a, add in moved.items():
-        ra = rules[a]
-        close = ra['end'] - 1
-        inner = text[ra['open'] + 1:close]
-        sep = '' if inner.rstrip().endswith(';') or inner.strip() == '' else ';'
-        if '\n' in inner:
-            indent = re.match(r'\s*', inner.split('\n')[-2] if inner.rstrip('\t ').endswith('\n') and len(inner.split('\n')) > 1 else '').group(0) or '\t'
-            new_inner = inner.rstrip() + sep + ''.join('\n' + indent + x + ';' for x in add) + '\n' + inner[len(inner.rstrip()):].lstrip('\n')
-        else:
-            new_inner = inner.rstrip() + sep + ' ' + '; '.join(add) + '; '
-        edits.append((ra['open'] + 1, close, new_inner))
+    moved, keep, folded = plan(rules)
+    edits = [add_edit(text, rules[a], add) for a, add in moved.items()]
     removed = 0
     for b, rest in keep.items():
         rb = rules[b]
-        if rest is None:
-            continue
         if not rest:
-            s, e = rb['start'], rb['end']
-            while e < len(text) and text[e] in ' \t':
-                e += 1
-            if e < len(text) and text[e] == '\n' and (s == 0 or text[s - 1] == '\n'):
-                e += 1
-            edits.append((s, e, ''))
+            edits.append(remove_edit(text, rb))
             removed += 1
         else:
-            edits.append((rb['open'] + 1, rb['end'] - 1, ' ' + '; '.join(decl_text(text, d) for d in rest) + '; '))
-    for s, e, new in sorted(edits, key=lambda x: -x[0]):
+            edits.append((rb['open'] + 1, rb['end'] - 1, ' ' + '; '.join(decl_text(d) for d in rest) + '; '))
+    for s, e, new in sorted(edits, key=lambda x: -x[0]):    # from the end, so offsets stay valid
         text = text[:s] + new + text[e:]
     return text, folded, removed
 
@@ -216,11 +237,13 @@ def main() -> int:
         print(__doc__)
         return 2
     path = sys.argv[1]
-    src = open(path, encoding='utf-8').read()
+    with open(path, encoding='utf-8') as fh:
+        src = fh.read()
     out, folded, removed = fold(src)
     print(f'{path}: {folded} declaration(s) folded into earlier rules, {removed} rule(s) removed, {src.count(chr(10))} → {out.count(chr(10))} lines')
     if '--write' in sys.argv and out != src:
-        open(path, 'w', encoding='utf-8').write(out)
+        with open(path, 'w', encoding='utf-8') as fh:
+            fh.write(out)
     return 0
 
 

@@ -19,7 +19,7 @@ final class NuAdminrolesPage
 			}
 			if ($action === 'save') {
 				$rights = [];
-				foreach (NuAdmin::RIGHTS as $k => $_) {
+				foreach (NuAdmin::rights() as $k => $_) {
 					$v = (string)($_POST['r'][$k] ?? '');
 					if ($v === 'view' || $v === 'change') $rights[$k] = $v;
 				}

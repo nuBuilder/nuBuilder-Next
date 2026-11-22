@@ -219,7 +219,7 @@ nu_layout_start($title, 'home', ['container' => 'nuContainer', 'settings' => $se
 		</div>
 		<?= $card('shBackups', 'bi-archive', t('sh_backups'), (string)ob_get_clean()) ?>
 	<?php endif; ?>
-	<?php if (NuSettingsHub::ga()): $hs = NuHealth::settings(); $hUrl = nu_base_url() . '/index.php?p=health'; $hKey = (string)($_SESSION[NuSess::HEALTH_KEY] ?? ''); unset($_SESSION[NuSess::HEALTH_KEY]); ob_start(); // health check ?>
+	<?php if (NuSettingsHub::ga()): $hs = NuHealth::settings(); $hUrl = nu_base_url() . '/index.php?p=health'; $hKey = (string)($_SESSION[NuSess::HEALTH_SHOWN] ?? ''); unset($_SESSION[NuSess::HEALTH_SHOWN]); ob_start(); // health check ?>
 		<input type="hidden" name="parts[]" value="health">
 		<div class="small mb-2"><?= h(t('hc_url')) ?> <code class="text-break" id="shHealthUrl"><?= h($hUrl) ?></code>
 			<a class="ms-1" href="<?= h(nu_url('health')) ?>" target="_blank" rel="noopener" id="shHealthOpen"><?= h(t('hc_open')) ?></a></div>

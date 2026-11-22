@@ -51,8 +51,8 @@ trait NuListApiClients
 					default => null,
 				}],
 			'scope' => ['label' => t('api_scopes'), 'type' => 'select',
-				'options' => static fn() => array_combine(array_keys(NuApiClient::SCOPES), array_keys(NuApiClient::SCOPES)),
-				'where' => static fn(string $v) => isset(NuApiClient::SCOPES[$v]) ? ['c.scopes LIKE ?', ['%"' . $v . '"%']] : null],
+				'options' => static fn() => array_combine(array_keys(NuApiClient::scopes()), array_keys(NuApiClient::scopes())),
+				'where' => static fn(string $v) => isset(NuApiClient::scopes()[$v]) ? ['c.scopes LIKE ?', ['%"' . $v . '"%']] : null],
 		];
 		$base = ['columns' => ['name', 'user', 'scopes', 'status', 'last_used'], 'card' => ['title' => 'name', 'badge' => 'status', 'lines' => ['user', 'scopes', 'last_used']],
 			'sort' => ['name', 'asc'], 'per' => 50, 'filters' => ['shown' => ['status', 'scope'], 'values' => []]];

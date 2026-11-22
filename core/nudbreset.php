@@ -53,7 +53,7 @@ final class NuDbReset
 		if (!is_file($f) || !str_ends_with(strtolower($f), '.zip') || str_starts_with(basename($f), 'nunext-lib-') || !class_exists('ZipArchive')) return false;
 		$z = new ZipArchive();
 		if ($z->open($f) !== true) return false;
-		$has = $z->locateName(NuUpdate::MANIFEST) !== false || $z->locateName('nunext/' . NuUpdate::MANIFEST) !== false;
+		$has = NuUpdate::packagePrefix($z) !== null;
 		$z->close();
 		return $has;
 	}

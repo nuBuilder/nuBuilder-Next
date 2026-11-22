@@ -172,6 +172,44 @@ final class NuGitHub
 		return $name;
 	}
 
+	public const BRANCH = 'main';
+
+	/** Address of the archive of a branch of the repository (GitHub's own zip of the files in git). */
+	public static function branchUrl(string $repo, string $branch = self::BRANCH): string
+	{
+		if (!self::validRepo($repo) || !preg_match('~^[A-Za-z0-9._-]{1,100}$~', $branch)) throw new RuntimeException(t('gh_err_none'));
+		return 'https://codeload.github.com/' . $repo . '/zip/refs/heads/' . $branch;
+	}
+
+	/**
+	 * Downloads the branch main of the repository into _update/ (nunext-main-<date>.zip) – checked as a release: the archive must hold
+	 * a nuBuilder Next manifest with a valid signature (its files are compared on Check package). @return string the file name
+	 */
+	public static function downloadBranch(): string
+	{
+		$repo = (string)self::settings()['repo'];
+		$url = self::branchUrl($repo);
+		$name = 'nunext-' . self::BRANCH . '-' . date('Ymd-His') . '.zip';
+		$dir = NuUpdate::folderDir();
+		$tmp = $dir . '/.download-' . bin2hex(random_bytes(6)) . '.part';
+		nu_time_limit(0);
+		try {
+			self::get($url, self::MAX_DOWNLOAD, 300, $tmp);
+			if (!@rename($tmp, $dir . '/' . $name)) throw new RuntimeException(t('gh_err_write'));
+		} finally {
+			if (is_file($tmp)) @unlink($tmp);
+		}
+		$p = array_values(array_filter(NuUpdate::folderPackages(), static fn($x) => $x['name'] === $name))[0] ?? null;
+		$why = !class_exists('ZipArchive') ? 'gh_err_nozip' : (!$p || $p['version'] === '' ? 'gh_err_notpkg'
+			: ($p['signature'] === 'unchecked' ? '' : ($p['signature'] === 'unsigned' ? 'gh_err_unsigned' : ($p['ok'] ? '' : 'gh_err_signature'))));
+		if ($why !== '') {
+			@unlink($dir . '/' . $name);
+			throw new RuntimeException(t($why));
+		}
+		NuLog::write('nunext_github_download', '', '', ['version' => $p['version'], 'file' => $name, 'url' => $url, 'branch' => self::BRANCH]);
+		return $name;
+	}
+
 	public static function hostAllowed(string $url): bool
 	{
 		$p = parse_url($url);

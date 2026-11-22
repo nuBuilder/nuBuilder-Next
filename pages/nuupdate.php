@@ -75,6 +75,8 @@ if (isset($_GET['check']) && ($zip = $uploadPath((string)$_GET['check'])) !== ''
 		$smpTo = $check['sample'] ? (int)$check['sample']['to'] : 0;
 		// page forms: which pages the new version's page API would break or warn about (manifest page_api)
 		$check['pages'] = isset($check['manifest']['page_api']) && is_array($check['manifest']['page_api']) ? NuPage::report($check['manifest']['page_api']) : null;
+		// plugins: which installed plugins the new version's plugin API would stop (manifest plugin_api)
+		$check['plugins'] = isset($check['manifest']['plugin_api']) && is_array($check['manifest']['plugin_api']) ? NuPlugin::report($check['manifest']['plugin_api']) : null;
 		$check['dbc'] = NuDbChanges::preview(NuDbChanges::fromZip($zip, $check['prefix']), $exp, $check['schema'],
 			$check['sample'] && $smpTo > (int)$check['sample']['from'] ? ['from' => $check['sample']['from'], 'to' => $smpTo] : null);
 	}
@@ -202,7 +204,12 @@ $tabs = ['update' => ['bi-cloud-arrow-down', t('upd_tab_update'), ''],
 	'backups' => ['bi-archive', t('upd_tab_backups'), $tabBackups ? '<span class="badge rounded-pill text-bg-light border ms-1">' . $tabBackups . '</span>' : ''],
 	'history' => ['bi-clock-history', t('upd_tab_history'), $tabHist ? '<span class="badge rounded-pill text-bg-light border ms-1">' . $tabHist . '</span>' : ''],
 	'libraries' => ['bi-boxes', t('upd_tab_libs'), $tabLib !== '' ? '<span class="nuTabDot bg-' . $tabLib . ' ms-1" aria-hidden="true"></span><span class="visually-hidden">' . h(t($tabLib === 'warning' ? 'lp_tab_warn' : 'lp_tab_updates')) . '</span>' : ''],
-	'system' => ['bi-hdd-stack', t('upd_tab_system'), $tabSys !== '' ? '<span class="nuTabDot bg-' . $tabSys . ' ms-1" aria-hidden="true"></span><span class="visually-hidden">' . h(t($tabSys === 'danger' ? 'upd_tab_sys_problem' : 'upd_tab_sys_notice')) . '</span>' : '']]; ?>
+	'system' => ['bi-hdd-stack', t('upd_tab_system'), $tabSys !== '' ? '<span class="nuTabDot bg-' . $tabSys . ' ms-1" aria-hidden="true"></span><span class="visually-hidden">' . h(t($tabSys === 'danger' ? 'upd_tab_sys_problem' : 'upd_tab_sys_notice')) . '</span>' : '']];
+$plgTab = !empty(NuAuth::user()['globeadmin']) && empty(NuAuth::user()['demo']);   // plugins: the globeadmin only
+if ($plgTab) {
+	$plgFailed = count((array)NuPlugin::state()['failed']);
+	$tabs['plugins'] = ['bi-puzzle', t('plg_tab'), $plgFailed ? '<span class="nuTabDot bg-danger ms-1" aria-hidden="true"></span><span class="visually-hidden">' . h(t('plg_failed')) . '</span>' : ''];
+} ?>
 <?php // ?tab=<name>: the server opens that tab itself – pager links and redirects carry it, so the page is not hidden until the
 // script switched tabs (nutheme.js hides [data-nu-tab-restore] only when the address names another tab than ?tab=)
 $updTab = (string)($_GET['tab'] ?? 'update');
@@ -388,6 +395,7 @@ if (!$devUploadFirst) echo $finishedHtml; ?>
 					<?php endif; ?>
 				</div>
 				<?php endif; ?>
+				<?= NuPluginsPage::checkHtml($check['plugins'] ?? null) ?>
 				<div class="border rounded p-3 mb-3" id="updSchemaCheck">
 					<div class="fw-semibold small mb-2"><i class="bi bi-database-gear me-1"></i><?= h(t('upd_schema_title')) ?></div>
 					<?= $schemaList($check['schema'] ?? null, 'updInstallForm') ?>
@@ -442,6 +450,11 @@ if (!$devUploadFirst) echo $finishedHtml; ?>
 					<button class="btn btn-primary" type="submit" id="updGitHubDownload"
 						data-nu-busy="<?= h(t('gh_downloading')) ?>"><i class="bi bi-cloud-download me-1"></i><?= h(t('gh_download', (string)$gNew['version'])) ?></button></form>
 				<?php endif; ?>
+				<form method="post" action="<?= h(nu_url('update')) ?>" class="mt-2 d-flex align-items-center gap-1" id="updGitHubBranchForm" data-nu-once><?= nu_csrf_field() ?>
+					<input type="hidden" name="action" value="github_branch">
+					<button class="btn btn-sm btn-outline-secondary" type="submit" id="updGitHubBranch"
+						data-nu-busy="<?= h(t('gh_branch_busy')) ?>"><i class="bi bi-git me-1"></i><?= h(t('gh_branch_btn', NuGitHub::BRANCH)) ?></button>
+					<?= nu_info_tip(t('gh_branch_tip', NuGitHub::BRANCH)) ?></form>
 				<div class="collapse" id="updGitHubSet">
 					<form method="post" action="<?= h(nu_url('update')) ?>" class="border rounded p-3 mt-3 bg-body-tertiary"
 						id="updGitHubSetForm"><?= nu_csrf_field() ?><input type="hidden" name="action" value="github_settings">
@@ -952,6 +965,11 @@ $lpTip = static fn(string $tip,
 	</div>
 </details>
 </div>
+<?php if ($plgTab): ?>
+<div class="tab-pane fade<?= $updTab === 'plugins' ? ' show active' : '' ?>" id="updPane-plugins" role="tabpanel" aria-labelledby="updTabBtn-plugins" tabindex="0">
+	<?= NuPluginsPage::tab() ?>
+</div>
+<?php endif; ?>
 <div class="tab-pane fade<?= $updTab === 'system' ? ' show active' : '' ?>" id="updPane-system" role="tabpanel" aria-labelledby="updTabBtn-system" tabindex="0">
 		<div class="card shadow-sm mb-4<?= $reqOk ? '' : ' border-danger' ?>" id="updRequirements">
 			<div class="card-header fw-semibold"><?= h(t('upd_requirements')) ?></div>

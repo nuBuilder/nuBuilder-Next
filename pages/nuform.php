@@ -533,6 +533,7 @@ $foot = '<script>window.nuNext = ' . json_encode($client, JSON_HEX_TAG | JSON_HE
 	. (str_contains((string)($body ?? ''), 'nuPageFrame') ? NuPage::hostScript() : '')   // page forms in iframe run objects
 	. ($dashboards ? NuDashboard::scriptTag() : '')   // dashboards in HTML objects or the form's JavaScript
 	. NuIncludes::jsTags()                                       // $nuConfigIncludeJS: before Setup → Header and the form's code
+	. nu_plugin_tags('js')                                       // scripts of the switched-on plugins
 	. NuCustomCode::jsTag()                                      // Global JS: before Setup → Header and the form's code – a form's nuOnLoad wins
 	. ($safe ? '' : NuIncludes::setupTags())                     // Setup → Include: its <link> / <script> / <style> elements
 	. ($safe ? '' : $setupHeader) . "\n"
@@ -558,7 +559,8 @@ $foot = '<script>window.nuNext = ' . json_encode($client, JSON_HEX_TAG | JSON_HE
 
 nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategroy' ? 'notes' : 'forms',
 	['head' => $head, 'bare' => $bare, 'nu_form' => [$mode, (string)$meta->form['sfo_code']], 'container' => 'container-fluid nuFormContainer',
-		'body_class' => 'nuForm nuForm-' . $mode . ($lookupTo !== '' ? ' nuLookupPage' : '') . (!empty($printMode) ? ' nuPrintView' : '')
+		// nuLookupPage = the lookup's list only: a record opened from it (+) keeps its header with Save
+		'body_class' => 'nuForm nuForm-' . $mode . ($lookupTo !== '' && $mode === 'browse' ? ' nuLookupPage' : '') . (!empty($printMode) ? ' nuPrintView' : '')
 		. ($design ? ' nuDesignMode' : '')]);
 ?>
 <?php if ($design): // design mode hides the header: the page's heading for screen readers (usability review G8) ?><h1 class="visually-hidden"><?= h($title) ?></h1><?php endif; ?>

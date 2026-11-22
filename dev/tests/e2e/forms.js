@@ -1841,3 +1841,29 @@ T.date_fields_localized = async (s) => {
 	}
 	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
 };
+
+// a record added from a lookup's list (+) shows Save (phone and wide screen); after saving, the dialogue closes with the new record chosen
+T.lookup_add_record = async (s) => {
+	const p = s.ga;
+	const vp = p.viewportSize();
+	try {
+		for (const w of [390, 1280]) {
+			await p.setViewportSize({ width: w, height: 800 });
+			await open(p, 'index.php?p=form&f=nunotes&r=-1');
+			await p.click('#not_zzzzsys_note_category_idbutton');
+			await p.waitForSelector('#nuLookupModal.show iframe');
+			const fr = await (await p.$('#nuLookupModal iframe')).contentFrame();
+			await fr.waitForSelector('#nuAddButton');
+			await Promise.all([fr.waitForNavigation(), fr.click('#nuAddButton')]);
+			const st = await fr.evaluate(() => ({ lookup: document.body.classList.contains('nuLookupPage'), save: !!(document.getElementById('nuSaveButton') || {}).offsetParent }));
+			expect(!st.lookup && st.save, w + ' px: the new record shows Save: ' + JSON.stringify(st));
+			await fr.fill('#noc_name', 'E2E lookup cat ' + w);
+			await fr.click('#nuSaveButton');
+			await p.waitForFunction(() => !document.querySelector('#nuLookupModal.show'), null, { timeout: 10000 });
+			expect(await p.inputValue('#not_zzzzsys_note_category_idcode') === 'E2E lookup cat ' + w, w + ' px: the new category is chosen');
+		}
+	} finally {
+		sql("DELETE FROM zzzzsys_note_category WHERE noc_name LIKE 'E2E lookup cat%'");
+		await p.setViewportSize(vp);
+	}
+};

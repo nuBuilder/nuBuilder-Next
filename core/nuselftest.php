@@ -268,7 +268,7 @@ final class NuSelfTest
 			}],
 			['rights', 'admin_roles', static function () use ($ok, $fail) {
 				$bad = [];
-				foreach (NuAdmin::RIGHTS as $k => $r) if (!isset(NuAdmin::GROUPS[$r[0]]) || t($r[1]) === $r[1]) $bad[] = $k;
+				foreach (NuAdmin::rights() as $k => $r) if (!isset(NuAdmin::GROUPS[$r[0]]) || ($r[0] !== 'plugins' && t($r[1]) === $r[1])) $bad[] = $k;   // plugins name their rights themselves
 				return $bad ? $fail(implode(', ', $bad)) : $ok(t('st_n_rows', count(NuAdmin::RIGHTS)));
 			}],
 			// ------------------------------------------------------------ features

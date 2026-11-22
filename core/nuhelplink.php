@@ -12,7 +12,7 @@ final class NuHelpLink
 	/** route => section id of docs/pages/*.htm */
 	public const MAP = [
 		'form' => 'forms-use', 'forms' => 'builder', 'builder' => 'builder-work-p', 'formai' => 'new-form-p', 'dataaccess' => 'data-access',
-		'formats' => 'formats', 'items' => 'items', 'page' => 'pages',
+		'formats' => 'formats', 'items' => 'items', 'page' => 'pages', 'plugins' => 'plugins', 'plugin' => 'plugins',
 		'users' => 'users', 'user' => 'users', 'userfields' => 'user-fields', 'import' => 'csv-import', 'dataexport' => 'data-export',
 		'access' => 'access', 'accesslevel' => 'access', 'permissions' => 'permissions', 'adminroles' => 'admin-roles',
 		'impersonate' => 'impersonate', 'sessions' => 'sessions', 'security' => 'security-check', 'securitycheck' => 'security-check',

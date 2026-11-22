@@ -410,6 +410,10 @@ T.file_manager_toolbar_row = async (s) => {
 			expect(!r.sep && r.right <= w, w + ' px: no separator, inside the screen: ' + JSON.stringify(r));
 			expect(r.h >= 28, w + ' px: buttons still easy to tap: ' + r.h);
 		}
+		await ga.setViewportSize({ width: 390, height: 700 });
+		await ga.waitForTimeout(200);
+		const wNone = await ga.evaluate(() => ['nufUploadBtn', 'nufMkdirBtn', 'nufNewFileBtn', 'nufLayoutBtn', 'nufRefreshBtn']
+			.map(id => document.getElementById(id)).filter(e => e && e.offsetParent).map(e => Math.round(e.getBoundingClientRect().width)));
 		// 0.8.1309: the phone toolbar follows the selection – none: Upload / New …, no Download … Delete; some: × n + Download … Delete only
 		const vis = () => ga.evaluate(() => [...document.querySelectorAll('#nufTools > .btn, #nufTools > .btn-group')].filter(e => e.offsetParent)
 			.map(e => e.id || (e.querySelector('[id]') || {}).id || '?'));
@@ -434,6 +438,9 @@ T.file_manager_toolbar_row = async (s) => {
 				count: document.getElementById('nufSelCount').textContent };
 		});
 		expect(one.tops === 1 && one.right <= 390 && one.count === '1', 'selection bar in one row with the count: ' + JSON.stringify(one));
+		// the buttons without a selection are as wide as those with one (when there is room)
+		const wSel = await ga.evaluate(() => Math.round(document.getElementById('nufCopyBtn').getBoundingClientRect().width));
+		expect(wNone.length >= 4 && wNone.every(x => Math.abs(x - wSel) <= 2), 'same button width with and without a selection: ' + wNone + ' / ' + wSel);
 		await ga.click('#nufSelClear');
 		await ga.waitForTimeout(150);
 		ids = await vis();

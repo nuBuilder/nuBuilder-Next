@@ -47,6 +47,7 @@ function nu_head(string $title, string $extraHead = ''): void
 	<?= NuDB::$connected ? NuPwa::headTags() : '' /* installable app */ ?>
 	<?= NuTheme::headTag() /* theme: after branding, before Global CSS */ ?>
 	<?= NuCustomCode::cssTag() /* Global CSS: before the page's own styles */ ?>
+	<?= nu_plugin_tags('css') /* styles of the switched-on plugins */ ?>
 	<?= $extraHead ?>
 </head>
 <?php
@@ -341,6 +342,10 @@ function nu_layout_nav(array $u, array $nav, bool $compact, bool $hf, bool $side
 								<li><a class="dropdown-item" href="<?= h(NuFileManager::url()) ?>" target="_blank" rel="noopener" id="nuMenuFiles"><i class="bi bi-folder2-open me-2"></i><?= h(t('vendor_tfm')) ?></a></li>
 							<?php endif; ?>
 						<?php endif; ?>
+						<?php $plgMenu = nu_plugin_menu(); if ($plgMenu): // entries of the switched-on plugins ?>
+							<li><hr class="dropdown-divider"></li>
+							<?php foreach ($plgMenu as [$pl, $pi, $pu]): ?><li><a class="dropdown-item nuPlgMenu" href="<?= h($pu) ?>"><i class="bi <?= h($pi) ?> me-2"></i><?= h($pl) ?></a></li><?php endforeach; ?>
+						<?php endif; ?>
 						<?php // help and learning after the tools (the owner): documentation, tutorial, help pages, install as app ?>
 						<li><hr class="dropdown-divider"></li>
 						<?php if (NuUserHelp::any() && !NuUserHelp::canManage()): // user help pages of this installation; not for those who manage them (tile Help pages, the Help button of a form) ?><li><a class="dropdown-item"
@@ -539,7 +544,7 @@ function nu_layout_end(string $extraBody = '', bool $bare = false): void
 <script src="<?= nu_asset('assets/js/nubs.js') ?>"></script>
 <script src="<?= nu_asset('assets/js/nuutil.js') ?>"></script>
 <script src="<?= nu_asset('assets/js/nuapp.js') ?>"></script>
-<?= NuCustomCode::page() !== 'form' ? NuCustomCode::jsTag() : '' /* Global JS – form pages load it in pages/nuform.php before Setup → Header */ ?>
+<?= NuCustomCode::page() !== 'form' ? nu_plugin_tags('js') . NuCustomCode::jsTag() : '' /* plugins + Global JS – form pages load them in pages/nuform.php before Setup → Header */ ?>
 <?php if (!$bare && NuAdmin::any()): ?><script src="<?= nu_asset('assets/js/nupalette.js') ?>"></script><?php endif; ?>
 <?php if (!$bare && !empty($GLOBALS['nu_bell_on'])): ?><script src="<?= nu_asset('assets/js/nunotify.js') ?>"></script><?php endif; ?>
 <?php if (NuSidebar::$drawn): ?><script src="<?= nu_asset('assets/js/nusidebar.js') ?>"></script><?php endif; ?>
@@ -1003,4 +1008,28 @@ function nu_access_checklist(string $searchId, string $listId, array $access, st
 			. '</label>';
 	}
 	return $o . '</div><p class="small text-body-secondary mt-2 mb-0">' . h($hint) . '</p>';
+}
+
+/** <script> / <link> tags of the switched-on plugins for the kind of page (form pages or the others); '' while none or on failure. */
+function nu_plugin_tags(string $kind): string
+{
+	if (!NuDB::$connected) return '';
+	try {
+		$where = NuCustomCode::page() === 'form' ? 'form' : 'app';
+		return $kind === 'js' ? NuPlugin::jsTags($where) : NuPlugin::cssTags($where);
+	} catch (Throwable $ig) {
+		nu_ignored($ig, 'plugin assets');
+		return '';
+	}
+}
+
+/** Entries of the user menu the plugins add: [label, icon, url]. */
+function nu_plugin_menu(): array
+{
+	try {
+		return NuPlugin::menuItems();
+	} catch (Throwable $ig) {
+		nu_ignored($ig, 'plugin menu');
+		return [];
+	}
 }

@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 define('NU_ROOT', dirname(__DIR__));
-define('NU_VERSION', '0.8.1359');
+define('NU_VERSION', '0.8.1369');
 // third-party code: vendor/bundled/ comes with nunext.zip (an update replaces it), vendor/packs/ = library packs (NuLibs,
 // an update never touches them). Bundled paths only through these constants.
 define('NU_VENDOR', 'vendor/bundled');
@@ -110,7 +110,7 @@ const NU_AUTOLOAD = [
 		'NuAdvSearch' => 'core/form/nuadvsearch.php', 'NuPivot' => 'core/form/nupivot.php', 'NuCalendar' => 'core/form/nucalendar.php',
 		'NuWebhook' => 'core/nuwebhook.php', 'NuAiProvider' => 'core/nuaiprovider.php', 'NuUserHelp' => 'core/nuuserhelp.php',
 		'NuRowDetails' => 'core/form/nurowdetails.php', 'NuSuggest' => 'core/form/nusuggest.php', 'NuIpAccess' => 'core/nuipaccess.php',
-		'NuSso' => 'core/nusso.php', 'NuSecret' => 'core/nusecret.php', 'NuHealth' => 'core/nuhealth.php', 'NuBs6' => 'core/nubs6.php',
+		'NuSso' => 'core/nusso.php', 'NuSecret' => 'core/nusecret.php', 'NuHealth' => 'core/nuhealth.php', 'NuPlugin' => 'core/nuplugin.php', 'NuPluginApi' => 'core/nupluginapi.php', 'NuPluginsPage' => 'core/nupluginspage.php', 'NuBs6' => 'core/nubs6.php',
 		'NuJquery' => 'core/nujquery.php', 'NuPwPolicy' => 'core/nupwpolicy.php', 'NuHtmlClean' => 'core/nuhtmlclean.php',
 		'NuConflict' => 'core/form/nuconflict.php', 'NuFormSpec' => 'core/form/nuformspec.php', 'NuAiContext' => 'core/form/nuaicontext.php',
 		'NuFormRules' => 'core/form/nurules.php', 'NuSelectSource' => 'core/form/nuselectsource.php', 'NuSqlCheck' => 'core/nusqlcheck.php',

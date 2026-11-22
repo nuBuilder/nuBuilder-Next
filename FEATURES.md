@@ -122,6 +122,7 @@ page) for how to use it.
   database from a backup (MySQL / MariaDB); in developer mode, reset the database from a SQL dump of any size (runs in short steps with a progress window); a `nuconfig.php`
   editor; global JavaScript / CSS; system status; logged-in users; phpMyAdmin, Adminer and a file manager (recycle bin,
   versions, code editor, tiles with picture thumbnails; made for phones too).
+- **Plugins** – extensions of other developers in `plugins/<id>/`: pages, start page tiles, menu entries, admin rights, settings, events (save, delete, sign-in, e-mail), REST routes and cron tasks through a versioned plugin API; signed packages, upload only when switched on, switched off by themselves after an error, safe mode, checked before every update.
 - **Library packs** – install, update, roll back and remove older versions of the bundled libraries (TCPDF 7, PHPMailer, TinyMCE …) from the browser.
 - **Easy start** – installer, setup wizard, a tutorial (basic, in depth, coming from nuBuilder Forte) and built-in
   documentation.

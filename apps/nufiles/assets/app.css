@@ -182,6 +182,9 @@ body.nuf { margin: 0; background: var(--bs-body-bg); color: var(--bs-body-color)
 	.nuf-app.nuf-has-sel .nuf-selclear { display: inline-flex; align-items: center; gap: .3rem; }
 	.nuf-app.nuf-has-sel #nufTools [data-sel] { flex: 1 1 0; max-width: 3.25rem; }
 	.nuf-app.nuf-has-sel #nufDeleteBtn { margin-left: auto; }
+	/* without a selection the buttons get the same width as with one (they shrink only when the row is too narrow) */
+	.nuf-app:not(.nuf-has-sel) #nufTools > .btn:not(.nuf-selclear):not([data-sel]) { flex: 1 1 0; max-width: 3.25rem; min-width: 2.25rem; }
+	.nuf-app:not(.nuf-has-sel) #nufTools > .btn-group[data-need="upload"] > .btn:first-child { flex: 1 1 0; min-width: 2.25rem; width: 3.25rem; }
 }
 
 /* grid view (tiles with thumbnails) */

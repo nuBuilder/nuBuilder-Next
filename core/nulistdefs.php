@@ -36,6 +36,12 @@ final class NuListDefs
 
 	public static function get(string $list): ?array
 	{
+		$def = self::builtIn($list);
+		return $def !== null ? NuPlugin::filter('list.def', $def, $list) : null;   // plugins may change a list (event list.def)
+	}
+
+	private static function builtIn(string $list): ?array
+	{
 		return match ($list) {
 			'users' => self::users(), 'access' => self::access(), 'forms' => self::forms(), 'procedures' => self::procedures(), 'reports' => self::reports(),
 			'files' => self::files(), 'items' => self::items(), 'translations' => self::translations(), 'permissions' => self::permissions(),

@@ -71,7 +71,12 @@ final class NuHousekeeping
 		$step('permission_types', static fn() => NuPermType::purgeOrphans());
 		$step('passkeys', static fn() => NuPasskey::purgeOrphans());                     // passkeys of deleted users
 		$step('form_maintenance', static fn() => NuFormStatus::purge());   // messages of forms no longer in maintenance
-		$step('form_everyone', static fn() => NuFormEveryone::purgeOrphans());   // "Everyone" switches of deleted forms   // types of deleted permission items, also deleted in nuBuilder Forte
+		$step('form_everyone', static fn() => NuFormEveryone::purgeOrphans());
+		$step('plugins', static function () use ($source): int {      // the plugins' own clean-up
+			$n = 0;
+			foreach (NuPlugin::loaded() as $id => $api) foreach ($api->hooks('housekeeping') as [, $fn]) $n += (int)NuPlugin::call($id, $fn, [['source' => $source]]);
+			return $n;
+		});   // "Everyone" switches of deleted forms   // types of deleted permission items, also deleted in nuBuilder Forte
 		if ($source === 'cron') $step('github',
 			static fn() => NuGitHub::autoCheck());   // a newer release on GitHub? once a day – page views: see NuHome::badges()     // demo mode: tables of the allowed forms back to the snapshot
 		$step('files', static function (): int {

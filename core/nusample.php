@@ -238,7 +238,7 @@ final class NuSample
 		if ($t === 'zzzzsys_user_permission') $c .= ' OR ' . self::isSample('upe_ident') . ' OR ' . self::isSample('upe_zzzzsys_user_id');
 		if ($t === 'zzzzsys_event') $c .= " OR sev_zzzzsys_object_id IN ('" . implode("', '", self::AB_OBJECTS) . "')";
 		// start pages saved in the editor for a sample access level (their ids are random)
-		if ($t === 'zzzzsys_nunext_list_view') $c .= " OR (list_key = '" . NuHome::LIST_USER . "' AND SUBSTRING(access_ids, 1, 9) = '[\"" . self::PREFIX . "')";
+		if ($t === 'zzzzsys_nunext_list_view') $c .= " OR (list_key = '" . NuHome::LIST_USER . "' AND SUBSTRING(access_ids, 1, 9) = '[\"" . self::PREFIX . "')";   // skipcq: SCT-A000 – SQL, not a credential
 		return '(' . $c . ')';
 	}
 

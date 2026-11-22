@@ -13,7 +13,7 @@ trait NuListAdminRoles
 		$nUsers = '(SELECT COUNT(*) FROM zzzzsys_nunext_admin_user au WHERE au.role_id = r.zzzzsys_nunext_admin_role_id)';
 		$mine = (string)(NuAdmin::role()['id'] ?? '');
 		$roleOf = static fn(array $r): array => NuAdmin::get((string)$r['__id']) ?? ['name' => (string)$r['adm_name'], 'rights' => []];
-		$all = count(NuAdmin::RIGHTS);
+		$all = count(NuAdmin::rights());
 		$canTest = NuImpersonate::canTest();                 // test the role as a user: row button → the role form with its dialogue open
 		$cols = [
 			'test' => ['label' => '', 'select' => ['adm_rights_t' => 'r.rights'], 'sort' => null, 'class' => 'text-nowrap nuRowActions', 'text' => static fn($r) => '', 'noexport' => true,

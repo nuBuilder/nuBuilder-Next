@@ -26,7 +26,7 @@ final class NuWebhooksPage
 					'url' => nu_post('url'), 'fields' => nu_post('fields'), 'template' => nu_post('template'), 'new_secret' => nu_post('new_secret') === '1'];
 				[$newId, $errors, $secret] = NuWebhook::save($in, $hook ? $id : '');
 				if (!$errors) {
-					if ($secret !== null) $_SESSION[NuSess::WEBHOOK_SECRET] = ['id' => $newId, 'secret' => $secret];
+					if ($secret !== null) $_SESSION[NuSess::WEBHOOK_SHOWN] = ['id' => $newId, 'secret' => $secret];
 					if (nu_post('do_test') === '1') {                       // "Send test": save, then one sample call now
 						$r = NuWebhook::test((array)NuWebhook::get($newId));
 						$_SESSION[NuSess::WEBHOOK_TEST] = ['id' => $newId] + $r;

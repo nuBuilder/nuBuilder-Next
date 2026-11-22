@@ -40,7 +40,9 @@ COMPONENTS = [   # (component, pattern on the section's comment + selectors) –
 
 def sections(text: str):
     ls = offsets(text)
-    pos = lambda nd: ls[nd.source_line - 1] + nd.source_column - 1
+
+    def pos(nd) -> int:
+        return ls[nd.source_line - 1] + nd.source_column - 1
     nodes = tinycss2.parse_stylesheet(text, skip_comments=False, skip_whitespace=True)
     secs, cur = [], None
     for nd in nodes:
@@ -55,18 +57,22 @@ def sections(text: str):
         if nd.type == 'qualified-rule':
             add_rule(cur, nd)
         elif nd.type == 'at-rule':
-            kw = nd.lower_at_keyword
-            if nd.content is not None and kw in ('media', 'supports', 'container', 'layer'):
-                for r in tinycss2.parse_rule_list(nd.content, skip_comments=True, skip_whitespace=True):
-                    if r.type == 'qualified-rule':
-                        add_rule(cur, r)
-                    elif r.type == 'at-rule':
-                        cur['opaque'] = True
-            elif kw not in ('keyframes', 'font-face'):
-                cur['opaque'] = True     # @import, @charset, @layer statements … never move
+            add_at_rule(cur, nd)
     for i, s in enumerate(secs):
         s['end'] = secs[i + 1]['start'] if i + 1 < len(secs) else len(text)
     return secs
+
+
+def add_at_rule(sec, nd):
+    kw = nd.lower_at_keyword
+    if nd.content is not None and kw in ('media', 'supports', 'container', 'layer'):
+        for r in tinycss2.parse_rule_list(nd.content, skip_comments=True, skip_whitespace=True):
+            if r.type == 'qualified-rule':
+                add_rule(sec, r)
+            elif r.type == 'at-rule':
+                sec['opaque'] = True
+    elif kw not in ('keyframes', 'font-face'):
+        sec['opaque'] = True     # @import, @charset, @layer statements … never move
 
 
 def add_rule(sec, nd):
@@ -96,6 +102,22 @@ def conflicts(a, b) -> bool:
     return False
 
 
+def place_of(seq: list):
+    """Index of the section the last one of seq moves behind, or None when it stays."""
+    s, end = seq[-1], len(seq) - 1
+    if s['comp'] is None:
+        return None
+    t = max((k for k in range(end) if seq[k]['comp'] == s['comp']), default=None)
+    if t is None or t == end - 1 or any(conflicts(s, seq[k]) for k in range(t + 1, end)):
+        return None
+    return t
+
+
+def piece(text: str, s: dict) -> str:
+    part = text[s['start']:s['end']]
+    return part if part.endswith('\n') else part + '\n'
+
+
 def group(text: str):
     secs = sections(text)
     for s in secs:
@@ -103,17 +125,11 @@ def group(text: str):
     seq, moved = [], 0
     for s in secs:
         seq.append(s)
-        if s['comp'] is None:
-            continue
-        end = len(seq) - 1
-        t = max((k for k in range(end) if seq[k]['comp'] == s['comp']), default=None)
-        if t is None or t == end - 1:
-            continue
-        if any(conflicts(s, seq[k]) for k in range(t + 1, end)):
-            continue
-        seq.insert(t + 1, seq.pop())
-        moved += 1
-    out = ''.join(text[s['start']:s['end']] if text[s['start']:s['end']].endswith('\n') else text[s['start']:s['end']] + '\n' for s in seq)
+        t = place_of(seq)
+        if t is not None:
+            seq.insert(t + 1, seq.pop())
+            moved += 1
+    out = ''.join(piece(text, s) for s in seq)
     return out, moved, len(secs)
 
 
@@ -122,11 +138,13 @@ def main() -> int:
         print(__doc__)
         return 2
     path = sys.argv[1]
-    src = open(path, encoding='utf-8').read()
+    with open(path, encoding='utf-8') as fh:
+        src = fh.read()
     out, moved, n = group(src)
     print(f'{path}: {moved} of {n} sections moved next to their component')
     if '--write' in sys.argv and out != src:
-        open(path, 'w', encoding='utf-8').write(out)
+        with open(path, 'w', encoding='utf-8') as fh:
+            fh.write(out)
     return 0
 
 
