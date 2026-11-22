@@ -814,6 +814,11 @@
 			listFormSave('sfo_browse_title_multiline', BROWSE), {key: 'sfo_browse_title_multiline'}));
 		box.appendChild(field(t('ds_list_autofit'), 'check', String(f.sfo_browse_autoresize_columns || '0') === '1' ? '1' : '0',
 			listFormSave('sfo_browse_autoresize_columns', BROWSE), {key: 'sfo_browse_autoresize_columns'}));
+		// the list's SQL in the browser (nuCurrentProperties().browse_sql): sfo_json nunext.browse_sql_client, off by default
+		box.appendChild(field(t('ds_list_bsq_client'), 'check',
+			(function () { try { return ((JSON.parse(f.sfo_json || '{}') || {}).nunext || {}).browse_sql_client === true ? '1' : '0'; } catch (x) { return '0'; } })(),
+			function (v) { change('form.save', {fields: {browse_sql_client: v === '1' ? '1' : '0'}}, false).catch(function () { /* said */ }); },
+			{key: 'browse_sql_client', tip: t('ds_list_bsq_client_tip')}));
 		// row details (core/form/nurowdetails.php): sfo_json nunext.details {cols, subs: [sub-form ids | t:<table>.<column>], form, mode}
 		var det = {};
 		try { det = ((JSON.parse(f.sfo_json || '{}') || {}).nunext || {}).details || {}; } catch (x) { det = {}; }
@@ -1702,7 +1707,12 @@
 				field(t('ds_recycle_days'), 'number',
 					(function () { try { var r = ((JSON.parse(f.sfo_json || '{}') || {}).nunext || {}).recycle; return r && r.days ? String(r.days) : ''; } catch (x) { return ''; } })(),
 					function (v) { change('form.save', {fields: {recycle_days: String(Math.max(0, parseInt(v, 10) || 0))}}, false).catch(function () { /* said */ }); },
-					{key: 'recycle_days', ph: t('ds_recycle_off'), tip: t('ds_recycle_tip')})
+					{key: 'recycle_days', ph: t('ds_recycle_off'), tip: t('ds_recycle_tip')}),
+				// view mode: fields of the key-facts strip (sfo_json nunext.view.head, core/nurecordview.php)
+				field(t('ds_view_head'), 'text',
+					(function () { try { var v = ((JSON.parse(f.sfo_json || '{}') || {}).nunext || {}).view; return v && v.head ? v.head.join(', ') : ''; } catch (x) { return ''; } })(),
+					function (v) { change('form.save', {fields: {view_head: String(v || '')}}, false).catch(function () { /* said */ }); },
+					{key: 'view_head', mono: true, tip: t('ds_view_head_tip')})
 			]);
 		}
 		if (HASLIST && !D.userhome) section('list', t('ds_sec_list'), [el('div', {'class': 'nuDsField'}, [el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuDsOpenListFly',

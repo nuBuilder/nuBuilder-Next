@@ -11,12 +11,12 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **Fewer places for settings** (0.8.1002) – the owner wants to rethink where settings live (Shared settings, nuBuilder Next's own settings
       table, Branding, Settings → Look / General, Security settings, nuconfig.php …): too many places. Back Button on Phones went into the
       Shared settings for now (own row nuPhoneBackButton) – move it once the new structure is decided.
-- [ ] **`browse_sql` in nuCurrentProperties() / nuHash()** (0.8.981) – nuBuilder Forte gives the list's full SQL; nuBuilder Next only the
-      names of the unset hash variables (the SQL is not sent to the browser). Send the real SQL (forms that reuse it, e.g. to export the
-      list in a procedure) or keep it as is. The owner decides later.
 - [ ] **DeepSource** (0.8.944) – the owner looks into it later: turn it off (1), keep only the Secrets analyzer (2, recommended – change `.deepsource.toml`, goes up with the next gate push), or keep it and ignore the style rules (3). Findings so far assessed in 0.8.887 / 0.8.937–0.8.939.
-- [ ] **dev / test / prod and git** (forum question, 26 Oct 2026): proposals M1–M3 (moving forms / procedures between installations) and
-      G1–G3 (git sync of the application's metadata) – the owner decides later.
+- [ ] **dev / test / prod and git** (0.8.1378) – please verify: project packages with permission items, formats, files, data exports,
+      webhooks, access rights (by level code), translations, new table columns and the restore point; Projects → Export application;
+      `nucron.php app export / import` with a real git repository between two installations. Also (0.8.1379) the "Only here" rows: kept by default,
+      Delete per row / Delete all listed, blocked while still used, --delete / --keep on the command line, deleted parts in the restore
+      point. Not built: a page for the folder sync, imports by admin roles other than the globeadmin.
 - [ ] **Custom pages: "Test copy"** – besides the draft (0.8.599) a clone of the custom page + its folder, published back (option A, not
       built); a page's draft shares _data, secrets.php and the database with the live version.
 - [ ] **Test of the function reference examples** (proposed 2 Nov 2026): run.php only checks that every PHP / JS function has a complete
@@ -129,6 +129,9 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       protect_fields is off.
 
 ## Forms and design mode
+- [ ] **Lists on phones keep their sideways position** (0.8.1383) – please verify: sort / page / reload a wide list on a phone; the sorted column comes into view
+- [ ] **View mode of records** (0.8.1384 / 0.8.1385) – please verify: View button / Ctrl+Shift+V on own forms with tabs, sub-forms and lookups; key facts (design mode → Data); ← / → after opening a record from a list; "Always open in view mode" per form, Edit keeps the record in editing after Save; print of the sheet. Open: users with view right only opening in view mode by default (not built)
+- [ ] **List SQL in the browser opt-in** (0.8.1377) – please verify on forms whose code uses `browse_sql`: Compatibility check → nuBuilder Forte 4.9 features lists them; switch on *Send the list's SQL to the form's JavaScript* in design mode → Browse list where the JavaScript needs it (framed lists that follow the outer form); procedures started from a list get `nuHash()['browse_sql']` without the switch.
 - [ ] **Tablets, please verify** (0.8.1356) – on a real tablet (768–991 px): fields of the automatic / grid layouts fill their row, design mode as a bottom sheet, a list with more than three filters starts folded; the ticket list's columns (Status, Due) fit after refreshing the ticket sample.
 - [ ] **Please verify: page fixes of the usability list** (0.8.1348) – a due to-do in the assignee's language (German user, English
       run); on a phone: IP access exceptions, shared settings as cards, documentation index behind "Contents", the ticket agent's start
@@ -326,6 +329,8 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **Dashboard table widgets** (0.8.682): column nu_record_id + link to a form → rows open the record; option "Open in a new tab".
 
 ## Code editors and libraries
+- [ ] **Code search Replace button** (0.8.1386) – please verify on a phone and on a wide screen
+- [ ] **Where procedures are used** (0.8.1380 / 0.8.1382) – please verify the Used in column and its sorting, the Usage tab and the delete block on a real database; calls built at run time are not found
 - [ ] **Bootstrap 5.3.9** (0.8.1188) – fixes only; please glance at modals, tooltips, dropdowns and tabs on the live server (also form code that
       uses `window.bootstrap`).
 - [ ] **Code search and replace** (0.8.1172–0.8.1176) – please search a real application: places, filters, project filter, line links
@@ -414,6 +419,7 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **Two more forms of the Forte 4.5 database** (0.8.1217 / 0.8.1218) – please verify on the live application: checkbox `$(…).val()` in form
       code (stored value on saved records), a list in a run object following the filter selects of the form around it, its title and
       search row hidden, a narrow select readable, an export procedure that loads its library with `dirname(__FILE__)`
+- [ ] **nuRunPHP output page** (0.8.1389) – please verify with a procedure of your own: nuRunPHP opens index.php?p=runphp&i=…; a link built from $_SERVER['REQUEST_URI'] . '&x=1' runs the procedure again with $_GET['x'], reload runs it again, downloads still close the window, nuRunPHP(code, iframeId) shows it in the iframe.
 - [ ] **Further Forte 4.5 database compared form by form** (0.8.1210–0.8.1215) – please verify on the live application: `nuOnPropertySet` after
       `nuSetProperty(…, true)`, `nuGetFirstObject`, a form opened with a parent's id that is not in its table (sub-form only), lookups whose list
       does not select the key (code + description shown, required lookups saved), uploads with `NUUPLOADFILE…` and with Uppy built by the form
@@ -469,8 +475,7 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       02-08 phones, all of 03 architecture, 04-01 form-lifecycle, 05-00..05-02 saving / save flow / validation, 06-00, 07-01 sign-in methods,
       08-00, 09-00, 10-06 table reference, 11-00, 11-03 theming, 11-04 bundled libraries, 12-00, 12-02 porting, 14-00, 14-01 glossary, 14-03
       FAQ; and whether the 24 "advanced" flags fit.
-- [ ] **Code in files – help page** (option D of the proposal below): the new-page model, the include variables, a folder layout for a
-      project in git.
+- [ ] **Code in files – help page** (option D of the proposal below): the new-page model, the include variables.
 - [ ] **English only**: the help (`docs/pages/*.htm` + `docs/toc.json`) – extend the matching page with every new feature.
 
 ## Proposal: multi-tenancy (30 Oct 2026) – waiting for the owner's decision

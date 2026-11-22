@@ -154,20 +154,23 @@ $ro    = $canSave ? '' : ' disabled';
 $input = static function (string $col, string $type = 'text', array $attr = []) use ($v, $errors, $text, $suggest): string {
 	$max  = $text[$col][0] ?? null;
 	$uni = !empty($attr['unique']);                                   // key after the label: unique – not an HTML attribute
+	$uniOff = ($attr['unique'] ?? null) === 'code' && !NuAuth::codeUnique();   // the code: key kept hidden, the rename dialog switches it
 	unset($attr['unique']);
 	$lk = $text[$col][1];
 	// renamable titles: (i) with the setting, a pencil for the globeadmin (dialog #userLblDlg, assets/js/nuuser.js)
 	$ren = '';
 	if (isset(NU_USER_LABELS[$lk])) {
 		$own = nu_user_label($lk) !== '';
-		$tipTxt = $own ? t('user_lbl_tip_own', nu_text($lk), '$' . NU_USER_LABELS[$lk]) : t('user_lbl_tip', '$' . NU_USER_LABELS[$lk]);
-		$ren = nu_info_tip($tipTxt);
+		$tipTxt = $own ? t('user_lbl_tip_own', nu_text($lk), '$' . NU_USER_LABELS[$lk])
+			: t($lk === 'user_code' ? 'user_lbl_tip_code' : 'user_lbl_tip', '$' . NU_USER_LABELS[$lk]);
+		if ($lk === 'user_code') $tipTxt .= ' ' . t(NuAuth::codeUnique() ? 'user_code_unique_on' : 'user_code_unique_off');
+		$ren = nu_info_tip($tipTxt, 'ms-1', true, '', $lk === 'user_code' ? 'user-code' : 'users');
 		if (NuUserLabel::canRename()) $ren .= '<button type="button" class="btn btn-link btn-sm p-0 ms-1 align-baseline nuUserLblEdit" data-key="' . h($lk)
-			. '" data-for="' . h($col) . '" data-value="' . h(NuUserLabel::stored($lk)) . '" data-builtin="' . h(nu_text($lk)) . '" title="'
+			. '" data-for="' . h($col) . '" data-value="' . h(NuUserLabel::stored($lk)) . '" data-builtin="' . h(nu_text($lk)) . '"' . ($lk === 'user_code' ? ' data-unique="' . (NuAuth::codeUnique() ? '1' : '0') . '"' : '') . ' title="'
 			. h(t('user_lbl_edit')) . '" aria-label="' . h(t('user_lbl_edit')) . '"><i class="bi bi-pencil" aria-hidden="true"></i></button>';
 	}
 	$html = '<label class="form-label" for="' . $col . '"><span class="nuUserLblText">' . h(t($lk)) . '</span>'
-		. (!empty($attr['required']) ? ' <span class="text-danger">*</span>' : '') . ($uni ? nu_unique_mark(!empty($attr['required'])) : '') . '</label>' . $ren
+		. (!empty($attr['required']) ? ' <span class="text-danger">*</span>' : '') . ($uni ? nu_unique_mark(!empty($attr['required']), $uniOff) : '') . '</label>' . $ren
 		. '<input type="' . $type . '" class="form-control' . nu_invalid($errors, $col) . '" id="' . $col . '" name="' . $col . '" value="' . h($v[$col]) . '"'
 		. ($max ? ' maxlength="' . $max . '"' : '')
 		. (isset($suggest[$col]) ? ' list="dl_' . $col . '"' : '');
@@ -201,6 +204,10 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 	<div class="d-flex flex-wrap gap-2 align-items-center">
 		<a class="btn nuBtnAct" href="<?= h(nu_url('users')) ?>"><i class="bi bi-arrow-left me-1"></i><?= h(t('back')) ?></a>
 		<?php if ($canSave): ?><button data-nu-save class="btn nuBtnAct nuBtnSave" type="submit" form="nuRecordForm"><i class="bi bi-floppy me-1"></i><?= h(t('save')) ?></button><?php endif; ?>
+		<?php if (!$isNew): // view mode: the user as a read-only data sheet (assets/js/nuview.js) ?>
+			<?= NuRecordView::button(['title' => trim((string)($existing['sus_name'] ?? '')) ?: $title, 'kind' => t('user'), 'list' => 'users', 'key' => 'user', 'edit' => $canSave,
+				'head' => ['sus_login_name', 'sus_zzzzsys_access_id', 'sus_department', 'sus_position']]) ?>
+		<?php endif; ?>
 		<?php if (!$isNew): ?>
 			<?php if ($rights['save'] && (NuTwoFA::hasTotp($id) || NuTwoFA::deviceCount($id) > 0)): ?>
 				<form method="post" action="<?= h(nu_url('user', ['id' => $id])) ?>" data-confirm="<?= h(t('user_2fa_reset_confirm')) ?>"
@@ -240,7 +247,7 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 	<div class="alert alert-info d-flex gap-2"><i class="bi bi-eye mt-1"></i><div><?= h(t('read_only')) ?></div></div>
 <?php endif; ?>
 
-<form method="post" data-nu-focus-first data-nu-guard id="nuRecordForm"
+<form method="post" data-nu-focus-first data-nu-guard id="nuRecordForm" data-nu-view-root
 	action="<?= h(nu_url('user', $isNew ? ($cloneId !== '' ? ['clone' => $cloneId] : []) : ['id' => $id])) ?>"<?= $isNew && $cloneId !== '' ? ' data-nu-clone="' . h(t('form_clone_badge')) . '"' : '' ?>
 	data-nu-new="<?= $isNew ? '1' : '0' ?>" novalidate>
 	<?= nu_csrf_field() ?><input type="hidden" name="action" value="save">
@@ -331,7 +338,7 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 								$ltNew = ($_SESSION[NuSess::LOGIN_LINK]['id'] ?? '') === $id ? (string)$_SESSION[NuSess::LOGIN_LINK]['link'] : '';
 								unset($_SESSION[NuSess::LOGIN_LINK]); ?>
 								<details class="mt-2" id="loginTokenBox" data-nu-noguard<?= $ltNew !== '' ? ' open' : '' ?>><summary class="small"><i class="bi bi-key me-1"></i><?= h(t('ltok_title')) ?>
-									<?= nu_info_tip(t('ltok_tip')) ?></summary>
+									<?= nu_info_tip(t('ltok_tip'), 'ms-1', true, '', 'logintoken') ?></summary>
 									<div class="small text-body-secondary mt-1"
 										id="loginTokenState"><?= h($ltState === null ? t('ltok_state_none') : ($ltState === 0 ? t('ltok_state_open') : ($ltState < time() ? t('ltok_state_expired', date(nu_dfmt('d.m.Y H:i'), $ltState)) : t('ltok_state_until', date(nu_dfmt('d.m.Y H:i'), $ltState))))) ?></div>
 									<?php if ($ltNew !== ''): ?>
@@ -403,7 +410,7 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 					<div><?= $input('sus_first_name', 'text', ['autocomplete' => 'off']) ?></div>
 					<div><?= $input('sus_last_name', 'text', ['autocomplete' => 'off']) ?></div>
 					<div class="userSpan2"><?= $input('sus_email', 'email', ['autocomplete' => 'off', 'data-nu-email-msg' => t('user_err_email')]) ?></div>
-					<div><?= $input('sus_code', 'text', ['unique' => true]) ?></div>
+					<div><?= $input('sus_code', 'text', ['unique' => 'code']) ?></div>
 				</div>
 			</div>
 		</section>
@@ -482,7 +489,7 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 					<div>
 					<?php if ($admRoleMay || $admRoleCur !== ''): $admRoles = NuAdmin::roles(); ?>
 					<div class="mb-3" id="admRoleField">
-						<label class="form-label" for="admin_role"><?= h(t('adm_role_field')) ?></label><?= nu_info_tip(t('adm_role_field_tip')) ?>
+						<label class="form-label" for="admin_role"><?= h(t('adm_role_field')) ?></label><?= nu_info_tip(t('adm_role_field_tip'), 'ms-1', true, '', 'admin-roles') ?>
 						<?php $canOpenRole = NuAdmin::can('adminroles', 'view'); $roleUrl = nu_url('adminroles', ['id' => '__ID__']);   // open the role in a new tab ?>
 						<div class="<?= $canOpenRole ? 'input-group' : '' ?>">
 						<select class="form-select" id="admin_role" name="admin_role"<?= $admRoleMay ? '' : ' disabled' ?>>
@@ -520,7 +527,7 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 					<?php if ($canSave):
 						// always shown – greyed out while e-mail is not set up, the (i) says so and a link leads to the E-mail settings (with that right)
 						$wHint = $mailOk ? t('welcome_option_hint', NuWelcome::hours()) : t('welcome_need_mail'); ?>
-					<div class="form-check form-switch" id="userWelcomeWrap">
+					<div class="form-check form-switch" id="userWelcomeWrap" data-nu-view-skip>
 						<input class="form-check-input" type="checkbox" role="switch" id="user_send_welcome_email" name="user_send_welcome_email"
 							value="1"<?= $welcome ? ' checked' : '' ?><?= $mailOk ? '' : ' disabled' ?> aria-describedby="welcomeHint"
 							<?php if ($mailOk): ?>data-nu-welcome="<?= h((string)json_encode(NuWelcome::sources(), JSON_UNESCAPED_UNICODE)) ?>"
@@ -555,7 +562,7 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 					<div class="mb-3" id="xaBox">
 						<input type="hidden" name="xa_sent" value="1">
 						<div class="d-flex align-items-center gap-2 mb-1">
-							<span class="form-label mb-0"><?= h(t('xa_title')) ?></span><?= nu_info_tip(t('xa_tip'), '') ?>
+							<span class="form-label mb-0"><?= h(t('xa_title')) ?></span><?= nu_info_tip(t('xa_tip'), '', true, '', 'access-additional') ?>
 							<span class="ms-auto d-flex gap-2"><button type="button" class="btn btn-sm btn-outline-secondary<?= $xaSel ? '' : ' d-none' ?>" id="xaEff"
 								data-bs-toggle="modal" data-bs-target="#xaEffDlg"><i class="bi bi-shield-check me-1"></i><?= h(t('eff_btn')) ?></button>
 							<button type="button" class="btn btn-sm btn-outline-secondary" id="xaAdd"<?= $canSave ? '' : ' disabled' ?>><i class="bi bi-plus-lg me-1"></i><?= h(t('xa_add')) ?></button></span>
@@ -707,7 +714,7 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 			<div class="form-check form-switch">
 				<input class="form-check-input" type="checkbox" role="switch" id="pwrBlock" name="pwr_block" value="1">
 				<label class="form-check-label" for="pwrBlock"><?= h(t('pwr_block')) ?></label>
-				<?= nu_info_tip(t('pwr_block_tip')) ?>
+				<?= nu_info_tip(t('pwr_block_tip'), 'ms-1', true, '', 'pw-reset-admin') ?>
 			</div>
 			<?php if ($pwrPk > 0): ?>
 				<div class="form-check ms-4">
@@ -802,6 +809,11 @@ if (NuUserLabel::canRename()): $lblWhere = NuUserLabel::target('user_additional1
 			<input class="form-control" id="userLblVal" maxlength="<?= NuUserLabel::MAX ?>" autocomplete="off">
 			<div class="form-text" id="userLblHint"></div>
 			<div class="form-text"><?= h($lblWhere) ?></div>
+			<div class="form-check form-switch mt-3" id="userLblUniqueRow" hidden>
+				<input class="form-check-input" type="checkbox" role="switch" id="userLblUnique">
+				<label class="form-check-label" for="userLblUnique"><?= h(t('user_code_unique')) ?></label>
+				<div class="form-text"><?= h(t('user_code_unique_hint')) ?></div>
+			</div>
 			<div class="alert alert-danger small mt-2 mb-0" id="userLblErr" hidden></div>
 		</div>
 		<div class="modal-footer py-2"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal"><?= h(t('cancel')) ?></button>
@@ -820,7 +832,7 @@ $effT = ['view' => t('view'), 'add' => t('add'), 'save' => t('save'), 'delete' =
 	<div class="modal-dialog modal-xl modal-dialog-scrollable"><div class="modal-content">
 		<div class="modal-header">
 			<h2 class="modal-title h5" id="xaEffTitle"><i class="bi bi-shield-check me-2"></i><?= h(t('eff_title')) ?></h2>
-			<?= nu_info_tip(t('eff_hint'), 'ms-2') ?>
+			<?= nu_info_tip(t('eff_hint'), 'ms-2', true, '', 'access-additional') ?>
 			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?= h(t('close')) ?>"></button>
 		</div>
 		<div class="modal-body">
@@ -919,4 +931,4 @@ $effT = ['view' => t('view'), 'add' => t('add'), 'save' => t('save'), 'delete' =
 <?php endif;
 nu_layout_end('<script src="' . nu_asset(NU_TOMSELECT . '/tom-select.complete.min.js') . '"></script><script src="'
 	. nu_asset('assets/js/nulistselect.js') . '"></script><script src="' . nu_asset('assets/js/nuuser.js')
-	. '"></script>');   // name parts; permission items when present
+	. '"></script>' . (!$isNew ? NuRecordView::script() : ''));   // name parts; permission items when present; view mode

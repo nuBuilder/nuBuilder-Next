@@ -20,7 +20,7 @@ $errors = [];
 $test = $_SESSION[NuSess::AI_TEST] ?? null;
 if ($test && (string)$test['id'] !== $id) $test = null;
 unset($_SESSION[NuSess::AI_TEST]);
-$tip = static fn(string $text) => nu_info_tip($text);
+$tip = static fn(string $text) => nu_info_tip($text, 'ms-1', true, '', 'ai-providers-setup');
 
 // ------------------------------------------------------------------ list
 if ($id === '') {

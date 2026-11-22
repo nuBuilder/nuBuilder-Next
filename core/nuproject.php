@@ -29,6 +29,11 @@ final class NuProject
 		'emailtemplate' => ['zzzzsys_email_template', 'zzzzsys_email_template_id', 'emt_description', 'emt_code', 'bi-envelope'],
 		'snippet'       => ['zzzzsys_code_snippet', 'zzzzsys_code_snippet_id', 'cot_description', 'cot_code', 'bi-braces'],
 		'helppage'      => ['zzzzsys_nunext_help', 'zzzzsys_nunext_help_id', 'title', 'code', 'bi-journal-bookmark'],
+		'permission'    => ['zzzzsys_permission_item', 'zzzzsys_permission_item_id', 'pme_description', 'pme_ident', 'bi-key'],
+		'format'        => ['zzzzsys_format', 'zzzzsys_format_id', 'srm_format', 'srm_format', 'bi-123'],
+		'file'          => ['zzzzsys_file', 'zzzzsys_file_id', 'sfi_description', 'sfi_code', 'bi-file-earmark-image'],
+		'dataexport'    => ['zzzzsys_nunext_export', 'zzzzsys_nunext_export_id', 'name', 'code', 'bi-box-arrow-up'],
+		'webhook'       => ['zzzzsys_nunext_webhook', 'zzzzsys_nunext_webhook_id', 'name', 'name', 'bi-broadcast'],
 	];
 	public const CODE_RE = '/^[A-Za-z0-9_.-]{1,60}$/';
 	private const SESSION = NuSess::PROJECT;
@@ -205,6 +210,10 @@ final class NuProject
 			'emailtemplate' => nu_url('emailtemplates', ['id' => $ref]),
 			'snippet' => nu_url('form', ['f' => 'nucodesnippet', 'r' => $ref]),
 			'helppage' => nu_url('helppages', ['id' => $ref]),
+			'permission' => nu_url('permissions', ['id' => $ref]),
+			'file' => nu_url('files', ['id' => $ref]),
+			'dataexport' => nu_url('dataexport', ['id' => $ref]),
+			'webhook' => nu_url('webhooks', ['id' => $ref]),
 			default => '',
 		};
 	}

@@ -123,7 +123,7 @@ final class NuPluginsPage
 	{
 		$st = NuPlugin::state();
 		$o = '<div class="d-flex align-items-center gap-2 mb-3"><h2 class="h5 mb-0"><i class="bi bi-puzzle me-1" aria-hidden="true"></i>' . h(t('plg_title')) . '</h2>'
-			. nu_info_tip(t('plg_hint')) . '</div>';
+			. nu_info_tip(t('plg_hint'), 'ms-1', true, '', 'plugins-install') . '</div>';
 		if (NuPlugin::safe()) $o .= '<div class="alert alert-info small" id="plgSafe">' . h(t('plg_safe_note')) . '</div>';
 		$o .= self::checkCard($st);
 		$all = NuPlugin::installed();
@@ -223,7 +223,7 @@ final class NuPluginsPage
 		}
 		$o .= '<form method="post" action="' . h(nu_url('plugins')) . '" class="form-check form-switch mb-0">' . nu_csrf_field() . '<input type="hidden" name="action" value="upload_set">'
 			. '<input type="hidden" name="upload" value="0"><input class="form-check-input js-autosubmit" type="checkbox" role="switch" name="upload" value="1" id="plgUploadSet"'
-			. ($st['upload'] ? ' checked' : '') . '><label class="form-check-label" for="plgUploadSet">' . h(t('plg_upload_allow')) . '</label>' . nu_info_tip(t('plg_upload_allow_tip'))
+			. ($st['upload'] ? ' checked' : '') . '><label class="form-check-label" for="plgUploadSet">' . h(t('plg_upload_allow')) . '</label>' . nu_info_tip(t('plg_upload_allow_tip'), 'ms-1', true, '', 'plugins-install')
 			. '</form></div></div>';
 		return $o;
 	}
@@ -231,7 +231,7 @@ final class NuPluginsPage
 	private static function keysCard(array $st): string
 	{
 		$o = '<div class="card shadow-sm mb-4" id="plgKeysCard"><div class="card-body"><h3 class="h6 d-flex align-items-center gap-1">' . h(t('plg_keys_title'))
-			. nu_info_tip(t('plg_keys_tip')) . '</h3><ul class="list-unstyled small mb-3" id="plgKeys"><li class="mb-1"><i class="bi bi-patch-check me-1 text-success" aria-hidden="true"></i>'
+			. nu_info_tip(t('plg_keys_tip'), 'ms-1', true, '', 'plugins-sign') . '</h3><ul class="list-unstyled small mb-3" id="plgKeys"><li class="mb-1"><i class="bi bi-patch-check me-1 text-success" aria-hidden="true"></i>'
 			. 'nuBuilder Next <code class="small">' . h(substr(NuUpdate::SIGN_PUBLIC, 0, 12)) . '…</code></li>';
 		foreach (array_values($st['keys']) as $i => $k) {
 			$o .= '<li class="mb-1 d-flex align-items-center gap-2" data-key="' . $i . '"><i class="bi bi-key" aria-hidden="true"></i>' . h((string)$k['name'])

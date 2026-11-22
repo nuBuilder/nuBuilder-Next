@@ -37,6 +37,7 @@ return [
 	'home_u_empty_editor' => 'No tiles yet – click Customize and add tiles (Add tile).',
 	'user_sec_org' => 'Organization',
 	'user_lbl_tip' => 'This title can be renamed for the whole installation (setting %s) – for example “Cost center”. Only the title changes; the field stays the same.',
+	'user_code_unique_hint' => 'Switch off when the code groups users, e.g. a cost center. Codes already doubled are left as they are.',
 	'bsq_badge_rules' => '%d color rules – edit them in design mode',
 	'ds_sec_behaviour' => 'Behavior',
 	'ds_al_center' => 'Center',

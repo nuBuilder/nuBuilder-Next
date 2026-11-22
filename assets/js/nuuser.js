@@ -772,6 +772,7 @@
 	var dlg = document.getElementById('userLblDlg');
 	if (!dlg) return;
 	var val = document.getElementById('userLblVal'), err = document.getElementById('userLblErr'), save = document.getElementById('userLblSave'), cur = null;
+	var uRow = document.getElementById('userLblUniqueRow'), uBox = document.getElementById('userLblUnique');   // only for the code
 	var fill = function (s, a) { return String(s).replace('%s', a); };
 	document.addEventListener('click', function (e) {
 		var b = e.target.closest ? e.target.closest('.nuUserLblEdit') : null;
@@ -783,11 +784,14 @@
 		val.value = b.getAttribute('data-value') || '';
 		val.placeholder = b.getAttribute('data-builtin') || '';
 		err.hidden = true;
+		uRow.hidden = !b.hasAttribute('data-unique');
+		uBox.checked = b.getAttribute('data-unique') === '1';
 		nuBs.modal(dlg).show();
 	});
 	dlg.addEventListener('shown.bs.modal', function () { val.focus(); val.select(); });
 	val.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); save.click(); } });
 	val.addEventListener('input', function (e) { e.stopPropagation(); });     // not an edit of the user (red Save, leave guard)
+	uBox.addEventListener('change', function (e) { e.stopPropagation(); });
 	save.addEventListener('click', function () {
 		if (!cur) return;
 		var fd = new FormData();
@@ -795,6 +799,7 @@
 		fd.append('action', 'user_label');
 		fd.append('key', cur.getAttribute('data-key'));
 		fd.append('value', val.value);
+		if (cur.hasAttribute('data-unique')) fd.append('unique', uBox.checked ? '1' : '0');
 		fd.append('back', dlg.getAttribute('data-back') || '');
 		save.disabled = true;
 		fetch(window.location.pathname + window.location.search, {method: 'POST', body: fd, credentials: 'same-origin', headers: {'Accept': 'application/json'}})
@@ -806,6 +811,11 @@
 				var lbl = document.querySelector('label[for="' + cur.getAttribute('data-for') + '"] .nuUserLblText');
 				if (lbl) lbl.textContent = j.label;
 				cur.setAttribute('data-value', j.value);
+				if (cur.hasAttribute('data-unique')) {
+					cur.setAttribute('data-unique', j.unique ? '1' : '0');
+					var mk = document.querySelector('label[for="' + cur.getAttribute('data-for') + '"] .nuMarkUnique');
+					if (mk) mk.hidden = !j.unique;
+				}
 				nuBs.modal(dlg).hide();
 			})
 			.catch(function () { save.disabled = false; err.textContent = 'Error'; err.hidden = false; });

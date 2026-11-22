@@ -217,7 +217,7 @@ final class NuFormInfo
 		}
 		return '<div class="dropdown">'
 			. '<button type="button" class="btn btn-outline-secondary" id="' . h($idBase)
-				. 'Btn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" title="' . h($title) . '" aria-label="' . h($title)
+				. 'Btn" data-bs-toggle="dropdown" data-bs-auto-close="outside" data-nu-doc="" aria-expanded="false" title="' . h($title) . '" aria-label="' . h($title)
 				. '"><i class="bi bi-info-circle"></i></button>'
 			. '<div class="dropdown-menu dropdown-menu-end p-0 nuFormInfo" id="' . h($idBase) . '" data-nu-fi-texts="'
 				. h((string)json_encode(['save' => t('save'), 'cancel' => t('cancel'), 'saved' => t('fi_saved'), 'required' => t('builder_err_required')])) . '">'

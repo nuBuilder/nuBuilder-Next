@@ -308,7 +308,7 @@ nu_layout_start($title, 'access', ['head' => '<link rel="stylesheet" href="' . n
 					<div class="mb-3" id="accStartPage"<?= $startForteNew ? ' data-forte-new="1"' : '' ?>>
 						<?php // what the users of this level see after sign-in and with Home ?>
 						<span class="form-label d-block" id="accStartLbl"><?= h(t('acc_start_page')) ?>
-							<?= nu_info_tip(t('acc_start_tip')) ?></span>
+							<?= nu_info_tip(t('acc_start_tip'), 'ms-1', true, '', 'access-start-tab') ?></span>
 						<div class="btn-group" role="radiogroup" aria-labelledby="accStartLbl">
 							<input type="radio" class="btn-check" name="start_page" id="accStartTiles" value="tiles"<?= $v['start_page'] !== 'form' ? ' checked' : '' ?>>
 							<label class="btn btn-outline-secondary" for="accStartTiles"><i class="bi bi-grid-1x2 me-1" aria-hidden="true"></i><?= h(t('acc_start_tiles')) ?></label>
@@ -318,7 +318,7 @@ nu_layout_start($title, 'access', ['head' => '<link rel="stylesheet" href="' . n
 					</div>
 					<div class="mb-3">
 						<label class="form-label" for="sal_zzzzsys_form_id"><?= h(t('home_form')) ?></label>
-						<?= nu_info_tip(t('home_form_hint')) ?>
+						<?= nu_info_tip(t('home_form_hint'), 'ms-1', true, '', 'access-start-tab') ?>
 						<?php $homeUrl = nu_url('form', ['f' => '__ID__']); $homeNone = $v['sal_zzzzsys_form_id'] === ''; ?>
 						<div class="input-group<?= isset($errors['sal_zzzzsys_form_id']) ? ' has-validation' : '' ?>">
 						<select class="form-select nuListTomSelect<?= nu_invalid($errors, 'sal_zzzzsys_form_id') ?>" id="sal_zzzzsys_form_id" name="sal_zzzzsys_form_id">

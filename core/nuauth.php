@@ -666,10 +666,24 @@ final class NuAuth
 	 * or null. nuBuilder Forte does not check it and the column has no unique index (existing duplicates stay until a user is saved).
 	 * @return array{id: string, name: string}|null
 	 */
+	/** Whether the user code must be unique (setting user_code_unique, default on; switched in the rename dialog of the user form). */
+	public static function codeUnique(): bool
+	{
+		return nu_setting_value('user_code_unique') !== '0';
+	}
+
+	public static function codeUniqueSave(bool $on): void
+	{
+		if ($on === self::codeUnique()) return;
+		nu_setting_save('user_code_unique', ['setting_value' => $on ? '1' : '0']);
+		NuLog::write('user_code_unique', 'zzzzsys_user', '', ['unique' => $on]);
+	}
+
+	/** The user who already has this code – null when none, the code is empty or codes need not be unique. */
 	public static function userCodeOwner(string $code, string $exceptId = ''): ?array
 	{
 		$code = trim($code);
-		if ($code === '') return null;
+		if ($code === '' || !self::codeUnique()) return null;
 		$r = nu_db()->one('SELECT zzzzsys_user_id AS id, sus_name AS name, sus_login_name AS login FROM zzzzsys_user WHERE LOWER(TRIM(sus_code)) = LOWER(?) AND zzzzsys_user_id <> ?', [$code, $exceptId]);
 		return $r ? ['id' => (string)$r['id'], 'name' => trim((string)$r['name']) !== '' ? (string)$r['name'] : (string)$r['login']] : null;
 	}

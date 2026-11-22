@@ -881,6 +881,14 @@ foreach (NuHelpLink::MAP + ['home' => 'home-page', 'home ' => 'navigation-p'] as
 	if (!isset($helpIds[$id]) || (trim($route) !== 'home' && !in_array($route, $m[1], true))) $f1Bad[] = $route . ' → ' . $id;
 }
 check('help: F1 links of the pages (NuHelpLink)', !$f1Bad && count(NuHelpLink::MAP) > 40, implode(', ', $f1Bad));
+// long tap on an (i): the documentation section named as the 5th argument of nu_info_tip() exists
+$tipBad = [];
+foreach (array_merge(glob(NU_ROOT . '/pages/*.php') ?: [], glob(NU_ROOT . '/core/*.php') ?: []) as $tf) {
+	if (preg_match_all("/nu_info_tip\\([^;]*?,\\s*'[^']*',\\s*(?:true|false),\\s*'[^']*',\\s*'([a-z0-9-]+)'\\)/", (string)file_get_contents($tf), $tm)) {
+		foreach ($tm[1] as $id) if (!isset($helpIds[$id])) $tipBad[] = basename($tf) . ' → ' . $id;
+	}
+}
+check('help: documentation links of (i) tips point to an id', !$tipBad, implode(', ', $tipBad));
 // page numbers (0.8.804): every route of NuPageNo::MAP exists, numbers are P<nnn>[.<n>], parse() reads the typed forms
 $pnoBad = array_keys(array_filter(NuPageNo::MAP, static fn($e, $n) => !in_array($e[0], $m[1], true) || !preg_match('/^\d{3}(\.\d)?$/', (string)$n), ARRAY_FILTER_USE_BOTH));
 check('page numbers: every route exists (NuPageNo)', !$pnoBad && count(NuPageNo::MAP) > 60, implode(', ', $pnoBad));

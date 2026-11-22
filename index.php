@@ -133,6 +133,7 @@ $routes = [
 	'reportdesigner' => [],
 	'reportai'    => [],                     // reports with AI: prompt, check, preview, apply – POST only
 	'reportpdf'   => [],
+	'runphp'      => [],                     // output page of nuRunPHP (pages/nurunphp.php, token from formapi action runphp)
 	'sqlbuilder'  => [],
 	'prompts'     => [],
 	'import'      => [],
@@ -170,6 +171,7 @@ $routes = [
 	'advsearch'   => ['json' => true],   // "My searches" of the advanced search of form lists (pages/nuadvsearch.php)   // code snippets of one code editor (pages/nusnippetlist.php)
 	'pivot'       => ['json' => true],   // pivot of a form list (pages/nupivot.php; GET fmt=xlsx|csv = file)
 	'calendar'    => ['json' => true],   // calendars: list view, calendar objects, moving events (pages/nucalendar.php)
+	'viewfirst'   => ['json' => true],   // view mode: "Always open in view mode" of a form, for me (pages/nuviewfirst.php)
 	'formstatus'  => ['json' => true],   // maintenance of forms on / off (pages/nuformstatus.php)
 	'formaccess'  => ['json' => true],   // access levels of one form – dialog of the form's ⋮ menu / design mode (pages/nuformaccess.php)   // function list of the code editors (pages/nufnlist.php)
 	'builder'     => [],

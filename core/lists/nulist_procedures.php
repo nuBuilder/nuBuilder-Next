@@ -27,6 +27,10 @@ trait NuListProcedures
 				// opens the procedure's tab Access levels
 				'html' => static fn($r) => '<a class="text-decoration-none" href="' . h(nu_url('procedures', ['id' => $r['__id']])) . '#access">'
 					. ((string)$r['sph_global'] === '1' ? self::badge(t('proc_everyone'), 'bg-info-subtle text-info-emphasis') : (string)(int)$r['n_access']) . '</a>'],
+			// where it is used (NuProcUse: buttons, objects, reports, tiles, code) – worked out only when the column is shown
+			'used' => ['label' => t('prc_use_col'), 'select' => [], 'class' => 'text-nowrap', 'sort' => static fn(): string => self::procUseSort(),
+				'text' => static fn($r) => self::procUseText(NuProcUse::of((string)$r['__id'])),
+				'html' => static fn($r) => self::procUseHtml(NuProcUse::of((string)$r['__id']))],
 			'id' => self::idCol('p.zzzzsys_php_id'),
 		];
 		$filters = [
@@ -36,6 +40,13 @@ trait NuListProcedures
 			'status' => ['label' => t('proc_status'), 'type' => 'select', 'options' => static fn() => array_map('t', NuProcedure::STATUS),
 				'where' => static fn(string $v) => ["COALESCE(NULLIF(p.sph_status, ''), '1') = ?", [$v]]],
 			'category' => ['label' => t('proc_category'), 'type' => 'distinct', 'expr' => 'p.sph_category', 'none' => t('lv_empty')],
+			'used' => ['label' => t('prc_use_col'), 'type' => 'select',
+				'options' => static fn() => ['used' => t('prc_use_used'), 'unused' => t('prc_use_unused'), 'hook' => t('prc_use_hook')],
+				'where' => static function (string $v) {
+					if (!in_array($v, ['used', 'unused', 'hook'], true)) return null;
+					$ids = NuProcUse::ids($v);
+					return $ids ? ['p.zzzzsys_php_id IN (' . implode(', ', array_fill(0, count($ids), '?')) . ')', $ids] : ['1 = 0', []];
+				}],
 			'template' => ['label' => t('proc_template'), 'type' => 'bool', 'expr' => "p.sph_template = '1'"],
 			'global' => ['label' => t('proc_everyone'), 'type' => 'bool', 'expr' => "p.sph_global = '1'"],
 			'run' => ['label' => t('proc_run'), 'type' => 'select',
@@ -56,9 +67,9 @@ trait NuListProcedures
 			'search' => ['p.sph_code', 'p.sph_description', 'p.sph_group', 'p.sph_category', 'f.sfo_code'], 'columns' => $cols, 'filters' => $filters,
 			'search_extra' => ['param' => 'qc', 'cols' => ['p.sph_php', 'p.sph_javascript'], 'label' => t('lv_search_code'), 'short' => t('lv_search_code_short'), 'icon' => 'bi-code-slash'],
 			'builtin' => [
-				'default' => ['columns' => ['code', 'group', 'category', 'status', 'description', 'run', 'launch', 'access'],
+				'default' => ['columns' => ['code', 'group', 'category', 'status', 'description', 'run', 'launch', 'access', 'used'],
 					'card' => ['title' => 'code', 'badge' => 'status', 'lines' => ['description', 'group']],
-					'sort' => ['group', 'asc'], 'per' => 50, 'filters' => ['shown' => ['origin', 'group', 'status', 'category', 'run'], 'values' => ['origin' => 'own']]],   // category + run
+					'sort' => ['group', 'asc'], 'per' => 50, 'filters' => ['shown' => ['origin', 'group', 'status', 'category', 'run', 'used'], 'values' => ['origin' => 'own']]],   // category + run
 				'compact' => ['columns' => ['code', 'description', 'status'], 'card' => ['title' => 'code', 'badge' => 'status', 'lines' => ['description']],
 					'sort' => ['code', 'asc'], 'per' => 50, 'filters' => ['shown' => ['group'], 'values' => []]],
 				'recent' => ['columns' => ['code', 'description', 'group', 'status', 'opened'], 'card' => ['title' => 'code', 'badge' => 'status', 'lines' => ['description', 'opened']],
@@ -67,5 +78,45 @@ trait NuListProcedures
 					'sort' => ['group', 'asc'], 'per' => 50, 'filters' => ['shown' => array_keys($filters), 'values' => []]],
 			],
 		];
+	}
+
+	/** The "Used in" cell as text (exports). */
+	private static function procUseText(array $u): string
+	{
+		if ($u['hook'] !== '') return t('prc_use_hook_' . $u['hook']);   // prc_use_hook_form, prc_use_hook_global
+		if (!$u['places']) return '';
+		return $u['forms'] ? t('prc_use_forms_n', count($u['forms'])) : t('prc_use_places_n', count($u['places']));
+	}
+
+	/** The "Used in" cell: number of forms (≈ when code calls count), a menu with every place. */
+	private static function procUseHtml(array $u): string
+	{
+		if ($u['hook'] !== '') return self::badge(t('prc_use_hook_' . $u['hook']), 'bg-info-subtle text-info-emphasis');
+		if (!$u['places']) return '<span class="text-body-secondary nuProcUnused" title="' . h(t('prc_use_none_tip')) . '">–</span>';
+		$icons = ['run' => 'bi-play-btn', 'object' => 'bi-ui-checks', 'report' => 'bi-file-earmark-richtext', 'tile' => 'bi-grid', 'widget' => 'bi-bar-chart', 'code' => 'bi-code-slash'];
+		$items = '';
+		foreach ($u['places'] as $p) {
+			$form = $p['form'] !== '' ? '<span class="text-body-secondary ms-1">' . h((string)(nu_form($p['form'])['code'] ?? $p['form'])) . '</span>' : '';
+			$inner = '<i class="bi ' . ($icons[$p['kind']] ?? 'bi-dot') . ' me-2"></i>' . h($p['label']) . $form;
+			$items .= '<li>' . ($p['url'] !== '' ? '<a class="dropdown-item small" href="' . h($p['url']) . '" target="_blank" rel="noopener">' . $inner . '</a>'
+				: '<span class="dropdown-item-text small">' . $inner . '</span>') . '</li>';
+		}
+		$n = $u['forms'] ? t('prc_use_forms_n', count($u['forms'])) : t('prc_use_places_n', count($u['places']));
+		$approx = $u['code'] ? '<span class="ms-1 text-body-secondary" title="' . h(t('prc_use_code_tip')) . '">≈</span>' : '';
+		return '<div class="dropdown nuProcUse"><button type="button" class="btn btn-sm btn-link p-0 text-decoration-none align-baseline lh-1" data-bs-toggle="dropdown"'
+			. ' data-bs-popper-config=\'{"strategy":"fixed"}\' aria-expanded="false">' . h($n) . $approx . ' <i class="bi bi-chevron-down small"></i></button>'
+			. '<ul class="dropdown-menu shadow-sm nuProcUseMenu">' . $items . '</ul></div>';
+	}
+
+	/** Sort of "Used in": number of forms, then number of places; not used = 0, hooks = -1 (one CASE over the procedures that differ from 0). */
+	private static function procUseSort(): string
+	{
+		$db = nu_db();
+		$when = '';
+		foreach (NuProcUse::all() as $id => $u) {
+			$v = $u['hook'] !== '' ? -1 : count($u['forms']) * 10000 + count($u['places']);
+			if ($v !== 0) $when .= ' WHEN ' . $db->quote((string)$id) . ' THEN ' . $v;
+		}
+		return $when === '' ? '0' : '(CASE p.zzzzsys_php_id' . $when . ' ELSE 0 END)';
 	}
 }

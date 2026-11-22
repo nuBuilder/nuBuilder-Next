@@ -150,7 +150,7 @@ if (nu_is_post()) {
 	nu_redirect($back);
 }
 
-$tip = static fn(string $text) => nu_info_tip($text);
+$tip = static fn(string $text) => nu_info_tip($text, 'ms-1', true, '', 'themes-who');
 $all = NuTheme::all();
 $ro = NuAdmin::$viewOnly;
 

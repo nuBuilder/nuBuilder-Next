@@ -98,7 +98,7 @@ if ($id !== '') {
 			</div>
 			<div class="col-sm-6">
 				<label class="form-label" for="ufDefault"><?= h(t('uf_default')) ?></label>
-				<?= nu_info_tip(t('uf_default_tip')) ?>
+				<?= nu_info_tip(t('uf_default_tip'), 'ms-1', true, '', 'user-field-defaults') ?>
 				<?php
 					$ins = [['today', 'ufd_today'], ['yesterday', 'ufd_yesterday'], ['tomorrow', 'ufd_tomorrow'], ['today+30d', 'ufd_in30'], ['month_end', 'ufd_month_end'], ['year_start', 'ufd_year_start'], ['now', 'ufd_now'], null,
 						['next:{0000}', 'ufd_counter'], ['{first_name}.{last_name}', 'ufd_fields'], ['{email}', 'ufd_email'], ['#USER_NAME#', 'ufd_admin'], null];

@@ -62,6 +62,22 @@ final class NuFormSnapshot
 	 * state are deleted and the snapshot's inserted (only the columns the tables have today). A snapshot of an earlier version (no
 	 * "v") replaces only what it holds: tabs, objects, events, browse, the six builder hooks and the lookups' After Browse code.
 	 */
+	/** Deletes a whole form – objects with their events and object code, tabs, list columns, access rights, form hooks (inside a transaction of the caller). */
+	public static function remove(NuDB $db, string $formId): void
+	{
+		$ids = array_column($db->all('SELECT zzzzsys_object_id FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id = ?', [$formId]), 'zzzzsys_object_id');
+		foreach ($ids as $oid) {
+			$db->delete('zzzzsys_event', 'sev_zzzzsys_object_id', (string)$oid);
+			$db->delete('zzzzsys_php', 'zzzzsys_php_id', $oid . '_AB');
+		}
+		$db->delete('zzzzsys_object', 'sob_all_zzzzsys_form_id', $formId);
+		$db->delete('zzzzsys_tab', 'syt_zzzzsys_form_id', $formId);
+		$db->delete('zzzzsys_browse', 'sbr_zzzzsys_form_id', $formId);
+		$db->delete('zzzzsys_access_form', 'slf_zzzzsys_form_id', $formId);
+		foreach (['BB', 'BE', 'BS', 'AS', 'BD', 'AD'] as $h) $db->delete('zzzzsys_php', 'zzzzsys_php_id', $formId . '_' . $h);
+		$db->delete('zzzzsys_form', 'zzzzsys_form_id', $formId);
+	}
+
 	public static function apply(NuDB $db, string $formId, array $snap): void
 	{
 		$cur = self::capture($formId) ?? throw new RuntimeException(t('form_err_not_found'));

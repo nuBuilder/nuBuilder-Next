@@ -29,7 +29,7 @@ if (($_GET['step'] ?? '') === 'done') {
 	if ($manual === '') nu_redirect(nu_url('home'));
 }
 
-$tip = static fn(string $text) => nu_info_tip($text);
+$tip = static fn(string $text) => nu_info_tip($text, 'ms-1', true, '', 'setup-wizard');
 $inv = static fn(string $k) => isset($errors[$k]) ? ' is-invalid' : '';
 $fb = static fn(string $k) => isset($errors[$k]) ? '<div class="invalid-feedback">' . h($errors[$k]) . '</div>' : '';
 $icons = ['basics' => 'bi-sliders', 'look' => 'bi-palette', 'security' => 'bi-shield-lock', 'samples' => 'bi-box-seam', 'summary' => 'bi-check2-square'];

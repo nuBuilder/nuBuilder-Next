@@ -36,6 +36,7 @@ final class NuSess
 	public const JSON_DATA           = 'nu_json_data';   // nuSetJSONData() values of form code (nuphp_compat)
 	public const URL_PARAMS          = 'nu_url_params';   // GET parameters of the last unknown route for nuGetURLParams() (index.php)
 	public const REPORT_RUNS         = 'nu_report_runs';   // recent report runs of this session (NuReport)
+	public const RUN_PHP             = 'nu_run_php';       // recent nuRunPHP calls of this session: token => procedure, form, hash (NuRunPhp)
 	public const FORM_PREVIEW        = 'nu_form_preview';   // form drafts shown instead of the live form (NuFormDraft)
 	public const LIST_VIEWS          = 'nu_listviews';   // chosen list views of demo visitors (NuListView)
 	public const HOME_VIEW           = 'nu_home_view';   // personal start page view of demo visitors (NuHome)
@@ -95,8 +96,10 @@ final class NuSess
 	public const SSO_TEST            = 'nunext_sso_test';   // result of the single sign-on Test (NuSso)
 	public const PROJECT             = 'nu_project';   // project being worked on (NuProject)
 	public const RECORD_OK           = 'nu_record_ok';   // records that passed the record check (NuRecord)
+	public const BROWSE_SQL          = 'nu_browse_sql';   // form id => the list's SQL as last shown (pages/nuform.php) – nuHash()['browse_sql'] of procedures
 	public const RECENT_LAST         = 'nu_recent_last';   // last recorded page of the recent list (NuSidebar)
 	public const HOME_HIDE_UNDO      = 'nu_home_hide_undo';   // last hidden start page tile, for Undo (NuSidebar)
+	public const VIEW_FIRST          = 'nu_view_first';   // forms whose records open in view mode first, demo visitors (NuRecordView)
 	public const TUTORIAL            = 'nu_tutorial';   // tutorial progress of demo visitors (NuTutorial)
 	public const IMPORT              = 'nu_import';   // state of a running data import (NuImport)
 	public const PLUGIN_UPLOAD       = 'nu_plg_upload';   // an uploaded plugin package waiting for Install (NuPluginsPage)

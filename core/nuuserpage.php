@@ -269,8 +269,9 @@ final class NuUserPage
 		}
 		$err = NuUserLabel::save($key, nu_post('value'));
 		if ($err !== '') exit((string)json_encode(['ok' => false, 'error' => $err], JSON_UNESCAPED_UNICODE));
+		if ($key === 'user_code' && isset($_POST['unique'])) NuAuth::codeUniqueSave(nu_post('unique') === '1');
 		$own = trim(nu_post('value'));
-		exit((string)json_encode(['ok' => true, 'label' => $own !== '' ? NuTranslate::format($own, []) : nu_text($key), 'value' => $own, 'message' => t('user_lbl_saved')], JSON_UNESCAPED_UNICODE));
+		exit((string)json_encode(['ok' => true, 'unique' => NuAuth::codeUnique(), 'label' => $own !== '' ? NuTranslate::format($own, []) : nu_text($key), 'value' => $own, 'message' => t('user_lbl_saved')], JSON_UNESCAPED_UNICODE));
 	}
 
 	// ------------------------------------------------------------------ permission items of another user: "Copy from user…" ticks them

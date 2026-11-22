@@ -39,6 +39,7 @@
 <li><strong>A short request</strong> ("add a filter to the users list") → Claude builds it and ends with a <strong>fast release</strong> (next version 0.8.x+1), tests of the changed areas and a look in the browser, and sends both zips. It asks first only when a wrong guess would be expensive.</li>
 <li><strong>"Suggest …"</strong> → numbered options with a recommendation, nothing built. Answer with the option, <em>"do recommendations"</em> or <em>"ok all"</em>.</li>
 <li><strong>"Gate"</strong> → full release gate and push to GitHub (below).</li>
+<li><strong>"Push"</strong> → the newest release is pushed to GitHub without a gate. Fast releases are not pushed otherwise, so the branch <code>main</code> (and <em>Get branch main</em> on the update page) stays on tested or explicitly pushed versions.</li>
 <li>Every release: version bump, <code>CHANGELOG.md</code> section, texts in all eleven languages, the help (this file), <code>TODO.md</code> (points to verify), tests for new features. No personal details of the developer in any file.</li>
 </ul>
 </div>

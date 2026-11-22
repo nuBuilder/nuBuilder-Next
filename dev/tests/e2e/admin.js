@@ -997,3 +997,100 @@ T.logout = async (s) => {
 	await open(p, 'index.php?p=home');
 	expect(/p=login/.test(p.url()), 'still signed in after logout');
 };
+
+T.app_folder = async (s) => {
+	// 0.8.1378: whole application as a package (Projects → Export application) and as a git folder (nucron.php app export / import)
+	const p = s.ga;
+	if (!SITE) { s.skip = 'needs SITE'; return; }
+	if (!sql("SELECT COUNT(*) FROM zzzzsys_php WHERE sph_code = 'sample_hello'").startsWith('1')) { s.skip = 'no sample data'; return; }
+	await open(p, 'index.php?p=projects');
+	const [dl] = await Promise.all([p.waitForEvent('download'), p.click('#prjExportApp')]);
+	const pkg = JSON.parse(fs.readFileSync(await dl.path(), 'utf8'));
+	expect(pkg.format === 'nunext-project-1' && pkg.project.code === '_application' && Array.isArray(pkg.formats), 'application package: ' + pkg.format + ' ' + Object.keys(pkg).join(','));
+	expect(pkg.procedure.some((r) => r.sph_code === 'sample_hello') && !pkg.procedure.some((r) => /^nu/.test(r.zzzzsys_php_id)), 'own procedures only');
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nunext-e2e-app-'));
+	const keep = path.join(os.tmpdir(), 'nunext-e2e-appfolder.sql');
+	execSync('mysqldump ' + DB + ' zzzzsys_php zzzzsys_access_php > ' + keep, {shell: '/bin/bash'});
+	const cron = (a) => execSync('php nucron.php ' + a, {cwd: SITE, encoding: 'utf8'});
+	const digest = () => execSync('find . -type f -print0 | sort -z | xargs -0 sha1sum | sha1sum', {cwd: dir, encoding: 'utf8', shell: '/bin/bash'});
+	let restore = '';
+	try {
+		cron('app export --dir=' + dir);
+		const d1 = digest();
+		cron('app export --dir=' + dir);
+		expect(d1 === digest(), 'the same database writes the same files');
+		const f = path.join(dir, 'procedures', 'sample_hello', 'sph_php.php');
+		expect(fs.existsSync(f), 'code in a file of its own: ' + f);
+		expect(/no changes|replace 0/.test(cron('app import --dir=' + dir)), 'unchanged folder: nothing to do');
+		fs.appendFileSync(f, '\n// e2e app folder\n');
+		const plan = cron('app import --dir=' + dir);
+		expect(/replace\s+different\s+procedure/.test(plan) && /replace 1/.test(plan), 'dry run lists the change: ' + plan.slice(-200));
+		expect(!sql("SELECT sph_php FROM zzzzsys_php WHERE sph_code = 'sample_hello'").includes('e2e app folder'), 'dry run changes nothing');
+		const out = cron('app import --dir=' + dir + ' --yes');
+		expect(sql("SELECT sph_php FROM zzzzsys_php WHERE sph_code = 'sample_hello'").includes('e2e app folder'), 'import changed the procedure');
+		restore = (out.match(/project-restore-[A-Za-z0-9_.-]+\.json/) || [''])[0];
+		expect(restore !== '', 'restore point: ' + out);
+		const rp = await p.evaluate(async (u) => { const r = await fetch(u); return r.ok ? r.json() : null; }, 'index.php?p=projects&restorefile=' + restore);
+		expect(rp && rp.procedure && rp.procedure.some((r) => r.sph_code === 'sample_hello' && !r.sph_php.includes('e2e app folder')), 'restore point holds the version before');
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		execSync('mysql ' + DB + ' < ' + keep, {shell: '/bin/bash'});
+		fs.rmSync(dir, {recursive: true, force: true});
+		for (const b of fs.readdirSync(path.join(SITE, '_backup')).filter((n) => n.startsWith('project-restore-'))) fs.rmSync(path.join(SITE, '_backup', b));
+	}
+};
+
+T.app_folder_delete = async (s) => {
+	// 0.8.1379: parts that exist only here – listed, kept by default, deleted on request (web import and nucron.php app import --delete)
+	const p = s.ga;
+	if (!SITE) { s.skip = 'needs SITE'; return; }
+	if (!sql("SELECT COUNT(*) FROM zzzzsys_php WHERE sph_code = 'sample_hello'").startsWith('1')) { s.skip = 'no sample data'; return; }
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nunext-e2e-appdel-'));
+	const keep = path.join(os.tmpdir(), 'nunext-e2e-appdel.sql');
+	execSync('mysqldump ' + DB + ' zzzzsys_php zzzzsys_access_php > ' + keep, {shell: '/bin/bash'});
+	const cron = (a) => execSync('php nucron.php ' + a, {cwd: SITE, encoding: 'utf8'});
+	const add = (id) => sql(`INSERT INTO zzzzsys_php (zzzzsys_php_id, sph_code, sph_description, sph_php, sph_system) VALUES ('${id}', '${id}', 'E2E only here', 'echo 1;', '0')`);
+	const has = (id) => sql(`SELECT COUNT(*) FROM zzzzsys_php WHERE zzzzsys_php_id = '${id}'`) === '1';
+	try {
+		cron('app export --dir=' + dir);
+		add('e2e_onlyhere1');
+		let plan = cron('app import --dir=' + dir);
+		expect(/delete\?\s+only\s+procedure\s+procedure\|e2e_onlyhere1/.test(plan), 'dry run lists the part as delete?: ' + plan.slice(-300));
+		cron('app import --dir=' + dir + ' --yes');
+		expect(has('e2e_onlyhere1'), 'without --delete the part stays');
+		cron('app import --dir=' + dir + ' --yes --delete "--keep=procedure|e2e_onlyhere1"');
+		expect(has('e2e_onlyhere1'), '--keep protects it');
+		const out = cron('app import --dir=' + dir + ' --yes --delete');
+		expect(!has('e2e_onlyhere1') && /deleted/.test(out), 'deleted with --delete: ' + out);
+		const rp = (out.match(/project-restore-[A-Za-z0-9_.-]+\.json/) || [''])[0];
+		const back = rp ? JSON.parse(fs.readFileSync(path.join(SITE, '_backup', rp), 'utf8')) : {};
+		expect((back.procedure || []).some((r) => r.zzzzsys_php_id === 'e2e_onlyhere1') && back.restore_point === true, 'restore point holds the deleted part');
+		// web: application package, a part added afterwards, Delete all listed
+		await open(p, 'index.php?p=projects');
+		const [dl] = await Promise.all([p.waitForEvent('download'), p.click('#prjExportApp')]);
+		const file = await dl.path();
+		add('e2e_onlyhere2');
+		await p.click('#prjImportBtn'); await p.waitForSelector('#prjImportFile', {state: 'visible'});
+		await p.setInputFiles('#prjImportFile', file);
+		await Promise.all([p.waitForNavigation(), p.click('#prjImportCheck')]);
+		const row = p.locator('#prjImportTable tr[data-key="procedure|e2e_onlyhere2"]');
+		expect(await row.getAttribute('data-state') === 'only', 'web check: only here');
+		expect(await row.locator('select').inputValue() === 'skip', 'kept by default');
+		await p.check('#prjImpDelAll');
+		expect(await row.locator('select').inputValue() === 'delete', 'Delete all listed sets Delete');
+		p.removeAllListeners('dialog'); p.on('dialog', (d) => d.accept());
+		await p.click('#prjImportRun');
+		const ok = p.locator('.modal.show .modal-footer .btn-primary');
+		await ok.first().waitFor({timeout: 5000});
+		await Promise.all([p.waitForNavigation(), ok.first().click()]);
+		await p.waitForLoadState('networkidle');
+		if ((await p.url()).includes('p=reauth')) { await p.fill('input[type=password]', 'nu'); await Promise.all([p.waitForNavigation(), p.click('button[type=submit]')]); await p.waitForLoadState('networkidle'); }
+		expect(!has('e2e_onlyhere2'), 'web import deleted the part');
+		expect(has('sample_proc_hello'), 'parts still used stay');
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		execSync('mysql ' + DB + ' < ' + keep, {shell: '/bin/bash'});
+		fs.rmSync(dir, {recursive: true, force: true});
+		for (const b of fs.readdirSync(path.join(SITE, '_backup')).filter((n) => n.startsWith('project-restore-'))) fs.rmSync(path.join(SITE, '_backup', b));
+	}
+};

@@ -276,11 +276,12 @@ final class NuBuilderApi
 				$layout = null;
 				if (array_key_exists('layout', $in['fields'] ?? [])) $layout = in_array($in['fields']['layout'], ['absolute', 'auto', 'grid'], true) ? (string)$in['fields']['layout'] : 'absolute';
 				$store->formSave($fields, $layout, is_array($in['php'] ?? null) ? $in['php'] : null, NB_HOOKS,
-					NuFormMeta::tagsIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuFormMeta::recordCheckIn(is_array($in['fields']
+					NuFormMeta::tagsIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuFormMeta::browseSqlIn($in['fields'] ?? null)
+					+ NuFormMeta::recordCheckIn(is_array($in['fields']
 						?? null) ? $in['fields'] : []) + NuUserHelp::formKeysIn(is_array($in['fields']
 						?? null) ? $in['fields'] : []) + NuRowDetails::keysIn(is_array($in['fields']
 						?? null) ? $in['fields'] : []) + NuCalendar::keysIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuRecycle::keysIn(is_array($in['fields']
-						?? null) ? $in['fields'] : []));
+						?? null) ? $in['fields'] : []) + NuRecordView::keysIn(is_array($in['fields'] ?? null) ? $in['fields'] : []));
 				$store->commit('form.save');
 				$out();
 

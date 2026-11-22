@@ -1642,9 +1642,10 @@ T.framed_list_outer_values = async (s) => {
 	drop();
 	try {
 		const bsql = "SELECT * FROM sample_customer WHERE IFNULL(cus_country, '') = '#e2e_fr_pick#' ORDER BY cus_code";
-		sql(`INSERT INTO zzzzsys_form (zzzzsys_form_id, sfo_type, sfo_code, sfo_description, sfo_table, sfo_primary_key, sfo_browse_sql, sfo_browse_javascript, sfo_browse_rows_per_page) VALUES
-			('${B}', 'browse', '${B}', 'E2E framed list', 'sample_customer', 'sample_customer_id', FROM_BASE64('${b64(bsql)}'), 'if (nuIsIframe()) { nuHideHolders(0, 1); }', 50),
-			('${L}', 'launch', '${L}', 'E2E outer form', '', '', '', '', 0);
+		sql(`INSERT INTO zzzzsys_form (zzzzsys_form_id, sfo_type, sfo_code, sfo_description, sfo_table, sfo_primary_key, sfo_browse_sql, sfo_browse_javascript, sfo_browse_rows_per_page, sfo_json) VALUES
+			('${B}', 'browse', '${B}', 'E2E framed list', 'sample_customer', 'sample_customer_id', FROM_BASE64('${b64(bsql)}'), 'if (nuIsIframe()) { nuHideHolders(0, 1); }', 50,
+				'{"nunext":{"browse_sql_client":true}}'),
+			('${L}', 'launch', '${L}', 'E2E outer form', '', '', '', '', 0, NULL);
 			INSERT INTO zzzzsys_tab (zzzzsys_tab_id, syt_zzzzsys_form_id, syt_title, syt_order) VALUES ('${T}', '${L}', 'Main', 10), ('${T}b', '${B}', 'Main', 10);
 			INSERT INTO zzzzsys_browse (zzzzsys_browse_id, sbr_zzzzsys_form_id, sbr_title, sbr_display, sbr_align, sbr_width, sbr_order) VALUES ('e2e_fr_b1', '${B}', 'Code', 'cus_code', 'l', 100, 10), ('e2e_fr_b2', '${B}', 'Country', 'cus_country', 'l', 80, 20);
 			INSERT INTO zzzzsys_object (zzzzsys_object_id, sob_all_zzzzsys_form_id, sob_all_zzzzsys_tab_id, sob_all_id, sob_all_label, sob_all_type, sob_select_sql, sob_all_top, sob_all_left, sob_all_width, sob_all_height, sob_all_order, sob_input_file_target) VALUES
@@ -1756,4 +1757,30 @@ T.numessage_card = async (s) => {
 	await p.keyboard.press('Escape');
 	expect(await p.locator('#nuMessageDiv').count() === 0, 'Esc did not close it');
 	s.result = r;
+};
+
+T.runphp_page = async (s) => {
+	// nuRunPHP opens the output as a page of its own (?p=runphp&i=<token>, as nuBuilder Forte's nurunphp.php?i=): a procedure can link
+	// to itself with more parameters ($_SERVER['REQUEST_URI'] . '&x=1' → $_GET['x']) and a reload runs it again
+	const p = s.ga;
+	const b64 = (t) => Buffer.from(t).toString('base64');
+	const code = "$x = $_GET['e2e_x'] ?? '';\nif ($x === '') { $url = $_SERVER['REQUEST_URI'] . '&e2e_x=2'; echo \"<a id='e2eNext' href='$url'>next</a>\"; return; }\n"
+		+ "echo '<p id=\"e2eGot\">X=' . htmlspecialchars($x) . '|R=' . nuHash()['RECORD_ID'] . '</p>';";
+	const ord = sql("SELECT sample_order_id FROM sample_order ORDER BY sample_order_id LIMIT 1");
+	sql("DELETE FROM zzzzsys_php WHERE zzzzsys_php_id = 'e2e_runphp'; INSERT INTO zzzzsys_php (zzzzsys_php_id, sph_code, sph_description, sph_group, sph_php, sph_global) VALUES ('e2e_runphp', 'e2e_runphp', 'e2e', 'e2e', FROM_BASE64('" + b64(code) + "'), '1')");
+	try {
+		await open(p, 'index.php?p=form&f=sampleorder&r=' + ord); await p.waitForSelector('#nuSaveButton');
+		const [w] = await Promise.all([p.context().waitForEvent('page'), p.evaluate(() => { nuRunPHP('e2e_runphp'); })]);
+		await w.waitForSelector('#e2eNext', { timeout: 15000 });
+		expect(/[?&]p=runphp&i=[0-9a-f]{24}/.test(w.url()), 'own address: ' + w.url());
+		await Promise.all([w.waitForNavigation(), w.click('#e2eNext')]);
+		const got = await w.textContent('#e2eGot');
+		expect(got === 'X=2|R=' + ord, 'link with a parameter runs the procedure again with the form\'s hash: ' + got + ' / ' + w.url());
+		await w.reload(); expect((await w.textContent('#e2eGot')) === got, 'reload runs it again');
+		const bad = await w.goto(new URL('index.php?p=runphp&i=' + '0'.repeat(24), w.url()).href);
+		expect(bad.status() === 410, 'unknown token: ' + bad.status());
+		await w.close();
+	} finally {
+		sql("DELETE FROM zzzzsys_php WHERE zzzzsys_php_id = 'e2e_runphp'");
+	}
 };

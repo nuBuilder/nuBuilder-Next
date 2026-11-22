@@ -144,3 +144,25 @@
 		if (d) { d.open = true; d.scrollIntoView({block: 'start'}); }
 	}
 }());
+
+(function () {
+	'use strict';
+	// import check: "Delete all listed" sets every "only here" part to Delete (and back to Leave as it is)
+	var delAll = document.getElementById('prjImpDelAll');
+	if (delAll) {
+		var rows = function () { return document.querySelectorAll('#prjImportTable tr[data-state="only"] select.prjImpAct'); };
+		delAll.addEventListener('change', function () {
+			rows().forEach(function (sel) {
+				if (!sel.querySelector('option[value="delete"]')) return;
+				sel.value = delAll.checked ? 'delete' : 'skip';
+				sel.dispatchEvent(new Event('change', {bubbles: true}));
+			});
+		});
+		document.getElementById('prjImportTable').addEventListener('change', function (e) {
+			if (!e.target.matches || !e.target.matches('tr[data-state="only"] select.prjImpAct')) return;
+			var list = Array.prototype.slice.call(rows());
+			delAll.checked = list.length > 0 && list.every(function (sel) { return sel.value === 'delete'; });
+			e.target.closest('tr').classList.toggle('table-danger', e.target.value === 'delete');
+		});
+	}
+}());

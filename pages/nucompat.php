@@ -161,7 +161,7 @@ if (nu_db()->type === 'sqlsrv' || (NuHash::devMode() && isset($_GET['mssql']))):
 <div class="card shadow-sm mb-4" id="compat_mssql">
 	<div class="card-header d-flex flex-wrap gap-2 align-items-center">
 		<span class="fw-semibold me-auto"><i class="bi bi-database-exclamation me-1"></i><?= h(t('compat_ms_title')) ?>
-			<?= nu_info_tip(t('compat_ms_tip')) ?></span>
+			<?= nu_info_tip(t('compat_ms_tip'), 'ms-1', true, '', 'db-differences') ?></span>
 		<span class="badge <?= $ms ? 'text-bg-warning' : 'text-bg-success' ?>" id="compatMsCount"><?= $msN ?></span>
 	</div>
 	<div class="table-responsive">
@@ -198,7 +198,7 @@ if (nu_db()->type === 'sqlsrv' || (NuHash::devMode() && isset($_GET['mssql']))):
 <div class="card shadow-sm mb-4" id="compat_hash">
 	<div class="card-header d-flex flex-wrap gap-2 align-items-center">
 		<span class="fw-semibold me-auto"><i class="bi bi-shield-exclamation me-1"></i><?= h(t('compat_hash_title')) ?>
-			<?= nu_info_tip(t('compat_hash_tip')) ?></span>
+			<?= nu_info_tip(t('compat_hash_tip'), 'ms-1', true, '', 'hash-variables') ?></span>
 		<span class="badge <?= $unq ? 'text-bg-warning' : 'text-bg-success' ?>"><?= count($unq) ?></span>
 	</div>
 	<div class="table-responsive">

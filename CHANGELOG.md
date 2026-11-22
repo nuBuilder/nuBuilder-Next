@@ -3,6 +3,124 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.1390 – Release gate
+- Release gate: full test run (smoke, end-to-end, cross-tests against nuBuilder Forte, ZAP); the documentation, the tutorial,
+  FEATURES.md and the open points were brought up to date first.
+
+## 0.8.1389 – nuRunPHP output page
+- nuRunPHP: the output of a procedure gets a page with an address of its own (as nurunphp.php?i= in nuBuilder Forte).
+  A procedure that links to itself with extra parameters ($_SERVER['REQUEST_URI'] . '&name=value') now runs again with
+  $_GET['name'] – the link used to go to the form API and ended with "POST required". A reload runs the procedure again;
+  the address works for some hours in the session that opened it. Downloads and the iframe of nuRunPHP work as before.
+- Tests: the database reset test listens for the reset steps before it starts the reset (a small dump could finish its
+  first steps before the test looked).
+
+## 0.8.1387 – Row height of the procedures list
+- Procedures list: the "Used in" column no longer makes its rows a little taller than the other lists.
+- Tests: adjusted to the larger manifest, the opt-in for the list SQL in the browser and the timing of lookups.
+
+## 0.8.1386 – Code search Replace button
+- Code search: Replace is now a button in the search row – on phones an icon next to Options and Filters, on wider screens with its
+  name. It turns light blue while the replace field is open. The small link below the search field is gone.
+
+## 0.8.1385 – Always open in view mode
+- View mode: new switch "Always open in view mode" in the view's top bar. When it is on, records of that form open in view mode
+  first – for you only, stored with your user (every device). New records and copies still open for editing; after Edit the record
+  stays open for editing, also when Save reloads it; links with view=0 open for editing. A short message confirms the change; switch
+  it off in the same place. Works on every form and on the user form.
+
+## 0.8.1384 – View mode of records
+- View mode of a record: a View button next to the record buttons (or Ctrl+Shift+V) shows the whole record as a read-only data
+  sheet – every tab at once, fields as text, sub-forms as small tables, no inputs, buttons or links. Empty fields are hidden (Show
+  empty fields brings them back), ← / → step through the records of the list it was opened from, Esc or Edit goes back, Ctrl+P
+  prints the sheet alone. Fields the form's code hides, withheld and masked fields stay as on the record page.
+- Works on every form and on the user form; a form can show up to six fields as key facts on top (design mode → Data → Key facts
+  in view mode).
+
+## 0.8.1383 – Lists keep their sideways position
+- Phones and narrow screens: a list shown as a table keeps its sideways scroll position when you sort, page, filter or reload it (system
+  lists and form lists, per list in the browser tab); after a sort the column you sorted by is moved into view when it is off screen,
+  next to the fixed first column.
+
+## 0.8.1382 – Procedures: sort by Used in
+- Procedures list: the column "Used in" can be sorted – by the number of forms, then by the number of places; procedures not used and
+  hooks come last (or first, the other way round).
+
+## 0.8.1381 – Phones: first column title stays on top
+- Fix: lists shown as a table on phones – after scrolling down (column titles stay at the top) and then sideways, the other column titles
+  slid over the title of the first column; it now stays on top.
+
+## 0.8.1380 – Procedures: where they are used
+- Procedures list: new column "Used in" – the number of forms that use the procedure; the menu behind it lists every place with a link
+  (run buttons, objects with it as Select or display procedure or lookup PHP, reports, dashboard widgets, start page tiles, calls in code).
+  "≈" marks counts that include calls found in code by their text; form hooks and global hooks are marked as hooks.
+- New filter "Used in" on the procedures list: used, not used or hook – for cleaning up (a procedure run from the server's cron or called
+  by a name built at run time shows as not used).
+- Procedure page, tab Usage: the same places, each with a link (also dashboard widgets, start page tiles, HTML objects and Global code),
+  a note for hooks; deleting is blocked while a widget or tile still uses the procedure, and the delete question names the code places
+  that still call it.
+
+## 0.8.1379 – Import: parts that exist only here
+- Import of a project or application package: parts that exist here but not in the package are listed as "Only here" – for a project
+  package the parts of the same project, for the application package every own part. They stay unless you choose Delete per row or
+  switch on "Delete all listed".
+- A part that something kept still uses (a form opened as sub-form, lookup or button target, a form an access level starts with, a
+  procedure or report behind a button) cannot be deleted – the row says by what. Tables are never deleted.
+- Access rights on the package's forms, procedures and reports for levels the package gives no right show as one "Only here" line and can
+  be removed the same way.
+- Deleted parts go into the restore point too, so importing it brings them back; a deleted form is also kept in the form history.
+- Command line: nucron.php app import lists parts no longer in the folder as "delete?"; --yes --delete deletes them, --keep=<kind>|<id>
+  protects single ones.
+
+## 0.8.1378 – Dev, test and production: application packages and git folders
+- Moving the application between development, test and production: Projects → Export application (globeadmin) packs every form,
+  procedure, report and the other parts that are not built in, with the table structures, into one package to import elsewhere.
+- Project packages now also carry permission items, formats, files, data exports and webhooks (without their secrets), the access
+  rights of forms, procedures and reports (matched by the code of the access level) and the translations of the forms' texts.
+- Import: a table that exists gets the columns the package has and it lacks (nothing is dropped or changed); help pages that did not
+  change show as "the same"; before anything is replaced, the current versions are kept as a restore point in the backup folder,
+  linked in the message after the import – importing it undoes the replacements.
+- Git: php nucron.php app export --dir=<folder> [--project=<code>] writes the application as a folder – one folder per item, code in
+  files of its own; the same database always writes the same files, so a git diff shows only real changes. php nucron.php app import
+  --dir=<folder> lists what an import would do, --yes imports.
+- Fix: the formats of a project package overwrote the package's format name, so a package with formats could not be imported.
+
+## 0.8.1377 – List SQL in the browser only on request
+- Lists: the list's SQL is no longer sent to the browser by default – it showed table and column names and the filter to anyone
+  with the browser's tools. A form whose JavaScript needs it (nuCurrentProperties().browse_sql) switches it on in design mode →
+  Browse list, "Send the list's SQL to the form's JavaScript"; without the switch it holds only the hash variables without a value.
+- Procedures started from a list always get the list's SQL in nuHash()['browse_sql'] – the server takes it from the list it showed,
+  never from the browser, so a changed value sent by the browser has no effect.
+- Compatibility check: JavaScript that reads browse_sql on a form with the switch off is listed under nuBuilder Forte 4.9 features.
+
+## 0.8.1376 – More (i) tips open their documentation section
+- Phones and tablets: a long tap on an (i) now opens the documentation section about that setting on many more pages – e-mail,
+  updates and backups, plugins, data export, code search, webhooks, AI providers, single sign-on, IP access, security settings,
+  themes, setup wizard, the start page tab of access levels, the user form, the new form wizard, the compatibility check, reports
+  with AI and debug results. Other (i) icons open the page's own chapter as before.
+- Design mode: F1 and the long tap open the chapter about designing a form instead of the one about editing records.
+
+## 0.8.1375 – Long tap on the toolbar (i)
+- Phones and tablets: a long tap on the (i) button of the toolbar (record and form information) also opens the page's chapter of the
+  documentation; a short tap still opens the information panel.
+
+## 0.8.1374 – Long tap on (i) opens the documentation
+- Phones and tablets: a long tap on an (i) opens the documentation in a new tab – the section about that field where there is one
+  (on the user form: Code, one-time login link, admin role, password reset), otherwise the page's own chapter, as F1 does on a
+  computer. A short tap still shows the hint; the icon grows slightly once the tap is long enough.
+
+## 0.8.1373 – User code uniqueness switchable
+- Users: the hint on the Code title no longer suggests "Cost centre" as a new title – the code is unique, so only one user could
+  have each cost centre. The example is now "Staff number", and the hint says whether codes must be unique.
+- Users: the globeadmin can switch off that each user has a different code – in the rename dialog of the Code title (pencil),
+  switch "Each user has a different code". Then several users can share a code (e.g. a cost centre) on the user form, in the data
+  import and over the REST API; the key mark next to the title is hidden and the integrity check no longer lists doubled codes.
+  On by default.
+
+## 0.8.1372 – Push only on request or with a gate
+- Development notes: fast releases are no longer pushed to GitHub – only on request or with a release gate, so the branch main
+  (and "Get branch main" on the update page) stays on tested or explicitly pushed versions.
+
 ## 0.8.1371 – CI on PHP 8.4 and 8.5
 - Automatic tests on GitHub also run on PHP 8.4 and 8.5 (installation, browser smoke test, self-test, unit tests and the check for
   PHP warnings and deprecations), and the static code analysis also reads the code as PHP 8.4, so functions that newer PHP versions

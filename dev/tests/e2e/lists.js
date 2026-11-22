@@ -1872,3 +1872,140 @@ T.row_hover_line = async (s) => {
 	}
 	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
 };
+
+// the list's SQL: PHP always from the server (nuHash()['browse_sql'], the browser's value ignored); the browser only with the form's switch
+T.browse_sql_optin = async (s) => {
+	const p = s.ga;
+	const fid = sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE zzzzsys_form_id = 'samplecustomer'");
+	if (!fid) { s.skip = 'no sample data'; return; }
+	const json0 = sql("SELECT COALESCE(sfo_json, '') FROM zzzzsys_form WHERE zzzzsys_form_id = '" + fid + "'");
+	sql("DELETE FROM zzzzsys_php WHERE zzzzsys_php_id = 'e2e_bsq'");
+	sql(`INSERT INTO zzzzsys_php (zzzzsys_php_id, sph_code, sph_description, sph_run, sph_global, sph_system, sph_php) VALUES ('e2e_bsq', 'e2e_bsq', 'e2e', 'hide', '1', '0',
+		'nuAddJavascript("window.e2eBsq = " . json_encode((string)(nuHash()[''browse_sql''] ?? '''')) . ";");')`);
+	const run = async () => { await p.evaluate(() => { window.e2eBsq = null; nuRunPHPHidden('e2e_bsq'); }); await p.waitForFunction(() => window.e2eBsq !== null, null, { timeout: 8000 }); return p.evaluate(() => window.e2eBsq); };
+	try {
+		await open(p, 'index.php?p=form&f=samplecustomer');
+		const cli = await p.evaluate(() => nuCurrentProperties().browse_sql);
+		expect(!/FROM \(SELECT \* FROM/.test(String(cli)), 'browser got the SQL without the switch: ' + cli);
+		let v = await run();
+		expect(/FROM \(SELECT \* FROM .*sample_customer/i.test(v), 'procedure without the list SQL: ' + v);
+		// a forged value from the browser is not used
+		await p.evaluate(() => { window.e2eBsq = null; });
+		const forged = await p.evaluate(async (f) => {
+			const r = await NuUtil.post('index.php?p=formapi', {action: 'php', form_id: f, code: 'e2e_bsq', values: {}, crumb: {browse_sql: 'SELECT forged'}});
+			return JSON.stringify(r);
+		}, fid);
+		expect(!/forged/.test(forged) && /sample_customer/i.test(forged), 'forged browse_sql reached the procedure: ' + forged.slice(0, 200));
+		// switch on (design API field) → the browser gets it
+		await p.evaluate(async (f) => NuUtil.post('index.php?p=builderapi', {action: 'form.save', form_id: f, fields: {browse_sql_client: '1'}}), fid);
+		expect(/browse_sql_client":true/.test(sql("SELECT sfo_json FROM zzzzsys_form WHERE zzzzsys_form_id = '" + fid + "'")), 'switch not stored');
+		await open(p, 'index.php?p=form&f=samplecustomer');
+		const cli2 = await p.evaluate(() => nuCurrentProperties().browse_sql);
+		expect(/FROM \(SELECT \* FROM .*sample_customer/i.test(String(cli2)), 'browser without the SQL after switching on: ' + cli2);
+		// compatibility check: JavaScript reading browse_sql on a form with the switch off is listed
+		sql("UPDATE zzzzsys_form SET sfo_json = " + (json0 === '' ? 'NULL' : "'" + json0.replace(/'/g, "''") + "'") + ", sfo_browse_javascript = CONCAT(COALESCE(sfo_browse_javascript, ''), '\\n// e2e\\nvar e2eB = nuCurrentProperties().browse_sql;') WHERE zzzzsys_form_id = '" + fid + "'");
+		await open(p, 'index.php?p=compat');
+		expect(await p.locator('#compatFOpen').innerText().then(t => /browse_sql/.test(t)), 'compatibility check does not list the form');
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		sql("UPDATE zzzzsys_form SET sfo_json = " + (json0 === '' ? 'NULL' : "'" + json0.replace(/'/g, "''") + "'") + ", sfo_browse_javascript = REPLACE(sfo_browse_javascript, '\\n// e2e\\nvar e2eB = nuCurrentProperties().browse_sql;', '') WHERE zzzzsys_form_id = '" + fid + "'");
+		sql("DELETE FROM zzzzsys_php WHERE zzzzsys_php_id = 'e2e_bsq'");
+	}
+};
+
+T.procedure_used_in = async (s) => {
+	// 0.8.1380: procedures list "Used in" (buttons, objects, reports, tiles, widgets, code calls), filter Used / Not used / Hook, usage tab
+	const p = s.ga;
+	if (!sql("SELECT COUNT(*) FROM zzzzsys_php WHERE zzzzsys_php_id = 'sample_proc_hello'").startsWith('1')) { s.skip = 'no sample data'; return; }
+	const keep = path.join(os.tmpdir(), 'nunext-e2e-procuse.sql');
+	execSync('mysqldump ' + DB + ' zzzzsys_php zzzzsys_form > ' + keep, {shell: '/bin/bash'});
+	try {
+		sql(`INSERT INTO zzzzsys_php (zzzzsys_php_id, sph_code, sph_description, sph_php, sph_system) VALUES ('e2eprocused', 'e2e_called', 'E2E called from code', 'echo 1;', '0'),
+			('e2eprocfree', 'e2e_free', 'E2E not used', 'echo 1;', '0');
+			UPDATE zzzzsys_form SET sfo_javascript = CONCAT(COALESCE(sfo_javascript, ''), '\\nfunction e2eCall() { nuRunPHPHidden("e2e_called"); }') WHERE zzzzsys_form_id = 'sampleproduct'`);
+		await open(p, 'index.php?p=procedures&origin=own&view=default');
+		const cell = (code) => p.locator('table.nu-table tbody tr', {hasText: code}).first().locator('.nuProcUse, .nuProcUnused');
+		const hello = cell('sample_hello');
+		expect(/2/.test(await hello.innerText()), 'sample_hello: 2 forms – ' + await hello.innerText());
+		await hello.locator('button').click();
+		expect(await hello.locator('.dropdown-menu .dropdown-item').count() >= 4, 'menu lists every place');
+		await p.keyboard.press('Escape');
+		const called = cell('e2e_called');
+		expect(/1/.test(await called.innerText()) && (await called.innerText()).includes('≈'), 'code call counted with ≈: ' + await called.innerText());
+		expect(await cell('e2e_free').getAttribute('class') === 'text-body-secondary nuProcUnused', 'unused shows –');
+		await open(p, 'index.php?p=procedures&origin=own&used=unused');
+		const rows = await p.locator('table.nu-table tbody').innerText();
+		expect(rows.includes('e2e_free') && !rows.includes('sample_hello') && !rows.includes('e2e_called'), 'filter Not used');
+		// sortable (0.8.1381): most used first, not used last
+		await open(p, 'index.php?p=procedures&origin=own&sort=used&dir=desc');
+		const order = await p.locator('table.nu-table tbody tr td:first-child').allInnerTexts();
+		const at = (c) => order.findIndex((x) => x.includes(c));
+		expect(at('sample_hello') >= 0 && at('sample_hello') < at('e2e_called') && at('e2e_called') < at('e2e_free'), 'sort by Used in: ' + order.join(' | '));
+		await open(p, 'index.php?p=procedures&id=e2eprocused');
+		await p.click('[data-tab=usage]');
+		expect(await p.locator('#procUsage tbody tr').count() === 1 && (await p.locator('#procUsage').innerText()).includes('sample_product'), 'usage tab names the form');
+		expect((await p.locator('#procDelete').evaluate((b) => b.form.getAttribute('data-confirm'))).includes('1'), 'delete question names the code places');
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		execSync('mysql ' + DB + ' < ' + keep, {shell: '/bin/bash'});
+	}
+};
+
+T.phone_table_head_first_col = async (s) => {
+	// 0.8.1381: system list as a table on a phone – after scrolling down (titles float) and sideways, the first column's title stays on top
+	const ctx = await browser.newContext({viewport: {width: 390, height: 700}, hasTouch: true, isMobile: true, storageState: await s.ga.context().storageState()});
+	const p = await ctx.newPage();
+	try {
+		await p.addInitScript(() => { try { localStorage.setItem('nunext-lv-phone-procedures', 'table'); } catch (e) { /* expected in some contexts */ } });
+		await p.goto(BASE + 'index.php?p=procedures&origin=&per=50');
+		await p.waitForSelector('.nuLvTableWrap table.nu-table');
+		if (await p.locator('.nuLvTableWrap table.nu-table tbody tr').count() < 6) { s.skip = 'too few procedures'; return; }
+		await p.evaluate(() => window.scrollTo(0, 500));
+		await p.waitForTimeout(300);
+		expect(await p.locator('.nuLvTableWrap table.nuHeadFloat').count() === 1, 'titles float after scrolling down');
+		await p.evaluate(() => { const w = document.querySelector('.nuLvTableWrap'); w.scrollLeft = 200; w.dispatchEvent(new Event('scroll')); });
+		await p.waitForTimeout(300);
+		const top = await p.evaluate(() => {
+			const th = document.querySelector('.nuLvTableWrap table thead th:first-child'), r = th.getBoundingClientRect();
+			const hit = document.elementFromPoint(r.left + Math.min(20, r.width / 2), r.top + r.height / 2);
+			return !!hit && (hit === th || th.contains(hit));
+		});
+		expect(top, 'first column title is not covered by the other titles');
+	} finally { await ctx.close(); }
+};
+
+T.list_hscroll_keep = async (s) => {
+	// 0.8.1383: phone – a list scrolled sideways keeps its position after sorting (in place) and a reload; the sorted column is in view
+	const ctx = await browser.newContext({viewport: {width: 390, height: 700}, hasTouch: true, isMobile: true, storageState: await s.ga.context().storageState()});
+	const p = await ctx.newPage();
+	try {
+		await p.addInitScript(() => { try { localStorage.setItem('nunext-lv-phone-procedures', 'table'); } catch (e) { /* expected in some contexts */ } });
+		await p.goto(BASE + 'index.php?p=procedures&origin=&view=all');
+		await p.waitForSelector('.nuLvTableWrap table.nu-table');
+		const pos = () => p.evaluate(() => document.querySelector('.nuLvTableWrap').scrollLeft);
+		const max = await p.evaluate(() => { const w = document.querySelector('.nuLvTableWrap'); return w.scrollWidth - w.clientWidth; });
+		if (max < 300) { s.skip = 'table not wide enough'; return; }
+		await p.evaluate(() => { document.querySelector('.nuLvTableWrap').scrollLeft = 260; });
+		await p.waitForTimeout(200);
+		await p.reload();
+		await p.waitForSelector('.nuLvTableWrap table.nu-table');
+		await p.waitForTimeout(300);
+		expect(Math.abs(await pos() - 260) < 3, 'position kept after reload: ' + await pos());
+		// sort by a column that is on screen now
+		const visible = await p.evaluate(() => {
+			const w = document.querySelector('.nuLvTableWrap'), wr = w.getBoundingClientRect();
+			const th = [...w.querySelectorAll('thead th')].slice(1).find((h) => { const r = h.getBoundingClientRect(); return h.querySelector('a.nu-sort') && r.left > wr.left + 120 && r.right < wr.right; });
+			return th ? th.cellIndex : -1;
+		});
+		expect(visible > 0, 'a sortable title on screen');
+		await p.evaluate((i) => document.querySelectorAll('.nuLvTableWrap thead th')[i].querySelector('a.nu-sort').click(), visible);
+		await p.waitForFunction((i) => !!document.querySelector('.nuLvTableWrap thead th:nth-child(' + (i + 1) + ')[aria-sort]'), visible, {timeout: 8000});
+		await p.waitForTimeout(400);
+		const inView = await p.evaluate(() => {
+			const w = document.querySelector('.nuLvTableWrap'), wr = w.getBoundingClientRect(), r = w.querySelector('thead th[aria-sort]').getBoundingClientRect();
+			const fx = w.querySelector('thead th').getBoundingClientRect();
+			return r.left >= fx.right - 2 && r.left < wr.right - 20;   // starts right of the fixed first column, on screen
+		});
+		expect(await pos() > 0 && inView, 'after sorting: still scrolled (' + await pos() + ') and the sorted column in view');
+	} finally { await ctx.close(); }
+};

@@ -2612,3 +2612,105 @@ T.access_delete_expired = async (s) => {
 		del();
 	}
 };
+
+// user code unique can be switched off in the rename dialog of the code (the owner: grouping codes such as a cost centre)
+T.user_code_unique_switch = async (s) => {
+	const p = s.ga;
+	const ben = sql("SELECT zzzzsys_user_id FROM zzzzsys_user WHERE sus_login_name = 'sample_ben'");
+	const carla = sql("SELECT zzzzsys_user_id FROM zzzzsys_user WHERE sus_login_name = 'sample_carla'");
+	if (!ben || !carla) { s.skip = 'sample users missing'; return; }
+	const oldBen = sql("SELECT COALESCE(sus_code, '') FROM zzzzsys_user WHERE zzzzsys_user_id = '" + ben + "'");
+	const oldCarla = sql("SELECT COALESCE(sus_code, '') FROM zzzzsys_user WHERE zzzzsys_user_id = '" + carla + "'");
+	const mark = () => p.evaluate(() => { const m = document.querySelector('label[for="sus_code"] .nuMarkUnique'); return m ? !m.hidden : null; });
+	const saveCarla = async (code) => {
+		await open(p, 'index.php?p=user&id=' + encodeURIComponent(carla));
+		await p.fill('#sus_code', code);
+		await Promise.all([p.waitForNavigation(), p.click('button[data-nu-save]')]);
+		return p.evaluate(() => !!document.querySelector('#sus_code.is-invalid'));
+	};
+	try {
+		sql("UPDATE zzzzsys_user SET sus_code = 'E2E-CC1' WHERE zzzzsys_user_id = '" + ben + "'");
+		await open(p, 'index.php?p=user&id=' + encodeURIComponent(carla));
+		expect(await mark() === true, 'key mark not shown while unique');
+		const tip = await p.evaluate(() => (document.querySelector('label[for="sus_code"] + .nuInfoTip') || {}).getAttribute?.('aria-label') || '');
+		expect(/Staff number/.test(tip) && !/Cost centre/.test(tip), 'code tip: ' + tip);
+		// the switch only for the code
+		await p.click('.nuUserLblEdit[data-key="user_additional1"]'); await p.waitForSelector('#userLblDlg.show');
+		expect(await p.locator('#userLblUniqueRow').isHidden(), 'switch shown for Additional 1');
+		await p.click('#userLblDlg .modal-footer [data-bs-dismiss]'); await p.waitForSelector('#userLblDlg', { state: 'hidden' }); await p.waitForTimeout(300);
+		await p.click('.nuUserLblEdit[data-key="user_code"]'); await p.waitForSelector('#userLblDlg.show');
+		expect(await p.locator('#userLblUniqueRow').isVisible(), 'switch not shown for the code');
+		expect(await p.isChecked('#userLblUnique'), 'switch not on by default');
+		await p.click('#userLblDlg .modal-footer [data-bs-dismiss]'); await p.waitForSelector('#userLblDlg', { state: 'hidden' });
+		expect(await saveCarla('E2E-CC1'), 'duplicate code accepted while unique');
+		// switch off
+		await open(p, 'index.php?p=user&id=' + encodeURIComponent(carla));
+		await p.click('.nuUserLblEdit[data-key="user_code"]'); await p.waitForSelector('#userLblDlg.show');
+		await p.uncheck('#userLblUnique'); await p.click('#userLblSave'); await p.waitForTimeout(1500);
+		expect(await mark() === false, 'key mark still shown after switching off');
+		expect(sql("SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'user_code_unique'") === '0', 'setting not stored');
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_nunext_log WHERE event = 'user_code_unique'") !== '0', 'not logged');
+		expect(!(await saveCarla('E2E-CC1')), 'duplicate code refused while switched off');
+		expect(sql("SELECT sus_code FROM zzzzsys_user WHERE zzzzsys_user_id = '" + carla + "'") === 'E2E-CC1', 'code not saved');
+		const tip2 = await p.evaluate(() => (document.querySelector('label[for="sus_code"] + .nuInfoTip') || {}).getAttribute?.('aria-label') || '');
+		expect(/same code/.test(tip2), 'tip does not say codes may repeat: ' + tip2);
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		sql("DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'user_code_unique'");
+		sql("DELETE FROM zzzzsys_nunext_log WHERE event = 'user_code_unique'");
+		sql("UPDATE zzzzsys_user SET sus_code = '" + oldBen + "' WHERE zzzzsys_user_id = '" + ben + "'");
+		sql("UPDATE zzzzsys_user SET sus_code = '" + oldCarla + "' WHERE zzzzsys_user_id = '" + carla + "'");
+	}
+};
+
+// long tap on an (i) on a touch screen opens its documentation (the tip's data-nu-doc, else the page's F1 chapter)
+T.info_tip_long_tap = async (s) => {
+	const ctx = await s.ga.context().browser().newContext({ locale: 'en-GB', hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 }, storageState: await s.ga.context().storageState() });
+	const p = await ctx.newPage();
+	try {
+		const uid = sql("SELECT zzzzsys_user_id FROM zzzzsys_user WHERE sus_login_name = 'sample_ben'");
+		await p.goto(BASE + 'index.php?p=user&id=' + encodeURIComponent(uid));
+		const sel = 'label[for="sus_code"] + .nuInfoTip';
+		expect(/#user-code$/.test(await p.getAttribute(sel, 'data-nu-doc') || ''), 'Code tip has no documentation link');
+		const tap = async (css, ms) => p.evaluate(async ([c, wait]) => {
+			const el = document.querySelector(c); el.scrollIntoView({ block: 'center' });
+			const r = el.getBoundingClientRect(), t = new Touch({ identifier: 1, target: el, clientX: r.x + 4, clientY: r.y + 4 });
+			el.dispatchEvent(new TouchEvent('touchstart', { touches: [t], targetTouches: [t], changedTouches: [t], bubbles: true, cancelable: true }));
+			await new Promise(res => setTimeout(res, wait));
+			el.dispatchEvent(new TouchEvent('touchend', { touches: [], targetTouches: [], changedTouches: [t], bubbles: true, cancelable: true }));
+		}, [css, ms]);
+		// short tap: no new tab
+		let popup = null; const onPage = pg => { popup = pg; }; ctx.on('page', onPage);
+		await tap(sel, 100); await p.waitForTimeout(800);
+		expect(popup === null, 'short tap opened a tab');
+		const [pg] = await Promise.all([ctx.waitForEvent('page', { timeout: 5000 }), tap(sel, 700)]);
+		await pg.waitForLoadState();
+		expect(/p=help/.test(pg.url()) && /#user-code$/.test(pg.url()), 'long tap opened: ' + pg.url());
+		await pg.close();
+		// a tip without its own link → the page's chapter (F1)
+		const other = 'label[for="sus_expires_on"] + .nuInfoTip';
+		if (await p.locator(other).count()) {
+			const help = await p.getAttribute('body', 'data-nu-help');
+			const [pg2] = await Promise.all([ctx.waitForEvent('page', { timeout: 5000 }), tap(other, 700)]);
+			expect(help && pg2.url().endsWith(help.replace(/^.*index\.php/, 'index.php')), 'fallback opened: ' + pg2.url() + ' expected ' + help);
+			await pg2.close();
+		}
+		// the (i) button of the toolbar (record information): long tap = the page's chapter, the panel stays closed
+		const help = await p.getAttribute('body', 'data-nu-help');
+		const [pg3] = await Promise.all([ctx.waitForEvent('page', { timeout: 5000 }), tap('#nuRecInfoBtn', 700)]);
+		expect(help && pg3.url().endsWith(help.replace(/^.*index\.php/, 'index.php')), 'toolbar (i) opened: ' + pg3.url());
+		await pg3.close();
+		expect(!(await p.locator('#nuRecInfo.show').count()), 'record info panel opened by the long tap');
+		ctx.off('page', onPage);
+		// other pages: (i) tips with their own section; design mode = the chapter about designing a form
+		await p.goto(BASE + 'index.php?p=email');
+		expect(await p.locator('.nuInfoTip[data-nu-doc$="#email-settings"]').count() > 0, 'e-mail page tips without their section');
+		await p.goto(BASE + 'index.php?p=update&tab=backups');
+		expect(await p.locator('.nuInfoTip[data-nu-doc$="#update-backups"]').count() > 0, 'update page tips without their section');
+		const f = sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE zzzzsys_form_id = 'samplecustomer'");
+		if (f) {
+			await p.goto(BASE + 'index.php?p=form&f=' + encodeURIComponent(f) + '&r=-1&design=1');
+			expect(/#builder-work-p$/.test(await p.getAttribute('body', 'data-nu-help') || ''), 'design mode help: ' + await p.getAttribute('body', 'data-nu-help'));
+		}
+	} finally { await ctx.close(); }
+};

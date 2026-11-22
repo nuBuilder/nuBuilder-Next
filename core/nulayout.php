@@ -793,10 +793,10 @@ function nu_ts_foot(): string
  * "Must be unique …" or, with $required (after the red *), "Required, and must be unique …". Used by the form runtime (NuRender::marks)
  * and nuBuilder Next's own record pages. Tooltips are initialised globally (assets/js/nuapp.js).
  */
-function nu_unique_mark(bool $required = false): string
+function nu_unique_mark(bool $required = false, bool $hidden = false): string
 {
 	$tip = t($required ? 'val_unique_req_tip' : 'val_unique_tip');
-	return '<span class="nuMark nuMarkUnique" tabindex="0" role="img" data-bs-toggle="tooltip" aria-label="' . h($tip) . '" title="' . h($tip) . '"><i class="bi bi-key" aria-hidden="true"></i></span>';
+	return '<span class="nuMark nuMarkUnique"' . ($hidden ? ' hidden' : '') . ' tabindex="0" role="img" data-bs-toggle="tooltip" aria-label="' . h($tip) . '" title="' . h($tip) . '"><i class="bi bi-key" aria-hidden="true"></i></span>';
 }
 
 /**
@@ -844,9 +844,14 @@ function nu_back_button(?string $route = null, ?string $url = null, string $clas
  * (i) tooltip next to a label or title – the one markup of the info icon (UI pattern, code review R3). Outside the <label>, so a
  * click does not toggle a switch. $cls: classes of the span (ms-1 by default); $wide: the wide tooltip; $trigger: e.g. 'hover focus click'.
  */
-function nu_info_tip(string $text, string $cls = 'ms-1', bool $wide = true, string $trigger = ''): string
+/**
+ * (i) with a tooltip. $doc = id of a section of the documentation (docs/pages): a long tap on a touch screen opens it (assets/js/nuapp.js);
+ * without one the long tap opens the page's own documentation (F1, <body data-nu-help>).
+ */
+function nu_info_tip(string $text, string $cls = 'ms-1', bool $wide = true, string $trigger = '', string $doc = ''): string
 {
 	return '<span class="nuInfoTip' . ($cls !== '' ? ' ' . h($cls) : '') . '" tabindex="0" role="' . ($trigger !== '' ? 'button' : 'img') . '" data-bs-toggle="tooltip"'
+		. ($doc !== '' ? ' data-nu-doc="' . h(nu_url('help') . '#' . $doc) . '"' : '')
 		. ($trigger !== '' ? ' data-bs-trigger="' . h($trigger) . '"' : '') . ($wide ? ' data-bs-custom-class="nuTipWide"' : '')
 		. ' aria-label="' . h($text) . '" title="' . h($text) . '"><i class="bi bi-info-circle"></i></span>';
 }

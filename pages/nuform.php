@@ -463,14 +463,23 @@ $client['crumb'] = (static function () use ($meta, $mode, $crumbShown, $hash, $l
 	}
 	return $c;
 })();
-// nuFORM.getCurrent().browse_sql as nuBuilder Forte (nuBrowseRows: $S->SQL – primary key and the column expressions in front of the
-// list's SQL with its hash variables filled in, wrapped as Forte 4.9 does; a #name# without a value stays as text). Form code builds
-// exports from it. Columns hidden or masked by field data access are left out (before: only the unset #names#)
+// the list's SQL as nuBuilder Forte (nuBrowseRows: $S->SQL – primary key and the column expressions in front of the list's SQL with its
+// hash variables filled in, wrapped as Forte 4.9 does; a #name# without a value stays as text; columns hidden or masked by field data
+// access left out). Kept in the session for nuHash()['browse_sql'] of procedures started from this list (pages/nuformapi.php – the
+// browser's value is never trusted); sent to the browser (nuCurrentProperties().browse_sql) only when the form asks for it
+// (design mode → Browse list, sfo_json nunext.browse_sql_client) – else only the unset #names#, as before
 if ($mode === 'browse' && is_array($client['browse'] ?? null) && isset(NuBrowse::$shown['sql'])) {
 	$bsCols = [$meta->primaryKey()];
 	foreach ($client['crumb']['columns'] as $bc) if (trim((string)$bc['display']) !== '') $bsCols[] = trim((string)$bc['display']);
 	$bsSql = rtrim(trim((string)preg_replace('/\s+/', ' ', (string)NuBrowse::$shown['sql'])), ';');
-	$client['browse']['sql'] = 'SELECT ' . implode(',', array_filter($bsCols, 'strlen')) . ' FROM (SELECT * FROM (' . $bsSql . ') AS wrapped) AS wrapped_query WHERE 1';
+	$bsFull = 'SELECT ' . implode(',', array_filter($bsCols, 'strlen')) . ' FROM (SELECT * FROM (' . $bsSql . ') AS wrapped) AS wrapped_query WHERE 1';
+	if (session_status() === PHP_SESSION_ACTIVE) {
+		$bsKeep = (array)($_SESSION[NuSess::BROWSE_SQL] ?? []);
+		unset($bsKeep[$meta->id]);
+		$bsKeep[$meta->id] = $bsFull;
+		$_SESSION[NuSess::BROWSE_SQL] = array_slice($bsKeep, -20, null, true);   // the last 20 lists
+	}
+	if (NuFormMeta::browseSqlToClient($meta->form['sfo_json'] ?? null)) $client['browse']['sql'] = $bsFull;
 }
 // WYSIWYG editor objects need TinyMCE (not bundled – a library pack, or the old hand copy in assets/vendor/tinymce)
 // – and form code that starts TinyMCE itself (tinymce.init on a textarea): nuBuilder Forte loads it on every form page
@@ -528,6 +537,7 @@ $foot = '<script>window.nuNext = ' . json_encode($client, JSON_HEX_TAG | JSON_HE
 	. ($calList || $calObjects ? NuCalendar::scriptTag() : '')   // calendars
 	. ($mode === 'edit' && NuFormRules::of($meta) ? '<script src="' . nu_asset('assets/js/nu/nurules.js') . '"></script>' : '')
 	. '<script src="' . nu_asset('assets/js/nu/nutooltip.js') . '"></script>'
+	. (!$bare && !$design ? NuRecordView::script() : '')           // view mode; on lists: the order of the records for ← / →
 	. ($uHelpAny ? NuUserHelp::foot() : '')                       // user help pages: side panel, F1, (?) of fields
 	. (NuAcl::can(NuAcl::FORM_ACCESS) ? '<script src="' . nu_asset('assets/js/nu/nuformaccess.js') . '"></script>' : '')
 	. (str_contains((string)($body ?? ''), 'nuPageFrame') ? NuPage::hostScript() : '')   // page forms in iframe run objects
@@ -644,6 +654,10 @@ nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategro
 			<?php endif; ?>
 			<?php if (!$client['is_new'] && $rights['delete'] && $meta->type() !== 'launch'): ?>
 				<button type="button" class="btn nuBtnAct nuBtnDel nuActionButton" id="nuDeleteButton"><i class="bi bi-trash me-1"></i><?= h(t('delete')) ?></button>
+			<?php endif; ?>
+			<?php if (!$client['is_new'] && $meta->type() !== 'launch' && !$bare && !$design && empty($printMode)): // view mode: the record as a read-only data sheet ?>
+				<?= NuRecordView::button(['title' => (string)(end($breadcrumbs)['title'] ?? $title), 'kind' => $meta->description(), 'head' => NuRecordView::head($meta),
+					'list' => $meta->id, 'edit' => $rights['save']]) ?>
 			<?php endif; ?>
 		<?php endif; ?>
 		<?php if (($mode === 'edit' || ($mode === 'browse' && $lookupTo === '')) && !$design && !$bare && empty($printMode) && NuDesign::allowed($meta)): // design mode (the list) ?>

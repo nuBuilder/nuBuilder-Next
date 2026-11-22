@@ -61,7 +61,7 @@ nu_layout_start(t('debug_title'), 'log');
 <div class="card shadow-sm nuListCard">
 	<div class="card-header nuListHead nuTitleBar">
 	<h1 class="h5 mb-0 fw-semibold"><?= h(t('debug_title')) ?><?php // the hint only as tooltip of the (i) ?>
-		<?= nu_info_tip(t('debug_hint'), 'fs-6 fw-normal ms-1', false) ?></h1>
+		<?= nu_info_tip(t('debug_hint'), 'fs-6 fw-normal ms-1', false, '', 'debug') ?></h1>
 	<div class="d-flex flex-wrap gap-2 align-items-center"><?= nu_back_button() ?>
 		<?php // Back · Refresh · Print in one style; the auto refresh switch at the right end, on phones in its own row ?>
 		<a class="btn nuBtnAct nuPhKeep" href="<?= h(nu_url('debug', $keep)) ?>" title="<?= h(t('debug_refresh')) ?>"><i class="bi bi-arrow-clockwise me-1"></i><?= h(t('debug_refresh')) ?></a>

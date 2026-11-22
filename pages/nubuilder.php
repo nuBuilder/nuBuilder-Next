@@ -66,7 +66,7 @@ if ($isNew && ($_GET['start'] ?? '') !== 'wizard') {
 			<div class="mb-3"><label class="form-label" for="nuNfPageDesc"><?= h(t('builder_description')) ?></label>
 				<input class="form-control" id="nuNfPageDesc" maxlength="300" required></div>
 			<div class="mb-3"><label class="form-label" for="nuNfPageCode"><?= h(t('builder_code')) ?></label>
-				<?= nu_info_tip(t('page_code_tip')) ?>
+				<?= nu_info_tip(t('page_code_tip'), 'ms-1', true, '', 'pages-create') ?>
 				<div class="input-group"><span class="input-group-text small">custom/pages/</span><input class="form-control font-monospace" id="nuNfPageCode"
 					maxlength="64" pattern="[A-Za-z0-9][A-Za-z0-9_-]{0,63}" required autocomplete="off" spellcheck="false"></div></div>
 			<div class="mb-1"><label class="form-label" for="nuNfPageMode"><?= h(t('page_open_mode')) ?></label>
@@ -196,7 +196,7 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 						</div>
 						<div class="col-sm-5 nbNew d-none">
 							<label class="form-label" for="nb_new_pk"><?= h(t('builder_primary_key')) ?></label><?php // the help as (i) next to the label (was a line below the field) ?>
-							<?= nu_info_tip(t('builder_new_pk_help')) ?>
+							<?= nu_info_tip(t('builder_new_pk_help'), 'ms-1', true, '', 'uuid-keys') ?>
 							<div class="input-group">
 								<input class="form-control" id="nb_new_pk" maxlength="64" autocomplete="off" spellcheck="false">
 								<select class="form-select flex-grow-0 w-auto" id="nb_new_pk_type" aria-label="<?= h(t('builder_pk_type')) ?>">
@@ -229,7 +229,7 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 							<div class="form-check form-switch mt-2">
 								<input class="form-check-input" type="checkbox" role="switch" id="nb_nulog" value="1">
 								<label class="form-check-label" for="nb_nulog"><?= h(t('builder_nulog')) ?></label>
-								<?= nu_info_tip(t('builder_nulog_tip')) ?>
+								<?= nu_info_tip(t('builder_nulog_tip'), 'ms-1', true, '', 'record-log') ?>
 							</div>
 						</div>
 					</div>
@@ -254,11 +254,11 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 						<div class="form-check form-switch mb-3">
 							<input class="form-check-input" type="checkbox" role="switch" id="nb_userhome" value="1" checked>
 							<label class="form-check-label" for="nb_userhome"><?= h(t('builder_userhome')) ?></label>
-							<?= nu_info_tip(t('builder_userhome_tip')) ?>
+							<?= nu_info_tip(t('builder_userhome_tip'), 'ms-1', true, '', 'form-new-after') ?>
 						</div>
 						<?php endif; ?>
 						<?php if ($nbLevels !== null): ?>
-						<div class="mb-1"><span class="form-label"><?= h(t('builder_levels')) ?></span><?= nu_info_tip(t('builder_levels_tip')) ?></div>
+						<div class="mb-1"><span class="form-label"><?= h(t('builder_levels')) ?></span><?= nu_info_tip(t('builder_levels_tip'), 'ms-1', true, '', 'form-new-after') ?></div>
 						<?php if (!$nbLevels): ?>
 							<div class="small text-body-secondary"><?= h(t('builder_levels_none')) ?></div>
 						<?php else: ?>

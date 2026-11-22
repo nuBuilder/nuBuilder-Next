@@ -81,7 +81,7 @@ nu_layout_start(t('sec_title'));
 		<?php if ($pkOn): $pkProblem = NuPasskey::problem(); $pkTip = t('pk_tip'); ?>
 		<div class="card shadow-sm mb-3" id="secPasskeys">
 			<div class="card-header fw-semibold d-flex align-items-center gap-2"><i class="bi bi-fingerprint"></i><?= h(t('pk_title')) ?>
-				<?= nu_info_tip($pkTip, '') ?>
+				<?= nu_info_tip($pkTip, '', true, '', 'passkeys') ?>
 				<span class="badge ms-auto <?= $pks ? 'text-bg-success' : 'text-bg-secondary' ?>" id="secPkCount"><?= h($pks ? t('pk_count', count($pks)) : t('sec_inactive')) ?></span></div>
 			<div class="card-body">
 				<?php if ($pkProblem !== ''): ?>

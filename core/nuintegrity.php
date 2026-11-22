@@ -394,6 +394,11 @@ final class NuIntegrity
 		return $out;
 	}
 
+	private static function codeUnique(): bool
+	{
+		try { return NuAuth::codeUnique(); } catch (Throwable $ig) { nu_ignored($ig, 'settings table not readable yet'); return true; }
+	}
+
 	/** Values used more than once (check id of self::UNIQUE). @return array{0: list<string>, 1: list<string>} [application rows, only Forte's rows] */
 	private static function duplicates(array $readable, string $id): array
 	{
@@ -401,6 +406,7 @@ final class NuIntegrity
 		$out = [[], []];
 		foreach (self::UNIQUE as [$t, $cols, $cid]) {
 			if ($cid !== $id || !isset($readable[$t])) continue;
+			if ($cols === ['sus_code'] && !self::codeUnique()) continue;         // user codes may repeat when switched off
 			$have = self::columnsOf($t);
 			foreach ($cols as $c) if (!isset($have[$c])) continue 2;
 			$list = implode(', ', $cols);

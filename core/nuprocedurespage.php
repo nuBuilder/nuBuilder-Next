@@ -44,7 +44,7 @@ final class NuProceduresPage
 			if ($action === 'delete' && $proc) {
 				NuAcl::require(NuAcl::FORM_PROCEDURE, 'delete');
 				if (NuProcedure::locked($proc)) NuAcl::require('__globeadmin_only__');
-				$objects = array_filter(NuProcedure::usage($id, (string)$proc['sph_code']), static fn($u) => $u['kind'] === 'object' || $u['kind'] === 'report');
+				$objects = array_filter(NuProcedure::usage($id, (string)$proc['sph_code']), static fn($u) => $u['kind'] !== 'code');
 				if ($objects) {
 					$errors['_'] = t('proc_err_used', implode(', ', array_map(static fn($u) => trim($u['form'] . ' · ' . $u['where'], ' ·'), $objects)));
 				} else {

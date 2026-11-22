@@ -941,11 +941,14 @@ T.db_reset = async (s) => {
 		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=dbreset'); }
 		expect(sql("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'e2e_dbr_marker'") === '1', 'wrong database name: tables deleted');
 		await p.fill('#dbrConfirm', sql('SELECT DATABASE()'));
-		await Promise.all([p.waitForNavigation({ timeout: 120000 }), p.click('#dbrRun')]);
-		// 0.8.1290: the reset runs in steps (?p=dbresetstep) – the page with the progress bar loads the result by itself
+		// the reset runs in steps (?p=dbresetstep) – listen before the click: a small dump can finish its first steps
+		// before the navigation promise resolves
 		const steps = [];
-		p.on('response', (rr) => { if (/p=dbresetstep/.test(rr.url())) steps.push(rr.status()); });
+		const onStep = (rr) => { if (/p=dbresetstep/.test(rr.url())) steps.push(rr.status()); };
+		p.on('response', onStep);
+		await Promise.all([p.waitForNavigation({ timeout: 120000 }), p.click('#dbrRun')]);
 		await p.waitForSelector('#dbrDone, #nuFlash .alert-danger, .alert-danger', { timeout: 180000 });
+		p.off('response', onStep);
 		expect(steps.length > 0 && steps.every((x) => x === 200), 'steps: ' + steps.join(','));
 		if (SITE) expect(!fs.readdirSync(path.join(SITE, '_update')).some((f) => /^\.dbreset-work/.test(f)), 'work copy left in _update/');
 		expect(await p.locator('#dbrDone').count() === 1, 'no result: ' + (await p.locator('.alert').allTextContents()).join(' | '));
@@ -978,7 +981,7 @@ T.db_reset_package = async (s) => {
 	const r = await go('index.php?p=dbreset');
 	if (r.status() === 404) { s.skip = 'developer mode off / not MySQL'; return; }
 	const ver = (fs.readFileSync(path.join(SITE, 'core/nuapp.php'), 'utf8').match(/NU_VERSION',\s*'([^']+)'/) || [])[1];
-	const pkgVer = (execSync('unzip -p ' + JSON.stringify(PKG) + ' nunext/nunext-manifest.json').toString().match(/"version":\s*"([^"]+)"/) || [])[1];
+	const pkgVer = (execSync('unzip -p ' + JSON.stringify(PKG) + ' nunext/nunext-manifest.json', {maxBuffer: 256 * 1024 * 1024}).toString().match(/"version":\s*"([^"]+)"/) || [])[1];
 	if (!ver || ver !== pkgVer) { s.skip = 'PKG ' + pkgVer + ' is not the installed ' + ver; return; }
 	const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'nudbp-')), dump = path.join(tmp, 'full.sql'), packs = path.join(SITE, 'vendor/packs'), packsBak = path.join(tmp, 'packs');
 	execSync('mysqldump ' + DB + ' > ' + dump);

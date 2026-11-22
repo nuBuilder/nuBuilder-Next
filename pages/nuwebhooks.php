@@ -64,7 +64,7 @@ if ($id === '' && $callId === '') {
 					<input class="form-check-input js-autosubmit" type="checkbox" role="switch" name="allow_private" value="1" id="whAllowPrivate"<?= $set['allow_private'] ? ' checked' : '' ?>>
 					<label class="form-check-label" for="whAllowPrivate"><?= h(t('wh_allow_private')) ?></label>
 				</div>
-				<?= nu_info_tip(t('wh_allow_private_tip'), '') ?>
+				<?= nu_info_tip(t('wh_allow_private_tip'), '', true, '', 'webhooks-security') ?>
 			</div>
 		</form>
 	<?php }
@@ -140,7 +140,7 @@ $selEvents = nu_is_post() ? array_map('strval', (array)($_POST['events'] ?? []))
 $active = nu_is_post() ? nu_check('active') === '1' : ($hook ? $hook['active'] : true);
 $err = static fn(string $k) => isset($errors[$k]) ? '<div class="invalid-feedback d-block">' . h($errors[$k]) . '</div>' : '';
 $inv = static fn(string $k) => isset($errors[$k]) ? ' is-invalid' : '';
-$tip = static fn(string $text) => nu_info_tip($text);
+$tip = static fn(string $text) => nu_info_tip($text, 'ms-1', true, '', 'webhooks-new');
 $formOpts = array_filter(nu_forms(), static fn($f, $fid) => !str_starts_with((string)$fid, 'nu') && in_array($f['type'], ['browseedit', 'edit', 'browse'], true), ARRAY_FILTER_USE_BOTH);
 $title = $hook ? $hook['name'] : t('wh_new');
 nu_body_class('nuRecPage');

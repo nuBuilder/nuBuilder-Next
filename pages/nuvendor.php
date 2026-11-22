@@ -172,7 +172,7 @@ $demoForms = trim((string)(nu_cfg('nuConfigDemoSavingAllowedIds') ?? ''));
 			<?php if ($demoForms !== ''):
 				$dTables = NuDemoData::tables(); $dInfo = NuDemoData::info(); $dSet = NuDemoData::setting(); ?>
 				<h3 class="h6 mt-3" id="demodata"><?= h(t('demo_data_title')) ?>
-					<?= nu_info_tip(t('demo_data_tip')) ?></h3>
+					<?= nu_info_tip(t('demo_data_tip'), 'ms-1', true, '', 'demo-mode') ?></h3>
 				<div class="small text-body-secondary mb-1"><?= h($dTables ? t('demo_data_tables', implode(', ', $dTables)) : t('demo_snap_no_tables')) ?></div>
 				<div class="small mb-2"
 					id="demoSnapState"><?php if ($dInfo): ?><i class="bi bi-camera me-1"></i><?= h(t('demo_snap_info', date(nu_dfmt('d.m.Y H:i'), (int)$dInfo['created']), (string)$dInfo['by'], array_sum((array)$dInfo['tables']))) ?>

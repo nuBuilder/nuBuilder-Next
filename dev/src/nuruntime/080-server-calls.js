@@ -76,12 +76,19 @@
 	api('nuRunPHP', function (code, iFrame, runBeforeSave) {
 		if (!beforeSaveOk(runBeforeSave)) return Promise.resolve(null);
 		var fr = iFrame ? (parent.document.getElementById(iFrame) || g(iFrame)) : null;
-		var w = fr ? null : window.open('', '_blank');
-		return call('php', procData(code)).then(function (res) {
+		var w = fr ? null : window.open('', '_blank');          // opened at once: a window opened after the answer is a blocked pop-up
+		// the output gets a page of its own (?p=runphp&i=<token>, as nuBuilder Forte's nurunphp.php?i=): a procedure can link to
+		// itself with more parameters ($_SERVER['REQUEST_URI'] . '&x=1') and a reload runs it again
+		return call('php', $.extend(procData(code), {window: 1})).then(function (res) {
 			if (res && res.file) { if (w) w.close(); saveFile(res.file); return; }       // a download: no window needed
 			applyResult(res);
-			if (fr) fr.srcdoc = res.output || '';
-			else if (w) { w.document.open(); w.document.write(res.output || ''); w.document.close(); }
+			if (res && res.url) {
+				var url = new URL(res.url, location.href).href;
+				if (fr) fr.src = url; else if (w) w.location.href = url;
+				return;
+			}
+			if (fr) fr.srcdoc = (res && res.output) || '';
+			else if (w) { w.document.open(); w.document.write((res && res.output) || ''); w.document.close(); }
 		});
 	});
 

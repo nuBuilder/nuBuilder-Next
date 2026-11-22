@@ -122,6 +122,12 @@ echo nu_page_header(t('cs_title'), ['icon' => 'bi-search', 'tip' => t('cs_hint')
 			<button type="button" class="btn btn-outline-secondary d-sm-none csPhBtn position-relative" id="csFiltBtn"
 				aria-label="<?= h(t('cs_filters')) ?><?= $filterCount ? ' (' . $filterCount . ')' : '' ?>" title="<?= h(t('cs_filters')) ?>"><i class="bi bi-funnel"
 				aria-hidden="true"></i><?= $filterCount ? '<span class="badge rounded-pill text-bg-primary csPhCount">' . $filterCount . '</span>' : '' ?></button>
+			<?php if ($canReplace): // the owner picked mockup A: Replace = an icon button next to Options / Filters (with its name from 576 px) ?>
+			<button class="btn btn-outline-secondary csPhBtn csRpBtn" type="button" data-bs-toggle="collapse" data-bs-target="#csRpRow"
+				aria-expanded="<?= $rmode ? 'true' : 'false' ?>" aria-controls="csRpRow" id="csRpToggle" title="<?= h(t('cs_replace')) ?>"
+				aria-label="<?= h(t('cs_replace')) ?>"><i class="bi bi-arrow-left-right" aria-hidden="true"></i><span
+				class="d-none d-sm-inline ms-1"><?= h(rtrim(t('cs_replace'), '.… ')) ?></span></button>
+			<?php endif; ?>
 			<div class="btn-group" role="group" aria-label="<?= h(t('cs_mode_phrase')) ?>" data-cs-opt="mode">
 				<?php foreach (['phrase', 'all', 'any'] as $m): ?>
 				<input type="radio" class="btn-check" name="m" id="csM_<?= $m ?>"
@@ -146,11 +152,8 @@ echo nu_page_header(t('cs_title'), ['icon' => 'bi-search', 'tip' => t('cs_hint')
 				id="csR"<?= $chk($s['r']) ?>><label class="form-check-label small" for="csR"><?= h(t('cs_regex')) ?></label></div>
 			<div class="d-flex align-items-center gap-1 csWithout" data-cs-opt="without"><label class="small text-body-secondary" for="csX"><?= h(t('cs_without')) ?></label>
 				<input type="text" class="form-control form-control-sm font-monospace" name="x" id="csX" value="<?= h($s['x']) ?>" autocomplete="off" spellcheck="false">
-				<?= nu_info_tip(t('cs_without_tip'), '', false) ?></div>
-			<?php if ($canReplace): ?><button class="btn btn-sm btn-link px-0 ms-auto csRpBtn" type="button" data-bs-toggle="collapse"
-				data-bs-target="#csRpRow" aria-expanded="<?= $rmode ? 'true' : 'false' ?>" aria-controls="csRpRow"
-				id="csRpToggle"><i class="bi bi-arrow-left-right me-1"></i><?= h(t('cs_replace')) ?></button><?php endif; ?>
-			<button class="btn btn-sm btn-link px-0<?= $canReplace ? '' : ' ms-auto' ?> csFiltersBtn" type="button" data-bs-toggle="collapse"
+				<?= nu_info_tip(t('cs_without_tip'), '', false, '', 'code-search-how') ?></div>
+			<button class="btn btn-sm btn-link px-0 ms-auto csFiltersBtn" type="button" data-bs-toggle="collapse"
 				data-bs-target="#csFilters" aria-expanded="<?= $filterCount ? 'true' : 'false' ?>" aria-controls="csFilters">
 				<i class="bi bi-funnel me-1"></i><?= h(t('cs_filters')) ?><?= $filterCount ? ' <span class="badge text-bg-primary" id="csFilterCount">' . $filterCount . '</span>' : '' ?></button>
 		</div>
@@ -161,7 +164,7 @@ echo nu_page_header(t('cs_title'), ['icon' => 'bi-search', 'tip' => t('cs_hint')
 				<input type="text" class="form-control form-control-sm font-monospace csRpInput" name="rp" id="csRp" value="<?= h($rp) ?>" autocomplete="off" spellcheck="false"<?= $rmode ? '' : ' disabled' ?>>
 				<input type="hidden" name="rmode" value="1" id="csRmode"<?= $rmode ? '' : ' disabled' ?>>
 				<button type="submit" class="btn btn-sm btn-outline-danger" id="csRpPreview"><i class="bi bi-eye me-1"></i><?= h(t('cs_rp_preview')) ?></button>
-				<?= nu_info_tip(t('cs_rp_tip'), '') ?>
+				<?= nu_info_tip(t('cs_rp_tip'), '', true, '', 'code-search-replace') ?>
 			</div>
 		</div>
 		<?php endif; ?>

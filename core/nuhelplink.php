@@ -39,6 +39,7 @@ final class NuHelpLink
 				return '';
 			}
 		}
+		if ($route === 'form' && !empty($_GET['design'])) return 'builder-work-p';   // design mode: designing a form, not editing records
 		return self::MAP[$route] ?? '';
 	}
 

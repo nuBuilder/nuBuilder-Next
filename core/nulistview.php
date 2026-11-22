@@ -421,7 +421,9 @@ final class NuListView
 		[$aw, $ap] = NuAdvSearch::where(NuListDefs::advColumns($L), self::adv($L), static fn(array $c) => (string)$c['expr']);
 		if ($aw !== '') { $where[] = $aw; array_push($params, ...$ap); }
 		[$sk, $dir] = $sortCol;
-		$order = implode(', ', array_map(static fn($c) => trim($c) . ' ' . $dir, explode(', ', (string)$L['columns'][$sk]['sort']))) . ', ' . $L['id'];
+		$sortBy = $L['columns'][$sk]['sort'];
+		if ($sortBy instanceof Closure) $sortBy = $sortBy();   // a sort worked out only when it is used (e.g. procedures "Used in")
+		$order = implode(', ', array_map(static fn($c) => trim($c) . ' ' . $dir, explode(', ', (string)$sortBy))) . ', ' . $L['id'];
 		return [$L['from'] . ($where ? ' WHERE ' . implode(' AND ', $where) : ''), $params, $order];
 	}
 

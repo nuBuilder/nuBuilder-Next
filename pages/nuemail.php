@@ -160,7 +160,7 @@ nu_layout_start(t('nav_email'), 'email', ['head' => NuListView::head(), 'setting
 							<div class="form-check form-switch mt-1 small" id="m_onlyWrap">
 								<input class="form-check-input" type="checkbox" role="switch" id="m_only" name="smtp_only" value="1"<?= $smtpOnly ? ' checked' : '' ?><?= NuSecret::available() ? '' : ' disabled' ?>>
 								<label class="form-check-label" for="m_only"><?= h(t('mail_pw_only_next')) ?></label>
-								<?= nu_info_tip(t('mail_pw_only_next_tip')) ?>
+								<?= nu_info_tip(t('mail_pw_only_next_tip'), 'ms-1', true, '', 'security-secrets') ?>
 								<?php if (!NuSecret::available()): ?><div class="text-body-secondary"
 									id="m_onlyNoKey"><?= h(t('mail_pw_only_nokey')) ?></div><?php elseif ($smtpOnly): ?><div class="text-body-secondary"
 									id="m_onlyOn"><i class="bi bi-lock me-1"></i><?= h(t('mail_pw_only_on')) ?></div><?php endif; ?>
@@ -186,7 +186,7 @@ nu_layout_start(t('nav_email'), 'email', ['head' => NuListView::head(), 'setting
 						</div>
 						<div class="col-sm-6">
 							<label class="form-label" for="m_authtype"><?= h(t('mail_auth_type')) ?></label>
-							<?= nu_info_tip(t('mail_auth_type_tip')) ?>
+							<?= nu_info_tip(t('mail_auth_type_tip'), 'ms-1', true, '', 'email-settings') ?>
 							<?php $curAuth = nu_is_post() ? strtoupper(nu_post('auth_type')) : NuMailer::authType(); ?>
 							<select class="form-select" id="m_authtype" name="auth_type">
 								<?php foreach (NuMailer::AUTH_TYPES as $at): ?><option value="<?= h($at) ?>"<?= $curAuth === $at ? ' selected' : '' ?>><?= h($at === '' ? t('mail_auth_auto') : ($at === 'XOAUTH2' ? t('mail_auth_oauth') : $at)) ?></option><?php endforeach; ?>
@@ -197,7 +197,7 @@ nu_layout_start(t('nav_email'), 'email', ['head' => NuListView::head(), 'setting
 								<input class="form-check-input" type="checkbox" role="switch" id="m_ssl" name="use_ssl"
 									value="1"<?= (nu_is_post() ? nu_check('use_ssl') === '1' : NuMailer::setupValue('set_smtp_use_ssl') === '1') ? ' checked' : '' ?>>
 								<label class="form-check-label" for="m_ssl"><?= h(t('mail_use_ssl')) ?></label><?php // hint only as tooltip of the (i) – outside the label, so a click does not toggle ?>
-								<?= nu_info_tip(t('mail_use_ssl_hint')) ?>
+								<?= nu_info_tip(t('mail_use_ssl_hint'), 'ms-1', true, '', 'email-settings') ?>
 							</div>
 						</div>
 						<?php // OAuth 2 (core/numailoauth.php): shown with the method OAuth 2 (assets/js/nuemail.js) ?>
@@ -226,7 +226,7 @@ nu_layout_start(t('nav_email'), 'email', ['head' => NuListView::head(), 'setting
 									</div>
 									<div class="col-sm-6 nuOAuthMs<?= $prov === 'microsoft' ? '' : ' d-none' ?>">
 										<label class="form-label" for="m_otenant"><?= h(t('mail_oauth_tenant')) ?></label>
-										<?= nu_info_tip(t('mail_oauth_tenant_tip')) ?>
+										<?= nu_info_tip(t('mail_oauth_tenant_tip'), 'ms-1', true, '', 'email-oauth') ?>
 										<input class="form-control" id="m_otenant" name="oauth_tenant" maxlength="100" value="<?= h($ov('tenant') ?: 'common') ?>" autocomplete="off">
 									</div>
 									<div class="col-sm-6">
@@ -250,7 +250,7 @@ nu_layout_start(t('nav_email'), 'email', ['head' => NuListView::head(), 'setting
 									</div>
 									<div class="col-12">
 										<label class="form-label" for="m_oredir"><?= h(t('mail_oauth_redirect')) ?></label>
-										<?= nu_info_tip(t('mail_oauth_redirect_tip')) ?>
+										<?= nu_info_tip(t('mail_oauth_redirect_tip'), 'ms-1', true, '', 'email-oauth') ?>
 										<div class="input-group">
 											<input class="form-control font-monospace" id="m_oredir" value="<?= h(NuMailOAuth::redirectUri()) ?>" readonly>
 											<button type="button" class="btn btn-outline-secondary" data-nu-copy-text="<?= h(NuMailOAuth::redirectUri()) ?>"
@@ -376,7 +376,7 @@ nu_layout_start(t('nav_email'), 'email', ['head' => NuListView::head(), 'setting
 					</div>
 				</div>
 				<div class="card-footer d-flex justify-content-end align-items-center gap-2">
-					<?= nu_info_tip(t('mail_test_hint'), '') ?><?php // what the test does – only as tooltip ?>
+					<?= nu_info_tip(t('mail_test_hint'), '', true, '', 'email-settings') ?><?php // what the test does – only as tooltip ?>
 					<button class="btn btn-primary" type="submit"><i class="bi bi-send me-1"></i><?= h(t('mail_send_test')) ?></button>
 				</div>
 			</form>

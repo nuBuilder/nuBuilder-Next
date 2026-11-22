@@ -135,7 +135,8 @@ nu_layout_start(t('proc_title'), 'forms', ['head' => $head]);
 		<?php endif; ?>
 		<?php if ($proc && $rights['delete'] && !NuProcedure::locked($proc)): ?>
 			<form method="post" action="<?= h(nu_url('procedures', ['id' => $id])) ?>"
-				data-confirm="<?= h(t('proc_delete_confirm', (string)$proc['sph_code'])) ?>" data-confirm-ok="<?= h(t('delete')) ?>"
+				data-confirm="<?= h(t('proc_delete_confirm', (string)$proc['sph_code'])
+					. (($nCode = count(array_filter($usage, static fn($u) => $u['kind'] === 'code'))) ? ' ' . t('proc_delete_code_n', $nCode) : '')) ?>" data-confirm-ok="<?= h(t('delete')) ?>"
 				data-confirm-class="btn btn-danger">
 				<?= nu_csrf_field() ?><input type="hidden" name="action" value="delete">
 				<button class="btn nuBtnAct nuBtnDel" type="submit" id="procDelete"><i class="bi bi-trash me-1"></i><?= h(t('delete')) ?></button></form>
@@ -248,16 +249,20 @@ nu_layout_start(t('proc_title'), 'forms', ['head' => $head]);
 			<?php if ($proc): ?>
 			<!-- ============================================================ usage -->
 			<div class="tab-pane fade" id="procTabUsage" role="tabpanel">
+				<?php $useHook = NuProcUse::of((string)$id)['hook']; if ($useHook !== ''): ?>
+					<div class="alert alert-info py-2 small" id="procUsageHook"><i class="bi bi-lightning-charge me-1"></i><?= h(t('proc_usage_hook_' . $useHook)) /* proc_usage_hook_form, proc_usage_hook_global */ ?></div>
+				<?php endif; ?>
 				<?php if (!$usage): ?><p class="text-body-secondary mb-0"><?= h(t('proc_usage_none')) ?></p><?php else: ?>
 					<table class="table table-sm align-middle mb-0" id="procUsage">
 						<thead><tr><th><?= h(t('proc_usage_kind')) ?></th><th><?= h(t('nav_forms')) ?></th><th><?= h(t('proc_usage_where')) ?></th></tr></thead>
 						<tbody><?php foreach ($usage as $u): ?>
 							<tr><td><span class="badge <?= $u['kind'] !== 'code' ? 'bg-primary-subtle text-primary-emphasis' : 'bg-secondary-subtle text-secondary-emphasis' ?>"><?= h(t('proc_usage_' . $u['kind'])) ?></span></td>
-								<td><?php if ($u['form_id'] !== '' && NuAcl::can(NuAcl::FORM_FORM) && !str_starts_with($u['form_id'], 'nu')): ?><a href="<?= h(nu_url('builder', ['f' => $u['form_id']])) ?>"><?= h($u['form'] ?: $u['form_id']) ?></a><?php else: ?><?= h($u['form'] ?: $u['form_id']) ?><?php endif; ?></td>
-								<td class="small"><?php if (!empty($u['proc_id'])): ?><a href="<?= h(nu_url('procedures', ['id' => $u['proc_id']])) ?>"><?= h($u['where']) ?></a><?php elseif (!empty($u['report_id']) && NuAcl::can(NuAcl::FORM_REPORT)): ?><a href="<?= h(nu_url('reports', ['id' => $u['report_id']])) ?>"><?= h($u['where']) ?></a><?php else: ?><?= h($u['where']) ?><?php endif; ?></td></tr>
+								<td><?= h($u['form'] ?: $u['form_id']) ?></td>
+								<td class="small"><?php if ($u['url'] !== ''): ?><a href="<?= h($u['url']) ?>"><?= h($u['where']) ?></a><?php else: ?><?= h($u['where']) ?><?php endif; ?></td></tr>
 						<?php endforeach; ?></tbody>
 					</table>
 				<?php endif; ?>
+				<p class="small text-body-secondary mt-2 mb-0" id="procUsageNote"><i class="bi bi-info-circle me-1"></i><?= h(t('proc_usage_note')) ?></p>
 			</div>
 
 			<!-- ============================================================ history -->

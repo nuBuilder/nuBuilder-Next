@@ -935,3 +935,29 @@ T.code_names = async (s) => {
 	await u.context().close();
 	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
 };
+
+// code search: Replace is an icon button in the search row next to Options / Filters (phones), with its name from 576 px
+T.code_replace_button = async (s) => {
+	const p = s.ga;
+	const vp = p.viewportSize();
+	try {
+		await p.setViewportSize({width: 390, height: 800});
+		await open(p, 'index.php?p=codesearch');
+		const ph = await p.evaluate(() => {
+			const b = document.getElementById('csRpToggle').getBoundingClientRect(), q = document.getElementById('csQ').getBoundingClientRect(),
+				f = document.getElementById('csFiltBtn').getBoundingClientRect();
+			return {sameRow: Math.abs(b.top - f.top) < 2 && b.top < q.bottom, w: Math.round(b.width), h: Math.round(b.height), right: b.right <= innerWidth,
+				text: getComputedStyle(document.querySelector('#csRpToggle span')).display, old: !!document.querySelector('.csFiltersBtn + .csRpBtn, .d-flex.mt-2 > .csRpBtn')};
+		});
+		expect(ph.sameRow && ph.w === 44 && ph.h === 44 && ph.right && ph.text === 'none' && !ph.old, 'phone: icon button in the search row ' + JSON.stringify(ph));
+		await p.click('#csRpToggle');
+		await p.waitForSelector('#csRp:visible');
+		expect(await p.getAttribute('#csRpToggle', 'aria-expanded') === 'true', 'open state');
+		await p.setViewportSize({width: 1280, height: 800});
+		await open(p, 'index.php?p=codesearch');
+		const wide = await p.evaluate(() => getComputedStyle(document.querySelector('#csRpToggle span')).display !== 'none');
+		expect(wide, 'wide screens show the name');
+	} finally {
+		await p.setViewportSize(vp);
+	}
+};

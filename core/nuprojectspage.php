@@ -71,8 +71,13 @@ final class NuProjectsPage
 				$parts = [];
 				foreach ($r['done'] as $k => $n) $parts[] = $n . ' × ' . t('prj_kind_' . $k);
 				nu_flash($r['errors'] ? 'warning' : 'success', t('prj_imp_done', $parts ? implode(', ', $parts) : '0', $r['skipped']));
+				$gone = [];
+				foreach ($r['deleted'] as $k => $n) $gone[] = $n . ' × ' . t('prj_kind_' . $k);
+				if ($gone) nu_flash('info', t('prj_imp_deleted', implode(', ', $gone)));
 				foreach (array_slice($r['errors'], 0, 10) as $e) nu_flash('danger', $e);
-				nu_flash('info', t('prj_imp_rights'));
+				if ($r['restore'] !== '') {
+					nu_flash('info', t('prj_imp_restore_done', $r['restore']), [nu_url('projects', ['restorefile' => $r['restore']]), t('prj_restore_download')]);
+				}
 				nu_redirect($r['project'] !== '' ? $back($r['project']) : nu_url('projects'));
 			}
 			if (!$canChange) { nu_flash('danger', t('prj_err_rights')); nu_redirect(nu_url('projects')); }

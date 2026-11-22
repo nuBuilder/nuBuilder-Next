@@ -153,7 +153,7 @@ curl -s -H 'Authorization: Bearer &lt;access_token&gt;' '<?= h($base) ?>/users?l
 						<?php if ($client): ?><div class="col-12"><label class="form-label small mb-0">client_id</label><div><code><?= h((string)$client['client_id']) ?></code></div></div><?php endif; ?>
 
 						<div class="col-12"><span class="form-label d-block" id="suModeLabel"><?= h(t('api_user')) ?> <span class="text-danger">*</span>
-							<?= nu_info_tip(t('api_user_hint')) ?></span>
+							<?= nu_info_tip(t('api_user_hint'), 'ms-1', true, '', 'api-clients') ?></span>
 							<div class="btn-group nuApiSuMode" role="radiogroup" aria-labelledby="suModeLabel"><?php /* either a new service user or an existing one */ ?>
 								<input type="radio" class="btn-check" name="su_mode" id="suModeNew"
 									value="new"<?= $suMode === 'new' ? ' checked' : '' ?>><label class="btn btn-outline-primary"

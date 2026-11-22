@@ -52,6 +52,17 @@ declare(strict_types=1);
  * A task of a plugin (NuPluginApi::task), e.g. from the server's cron – runs as the globeadmin:
  *     php nucron.php plugin <id> <task> [name=value …]      Exit code: 0 = done, 1 = failed, 2 = wrong call.
  *
+ * The application as a folder for git (forms, procedures, reports, SQL queries, e-mail templates, snippets, permission items, formats,
+ * files, data exports, webhooks, help pages, table structures, access rights by level code, translations – one folder per item, code in
+ * files of its own; nuBuilder Forte's own rows are left out). The same database gives the same files, so git shows only real changes:
+ *     php nucron.php app export --dir=<folder> [--project=<code>] [--data]   --project: only that project's items; --data: table rows too
+ *     php nucron.php app import --dir=<folder> [--yes] [--delete] [--keep=<kind>|<code>,…] [--json]
+ *   Without --yes the import only lists what it would do (add new parts, replace changed ones, add missing table columns – tables are
+ *   never dropped or changed otherwise). Parts that exist here but not in the folder are listed as "delete?" and stay; --delete
+ *   deletes them (not tables, not parts other kept parts still use); --keep protects single ones, e.g. --keep=form|my_form_id.
+ *   Before replacing or deleting, the current versions are kept as a restore point in the backup folder.
+ *   Exit code: 0 = done / listed, 1 = failed or an item failed, 2 = wrong call.
+ *
  * IP access – switched off when the rules lock everybody out (they stay stored):
  *     php nucron.php iprules off
  *
@@ -309,6 +320,63 @@ if (($args[0] ?? '') === 'selftest') {
 		echo 'ok ' . ($sum['ok'] ?? 0) . ', warn ' . ($sum['warn'] ?? 0) . ', fail ' . ($sum['fail'] ?? 0) . ', skip ' . ($sum['skip'] ?? 0) . "\n";
 	}
 	exit(!empty($sum['fail']) ? 1 : 0);
+}
+if (($args[0] ?? '') === 'app') {
+	$ao = [];
+	foreach (array_slice($args, 2) as $a) if (preg_match('/^--([a-z]+)(?:=(.*))?$/s', $a, $m)) $ao[$m[1]] = $m[2] ?? true; else { fwrite(STDERR, "Unknown argument: $a\n"); exit(2); }
+	$sub = (string)($args[1] ?? '');
+	$dir = is_string($ao['dir'] ?? null) ? (string)$ao['dir'] : '';
+	if (!in_array($sub, ['export', 'import'], true) || $dir === '') { fwrite(STDERR, "Usage: php nucron.php app export|import --dir=<folder> …\n"); exit(2); }
+	NuAuth::cliGlobeadmin();
+	try {
+		if ($sub === 'export') {
+			$code = is_string($ao['project'] ?? null) ? (string)$ao['project'] : '';
+			if ($code !== '') {
+				$pid = (string)(nu_db()->value('SELECT zzzzsys_nunext_project_id FROM zzzzsys_nunext_project WHERE code = ?', [$code]) ?: '');
+				if ($pid === '') { fwrite(STDERR, "No project with the code $code\n"); exit(2); }
+				$pkg = NuProjectPackage::export($pid, !empty($ao['data']));
+			} else {
+				$pkg = NuProjectPackage::exportAll(!empty($ao['data']));
+			}
+			$w = NuAppFolder::write($dir, $pkg);
+			echo 'written ' . $w['files'] . ' files to ' . $dir . "\n";
+			exit(0);
+		}
+		$pkg = NuAppFolder::read($dir);
+		$plan = NuProjectPackage::check($pkg);
+		$keep = array_flip(array_filter(array_map('trim', explode(',', is_string($ao['keep'] ?? null) ? (string)$ao['keep'] : ''))));
+		$acts = [];
+		foreach ($plan as &$c) {                           // "only here": deleted only with --delete and not protected by --keep
+			if (!in_array('delete', $c['actions'], true)) continue;
+			$c['action'] = !empty($ao['delete']) && !isset($keep[$c['key']]) ? 'delete' : 'skip';
+			$acts[$c['key']] = $c['action'];
+		}
+		unset($c);
+		if (empty($ao['yes'])) {
+			if (!empty($ao['json'])) { echo json_encode($plan, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\n"; exit(0); }
+			foreach ($plan as $c) {
+				if (in_array($c['state'], ['same', 'exists'], true)) continue;
+				$a = $c['state'] === 'only' && $c['action'] === 'skip' && in_array('delete', $c['actions'], true) ? 'delete?' : $c['action'];
+				echo str_pad($a, 8) . str_pad($c['state'], 11) . str_pad($c['kind'], 14) . $c['key'] . ' ' . $c['label'] . ($c['note'] !== '' ? ' – ' . $c['note'] : '') . "\n";
+			}
+			$cnt = array_count_values(array_column($plan, 'action'));
+			echo 'add ' . ($cnt['add'] ?? 0) . ', replace ' . ($cnt['replace'] ?? 0) . ', delete ' . ($cnt['delete'] ?? 0) . ', skip ' . ($cnt['skip'] ?? 0)
+				. " – run again with --yes to import\n";
+			exit(0);
+		}
+		$r = NuProjectPackage::import($pkg, $acts);
+		if (!empty($ao['json'])) echo json_encode($r, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\n";
+		else {
+			foreach ($r['done'] as $k => $n) echo str_pad((string)$n, 6) . $k . "\n";
+			foreach ($r['deleted'] as $k => $n) echo str_pad((string)$n, 6) . $k . " deleted\n";
+			foreach ($r['errors'] as $e) fwrite(STDERR, 'error: ' . $e . "\n");
+			if ($r['restore'] !== '') echo 'restore point: ' . NuUpdate::backupDir() . '/' . $r['restore'] . "\n";
+		}
+		exit($r['errors'] ? 1 : 0);
+	} catch (Throwable $e) {
+		fwrite(STDERR, $e->getMessage() . "\n");
+		exit(1);
+	}
 }
 if (($args[0] ?? '') === 'integrity') {
 	$ic = NuIntegrity::run();

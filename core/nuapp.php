@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 define('NU_ROOT', dirname(__DIR__));
-define('NU_VERSION', '0.8.1371');
+define('NU_VERSION', '0.8.1390');
 // third-party code: vendor/bundled/ comes with nunext.zip (an update replaces it), vendor/packs/ = library packs (NuLibs,
 // an update never touches them). Bundled paths only through these constants.
 define('NU_VENDOR', 'vendor/bundled');
@@ -93,14 +93,14 @@ const NU_AUTOLOAD = [
 		'NuFormatsPage' => 'core/nuformatspage.php', 'NuNotifyApiPage' => 'core/nunotifyapipage.php', 'NuSessionsPage' => 'core/nusessionspage.php',
 		'NuUploadPage' => 'core/nuuploadpage.php', 'NuUserPage' => 'core/nuuserpage.php', 'NuFormPage' => 'core/form/nuformpage.php',
 		'NuSample' => 'core/nusample.php', 'NuSampleSet' => 'core/nusampleset.php', 'NuListExport' => 'core/nulistexport.php',
-		'NuProcedure' => 'core/nuprocedure.php',
-	'NuReport' => 'core/nureport.php', 'NuReportSpec' => 'core/nureportspec.php', 'NuReportEngine' => 'core/nureportengine.php',
-		'NuReportXlsx' => 'core/nureportxlsx.php', 'NuRecycle' => 'core/nurecycle.php', 'NuReportSection' => 'core/nureportengine.php',
+		'NuProcedure' => 'core/nuprocedure.php', 'NuProcUse' => 'core/nuprocuse.php',
+	'NuReport' => 'core/nureport.php', 'NuRunPhp' => 'core/nurunphp.php', 'NuReportSpec' => 'core/nureportspec.php', 'NuReportEngine' => 'core/nureportengine.php',
+		'NuReportXlsx' => 'core/nureportxlsx.php', 'NuRecycle' => 'core/nurecycle.php', 'NuRecordView' => 'core/nurecordview.php', 'NuReportSection' => 'core/nureportengine.php',
 		'NuMarkdown' => 'core/numarkdown.php', 'NuPasskey' => 'core/nupasskey.php', 'NuCbor' => 'core/nupasskey.php',
 	'NuPwReset' => 'core/nupwreset.php', 'NuSqlSelect' => 'core/nusqlselect.php', 'NuPrompt' => 'core/nuprompt.php', 'NuImport' => 'core/nuimport.php',
 	'NuPermission' => 'core/nupermission.php', 'NuAppCloner' => 'core/nuappcloner.php', 'NuAppClonerConfig' => 'core/nuappclonerconfig.php',
 		'NuClonerConfig' => 'core/nuclonerconfig.php', 'NuSqlDump' => 'core/nusqldump.php', 'NuSqlImport' => 'core/nusqlimport.php',
-		'NuProject' => 'core/nuproject.php', 'NuCodeSearch' => 'core/nucodesearch.php', 'NuProjectPackage' => 'core/nuprojectpackage.php',
+		'NuProject' => 'core/nuproject.php', 'NuCodeSearch' => 'core/nucodesearch.php', 'NuProjectPackage' => 'core/nuprojectpackage.php', 'NuAppFolder' => 'core/nuappfolder.php',
 	'NuInspect' => 'core/nuinspect.php', 'NuCloner' => 'core/nucloner.php', 'NuFormHistory' => 'core/form/nuhistory.php',
 		'NuFormSnapshot' => 'core/form/nusnapshot.php', 'NuFormDraft' => 'core/form/nuformdraft.php',
 	'NuDraftRevException' => 'core/form/nuformdraft.php', 'NuDraftStore' => 'core/form/nuformstore.php',

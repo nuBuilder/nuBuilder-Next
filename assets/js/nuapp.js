@@ -243,6 +243,43 @@
 		window.open(url, '_blank', 'noopener');
 	}, true);
 
+	// ---------------------------------------------------------------- long tap on an (i) on a touch screen = its documentation
+	// (the tip's data-nu-doc, else the page's own <body data-nu-help>). Opened on touchend – a page may only open a tab from a user
+	// action, and a timer is not one; from HOLD ms the icon shows it is ready (.nuTipHeld), lifting the finger opens the page.
+	(function () {
+		var HOLD = 550, t0 = 0, x0 = 0, y0 = 0, tip = null, timer = 0, opened = 0;
+		var urlOf = function (el) { return el.getAttribute('data-nu-doc') || (document.body && document.body.getAttribute('data-nu-help')) || ''; };
+		var reset = function () { clearTimeout(timer); if (tip) tip.classList.remove('nuTipHeld'); tip = null; };
+		document.addEventListener('touchstart', function (e) {
+			var el = e.target.closest ? e.target.closest('.nuInfoTip, [data-nu-doc]') : null;
+			reset();
+			if (!el || e.touches.length !== 1 || !urlOf(el)) return;
+			tip = el; t0 = Date.now(); x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
+			timer = setTimeout(function () { if (tip) tip.classList.add('nuTipHeld'); }, HOLD);
+		}, {passive: true});
+		document.addEventListener('touchmove', function (e) {
+			if (tip && Math.hypot(e.touches[0].clientX - x0, e.touches[0].clientY - y0) > 10) reset();
+		}, {passive: true});
+		document.addEventListener('touchcancel', reset, {passive: true});
+		document.addEventListener('touchend', function (e) {
+			if (!tip) return;
+			var el = tip, held = Date.now() - t0 >= HOLD;
+			reset();
+			if (!held) return;
+			e.preventDefault();                                           // no click / tooltip toggle after the long tap
+			opened = Date.now();
+			var tt = window.nuBs && nuBs.tooltipOf ? nuBs.tooltipOf(el) : null;
+			if (tt && tt.hide) tt.hide();
+			window.open(urlOf(el), '_blank', 'noopener');
+		}, {passive: false});
+		document.addEventListener('contextmenu', function (e) {      // the browser's own long-press menu
+			if (e.target.closest && e.target.closest('.nuInfoTip, [data-nu-doc]') && urlOf(e.target.closest('.nuInfoTip, [data-nu-doc]'))) e.preventDefault();
+		});
+		document.addEventListener('click', function (e) {
+			if (opened && Date.now() - opened < 700 && e.target.closest && e.target.closest('.nuInfoTip, [data-nu-doc]')) { e.preventDefault(); e.stopPropagation(); }
+		}, true);
+	})();
+
 	// ---------------------------------------------------------------- Ctrl+Shift+S (Mac: ⌃⇧S / ⌘⇧S) = Save on nuBuilder Next's own edit pages
 	// (the button marked data-nu-save; nuBuilder form pages have their own shortcuts in nuruntime.js). Same key as in nuBuilder.
 	(function () {
@@ -2491,4 +2528,89 @@ window.nuPageNoGo = function (value) {
 	}
 	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 	window.nuHScrollScan = scan;
+})();
+
+/* lists keep their sideways position: a table that scrolls sideways (system lists, form lists on narrow screens) gets back its scroll
+   position after sorting, paging, filtering or a reload (per list and view, this tab only); after a sort the sorted column is brought
+   into view when it is not on screen (next to a fixed first column) */
+(function () {
+	'use strict';
+	var bound = null, frame = 0;
+	function table() { return document.querySelector('.nuLvTableWrap > table.nu-table, table#nuBrowseTable'); }
+	function scroller(t) {
+		for (var el = t && t.parentElement; el && el !== document.body; el = el.parentElement) {
+			var o = getComputedStyle(el).overflowX;
+			if (o === 'auto' || o === 'scroll') return el;
+		}
+		return null;
+	}
+	function key() {
+		var q = new URLSearchParams(location.search);
+		return 'nunext-hx:' + location.pathname + '|' + (q.get('p') || '') + '|' + (q.get('f') || '') + '|' + (q.get('view') || '');
+	}
+	function save(w) { nuStore.session.set(key(), String(Math.round(w.scrollLeft))); }
+	function restore() {
+		var t = table(), w = scroller(t);
+		if (!w) return;
+		if (bound !== w) {
+			bound = w;
+			w.addEventListener('scroll', function () {
+				if (frame) return;
+				frame = requestAnimationFrame(function () { frame = 0; save(w); });
+			}, {passive: true});
+		}
+		if (w.scrollWidth <= w.clientWidth + 1) return;
+		var x = parseInt(nuStore.session.get(key(), '0'), 10) || 0;
+		if (x > 0) w.scrollLeft = x;
+		var th = t.querySelector('thead th[aria-sort]'), sorted = nuStore.session.get('nunext-hx-sort', '') === key();
+		nuStore.session.remove('nunext-hx-sort');
+		if (sorted && th && th.cellIndex > 0) {
+			var first = t.querySelector('thead th'), wr = w.getBoundingClientRect(), r = th.getBoundingClientRect();
+			var fixed = first && getComputedStyle(first).position === 'sticky' ? first.getBoundingClientRect().width : 0;
+			var left = r.left - wr.left + w.scrollLeft, right = left + r.width;
+			if (left < w.scrollLeft + fixed) w.scrollLeft = Math.max(0, left - fixed);
+			else if (right > w.scrollLeft + w.clientWidth) w.scrollLeft = right - w.clientWidth;
+		}
+		save(w);
+	}
+	// a click on a column title = a sort: only then the sorted column is brought into view
+	document.addEventListener('click', function (e) {
+		var t = table();
+		if (t && t.tHead && t.tHead.contains(e.target)) nuStore.session.set('nunext-hx-sort', key());
+	}, true);
+	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', restore); else restore();
+	window.addEventListener('load', restore);   // widths may change when fonts / scripts finish – the saved place again
+	document.addEventListener('nu:listrefresh', function () { bound = null; restore(); });
+	window.nuListHScrollRestore = restore;
+})();
+
+/* View mode of records (assets/js/nuview.js): the records of the list shown last, in its order, so ← / → in the view step through
+ * them. Form lists: rows tr.nuBrowseRow[data-nu-primary-key]; system lists: rows tr[data-href]. Kept per browser tab. */
+(function () {
+	'use strict';
+	function keyOf(u) {
+		var q = u.searchParams, p = q.get('p') || '';
+		return p === 'form' ? 'form|' + (q.get('f') || '') + '|' + (q.get('r') || '') : p + '|' + (q.get('id') || q.get('r') || '');
+	}
+	function remember() {
+		var items = [], b = document.body, N = window.nuNext || {};
+		var form = b && b.dataset.nuPage === 'form' && b.dataset.nuMode === 'browse' && N.form ? String(N.form.id || '') : '';
+		if (/[?&](iframe|lookup|print)=/.test(location.search)) return;
+		if (form) {
+			document.querySelectorAll('#nuBrowseTable tr.nuBrowseRow[data-nu-primary-key]').forEach(function (tr) {
+				var u = new URL(location.href);
+				u.search = '';
+				u.searchParams.set('p', 'form'); u.searchParams.set('f', form); u.searchParams.set('r', tr.getAttribute('data-nu-primary-key'));
+				items.push({k: keyOf(u), u: u.toString()});
+			});
+		} else {
+			document.querySelectorAll('.nuLv table.nu-table tbody tr[data-href]').forEach(function (tr) {
+				try { var u = new URL(tr.getAttribute('data-href'), location.href); items.push({k: keyOf(u), u: u.toString()}); } catch (e) { /* not a link */ }
+			});
+		}
+		if (items.length < 2) return;
+		try { sessionStorage.setItem('nunext-rv-list', JSON.stringify({items: items.slice(0, 500)})); } catch (e) { /* no storage: no stepping */ }
+	}
+	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', remember); else remember();
+	document.addEventListener('nu:listrefresh', remember);
 })();

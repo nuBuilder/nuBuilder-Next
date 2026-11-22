@@ -96,7 +96,7 @@ $form = null;
 
 $testRes = $_SESSION[NuSess::SSO_TEST] ?? null;
 unset($_SESSION[NuSess::SSO_TEST]);
-$tip = static fn(string $text): string => nu_info_tip($text);
+$tip = static fn(string $text): string => nu_info_tip($text, 'ms-1', true, '', 'sso-setup');
 $err = static fn(string $k): string => isset($errors[$k]) ? '<div class="invalid-feedback d-block">' . h($errors[$k]) . '</div>' : '';
 $inv = static fn(string $k): string => isset($errors[$k]) ? ' is-invalid' : '';
 $v = static function (string $k) use ($form, $s) {

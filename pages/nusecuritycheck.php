@@ -19,7 +19,7 @@ $checks = NuSecurity::checks();
 $count = static fn(string $st) => count(array_filter($checks, static fn($c) => $c['status'] === $st));
 $set = NuSecurity::settings();
 $icon = ['ok' => 'bi-check-circle-fill text-success', 'warn' => 'bi-exclamation-triangle-fill text-warning', 'bad' => 'bi-x-octagon-fill text-danger', 'info' => 'bi-info-circle-fill text-info'];
-$tip = static fn(string $text): string => nu_info_tip($text);
+$tip = static fn(string $text): string => nu_info_tip($text, 'ms-1', true, '', 'security-settings');
 
 $secTab = ($_GET['tab'] ?? '') === 'settings' ? 'settings' : 'checks';
 nu_layout_start(t('secchk_title'), 'home', ['container' => 'nuContainer', 'settings' => 'security']);

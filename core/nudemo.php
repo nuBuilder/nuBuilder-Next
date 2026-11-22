@@ -29,6 +29,7 @@ final class NuDemo
 		'procedures'     => ['run'],
 		'pivot'          => ['fields', 'run', 'values', 'drill'],   // pivot of a form list: reads only
 		'calendar'       => ['events'],                             // calendars: reading entries; moving stays refused
+		'viewfirst'      => ['set'],      // view mode first: demo visitors keep it in the session
 		'codecheck'      => ['check'],      // syntax check of the code editors: parses only
 		'projects'       => ['candidates', 'suggest', 'work'],   // projects: Add dialog, Suggest related, Working on (session only)
 		'dataexport'     => ['tables', 'columns', 'preview', 'count', 'check'],   // data export: the editor's lookups, nothing stored

@@ -282,6 +282,8 @@ sessions_sort
 home_customise
 user_field_labels
 user_field_labels_rename
+user_code_unique_switch
+info_tip_long_tap
 user_fields
 db_setup
 existing_db
@@ -408,6 +410,8 @@ list_filters_phone_folded
 projects_desc_cut
 projects
 project_package
+app_folder
+app_folder_delete
 tinymce_no_source_flash
 content_sheet
 help_link_forms
@@ -465,6 +469,7 @@ list_cell_one_line
 record_check_form
 system_info
 code_search_phone
+code_replace_button
 settings_compact
 user_summary_phone
 user_summary_jump
@@ -565,4 +570,11 @@ code_review_l4_d5
 plugins
 lookup_add_record
 update_branch_archive
+browse_sql_optin
+procedure_used_in
+phone_table_head_first_col
+list_hscroll_keep
+record_view_mode
+record_view_first
+runphp_page
 logout

@@ -163,43 +163,19 @@ final class NuProcedure
 	 * Where the procedure is used: run objects / select / display / lookup objects, and code that names it
 	 * (nuRunPHP('code') … in form JavaScript, events, other procedures). [['kind', 'form' => code, 'where' => …], …]
 	 */
+	/**
+	 * Where a procedure is used (NuProcUse): objects (run buttons, Select / display procedures, lookup PHP), reports, start page tiles
+	 * and calls in code. @return list<array{kind: string, form_id: string, form: string, where: string, url: string, report_id?: string}>
+	 */
 	public static function usage(string $id, string $code): array
 	{
-		$db = nu_db();
 		$out = [];
-		$cols = $db->columns('zzzzsys_object');
-		$refs = array_values(array_filter(['sob_run_zzzzsys_form_id', 'sob_display_procedure', 'sob_select_procedure', 'sob_lookup_php'], static fn($c) => isset($cols[$c])));
-		if ($refs) {
-			$cond = implode(' OR ', array_map(static fn($c) => "o.$c IN (?, ?)", $refs));
-			$params = [];
-			foreach ($refs as $_) array_push($params, $id, $code);
-			foreach ($db->all("SELECT o.sob_all_id, o.sob_all_type, f.zzzzsys_form_id, f.sfo_code FROM zzzzsys_object o LEFT JOIN zzzzsys_form f ON f.zzzzsys_form_id = o.sob_all_zzzzsys_form_id WHERE $cond ORDER BY f.sfo_code, o.sob_all_id", $params) as $r) {
-				$out[] = ['kind' => 'object', 'form_id' => (string)$r['zzzzsys_form_id'], 'form' => (string)$r['sfo_code'], 'where' => $r['sob_all_id'] . ' (' . $r['sob_all_type'] . ')'];
-			}
+		foreach (NuProcUse::of($id)['places'] as $p) {
+			$kind = $p['kind'] === 'run' ? 'object' : $p['kind'];
+			$out[] = ['kind' => $kind, 'form_id' => $p['form'], 'form' => $p['form'] !== '' ? (string)(nu_form($p['form'])['code'] ?? $p['form']) : '',
+				'where' => $p['label'], 'url' => $p['url']];
 		}
-		// reports that print from it (data source PROCEDURE:<id>)
-		if (NuReport::available()) {
-			foreach ($db->all('SELECT zzzzsys_report_id, sre_code FROM zzzzsys_report WHERE sre_zzzzsys_php_id = ? ORDER BY sre_code', ['PROCEDURE:' . $id]) as $r) {
-				$out[] = ['kind' => 'report', 'form_id' => '', 'form' => '', 'where' => (string)$r['sre_code'], 'report_id' => (string)$r['zzzzsys_report_id']];
-			}
-		}
-		// code that mentions it in quotes: nuRunPHP('code'), nuRunPHPHidden("code"), nuProcedure('code') …
-		$q = static fn(string $s) => ["%'" . substr(NuDB::like($s), 1, -1) . "'%", '%"' . substr(NuDB::like($s), 1, -1) . '"%'];
-		[$p1, $p2] = $q($code);
-		foreach (['sfo_javascript', 'sfo_edit_javascript', 'sfo_browse_javascript'] as $c) {
-			foreach ($db->all("SELECT zzzzsys_form_id, sfo_code FROM zzzzsys_form WHERE $c LIKE ? ESCAPE '!' OR $c LIKE ? ESCAPE '!'", [$p1, $p2]) as $r) {
-				$out[] = ['kind' => 'code', 'form_id' => (string)$r['zzzzsys_form_id'], 'form' => (string)$r['sfo_code'], 'where' => $c];
-			}
-		}
-		foreach ($db->all("SELECT e.sev_event, o.sob_all_id, f.zzzzsys_form_id, f.sfo_code FROM zzzzsys_event e JOIN zzzzsys_object o ON o.zzzzsys_object_id = e.sev_zzzzsys_object_id
-				LEFT JOIN zzzzsys_form f ON f.zzzzsys_form_id = o.sob_all_zzzzsys_form_id WHERE e.sev_javascript LIKE ? ESCAPE '!' OR e.sev_javascript LIKE ? ESCAPE '!'", [$p1, $p2]) as $r) {
-			$out[] = ['kind' => 'code', 'form_id' => (string)$r['zzzzsys_form_id'], 'form' => (string)$r['sfo_code'], 'where' => $r['sob_all_id'] . ' · ' . $r['sev_event']];
-		}
-		foreach ($db->all("SELECT zzzzsys_php_id, sph_code FROM zzzzsys_php WHERE zzzzsys_php_id <> ? AND (sph_php LIKE ? ESCAPE '!' OR sph_php LIKE ? ESCAPE '!')", [$id, $p1, $p2]) as $r) {
-			$hook = self::isHook((string)$r['zzzzsys_php_id']);
-			$out[] = ['kind' => 'code', 'form_id' => $hook ? substr((string)$r['zzzzsys_php_id'], 0, -3) : '',
-				'proc_id' => $hook ? '' : (string)$r['zzzzsys_php_id'], 'form' => '', 'where' => 'PHP ' . $r['sph_code']];
-		}
+		usort($out, static fn($a, $b) => [$a['kind'] === 'code', $a['form'], $a['where']] <=> [$b['kind'] === 'code', $b['form'], $b['where']]);
 		return $out;
 	}
 

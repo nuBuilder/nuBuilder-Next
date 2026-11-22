@@ -351,6 +351,9 @@ final class NuCompat
 		'G11' => '0.8.983',
 		// FE: forms for everyone (NuFormEveryone) that access levels created in nuBuilder Forte do not have yet
 		'FE' => '0.8.784',
+		// BSQ: JavaScript of a form reads the list's SQL (browse_sql) while the form does not send it to the browser (design mode → Browse
+		// list, sfo_json nunext.browse_sql_client) – listed so it can be switched on where needed
+		'BSQ' => null,
 		// BS6 (developer mode only): Bootstrap 5 markup that Bootstrap 6 changes (NuBs6) – nothing to do while nuBuilder Next stays on 5.3
 		'BS6' => null,
 		// J4: jQuery functions jQuery 4 removed / Migrate warns about in the application's code (NuJquery::scan) – a preparation
@@ -481,6 +484,12 @@ final class NuCompat
 			elseif (preg_match('/\b(nuRunReport|nuRunReportId|nuSavePDF|nuBuildTempTable)\s*\(/i', $code, $m)) $hit('M9', $src['where'], $src['form'], $m[1]);
 			if ($src['lang'] === 'php' && preg_match('/\bnuFORMdata\b|\bnu(Get|Set)NuDataValue\s*\(/', $code, $m)) $hit('G5', $src['where'], $src['form'], $m[0]);
 			if (preg_match('/#(' . implode('|', self::MISSING_HASH) . ')#/', $code, $m)) $hit('G7', $src['where'], $src['form'], $m[0]);
+		}
+		// BSQ: JavaScript reading browse_sql of a form that does not send it to the browser (PHP gets it from the server anyway)
+		foreach (self::sources($withSystem) as $src) {
+			$fid = (string)$src['form'];
+			if ($src['lang'] !== 'js' || $fid === '' || !isset($forms[$fid]) || NuFormMeta::browseSqlToClient($forms[$fid]['sfo_json'] ?? null)) continue;
+			if (preg_match('/\bbrowse_sql\b/', self::stripComments($src['code']), $m)) $hit('BSQ', $src['where'], $fid, $m[0]);
 		}
 		// G11: handlers that wait for the page to load, in form code (not Setup → Header: it is part of Forte's page and its handlers run)
 		foreach (self::sources($withSystem) as $src) {

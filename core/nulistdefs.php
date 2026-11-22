@@ -132,7 +132,7 @@ final class NuListDefs
 			if ($rule === false || !empty($c['noadv']) || (string)($c['label'] ?? '') === '') continue;
 			[$type, $expr] = is_array($rule) ? $rule : [$rule, null];
 			if ($expr === null) {
-				if (empty($c['sort'])) continue;
+				if (empty($c['sort']) || $c['sort'] instanceof Closure) continue;
 				$expr = self::splitSort((string)$c['sort'])[0] ?? '';
 			}
 			if ($expr === '') continue;

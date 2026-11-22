@@ -728,7 +728,7 @@ final class NuImport
 				'sus_login_name' => t('imp_rm_c_login'),
 				'sus_name'       => t('imp_rm_c_name'),
 				'sus_email'      => t('imp_rm_c_email'),
-				'sus_code'       => t('imp_rm_c_code'),
+				'sus_code'       => t(NuAuth::codeUnique() ? 'imp_rm_c_code' : 'imp_rm_c_code_free'),
 				'access_level'   => t('imp_rm_c_access', $levels ? implode(', ', $levels) : '–'),
 				'sus_language'   => t('imp_rm_c_lang', $langs),
 				'sus_expires_on' => t('imp_rm_c_expires'),
@@ -894,7 +894,7 @@ final class NuImport
 		if (($v['sus_name'] ?? '') === '') $v['sus_name'] = mb_substr(trim(($v['sus_first_name'] ?? '') . ' ' . ($v['sus_last_name'] ?? '')), 0, 50);
 		if ($v['sus_name'] === '') $errors[] = ['sus_name', '', t('err_required')];
 		$uc = trim((string)($v['sus_code'] ?? ''));                       // user code: unique, also within the file
-		if ($uc !== '') {
+		if ($uc !== '' && NuAuth::codeUnique()) {
 			$ucK = mb_strtolower($uc);
 			if (($owner = NuAuth::userCodeOwner($uc)) !== null) $errors[] = ['sus_code', $uc, t('user_err_code_taken', $owner['name'])];
 			elseif (isset($file['codes'][$ucK])) $errors[] = ['sus_code', $uc, t('imp_err_dupkey', $file['codes'][$ucK])];

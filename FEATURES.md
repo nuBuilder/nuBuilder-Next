@@ -10,6 +10,7 @@ page) for how to use it.
 - **One header on phones** – every page starts with ‹ previous page and its title; a record's title on its own row with the buttons below; tabs that scroll in one row; icon buttons on tablets; start page notices in one strip that folds.
 - **Fast pages** – own statements sent in one step, compressed pages, minified scripts and styles, form definitions of sub-forms and lookups read together, the help kept ready built.
 - **Tidy lists on phones** – at most three buttons in a list's title bar (the rest in ⋮), folded filters (also on tablets when a list has more than three), cards or table per list; system rows hidden until you ask for them.
+- **View mode of a record** – the whole record as a read-only data sheet: every tab at once, sub-forms as tables, key facts on top, ← / → through the list, prints alone; every form and the user form; per form "Always open in view mode" for each user.
 - **Fast lists** – search, filters, sorting and paging; an advanced search with conditions per column and saved searches;
   coloured status badges; cells that open a form, a filtered list, a procedure or a report.
 - **Totals and groups** – a row of totals below a list (sum, average, minimum, maximum, count) over everything the search matches, the totals of ticked rows, and lists grouped by a column with a heading and subtotals per group.
@@ -98,8 +99,15 @@ page) for how to use it.
   e-mail when it fails.
 - **Procedures list searches the code** – tick *Code* in the search field to find procedures by their PHP or JavaScript.
 - **Suggestions while typing** – a text input offers a list (fixed, or the rows of a query with the typed text as a bound value) and a choice can fill other fields too; `nuNextAutocomplete()` in code, and a stand-in for jQuery UI's `autocomplete`.
+- **Where procedures are used** – a "Used in" column and filter on the procedures list (buttons, objects, reports, dashboard widgets,
+  start page tiles, calls in code; hooks marked) with a menu of every place, the same list on the procedure page.
 - **Projects** – group the forms, procedures, reports, tables and other parts of one piece of work, with "Suggest related",
-  Markdown notes, to-dos with notifications, lists narrowed to the project, and export / import as one package.
+  Markdown notes, to-dos with notifications, lists narrowed to the project, and export / import as one package (with access
+  rights, translations, new table columns and a restore point before anything is replaced).
+- **Development, test and production** – export the whole application as one package, or as a folder for git on the command line
+  (one folder per form / procedure / report, code in files of its own, the same database gives the same files) and import it on
+  another installation – parts that exist only on the target are listed and deleted only when chosen; the environment label tells
+  the installations apart.
 - **Cloners** – copy a single form or the whole application.
 - **Sample applications** – a sales application and a ticket system for a support desk (with its project and help pages
   for its users per role), both built to learn from; the Sample data page shows what changed in each sample version.

@@ -22,12 +22,26 @@ $tab = in_array($_GET['tab'] ?? '', ['overview', 'items', 'notes', 'tasks', 'set
 $tmpOf = static fn(string $tok): string => preg_match('/^[a-f0-9]{24}$/', $tok) ? NuReport::tempDir() . '/nunext-project-' . $tok . '.json' : '';
 $back = static fn(string $pid, string $t = '') => nu_url('projects', ['id' => $pid, 'tab' => $t !== '' && $t !== 'overview' ? $t : null]);
 
+// ------------------------------------------------------------------ restore point of an import (globeadmin)
+if (isset($_GET['restorefile'])) {
+	$rf = $ga ? NuProjectPackage::restoreFile((string)$_GET['restorefile']) : '';
+	if ($rf === '') { nu_flash('warning', t('record_not_found')); nu_redirect(nu_url('projects')); }
+	session_write_close();
+	header('Content-Type: application/json; charset=utf-8');
+	header('Content-Disposition: attachment; filename="' . basename($rf) . '"');
+	header('X-Content-Type-Options: nosniff');
+	readfile($rf);
+	exit;
+}
+
 // ------------------------------------------------------------------ export
 if (isset($_GET['export'])) {
 	if (!$canChange) { nu_flash('danger', t('prj_err_rights')); nu_redirect(nu_url('projects')); }
 	$withData = ($_GET['data'] ?? '') === '1' && $ga;
 	try {
-		$pkg = NuProjectPackage::export((string)$_GET['export'], $withData);
+		$pkg = (string)$_GET['export'] === NuProjectPackage::APP
+			? ($ga ? NuProjectPackage::exportAll($withData) : throw new RuntimeException(t('prj_err_rights')))
+			: NuProjectPackage::export((string)$_GET['export'], $withData);
 	} catch (Throwable $e) {
 		nu_flash('danger', $e->getMessage());
 		nu_redirect(nu_url('projects'));
@@ -65,7 +79,8 @@ if (isset($_GET['import'])) {
 	if (!$pkg) { nu_flash('danger', $err); nu_redirect(nu_url('projects')); }
 	$plan = NuProjectPackage::check($pkg);
 	$stateBadge = ['new' => 'text-bg-success', 'same' => 'text-bg-light border', 'different' => 'text-bg-warning', 'conflict' => 'text-bg-danger',
-		'exists' => 'text-bg-light border', 'unsupported' => 'text-bg-secondary'];
+		'exists' => 'text-bg-light border', 'unsupported' => 'text-bg-secondary', 'only' => 'text-bg-danger-subtle text-danger-emphasis border border-danger-subtle'];
+	$canDelete = count(array_filter($plan, static fn($c) => in_array('delete', $c['actions'], true)));
 	nu_layout_start(t('prj_import'), 'home');
 	echo nu_page_header(t('prj_import'), ['icon' => 'bi-box-arrow-in-down', 'crumbs' => [[t('prj_title'), nu_url('projects')]], 'back' => nu_url('projects'),
 		'sub' => t('prj_imp_from', (string)$pkg['project']['name'], (string)($pkg['version'] ?? '?'), (string)($pkg['exported'] ?? ''))]);
@@ -75,6 +90,13 @@ if (isset($_GET['import'])) {
 		<?= nu_csrf_field() ?><input type="hidden" name="action" value="import_run"><input type="hidden" name="token" value="<?= h($tok) ?>">
 		<div class="card shadow-sm mb-3"><div class="card-body small">
 			<p class="mb-2"><?= h(t('prj_imp_intro')) ?></p>
+			<?php if ($canDelete): ?>
+				<div class="alert alert-warning py-2 d-flex flex-wrap align-items-center gap-3" id="prjOnlyNote">
+					<span class="flex-grow-1"><i class="bi bi-exclamation-triangle me-1"></i><?= h(t('prj_imp_only_note', $canDelete)) ?></span>
+					<div class="form-check form-switch mb-0"><input class="form-check-input" type="checkbox" role="switch" id="prjImpDelAll">
+						<label class="form-check-label" for="prjImpDelAll"><?= h(t('prj_imp_delete_all')) ?></label></div>
+				</div>
+			<?php endif; ?>
 			<div class="table-responsive"><table class="table table-sm align-middle nu-table mb-0" id="prjImportTable">
 				<thead><tr><th><?= h(t('prj_kind')) ?></th><th><?= h(t('prj_item')) ?></th><th><?= h(t('prj_imp_state')) ?></th><th><?= h(t('prj_imp_action')) ?></th></tr></thead>
 				<tbody>
@@ -92,7 +114,7 @@ if (isset($_GET['import'])) {
 				<?php endforeach; ?>
 				</tbody>
 			</table></div>
-			<p class="mt-2 mb-0 text-body-secondary"><i class="bi bi-info-circle me-1"></i><?= h(t('prj_imp_rights')) ?></p>
+			<p class="mt-2 mb-0 text-body-secondary"><i class="bi bi-info-circle me-1"></i><?= h(t('prj_imp_restore_note')) ?></p>
 		</div></div>
 		<div class="d-flex gap-2"><button type="submit" class="btn btn-primary" id="prjImportRun"
 			data-nu-busy="<?= h(t('prj_importing')) ?>"><i class="bi bi-box-arrow-in-down me-1"></i><?= h(t('prj_import')) ?></button>
@@ -101,7 +123,7 @@ if (isset($_GET['import'])) {
 	<form method="post" action="<?= h(nu_url('projects')) ?>" id="prjImportCancel"><?= nu_csrf_field() ?><input type="hidden" name="action"
 		value="import_cancel"><input type="hidden" name="token" value="<?= h($tok) ?>"></form>
 	<?php
-	nu_layout_end();
+	nu_layout_end('<script src="' . nu_asset('assets/js/nuprojects.js') . '"></script>');
 	return;
 }
 
@@ -112,7 +134,9 @@ if ($id === '') {
 	echo NuListView::crumbs([[t('prj_title')]]);
 	$w = NuProject::working();
 	$btns = ($ga ? '<button class="btn nuBtnAct" type="button" data-bs-toggle="modal" data-bs-target="#prjImportDlg" id="prjImportBtn"><i class="bi bi-box-arrow-in-down me-1"></i>'
-		. h(t('prj_import')) . '</button>' : '')
+		. h(t('prj_import')) . '</button>'
+		. '<a class="btn nuBtnAct" href="' . h(nu_url('projects', ['export' => NuProjectPackage::APP])) . '" id="prjExportApp" title="' . h(t('prj_export_app_tip'))
+		. '"><i class="bi bi-box-arrow-up me-1"></i>' . h(t('prj_export_app')) . '</a>' : '')
 		. ($canChange ? '<a class="btn nuAddBtn" href="' . h(nu_url('projects', ['id' => 'new'])) . '" id="prjNew"><i class="bi bi-plus-lg me-1"></i>' . h(t('add')) . '</a>' : '');
 	$above = '';
 	if ($w !== '' && ($wp = NuProject::load($w))) {

@@ -683,7 +683,7 @@ TXT;
 		$data = ['url' => nu_url('reportai', ['id' => (string)$report['zzzzsys_report_id']]), 'csrf' => nu_csrf_token(), 'msg' => $msg, 'open' => $open, 'objects' => $n];
 		$tables = '';
 		if ($canSql) { try { foreach (NuFormSpec::appTables() as $tb) $tables .= '<option value="' . h($tb) . '">' . h($tb) . '</option>'; } catch (Throwable $ig) { nu_ignored($ig); } }
-		$tip = static fn(string $k) => nu_info_tip(t($k));
+		$tip = static fn(string $k) => nu_info_tip(t($k), 'ms-1', true, '', 'report-ai');
 		$title = t($n ? 'rai_title_change' : 'rai_title_new');
 		ob_start(); ?>
 <div class="modal fade" id="raiDlg" tabindex="-1" aria-hidden="true" aria-labelledby="raiTitle" data-rai="<?= h((string)json_encode($data, JSON_UNESCAPED_UNICODE)) ?>">

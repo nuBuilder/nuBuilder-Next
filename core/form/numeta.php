@@ -337,6 +337,22 @@ final class NuFormMeta
 		return ['record_check' => in_array((string)$fields['record_check'], ['0', 'false', 'off'], true) ? false : null];   // null = default (checked): key removed
 	}
 
+	/**
+	 * The list's SQL in the browser (nuCurrentProperties().browse_sql) per form: sfo_json nunext.browse_sql_client = true. Off by
+	 * default – the SQL shows table / column names and filter logic; PHP gets it from the server anyway (nuHash()['browse_sql']).
+	 * design API field browse_sql_client '1' | '0'. nuBuilder Forte ignores the key.
+	 */
+	public static function browseSqlIn(mixed $fields): array
+	{
+		if (!is_array($fields) || !array_key_exists('browse_sql_client', $fields)) return [];
+		return ['browse_sql_client' => in_array((string)$fields['browse_sql_client'], ['1', 'true', 'on'], true) ? true : null];
+	}
+
+	public static function browseSqlToClient(?string $json): bool
+	{
+		return (self::nunextJson($json)['browse_sql_client'] ?? null) === true;
+	}
+
 	public static function recordCheckOff(?string $json): bool
 	{
 		return (self::nunextJson($json)['record_check'] ?? null) === false;

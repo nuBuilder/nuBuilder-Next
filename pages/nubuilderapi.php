@@ -222,11 +222,12 @@ try {
 				$layout = in_array($in['fields']['layout'], ['absolute', 'auto', 'grid'], true) ? $in['fields']['layout'] : 'absolute';
 				$fields['sfo_json'] = NuFormMeta::mergeNunextJson($meta->form['sfo_json'] ?? null, ['layout' => $layout === 'absolute' ? null : $layout]);
 			}
-			if ($tags = NuFormMeta::tagsIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuFormMeta::recordCheckIn(is_array($in['fields']
+			if ($tags = NuFormMeta::tagsIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuFormMeta::browseSqlIn($in['fields'] ?? null)
+					+ NuFormMeta::recordCheckIn(is_array($in['fields']
 				?? null) ? $in['fields'] : []) + NuUserHelp::formKeysIn(is_array($in['fields']
 				?? null) ? $in['fields'] : []) + NuRowDetails::keysIn(is_array($in['fields']
 				?? null) ? $in['fields'] : []) + NuCalendar::keysIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuRecycle::keysIn(is_array($in['fields']
-				?? null) ? $in['fields'] : [])) {      // department / team, help pages: sfo_json nunext
+				?? null) ? $in['fields'] : []) + NuRecordView::keysIn(is_array($in['fields'] ?? null) ? $in['fields'] : [])) {      // department / team, help pages: sfo_json nunext
 				$fields['sfo_json'] = NuFormMeta::mergeNunextJson($fields['sfo_json'] ?? ($meta->form['sfo_json'] ?? null), $tags);
 			}
 			if ($fields) $db->update('zzzzsys_form', $fields, 'zzzzsys_form_id', $formId);
@@ -268,17 +269,7 @@ try {
 				if ($info['reauth']) NuBuilderApi::err(t('reauth_needed'), 403);
 			}
 			$db->transaction(static function (NuDB $db) use ($formId) {
-				$ids = array_column($db->all('SELECT zzzzsys_object_id FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id = ?', [$formId]), 'zzzzsys_object_id');
-				foreach ($ids as $oid) {
-					$db->delete('zzzzsys_event', 'sev_zzzzsys_object_id', $oid);
-					$db->delete('zzzzsys_php', 'zzzzsys_php_id', $oid . '_AB');
-				}
-				$db->delete('zzzzsys_object', 'sob_all_zzzzsys_form_id', $formId);
-				$db->delete('zzzzsys_tab', 'syt_zzzzsys_form_id', $formId);
-				$db->delete('zzzzsys_browse', 'sbr_zzzzsys_form_id', $formId);
-				$db->delete('zzzzsys_access_form', 'slf_zzzzsys_form_id', $formId);
-				foreach (NB_HOOKS as $h) $db->delete('zzzzsys_php', 'zzzzsys_php_id', $formId . '_' . $h);
-				$db->delete('zzzzsys_form', 'zzzzsys_form_id', $formId);
+				NuFormSnapshot::remove($db, $formId);
 			});
 			NuPage::forget($formId);                       // settings of a page form
 			NuLog::write('form_deleted', $meta->code(), $formId, ['table' => $meta->table()]);

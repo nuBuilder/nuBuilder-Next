@@ -33,6 +33,10 @@ $ps     = is_string($in['ps'] ?? null) ? $in['ps'] : '';
 $props  = NuProps::merge($ps, $in['props'] ?? []);      // browser values; names set in PHP keep the server's value
 NuHash::$caller = NuProps::caller($ps);                 // fields of the edit form this page was opened from
 NuHash::$state = NuHash::cleanState($in['crumb'] ?? null);   // nuBuilder Forte's breadcrumb keys in nuHash()
+// nuHash()['browse_sql'] from a list: the SQL the server showed for this form (pages/nuform.php), never what the browser sent
+if (isset(NuHash::$state['browse_sql']) && NuHash::$state['browse_sql'] !== '0') {   // '0' = an edit page (no list)
+	NuHash::$state['browse_sql'] = (string)($_SESSION[NuSess::BROWSE_SQL][$meta->id] ?? '');
+}
 $in['props'] = $props;
 $values = is_array($in['values'] ?? null) ? $in['values'] : [];
 $record = (string)($in['record_id'] ?? '');
@@ -165,11 +169,21 @@ try {
 				if (is_array($fd)) $hash['nuFORMdata'] = $fd;
 			}
 			NuPhp::reset();
-			$r = NuPhp::procedure((string)($in['code'] ?? ''), $hash);
+			// nuRunPHP (window): the procedure runs as if on its output page – $_SERVER['REQUEST_URI'] / $_GET are that page's
+			$t = !empty($in['window']) ? NuRunPhp::token($meta->id, (string)($in['code'] ?? ''), $hash) : '';
+			$r = $t !== '' ? NuRunPhp::asPage($t, static fn() => NuPhp::procedure((string)($in['code'] ?? ''), $hash))
+				: NuPhp::procedure((string)($in['code'] ?? ''), $hash);
 			if (!$r['ok']) NuFormApiPage::error($r['error'], 403);
 			$out = NuPhp::result();
 			$out['ok'] = !$out['errors'];
-			$out['output'] = NuPhp::$output;
+			// nuRunPHP (window): the output gets an address of its own, ?p=runphp&i=<token> (pages/nurunphp.php, as nuBuilder Forte's
+			// nurunphp.php?i=) – it shows this output first; a reload or a link with more parameters runs the procedure again
+			if ($t !== '' && strlen(NuPhp::$output) <= NuRunPhp::MAX_OUTPUT) {
+				NuRunPhp::keepOutput($t, NuPhp::$output);
+				$out['url'] = NuRunPhp::url($t);
+			} else {
+				$out['output'] = NuPhp::$output;
+			}
 			NuFormApiPage::out($out);
 	}
 	NuFormApiPage::error('Unknown action');

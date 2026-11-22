@@ -1860,10 +1860,94 @@ T.lookup_add_record = async (s) => {
 			await fr.fill('#noc_name', 'E2E lookup cat ' + w);
 			await fr.click('#nuSaveButton');
 			await p.waitForFunction(() => !document.querySelector('#nuLookupModal.show'), null, { timeout: 10000 });
-			expect(await p.inputValue('#not_zzzzsys_note_category_idcode') === 'E2E lookup cat ' + w, w + ' px: the new category is chosen');
+			// the code is filled in by the lookup's answer, which may arrive just after the dialogue closed
+			await p.waitForFunction((v) => document.getElementById('not_zzzzsys_note_category_idcode').value === v, 'E2E lookup cat ' + w, { timeout: 5000 }).catch(() => null);
+			const got = await p.inputValue('#not_zzzzsys_note_category_idcode');
+			expect(got === 'E2E lookup cat ' + w, w + ' px: the new category is chosen (' + got + ')');
 		}
 	} finally {
 		sql("DELETE FROM zzzzsys_note_category WHERE noc_name LIKE 'E2E lookup cat%'");
 		await p.setViewportSize(vp);
+	}
+};
+
+// view mode of a record (assets/js/nuview.js): read-only sheet of every tab, sub-form as a table, key facts, ← / → of the list, Esc
+T.record_view_mode = async (s) => {
+	const p = s.ga;
+	const before = sql("SELECT sfo_json FROM zzzzsys_form WHERE zzzzsys_form_id = 'sampleorder'").trim();
+	try {
+		sql(`UPDATE zzzzsys_form SET sfo_json = '{"nunext":{"view":{"head":["ord_status","ord_date"]}}}' WHERE zzzzsys_form_id = 'sampleorder'`);
+		await open(p, 'index.php?p=form&f=sampleorder');
+		const ids = await p.$$eval('#nuBrowseTable tr.nuBrowseRow', (rs) => rs.map((r) => r.dataset.nuPrimaryKey));
+		expect(ids.length >= 3, 'sample orders listed');
+		await open(p, 'index.php?p=form&f=sampleorder&r=' + encodeURIComponent(ids[1]));
+		expect(!!(await p.$('#nuViewButton')), 'View button on the record');
+		await p.click('#nuViewButton');
+		await p.waitForSelector('#nuRecView');
+		const v = await p.evaluate(() => {
+			const L = document.getElementById('nuRecView');
+			return {inputs: L.querySelectorAll('.nuRvSheet input, .nuRvSheet select, .nuRvSheet textarea, .nuRvSheet a').length, items: L.querySelectorAll('.nuRvItem').length,
+				facts: [...L.querySelectorAll('.nuRvFactL')].map((x) => x.textContent), sub: L.querySelectorAll('.nuRvTable tbody tr').length,
+				pos: (L.querySelector('.nuRvPos') || {}).textContent || '', cust: /\(C\d+\)/.test(L.textContent)};
+		});
+		expect(v.inputs === 0 && v.items >= 3 && v.facts.length === 2 && v.sub >= 1 && v.cust, 'sheet: no controls, fields, facts, items table, lookup text ' + JSON.stringify(v));
+		expect(/2\D+\d/.test(v.pos), 'position in the list: ' + v.pos);
+		await Promise.all([p.waitForNavigation(), p.keyboard.press('ArrowRight')]);
+		await p.waitForSelector('#nuRecView', {timeout: 8000});
+		expect(p.url().includes(encodeURIComponent(ids[2])) && p.url().includes('view=1'), '→ opens the next record in view mode: ' + p.url());
+		await p.keyboard.press('Escape');
+		await p.waitForFunction(() => !document.getElementById('nuRecView'));
+		expect(!p.url().includes('view=1'), 'Esc back to editing, view=1 gone');
+		// user form: own record page
+		await open(p, 'index.php?p=user&id=sample_anna&view=1');
+		await p.waitForSelector('#nuRecView');
+		const u = await p.evaluate(() => ({t: document.getElementById('nuRvTitle').textContent, txt: document.getElementById('nuRecView').textContent,
+			inputs: document.querySelectorAll('.nuRvSheet input, .nuRvSheet select').length}));
+		expect(u.inputs === 0 && u.txt.includes('sample_anna') && u.txt.includes('sample_viewer'), 'user sheet with login and access level: ' + u.t);
+		await p.keyboard.press('Control+Shift+V');
+		await p.waitForFunction(() => !document.getElementById('nuRecView'));
+	} finally {
+		sql("UPDATE zzzzsys_form SET sfo_json = " + (before === 'NULL' ? 'NULL' : "'" + before.replace(/\\/g, '\\\\').replace(/'/g, "''") + "'") + " WHERE zzzzsys_form_id = 'sampleorder'");
+	}
+};
+
+// view mode: "Always open in view mode" of a form (switch in the view bar, stored per user – the globeadmin's in setting view_first_ga)
+T.record_view_first = async (s) => {
+	const p = s.ga;
+	try {
+		sql("DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'view_first_ga'");
+		await open(p, 'index.php?p=form&f=sampleorder');
+		const ids = await p.$$eval('#nuBrowseTable tr.nuBrowseRow', (rs) => rs.map((r) => r.dataset.nuPrimaryKey));
+		const rec = (i) => 'index.php?p=form&f=sampleorder&r=' + encodeURIComponent(ids[i]);
+		await open(p, rec(0));
+		await p.waitForTimeout(800);
+		expect(!(await p.$('#nuRecView')), 'opens for editing while the switch is off');
+		await p.click('#nuViewButton');
+		await p.waitForSelector('#nuRvFirst');
+		expect(!(await p.isChecked('#nuRvFirst')), 'switch off at first');
+		await p.click('label.nuRvFirst');
+		await p.waitForFunction(() => document.querySelector('.nuToastStack, .toast') !== null, null, {timeout: 5000}).catch(() => null);
+		await p.waitForTimeout(500);
+		expect(/sampleorder/.test(sql("SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'view_first_ga'")), 'choice stored');
+		await open(p, rec(1));
+		await p.waitForSelector('#nuRecView', {timeout: 8000});
+		expect(await p.isChecked('#nuRvFirst'), 'another record opens in view mode, switch on');
+		await p.click('.nuRvEdit');
+		await p.waitForFunction(() => !document.getElementById('nuRecView'));
+		await open(p, rec(1));
+		await p.waitForTimeout(1500);
+		expect(!(await p.$('#nuRecView')), 'after Edit the same record stays for editing on reload');
+		await open(p, rec(1) + '&view=0');
+		await p.waitForTimeout(800);
+		expect(!(await p.$('#nuRecView')), 'view=0 opens for editing');
+		await open(p, rec(2));
+		await p.waitForSelector('#nuRecView', {timeout: 8000});
+		await p.click('label.nuRvFirst');
+		await p.waitForTimeout(600);
+		await open(p, rec(0));
+		await p.waitForTimeout(1200);
+		expect(!(await p.$('#nuRecView')), 'switched off: records open for editing again');
+	} finally {
+		sql("DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'view_first_ga'");
 	}
 };
