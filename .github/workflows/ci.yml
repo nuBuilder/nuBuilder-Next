@@ -16,13 +16,16 @@ jobs:
       - run: php dev/check_lang.php
       - run: php dev/tests/run.php
       - run: curl -sSL -o ../phpstan.phar https://github.com/phpstan/phpstan/releases/download/2.1.17/phpstan.phar && php ../phpstan.phar analyse -c dev/phpstan.neon --no-progress --memory-limit=1G
+      # the same analysis read as the newest PHP this PHPStan knows (8.4): removed or changed functions also in code the browser tests never reach
+      - run: php ../phpstan.phar analyse -c dev/phpstan-php84.neon --no-progress --memory-limit=1G
       - uses: actions/setup-node@v5
         with: { node-version: '22' }
       # ESLint 9 = the maintenance line (9.17.0 was marked unsupported on npm, 0.8.890); 10 changes the config defaults – not yet
       - run: npm install --no-save --prefix .. eslint@9.39.5 globals@15.14.0 && npx --prefix .. eslint -c dev/eslint.config.mjs assets/js
 
-  # (0.8.1137) three MySQL-type servers × two PHP versions: MySQL 8.4 differs from MariaDB in collation (utf8mb4_0900_ai_ci),
-  # SQL modes and the JSON type – the same installation, smoke test and self-test on each
+  # three MySQL-type servers × PHP 8.2 / 8.3: MySQL 8.4 differs from MariaDB in collation (utf8mb4_0900_ai_ci), SQL modes and the JSON
+  # type – the same installation, smoke test and self-test on each; the newer PHP versions 8.4 / 8.5 against MariaDB 11.4 only (they
+  # check PHP, the database differences are covered by the rows above)
   mysql:
     runs-on: ubuntu-latest
     needs: lint
@@ -35,6 +38,8 @@ jobs:
           - { db: 'mariadb:10.11', health: 'healthcheck.sh --connect' }
           - { db: 'mariadb:11.4', health: 'healthcheck.sh --connect' }
           - { db: 'mysql:8.4', health: 'mysqladmin ping -h 127.0.0.1 -uroot -proot' }
+          - { db: 'mariadb:11.4', php: '8.4', health: 'healthcheck.sh --connect' }
+          - { db: 'mariadb:11.4', php: '8.5', health: 'healthcheck.sh --connect' }
     name: mysql (${{ matrix.db }}, PHP ${{ matrix.php }})
     services:
       database:
@@ -60,6 +65,8 @@ jobs:
           $nuConfigShowInstaller = false; $nuConfigDevMode = true;
           PHP
           cd nub/nunext && php -r 'require "core/nuapp.php"; $r = NuDbState::setUp("upload", "../nubuilder4.sql"); $s = NuDbState::check(); echo $r["imported"], " statements, state ", $s["state"], ", origin ", NuInstall::origin(), "\n"; exit($s["state"] === "ok" && NuInstall::origin() === "nunext" && !NuInstall::backupNeeded() ? 0 : 1);'
+      # the unit tests on this PHP version too (no database; the lint job runs them on 8.3)
+      - run: cd nub/nunext && php -d error_reporting=-1 dev/tests/run.php
       - run: (cd nub && php -d opcache.jit=disable -d display_errors=1 -d error_reporting=-1 -S 127.0.0.1:8099 -t . > ../srv.log 2>&1 &) && sleep 2
       - uses: actions/setup-node@v5
         with: { node-version: '22' }

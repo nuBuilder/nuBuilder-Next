@@ -1,7 +1,7 @@
 {
  "product": "nuNext",
- "version": "0.8.1370",
- "built": "2026-11-22 07:18",
+ "version": "0.8.1371",
+ "built": "2026-11-22 07:31",
  "requires": {
   "php": "8.1"
  },
@@ -11,15 +11,15 @@
    "size": 1279
   },
   "CHANGELOG.md": {
-   "sha256": "0347d63a630dacfa0bd9e2117480896cefde9c9e35640d61a45c4dfa6a11e92e",
-   "size": 851107
+   "sha256": "5e7c9435fab2f4ce4306d88a4fb197269899d93f92dbb40e1db2ad4d23eb0b0d",
+   "size": 851450
   },
   "LICENSE": {
    "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
    "size": 35149
   },
   "README.md": {
-   "sha256": "fbd1158a2cef2644c6c3b8f140bdbb7fcf1e29b72bba8c74d6d847b853d6c588",
+   "sha256": "38742e9e512f4709939f072f84457aaa9d1ad18b4c05365b23cc944a397afb3b",
    "size": 3704
   },
   "api.php": {
@@ -1363,7 +1363,7 @@
    "size": 33902
   },
   "core/nuapp.php": {
-   "sha256": "2a84266b226dafec77865354aef655f733dea842df5fd3e5eb58753445ea6e99",
+   "sha256": "edc53a9d874c290d774985a3be5847c9b0d08bae2517abcf69ed140d7f7e0cb5",
    "size": 61552
   },
   "core/nuappcloner.php": {
@@ -2651,7 +2651,7 @@
    "size": 73026
   },
   "install/db_changes.json": {
-   "sha256": "26bdc9b5e74ad667b7e8d4f40fab3a63dc4224d100b137b860c2d05140646982",
+   "sha256": "b3a5e39a7d6df0f52030d45602021b576529b34aa2e6625cb881be9d530e1088",
    "size": 76702
   },
   "install/libraries-required.json": {
@@ -3729,6 +3729,11 @@
    "version": "0.7",
    "title": "",
    "text": "### Documentation – user menu → Documentation (index.php?p=help)\nEnglish documentation in docs/nunext-docs.htm, filtered on the server: every user sees only the chapters that apply to him\n(data-doc=\"admin\" = globeadmin, data-acl=\"<form id>\" = view right on that form). Index on the left, full-text search with highlighting\n(/ focuses it, &q= in the URL), #chapter links. The globeadmin can switch to \"As user\" (&doc=user).\ndocs/.htaccess blocks direct access to the file.\n\n### E-mail templates, items, debug results\n- E-mail templates (zzzzsys_email_template, rights on nuemailtemplate): E-mail → Templates. Choose a form and insert its objects as\n  #obj_id# placeholders; preview and test with a record; clone; code + group + language unique.\n- Items (zzzzsys_item, rights on nuitem): Forms → Items, Main and Additional tab like nuBuilder.\n- Debug results (zzzzsys_debug, rights on nudebug): Log → Debug. nuDebug() in PHP writes there (nuBuilder format, deb_added = Unix time).\n\n### Files (zzzzsys_file, rights on nuBuilder's form nufile) – Forms → Files\nSmall images and documents in the database, stored in nuBuilder's format (sfi_json = {\"file\": base64(data URL), \"name\", \"size\", \"type\"};\nthe MIME type is taken from the content). Grid with thumbnails, search and group filter; upload, drag & drop or paste an image; preview,\ndownload (?p=files&raw=<id>, served with nosniff and a sandbox CSP), clone; code unique; files used by image objects cannot be deleted;\nnuBuilder's system files only for the globeadmin. Maximum size $nuConfigFileMaxKB (default 300).\n\n### Logged-in users (globeadmin) – Log → Logged-in users\nAll nuBuilder Next sessions with IP, browser, login time and last activity (table zzzzsys_nunext_session, activity written at most every 30 s);\nEnd session logs the user out with his next request. nuBuilder's sessions (zzzzsys_session) are listed for information.\n\n### phpMyAdmin and Tiny File Manager (globeadmin) – not part of the package\n\nCopy the folders with nuBuilder's config files: they include ../../nuconfig.php (= nuBuilder Next's) and accept the cookie nu_PMA / nu_TFM.\nUser menu → Database (phpMyAdmin) / File Manager writes a zzzzsys_session row with global_access = 1 for the current nuBuilder Next session,\nsets the cookie and opens the tool in a new tab – like nuBuilder's core/nuvendorlogin.php. The row is removed at logout, when the session\nis ended by the globeadmin or after the session timeout. nuVendorLogin('PMA' | 'TFM', table) works in form code.\nindex.php?p=vendor shows the status. Other locations: $nuConfigPMAURL / $nuConfigTFMURL. MySQL / MariaDB only.\n\n### Database\n- nuBuilder Next's own tables are renamed from nunext_ to zzzzsys_nunext_ (primary key <table>_id, like nuBuilder's tables, so nuBuilder's\n  app cloner and backup handle them). Existing tables are renamed automatically on the first request after the update – data is kept.\n- Every table nuBuilder Next creates is InnoDB ($nuConfigDBEngine is ignored for that). Admin tools → Storage engine lists tables that are not\n  InnoDB and converts them (ALTER TABLE … ENGINE=InnoDB, backup first). Keep $nuConfigDBEngine = \"InnoDB\" for nuBuilder's update.\n- The user form's switch \"Accessibility features\" is hidden until its function is defined (the stored value is kept).\n\n### Forms\n- The Save button turns red while there are unsaved changes (forms and builder).\n- A toast confirms save, delete and clone (nuToast(message, type) for your own code).\n- A record being cloned shows a yellow badge and a dashed frame until it is saved; the blank \"new\" sub-form row is no longer copied as edited."
+  },
+  {
+   "version": "0.8.1371",
+   "title": "CI on PHP 8.4 and 8.5",
+   "text": "- Automatic tests on GitHub also run on PHP 8.4 and 8.5 (installation, browser smoke test, self-test, unit tests and the check for\n  PHP warnings and deprecations), and the static code analysis also reads the code as PHP 8.4, so functions that newer PHP versions\n  removed or changed are reported early."
   },
   {
    "version": "0.8.1370",
@@ -10833,5 +10838,5 @@
   ],
   "deprecated": []
  },
- "signature": "l+o+vXOerPIzMQmw7MRgdTZcuH5pBkq2zdg9XR5q2NNL+Y3C894d3dw18uSRFIPw8PA0SYxZCYAF3f9PeBUFCQ=="
+ "signature": "JTpQ9lVRZK8VrvdMrt9DDkbjEL6nhPCrLEevKttjllfHYopEAlMq10i9C4dY4sagEcq6LpU9tf6CLR+mAtB8Cw=="
 }

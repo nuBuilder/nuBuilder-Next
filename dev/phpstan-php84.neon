@@ -1,0 +1,6 @@
+# The same analysis as dev/phpstan.neon, read as PHP 8.5 (CI job lint): reports functions, constants and signatures that newer PHP
+# versions removed or changed, also in code the smoke test never reaches. Run: php ../phpstan.phar analyse -c dev/phpstan-php85.neon
+includes:
+	- phpstan.neon
+parameters:
+	phpVersion: 80499

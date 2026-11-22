@@ -3,6 +3,11 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.1371 – CI on PHP 8.4 and 8.5
+- Automatic tests on GitHub also run on PHP 8.4 and 8.5 (installation, browser smoke test, self-test, unit tests and the check for
+  PHP warnings and deprecations), and the static code analysis also reads the code as PHP 8.4, so functions that newer PHP versions
+  removed or changed are reported early.
+
 ## 0.8.1370 – Code analysis follow-up
 - Development scripts: findings of the code analysis fixed – the style sheet folding script states where no
   target rule exists (its output is unchanged), and the release script only reads the library index from its
