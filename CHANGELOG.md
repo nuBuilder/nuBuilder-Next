@@ -3,6 +3,11 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.1370 – Code analysis follow-up
+- Development scripts: findings of the code analysis fixed – the style sheet folding script states where no
+  target rule exists (its output is unchanged), and the release script only reads the library index from its
+  fixed GitHub address.
+
 ## 0.8.1369 – main follows every release
 - From now on every version is also pushed to the branch main on GitHub, so the update page's "Get branch main" brings the
   newest version. GitHub releases stay at the release gates; versions between them are marked "Not fully tested".

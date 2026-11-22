@@ -281,8 +281,11 @@ def check_github_packs(packs):
     new installations would get one version, existing ones (Update → Libraries) the other. Publish the pack + libraries.json
     (php dev/libpack.php <out> ../nunext-signing.key <slot>=dev/libsrc/<slot> --keep=<current libraries.json>). Never stops the release."""
     import urllib.request
+    if not GITHUB_LIBS.startswith('https://github.com/'):     # only the fixed https address of the release index
+        print('library packs: GitHub release "libraries" not checked (address is not https://github.com/)')
+        return
     try:
-        with urllib.request.urlopen(GITHUB_LIBS, timeout=20) as r:
+        with urllib.request.urlopen(GITHUB_LIBS, timeout=20) as r:  # skipcq: BAN-B310 – fixed https address checked above
             index = json.loads(r.read().decode('utf-8'))
         gh = {str(l.get('name')): str(l.get('version')) for l in index.get('libs', []) if isinstance(l, dict)}
     except Exception as e:                                   # offline, rate limit … – only a note
@@ -312,22 +315,22 @@ def signing_key():
 
 
 def read_text(path: str, **kw) -> str:
-    with open(path, encoding='utf-8', **kw) as fh:
+    with open(path, encoding='utf-8', **kw) as fh:  # skipcq: PTC-W6004 – project files the release script names itself
         return fh.read()
 
 
 def write_text(path: str, text: str) -> None:
-    with open(path, 'w', encoding='utf-8') as fh:
+    with open(path, 'w', encoding='utf-8') as fh:  # skipcq: PTC-W6004 – project files the release script names itself
         fh.write(text)
 
 
 def read_json(path: str):
-    with open(path, encoding='utf-8') as fh:
+    with open(path, encoding='utf-8') as fh:  # skipcq: PTC-W6004 – project files the release script names itself
         return json.load(fh)
 
 
 def write_json(path: str, data) -> None:
-    with open(path, 'w', encoding='utf-8') as fh:
+    with open(path, 'w', encoding='utf-8') as fh:  # skipcq: PTC-W6004 – project files the release script names itself
         json.dump(data, fh, ensure_ascii=False, indent=1)
 
 

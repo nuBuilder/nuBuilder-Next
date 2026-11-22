@@ -153,9 +153,11 @@ def fam_keys(decls, specs) -> set:
     return {(family(d.name), sp, bool(d.important)) for d in decls for sp in specs}
 
 
-def target_of(rules: list, b: int, keep: dict):
+def target_of(rules: list, b: int, keep: dict) -> int | None:
     """The first earlier rule of the same selector and context – one that gave declarations away itself is never a target."""
     rb = rules[b]
+    if rb['sel'] is None or not rb['decls']:
+        return None
     return next((k for k in range(b) if rules[k]['sel'] == rb['sel'] and rules[k]['ctx'] == rb['ctx'] and k not in keep), None)
 
 
@@ -177,9 +179,11 @@ def plan(rules: list):
     folded = 0
     fams = [set(r['fam']) for r in rules]     # families each rule sets NOW (what it gave away gone, what it got added)
     for b, rb in enumerate(rules):
-        a = target_of(rules, b, keep) if rb['sel'] is not None and rb['decls'] else None
+        a = target_of(rules, b, keep)
+        if a is None:
+            continue
         mine = keep.get(b) or rb['decls']
-        go, specs = movable(rules, fams, a, b, mine) if a is not None else ([], set())
+        go, specs = movable(rules, fams, a, b, mine)
         if not go:
             continue
         rest = [d for d in mine if d not in go]
