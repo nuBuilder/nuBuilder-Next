@@ -739,6 +739,9 @@ button.nu-tile { font: inherit; color: inherit; background: var(--bs-card-bg); c
 .nuPwGenLen { width: 5rem; flex: none; }
 .nuPwGenBar { height: .4rem; }
 .nuPwGenOut { letter-spacing: .03em; }
+/* buttons that read as links inside list cells (table name → database tool, number of access levels): the cell's text size and line,
+   no border – a btn-sm's 23 px made the rows 34 px instead of 33 once a database tool is installed */
+.nu-table > tbody > tr > td .btn.btn-link.p-0 { font-size: inherit; line-height: inherit; border-width: 0; vertical-align: baseline; }
 /* forms list: one colour per form type (light and dark theme) */
 .nuFormType { font-weight: 600; border: 1px solid transparent; }
 .nuFormType-browseedit { background: #e8f1ff; color: #1f4fa3; border-color: #cfe0fb; }
@@ -3001,6 +3004,11 @@ kbd { background: #f1f3f5; color: #212529; border: 1px solid #dee2e6; border-bot
 .nuGrStepName { flex: 1 1 auto; min-width: 0; }
 .nuGrStepCount { font-size: .75rem; color: var(--bs-secondary-color); font-weight: 400; }
 .nuGrStepCount.nuGrStepRed { color: var(--bs-danger-text-emphasis); font-weight: 600; }
+.nuGrStepDot { width: .55rem; height: .55rem; flex: 0 0 auto; }   /* the dot of a step (red: to fix, amber: to look at); empty keeps the counts aligned */
+.nuGrBadGo:hover, .nuGrBadGo:focus-visible { background: var(--bs-danger-text-emphasis) !important; }
+.nuGrItem { scroll-margin-top: calc(var(--nu-nav-h, 56px) + 1rem); }
+.nuGrItem:target { outline: 3px solid var(--bs-danger); outline-offset: 2px; animation: nuGrFlash 1.6s ease-out 1; }
+@keyframes nuGrFlash { 0%, 40% { box-shadow: 0 0 0 .5rem rgba(220, 53, 69, .25); } 100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); } }
 .nuGrPane { background: var(--bs-body-bg); border: 1px solid var(--bs-border-color); border-radius: .75rem; padding: 1rem 1.25rem; min-width: 0; }
 .nuGrItems { display: flex; flex-direction: column; gap: .5rem; }
 .nuGrItem { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: .75rem; align-items: start; padding: .7rem .8rem; border: 1px solid var(--bs-border-color-translucent); border-radius: .6rem; }

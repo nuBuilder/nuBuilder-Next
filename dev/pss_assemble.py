@@ -3,10 +3,10 @@
 Builds the source folder of the PhpSpreadsheet library pack (0.8.755) from GitHub: PhpSpreadsheet and the libraries of its
 composer.lock (no Composer needed – Packagist is often not reachable), each in its own folder, plus a small PSR-4 autoload.php.
 
-    python3 -I dev/pss_assemble.py <out folder> [PhpSpreadsheet tag, default 5.10.0]
+    python3 -I dev/pss_assemble.py <out folder> [PhpSpreadsheet tag, default 5.12.0]
     php dev/libpack.php <packs folder> ../nunext-signing.key phpspreadsheet=<out folder>
 
-<out>/autoload.php · VERSION · README.txt · LICENSES/<package>.txt · PhpSpreadsheet/ · Complex/ · Matrix/ · ZipStream/ · Pcre/ · SimpleCache/
+<out>/autoload.php · VERSION · README.txt · LICENSES/<package>.txt · PhpSpreadsheet/ · Complex/ · Matrix/ · ZipStream/ · Pcre/ · SimpleCache/ · WMF/
 """
 import json
 import os
@@ -23,6 +23,7 @@ PARTS = {
     'maennchen/zipstream-php': ('maennchen/ZipStream-PHP', 'ZipStream', 'ZipStream\\', 'src'),
     'composer/pcre': ('composer/pcre', 'Pcre', 'Composer\\Pcre\\', 'src'),
     'psr/simple-cache': ('php-fig/simple-cache', 'SimpleCache', 'Psr\\SimpleCache\\', 'src'),
+    'phpoffice/wmf': ('PHPOffice/WMF', 'WMF', 'PhpOffice\\WMF\\', 'src/WMF'),   # since PhpSpreadsheet 5.12 (WMF / EMF pictures)
 }
 
 AUTOLOAD = r"""<?php
@@ -59,7 +60,7 @@ def main():
     if len(sys.argv) < 2:
         sys.exit(__doc__)
     out = os.path.abspath(sys.argv[1])
-    tag = sys.argv[2] if len(sys.argv) > 2 else '5.10.0'
+    tag = sys.argv[2] if len(sys.argv) > 2 else '5.12.0'
     tmp = tempfile.mkdtemp(prefix='pss-')
     try:
         main_dir = os.path.join(tmp, 'phpspreadsheet')

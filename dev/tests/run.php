@@ -520,6 +520,23 @@ foreach (['other table' => 'CREATE TABLE customers (a int)', 'insert into other 
 	check('dump: refused ' . $what, !NuInstall::checkDump($okDump . $stmt . ";\n")['ok']);
 }
 check('dump: strings with SQL in VALUES', NuInstall::checkDump($okDump . "INSERT INTO `zzzzsys_object` VALUES ('x', 'SELECT * FROM t; DROP TABLE y', 'it''s', 'a\\'b', NULL, -1.5, 0x1F);\n")['ok']);
+// installer: a dump that cannot be read says why (zip without / with several .sql files)
+$dzDir = sys_get_temp_dir() . '/nunext-dz-' . getmypid();
+@mkdir($dzDir);
+$dz = new ZipArchive(); $dz->open("$dzDir/none.zip", ZipArchive::CREATE); $dz->addFromString('a.txt', 'x'); $dz->close();
+$dz = new ZipArchive(); $dz->open("$dzDir/many.zip", ZipArchive::CREATE); $dz->addFromString('a.sql', 'x'); $dz->addFromString('b.sql', 'y'); $dz->close();
+check('installer: zip without .sql named', NuInstall::dumpSql("$dzDir/none.zip") === null && NuInstall::dumpReadError("$dzDir/none.zip") === t('ins_dump_err_zip_none'));
+check('installer: zip with several .sql named', NuInstall::dumpReadError("$dzDir/many.zip") === t('ins_dump_err_zip_many'));
+$dz = new ZipArchive(); $dz->open("$dzDir/ok.zip", ZipArchive::CREATE); $dz->addFromString('dump.sql', $okDump); $dz->close();
+$dzChk = NuInstall::checkDumpFile("$dzDir/ok.zip");
+check('installer: dump checked as a stream (zip unpacked next to it)', $dzChk['ok'] && is_file($dzChk['file']) && $dzChk['size'] === strlen($okDump));
+check('installer: unreadable zip says why', NuInstall::checkDumpFile("$dzDir/many.zip")['error'] === t('ins_dump_err_zip_many'));
+foreach (glob("$dzDir/*") ?: [] as $f) @unlink($f);
+@rmdir($dzDir);
+// installer: the error page of nu_config() never asks nu_db() again (endless: page width / phone back read a setting)
+check('nu_db: no endless loop through the config error page', str_contains((string)file_get_contents(NU_ROOT . '/core/nuapp.php'), 'if ($opening) throw new RuntimeException')
+	&& str_contains((string)file_get_contents(NU_ROOT . '/core/nupagewidth.php'), 'is_file(nu_config_path())'));
+
 // Reset database (0.8.628): a complete dump – the application's tables allowed, the other rules stay
 $full = $okDump . "CREATE TABLE `customers` (`id` int);\nLOCK TABLES `customers` WRITE;\nINSERT INTO `customers` VALUES (1),(2);\nUNLOCK TABLES;\nINSERT INTO `zzzzsys_user` (`zzzzsys_user_id`) VALUES ('u1'),('u2'),('u3');\n";
 check('dump: application tables refused for the installer', !NuInstall::checkDump($full)['ok']);

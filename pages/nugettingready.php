@@ -34,6 +34,18 @@ if (!isset($groups[$g])) {                                  // first group with 
 }
 $keys = array_keys($groups);
 $pos = (int)array_search($g, $keys, true);
+// "n to fix" is a link: to the next red point after the shown step (round), else the first red point of this step – marked by :target
+$badOrder = [];
+foreach ($keys as $k) foreach ($byGroup[$k] as $id => $it) if ($it['open'] && $it['st'] === 'bad') $badOrder[] = [$k, $id];
+$badGo = null;
+if ($badOrder) {
+	$n = count($keys);
+	for ($i = 1; $i <= $n && $badGo === null; $i++) {
+		$k = $keys[($pos + $i) % $n];
+		foreach ($badOrder as $b) if ($b[0] === $k) { $badGo = $b; break; }
+	}
+	$badGo ??= $badOrder[0];
+}
 $hide = NuReady::state()['hide'];
 $stIcon = ['ok' => 'bi-check-circle-fill', 'warn' => 'bi-exclamation-triangle-fill', 'bad' => 'bi-x-circle-fill', 'todo' => 'bi-circle'];
 $stText = ['ok' => 'gr_st_ok', 'warn' => 'gr_st_warn', 'bad' => 'gr_st_bad', 'todo' => 'gr_st_todo'];
@@ -66,7 +78,9 @@ echo nu_page_header(t('gr_title'), ['icon' => 'bi-rocket-takeoff', 'sub' => t('g
 	<?= NuReady::ring($sum['done'], $sum['total'], 52) ?>
 	<div class="flex-grow-1">
 		<div class="fw-semibold"
-			id="grCount"><?= h(t('gr_count', $sum['done'], $sum['total'])) ?><?php if ($sum['bad']): ?> <span class="badge text-bg-danger ms-1"
+			id="grCount"><?= h(t('gr_count', $sum['done'], $sum['total'])) ?><?php if ($sum['bad'] && $badGo): ?> <a class="badge text-bg-danger ms-1 text-decoration-none nuGrBadGo" id="grBad"
+			href="<?= h(nu_url('gettingready', ['g' => $badGo[0]])) ?>#gr_<?= h($badGo[1]) ?>" title="<?= h(t('gr_to_fix_go')) ?>"><?= h(t('gr_to_fix', $sum['bad'])) ?>
+			<i class="bi bi-arrow-right-short" aria-hidden="true"></i></a><?php elseif ($sum['bad']): ?> <span class="badge text-bg-danger ms-1"
 			id="grBad"><?= h(t('gr_to_fix', $sum['bad'])) ?></span><?php endif; ?></div>
 		<progress class="nuGrProgress" max="<?= (int)$sum['total'] ?>" value="<?= (int)$sum['done'] ?>" aria-label="<?= h(t('gr_count', $sum['done'], $sum['total'])) ?>"></progress>
 	</div>
@@ -74,11 +88,16 @@ echo nu_page_header(t('gr_title'), ['icon' => 'bi-rocket-takeoff', 'sub' => t('g
 <div class="nuGrWrap">
 	<nav class="nuGrSteps" aria-label="<?= h(t('gr_steps')) ?>"><ol>
 	<?php foreach ($groups as $k => [$icon, $label]):
-		$list = $byGroup[$k]; $open = count(array_filter($list, static fn($it) => $it['open'])); $red = count(array_filter($list, static fn($it) => $it['open'] && $it['st'] === 'bad')); ?>
+		$list = $byGroup[$k]; $open = count(array_filter($list, static fn($it) => $it['open'])); $red = count(array_filter($list, static fn($it) => $it['open'] && $it['st'] === 'bad'));
+		$amber = count(array_filter($list, static fn($it) => $it['open'] && $it['st'] === 'warn')); ?>
 		<li><a class="nuGrStep<?= $k === $g ? ' active' : '' ?><?= $open ? '' : ' nuGrStepDone' ?>" href="<?= h(nu_url('gettingready', ['g' => $k])) ?>"
 			data-gr-group="<?= h($k) ?>"<?= $k === $g ? ' aria-current="step"' : '' ?>>
 			<i class="bi <?= $open ? $icon : 'bi-check-circle-fill' ?>" aria-hidden="true"></i><span class="nuGrStepName"><?= h(t($label)) ?></span>
-			<span class="nuGrStepCount<?= $red ? ' nuGrStepRed' : '' ?>"><?= count($list) - $open ?>/<?= count($list) ?></span></a></li>
+			<span class="nuGrStepCount<?= $red ? ' nuGrStepRed' : '' ?>"><?= count($list) - $open ?>/<?= count($list) ?></span><?php
+			// a dot: red = a point to fix in this step, amber = a point to look at (the step list says where without opening each)
+			if ($red || $amber): ?><span class="nuGrDot nuGrStepDot nuGrSt-<?= $red ? 'bad' : 'warn' ?>" role="img"
+				aria-label="<?= h($red ? t('gr_to_fix', $red) : t('gr_to_check', $amber)) ?>" title="<?= h($red ? t('gr_to_fix', $red) : t('gr_to_check', $amber)) ?>"></span><?php
+			else: ?><span class="nuGrStepDot" aria-hidden="true"></span><?php endif; ?></a></li>
 	<?php endforeach; ?>
 	</ol></nav>
 	<section class="nuGrPane" id="grPane" data-gr-group="<?= h($g) ?>">

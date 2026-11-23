@@ -551,7 +551,7 @@ if ($admin || $userPage) {
 		'procUrl' => $userPage ? nu_url('home', ['for' => $for, 'run' => '__ID__']) : nu_url('procedures', ['id' => '__ID__']),
 		't' => array_combine($k = ['pgw_title', 'pgw_default', 'pgw_device_tip', 'pgw_standard', 'pgw_wide', 'pgw_full', 'pgw_custom', 'pgw_px_label',
 			'pgw_device_sec', 'home_customize', 'home_display', 'home_display_groups', 'home_display_tabs', 'home_size', 'home_size_large', 'home_size_compact',
-			'home_fav_add', 'home_unfav', 'home_ctx_hide', 'sb_recent_remove', 'sb_recent_clear_menu', 'home_fav', 'home_fav_only', 'home_fav_none_edit',
+			'home_fav_add', 'home_unfav', 'home_fav_added', 'home_fav_removed', 'home_ctx_undo', 'home_fav_key', 'home_ctx_hide', 'sb_recent_remove', 'sb_recent_clear_menu', 'home_fav', 'home_fav_only', 'home_fav_none_edit',
 			'home_fav_edit', 'home_row_hide', 'home_row_autofold', 'home_row_autofold_tip', 'home_row_hidden', 'home_v_fav_row', 'home_v_fav_row_hint',
 			'home_c_tab_appearance', 'home_size_list', 'home_size_listwide', 'home_size_list2',
 			'home_add_group', 'home_add_tile', 'home_kind_builtin', 'home_tile_builtin', 'home_builtin_tiles', 'home_builtin_none', 'home_pinned',

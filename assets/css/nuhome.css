@@ -485,11 +485,33 @@
 [data-nu-maint="1"] .nuHomeIcon, [data-nu-maint="1"] .nuHomeLabel, [data-nu-maint="1"] .nuHomeHint { opacity: .55; filter: grayscale(1); }
 /* selected search result (the owner's choice C of the mockup): darker solid blue, white bold title, near-white description,
    icon on a white square – the default blue with dark Bootstrap text classes had too little contrast */
-.nuHomeSearchList > .list-group-item.active { background: #0a58ca; border-color: #0a58ca; color: #fff; }
-.nuHomeSearchList > .list-group-item.active .text-body { color: #fff !important; font-weight: 600; }
-.nuHomeSearchList > .list-group-item.active .text-body-secondary { color: #e7f1ff !important; }
-.nuHomeSearchList > .list-group-item.active .nu-tile-icon { background: #fff !important; color: #0a58ca !important; }
-.nuHomeSearchList > .list-group-item.active .nu-tile-icon .bi { color: inherit !important; }
+.nuHomeSearchList > .nuHomeRes > .list-group-item.active { background: #0a58ca; border-color: #0a58ca; color: #fff; }
+.nuHomeSearchList > .nuHomeRes > .list-group-item.active .text-body { color: #fff !important; font-weight: 600; }
+.nuHomeSearchList > .nuHomeRes > .list-group-item.active .text-body-secondary { color: #e7f1ff !important; }
+.nuHomeSearchList > .nuHomeRes > .list-group-item.active .nu-tile-icon { background: #fff !important; color: #0a58ca !important; }
+.nuHomeSearchList > .nuHomeRes > .list-group-item.active .nu-tile-icon .bi { color: inherit !important; }
+/* each result in a wrapper (.nuHomeRes: the link + the ☆ of a tile result): the list's borders and corners as without it */
+.nuHomeSearchList > .nuHomeRes { position: relative; }
+.nuHomeSearchList > .nuHomeRes > .list-group-item { border-radius: 0; }
+.nuHomeSearchList > .nuHomeRes + .nuHomeRes > .list-group-item { border-top-width: 0; }
+.nuHomeSearchList > .nuHomeRes:first-child > .list-group-item { border-top-left-radius: var(--bs-list-group-border-radius); border-top-right-radius: var(--bs-list-group-border-radius); }
+.nuHomeSearchList > .nuHomeRes:last-child > .list-group-item { border-bottom-left-radius: var(--bs-list-group-border-radius); border-bottom-right-radius: var(--bs-list-group-border-radius); }
+/* ☆ of a tile result (the owner's choice C): desktop only (a mouse); shown on the row under the mouse, the selected row and for
+   favourites (★ amber); a click toggles the favourite without opening the row */
+.nuHomeResStar { display: none; }
+@media (hover: hover) and (pointer: fine) {
+	.nuHomeSearchList .list-group-item.nuHomeResHasStar { padding-right: 3.25rem; }
+	.nuHomeResStar { display: flex; align-items: center; justify-content: center; position: absolute; top: 50%; right: .6rem; transform: translateY(-50%);
+		width: 2.25rem; height: 2.25rem; padding: 0; border: 0; border-radius: .375rem; background: transparent; color: var(--bs-secondary-color);
+		font-size: 1.15rem; cursor: pointer; opacity: 0; transition: opacity .12s; z-index: 3; }
+	.nuHomeRes:hover > .nuHomeResStar, .nuHomeRes > .list-group-item.active + .nuHomeResStar, .nuHomeResStar.on { opacity: 1; }
+	.nuHomeResStar:hover { background: color-mix(in srgb, #f5b301 18%, transparent); color: #b07d00; }
+	.nuHomeResStar.on { color: #e0a100; }
+	.nuHomeRes > .list-group-item.active + .nuHomeResStar { color: #fff; }
+	.nuHomeRes > .list-group-item.active + .nuHomeResStar.on { color: #ffda6a; }
+	.nuHomeRes > .list-group-item.active + .nuHomeResStar:hover { background: rgba(255, 255, 255, .18); }
+	[data-bs-theme="dark"] .nuHomeResStar.on { color: #ffc107; }
+}
 
 /* rows folded from the first paint (html.nuHomeFold-<fav|recent> from nutheme.js until nuhome.js applies the fold) */
 html.nuHomeFold-fav .nuHomeStrip[data-nu-strip="fav"] .nuHomeChips,

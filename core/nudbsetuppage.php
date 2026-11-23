@@ -34,10 +34,9 @@ final class NuDbsetupPage
 							$path = NuInstall::dumpCandidates()[$pick];
 						}
 						if ($path === null) throw new RuntimeException(t('ins_dump_err_none'));
-						$sql = NuInstall::dumpSql($path);
-						if ($sql === null) throw new RuntimeException(t('ins_dump_err_read'));
-						$file = (string)preg_replace('/\.(sql|sql\.gz|zip)$/i', '', $path) . '.checked.sql';
-						if (@file_put_contents($file, $sql) === false) throw new RuntimeException(t('ins_dump_err_read'));
+						$chk = NuInstall::checkDumpFile($path);
+						if (!$chk['ok']) throw new RuntimeException($chk['error']);
+						$file = $chk['file'];
 					}
 					$r = NuDbState::setUp($choice, $file);
 					foreach (glob(NU_ROOT . '/_install/nunext-lib-*.zip') ?: [] as $f) @rename($f, NuUpdate::folderDir() . '/' . basename($f));   // library packs stay offered

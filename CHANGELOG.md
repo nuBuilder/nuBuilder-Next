@@ -3,6 +3,72 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.1407 – Release gate
+- Release gate (documentation: installer with a nuBuilder Forte dump, star in the start page search, Getting ready dots; README install note; FEATURES).
+
+## 0.8.1406 – List rows with table links
+- Lists: link-like buttons inside list cells (the table name that opens the database tool, the number of access levels in the
+  forms list) take the cell's text size and no border – with a database tool installed the rows of the forms list were 34 px
+  instead of 33.
+
+## 0.8.1405 – Getting ready: find the points to fix
+- Getting ready: the step list shows a red dot next to every step with a point to fix and a yellow dot next to steps with a point
+  to look at. The red "… to fix" next to the count is now a link: it opens the step with the next point to fix and highlights that
+  point; clicking it again goes on to the following one.
+
+## 0.8.1404 – Notes
+- Development notes: the Adminer 6.3.1 and PhpSpreadsheet 5.12.0 packs are in the GitHub release "libraries".
+
+## 0.8.1403 – Adminer 6.3.1, PhpSpreadsheet 5.12.0
+- Library packs: Adminer 6.3.1 (security fixes – among them SQL and HTML injection fixes and a stricter CSRF token – plus
+  Ctrl+K search) and PhpSpreadsheet 5.12.0 (reads and writes WMF / EMF pictures; the pack now includes PHPOffice's WMF library).
+  Both are offered on Update → Libraries once they are in the GitHub release "libraries".
+- dev/pss_assemble.py: builds PhpSpreadsheet 5.12.0 by default, with its new dependency phpoffice/wmf.
+
+## 0.8.1402 – Installer: progress while checking a dump
+- Installer, step Content: with "nubuilder4.sql of a nuBuilder Forte 4.x version" selected, Check and Next show a spinner on the
+  pressed button ("Uploading and checking the file …" or "Checking the file …") and a note to keep the page open; the buttons are
+  disabled meanwhile, so the step cannot be sent twice.
+
+## 0.8.1401 – Installer: complete nuBuilder Forte dumps
+- Installer: a complete dump of a nuBuilder Forte database – nuBuilder Forte's tables plus the application's own tables and
+  views – is accepted on the Content step. Before, only nuBuilder Forte's own tables were allowed and Check refused the first
+  table of the application. Still refused: other databases, users and rights, files (INTO OUTFILE, LOAD DATA) and anything with
+  an explicit DEFINER.
+- Installer: Install imports such a dump in steps of a few seconds each, with the progress in percent on the button, so a large
+  dump (several hundred MB) does not meet the web server's time limit. The file is not read a second time when it has not
+  changed since Check.
+
+## 0.8.1400 – Installer: chosen dump selects its option
+- Installer, step Content: choosing a nubuilder4.sql (upload or a file of _install/) now selects "nubuilder4.sql of a nuBuilder
+  Forte 4.x version" by itself – before, the default "nuBuilder Next's own tables" stayed selected and was installed when the
+  radio button was not changed. Selecting another choice clears the chosen file; the server also takes a chosen file or its
+  Check button as the dump choice.
+
+## 0.8.1399 – Star in the start page search
+- Start page search (desktop, mouse): a result that is a start page tile shows a star at its right – on the row under the mouse
+  and on the selected row; favourites always show the filled star. A click adds or removes the favourite at once without opening
+  the tile; a short message with Undo confirms it. Ctrl+Shift+F in the search field does the same for the selected row. Results
+  that are no tile (pages, forms, procedures, reports) have no star. Emptying the search reloads the page with the new favourites.
+
+## 0.8.1398 – Installer: large dumps
+- Installer and database set-up: a nuBuilder Forte dump larger than 64 MB is accepted. A .zip or .sql.gz is unpacked next to it
+  and the SQL is checked and imported statement by statement instead of being read into memory as a whole – a dump copied into
+  _install/ has no size limit any more (an upload is still limited by PHP's upload size). The disk needs room for the unpacked SQL.
+- Tests: the installer test now installs a dump of more than 64 MB from _install/ and checks that every row arrived.
+
+## 0.8.1397 – Installer Test connection
+- Installer: Test connection on the Database step ended with "Maximum call stack size … reached" (or a time-out) on a fresh
+  installation – reading the page width setting before nuconfig.php exists started the error page again and again. Fixed; the
+  error page of a missing nuconfig.php can no longer call itself.
+- Installer and database set-up: when an uploaded dump cannot be read, the message now says why – the SQL is larger than 64 MB
+  (import it into the database first, or use Reset database after the installation), the .zip holds no .sql file, or it holds
+  several and none is called nubuilder4.sql.
+- Release gate: the installer test (whole wizard with an uploaded nubuilder4.sql) is now part of every gate.
+
+## 0.8.1396 – Notes
+- Development notes: v0.8.1395 published on GitHub.
+
 ## 0.8.1395 – Release gate
 - Release gate
 

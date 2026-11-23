@@ -123,8 +123,12 @@ if ($late) {
 
 		case 'content':
 			$prevDump = $S['content']['dump'] ?? null;
-			$S['content'] = ['choice' => in_array(nu_post('choice'), ['nubuilder', 'upload'], true) ? nu_post('choice') : 'nunext', 'confirm_other' => nu_check('confirm_other') === '1',
-				'dump' => $prevDump];
+			$choice = in_array(nu_post('choice'), ['nubuilder', 'upload'], true) ? nu_post('choice') : 'nunext';
+			// a file chosen (uploaded or picked from _install/) or its Check pressed means the dump – also when the radio stayed on the default
+			// (the page's script switches it; without it, and the script clears the file when another choice is ticked)
+			if ($S['db']['type'] === 'mysql' && ($action === 'check_dump' || ($_FILES['dump']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE
+				|| nu_post('dump_pick') !== '')) $choice = 'upload';
+			$S['content'] = ['choice' => $choice, 'confirm_other' => nu_check('confirm_other') === '1', 'dump' => $prevDump];
 			// nubuilder4.sql of any 4.x version: uploaded here or copied into _install/ – checked now and again before the import
 			if ($S['content']['choice'] === 'upload' && $S['db']['type'] === 'mysql') {
 				$path = null;
@@ -133,13 +137,10 @@ if ($late) {
 				elseif (($pick = nu_post('dump_pick')) !== '' && isset(NuInstall::dumpCandidates()[$pick])) $path = NuInstall::dumpCandidates()[$pick];
 				if ($upErr !== '') { $errors['dump'] = $upErr; break; }
 				if ($path !== null) {
-					$sql = NuInstall::dumpSql($path);
-					$chk = $sql === null ? ['ok' => false, 'error' => t('ins_dump_err_read')] : NuInstall::checkDump($sql);
+					$chk = NuInstall::checkDumpFile($path);
 					if (!$chk['ok']) { $errors['dump'] = $chk['error']; $S['content']['dump'] = null; break; }
-					$plain = (string)preg_replace('/\.(sql|sql\.gz|zip)$/i', '', $path) . '.checked.sql';
-					if (@file_put_contents($plain, $sql) === false) { $errors['dump'] = t('ins_dump_err_read'); break; }
-					$S['content']['dump'] = ['file' => $plain, 'name' => str_starts_with(basename($path), 'upload-') ? (string)($_FILES['dump']['name'] ?? basename($path)) : basename($path),
-						'tables' => $chk['tables'], 'forms' => $chk['forms'], 'size' => strlen($sql)];
+					$S['content']['dump'] = ['file' => $chk['file'], 'name' => str_starts_with(basename($path), 'upload-') ? (string)($_FILES['dump']['name'] ?? basename($path)) : basename($path),
+						'tables' => $chk['tables'], 'forms' => $chk['forms'], 'size' => $chk['size'], 'mtime' => $chk['mtime'] ?? 0];
 					if ($action === 'check_dump') break;
 				}
 				if ($action === 'check_dump') { $errors['dump'] = t('ins_dump_err_none'); break; }
@@ -212,6 +213,51 @@ if ($late) {
 				$errors['_'] = t('ins_err_still_missing', NuInstall::configPath());
 				break;
 			}
+			// a dump imported in steps (nuinstall.js, before Install): a large dump in one request may meet the web server's time limit
+			// (a 503 after a minute on some hosts). Each step imports for about NuDbReset::JOB_SECONDS and remembers where it stopped;
+			// Install then skips the import (import_done for this file) and does the rest as usual.
+			if ($action === 'import_slice') {
+				try {
+					if (($S['content']['choice'] ?? '') !== 'upload' || ($S['db']['type'] ?? '') !== 'mysql') throw new RuntimeException('not a dump');
+					$f = (string)($S['content']['dump']['file'] ?? '');
+					clearstatcache(true, $f);
+					if (!is_file($f) || filesize($f) !== (int)($S['content']['dump']['size'] ?? -1) || filemtime($f) !== (int)($S['content']['dump']['mtime'] ?? -1))
+						throw new RuntimeException(t('ins_dump_err_none'));
+					$d = $S['db'];
+					$imp = (array)($S['import'] ?? []);
+					if (($imp['file'] ?? '') !== $f) {                          // the first step: the database must be empty (or confirmed)
+						try { $db = NuInstall::connect($d); } catch (PDOException $e) {
+							if (!$d['create']) throw $e;
+							NuInstall::createDatabase($d);
+							$db = NuInstall::connect($d);
+						}
+						$det = NuInstall::detect($db);
+						if (!($det['kind'] === 'empty' || ($det['kind'] === 'other' && $S['content']['confirm_other']))) throw new RuntimeException(t('ins_err_install') . ' ' . $det['kind']);
+						$imp = ['file' => $f, 'st' => [], 'done' => false];
+					} else {
+						$db = NuInstall::connect($d);
+					}
+					if (empty($imp['done'])) {
+						$max = (int)nu_ini_get('max_execution_time');
+						nu_time_limit(max(60, $max));
+						$until = microtime(true) + ($max > 0 ? min(NuDbReset::JOB_SECONDS, max(3, intdiv($max, 3))) : NuDbReset::JOB_SECONDS);
+						$st = (array)$imp['st'];
+						$db->exec('SET FOREIGN_KEY_CHECKS = 0');
+						try {
+							$imp['done'] = NuSqlImport::slice($db, $f, $st, $until, true);
+						} finally {
+							$imp['st'] = $st;
+							try { $db->exec('SET FOREIGN_KEY_CHECKS = 1'); } catch (Throwable $ig) { nu_ignored($ig, 'session ends with the request'); }
+						}
+					}
+					$S['import'] = $imp;
+					nu_json(['ok' => true, 'done' => (bool)$imp['done'], 'off' => (int)($imp['st']['off'] ?? 0), 'size' => (int)$S['content']['dump']['size'],
+						'n' => (int)($imp['st']['n'] ?? 0)]);
+				} catch (Throwable $e) {
+					error_log('nuBuilder Next install, import step: ' . $e->getMessage());
+					nu_json(['ok' => false, 'error' => $e->getMessage()]);
+				}
+			}
 			if ($action !== 'install') break;
 			try {
 				nu_time_limit(600);
@@ -224,16 +270,24 @@ if ($late) {
 					$db = NuInstall::connect($d);
 				}
 				$det = NuInstall::detect($db);
+				$f0 = (string)($S['content']['dump']['file'] ?? '');
+				$stepped = ($S['content']['choice'] ?? '') === 'upload' && !empty($S['import']['done']) && ($S['import']['file'] ?? '') === $f0 && $f0 !== '';
+				if ($stepped) $det = ['kind' => 'empty'] + $det;               // imported in steps just now: the tables are the dump's own
 				if ($det['kind'] === 'nubuilder' && empty($S['content']['backup_ack'])) throw new RuntimeException(t('ins_backup_needed'));   // checked again
 				if ($det['kind'] === 'nubuilder' && NuInstallPage::integrity($S)['errors'] && empty($S['content']['ic_ack'])) throw new RuntimeException(t('ic_ack_needed'));   // checked again
 				$S['detect'] = $det;
 				$imported = 0;
 				if ($det['kind'] === 'empty' || ($det['kind'] === 'other' && $S['content']['confirm_other'])) {
-					if ($S['content']['choice'] === 'upload' && $db->type === 'mysql') {
+					if ($stepped) {
+						$imported = (int)($S['import']['st']['n'] ?? 0);
+					} elseif ($S['content']['choice'] === 'upload' && $db->type === 'mysql') {
 						$f = (string)($S['content']['dump']['file'] ?? '');
-						$chk = is_file($f) ? NuInstall::checkDump((string)file_get_contents($f)) : ['ok' => false, 'error' => t('ins_dump_err_none')];
+						clearstatcache(true, $f);
+						$same = is_file($f) && filesize($f) === (int)($S['content']['dump']['size'] ?? -1) && filemtime($f) === (int)($S['content']['dump']['mtime'] ?? -1);
+						$chk = !is_file($f) ? ['ok' => false, 'error' => t('ins_dump_err_none')]
+							: ($same ? ['ok' => true] : NuInstall::checkDump(NuSqlImport::statements($f), true));   // unchanged since the check: not read twice
 						if (!$chk['ok']) throw new RuntimeException($chk['error']);              // checked again: the file may have been replaced
-						$imported += NuInstall::importFile($db, $f);
+						$imported += NuSqlImport::run($db, $f, null, true);                      // streamed: a dump of any size
 					} else {
 						foreach (NuInstall::schemaFiles($S['content']['choice'], $db->type, $S['opt']['nub_path'] ?: null) as $f) $imported += NuInstall::importFile($db, $f);
 					}
@@ -423,7 +477,8 @@ nu_head($title, nu_ts_head());   // time zone: searchable
 		<?php elseif ($step === 'content'): $det = $S['detect'] ?? ['kind' => 'empty', 'tables' => 0, 'forms' => 0, 'users' => 0]; $nubSql = $S['opt']['nub_path'] !== '' && is_file($S['opt']['nub_path'] . '/nubuilder4.sql') && $S['db']['type'] === 'mysql'; ?>
 			<!-- ================================================================ content -->
 			<h1 class="h4"><?= h(t('ins_step_content')) ?></h1>
-			<form method="post" action="<?= h(nu_url('install', ['step' => 'content'])) ?>" enctype="multipart/form-data" novalidate id="insContentForm">
+			<form method="post" action="<?= h(nu_url('install', ['step' => 'content'])) ?>" enctype="multipart/form-data" novalidate id="insContentForm"
+				data-busy-up="<?= h(t('ins_dump_uploading')) ?>" data-busy-check="<?= h(t('ins_dump_checking')) ?>" data-busy-hint="<?= h(t('ins_dump_busy_hint')) ?>">
 				<?= nu_csrf_field() ?>
 				<?php if ($det['kind'] === 'nubuilder'): $icR = NuInstallPage::integrity($S); ?>
 					<div class="alert alert-success" id="insKind"><i class="bi bi-database-check me-1"></i><?= h(t('ins_content_nubuilder', $det['forms'], $det['users'])) ?></div>
@@ -616,7 +671,9 @@ nu_head($title, nu_ts_head());   // time zone: searchable
 						id="insSumLibs"><?= h(($S['libs'] ?? []) ? implode(', ', array_map(static fn($x) => NuLibs::SLOTS[$x]['title'], $S['libs'])) : '–') ?></dd>
 					<dt class="col-sm-4"><?= h(t('ins_config_file')) ?></dt><dd class="col-sm-8 text-break"><code><?= h(NuInstall::configPath()) ?></code></dd>
 				</dl>
-				<form method="post" action="<?= h(nu_url('install', ['step' => 'summary'])) ?>" class="d-flex justify-content-between" id="insInstallForm">
+				<form method="post" action="<?= h(nu_url('install', ['step' => 'summary'])) ?>" class="d-flex justify-content-between" id="insInstallForm"<?=
+					($S['content']['choice'] ?? '') === 'upload' && ($S['db']['type'] ?? '') === 'mysql' && !empty($S['content']['dump']['file'])
+					? ' data-import-steps="1" data-import-text="' . h(t('ins_import_progress')) . '"' : '' ?>>
 					<?= nu_csrf_field() ?>
 					<button class="btn btn-outline-secondary" type="submit" name="action" value="back" formnovalidate><i class="bi bi-arrow-left"></i> <?= h(t('ins_back')) ?></button>
 					<button class="btn btn-success" type="submit" name="action" value="install" id="insInstall"

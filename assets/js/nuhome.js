@@ -1349,6 +1349,33 @@
 	});
 	syncKindUi();
 	function clearSearch() { if (search && search.value) { search.value = ''; filter(); } }
+	// ☆ at the right of a result that is a tile of the page (desktop: a mouse – CSS shows it on the row under the mouse, on the selected
+	// row and always for favourites): a click adds / removes the favourite at once (?p=sidebar action fav json=1) with a message and
+	// Undo; Ctrl+Shift+F does the same for the selected row. The page's tiles and the row Favourites follow after the search is cleared
+	// (a reload – favDirty).
+	var favDirty = false, favBusy = false;
+	function tileOfRes(key) { return key.slice(0, 2) === 't:' && viewEl ? viewEl.querySelector('[data-nu-tile="' + key.slice(2).replace(/["\\]/g, '') + '"]') : null; }
+	function starSync(btn, on) {
+		btn.classList.toggle('on', on);
+		btn.title = t(on ? 'home_unfav' : 'home_fav_add') + ' (' + t('home_fav_key') + ')';
+		var i = btn.querySelector('.bi');
+		if (i) i.className = 'bi ' + (on ? 'bi-star-fill' : 'bi-star');
+	}
+	function favToggleRes(key, label, btn, undo) {
+		var tile = tileOfRes(key);
+		if (!tile || favBusy || !D.favUrl) return;
+		favBusy = true;
+		NuUtil.post(D.favUrl, new URLSearchParams({action: 'fav', key: key.slice(2), json: '1', back: location.pathname + location.search}), {csrf: D.csrf}).then(function (r) {
+			favBusy = false;
+			if (!r || !r.ok) { NuUtil.toast((r && r.error) || t('sb_fav_not_possible'), false); return; }
+			var on = !!r.fav;
+			favDirty = true;
+			if (on) tile.setAttribute('data-nu-fav', '1'); else tile.removeAttribute('data-nu-fav');
+			$$('.nuHomeResStar[data-nu-star="' + key.replace(/["\\]/g, '') + '"]', moreList).forEach(function (b) { starSync(b, on); });
+			if (!undo) NuUtil.toast(tf(on ? 'home_fav_added' : 'home_fav_removed', label), true,
+				{box: 'nuHomeFavToast', ms: 5000, action: [t('home_ctx_undo'), function () { favToggleRes(key, label, btn, true); }]});
+		}, function () { favBusy = false; NuUtil.toast(t('sb_fav_not_possible'), false); });
+	}
 	function resItem(key, iconEl, label, sub, href, open) {
 		var a = el('a', {'class': 'list-group-item list-group-item-action d-flex align-items-center gap-3', href: href || '#', 'data-nu-res': key}, [
 			iconEl,
@@ -1358,7 +1385,17 @@
 		a.nuOpen = open;
 		a.id = 'nuHomeRes_' + (resSeq++);
 		a.setAttribute('role', 'option');
-		return a;
+		var row = el('div', {'class': 'nuHomeRes', role: 'presentation'}, [a]);
+		var tile = D.favUrl ? tileOfRes(key) : null;
+		if (tile) {
+			// a mouse affordance: not in the tab order (Ctrl+Shift+F is the keyboard's way), hidden from screen readers
+			var b = el('button', {type: 'button', 'class': 'nuHomeResStar', tabindex: '-1', 'aria-hidden': 'true', 'data-nu-star': key}, [el('i', {'class': 'bi bi-star'})]);
+			starSync(b, tile.getAttribute('data-nu-fav') === '1');
+			b.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); favToggleRes(key, label, b); });
+			a.classList.add('nuHomeResHasStar');
+			row.appendChild(b);
+		}
+		return row;
 	}
 	// ↓ / ↑ in the search field move the selection through the results, Enter opens the selected one
 	function resItems() { return $$('[data-nu-res]', moreList); }
@@ -1423,6 +1460,7 @@
 		moreBox.hidden = !words.length || !n;
 		noneBox.hidden = !words.length || n > 0;
 		if (!words.length) H.groups();
+		if (!words.length && favDirty) { favDirty = false; location.reload(); return; }   // tiles and the row Favourites as stored now
 		H.emit('search', q, shownEls.map(H.wrap));
 	}
 	// right-click / long press on a result that is a tile of the page (t:<tile>): the tile's menu – favourites, Hide;
@@ -1477,6 +1515,11 @@
 			if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && !moreBox.hidden) {
 				e.preventDefault();
 				selectRes(resSel + (e.key === 'ArrowDown' ? 1 : -1));
+				return;
+			}
+			if ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && (e.key || '').toLowerCase() === 'f' && !moreBox.hidden) {
+				var sel = resItems()[resSel], st = sel && sel.parentNode ? sel.parentNode.querySelector('.nuHomeResStar') : null;
+				if (st) { e.preventDefault(); st.click(); }
 				return;
 			}
 			if (e.key !== 'Enter') return;

@@ -33,7 +33,7 @@ const expect = (ok, msg) => { if (!ok) throw new Error(msg); };
 	sql('DROP DATABASE IF EXISTS ' + NAME + '; CREATE DATABASE ' + NAME + ' CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;');
 	const evil = path.join(os.tmpdir(), 'nuinst-evil.sql');
 	const plain = /\.gz$/i.test(DUMP) ? require('zlib').gunzipSync(fs.readFileSync(DUMP)).toString('utf8') : fs.readFileSync(DUMP, 'utf8');
-	fs.writeFileSync(evil, plain + "\nCREATE TABLE customers (a int);\n");
+	fs.writeFileSync(evil, plain + "\nSELECT * FROM zzzzsys_user INTO OUTFILE '/tmp/nuinst-e2e.txt';\n");
 	const packs = LIBPACKS ? fs.readdirSync(LIBPACKS).filter((f) => /^nunext-lib-.*\.zip$/.test(f)) : [];
 	if (packs.length) {
 		fs.mkdirSync(path.join(SITE, '_install'), { recursive: true });
@@ -75,11 +75,29 @@ const expect = (ok, msg) => { if (!ok) throw new Error(msg); };
 		await p.check('#choice_up');
 		await p.setInputFiles('#dump', evil);
 		await Promise.all([p.waitForNavigation(), p.click('#insCheckDump')]);
-		expect(/customers/.test(await p.locator('.invalid-feedback').first().textContent()), 'foreign statement not refused');
+		expect(/OUTFILE/.test(await p.locator('.invalid-feedback').first().textContent()), 'foreign statement not refused');
 		// the real one
-		await p.check('#choice_up');
-		await p.setInputFiles('#dump', DUMP);
-		await Promise.all([p.waitForNavigation(), p.click('#insCheckDump')]);
+		// 0.8.1398: a dump larger than 64 MB (unpacked), copied into _install/, is checked and imported as a stream
+		const bigName = 'zz-e2e-big.sql.gz', pad = 'x'.repeat(2000), rows = [];
+		for (let b = 0; b < 700; b++) rows.push('INSERT INTO `zzzzsys_debug` VALUES ' + Array.from({length: 50}, (_, i) => `('e2ebig${b}_${i}','${pad}',NULL,1,NULL,NULL)`).join(',') + ';\n');
+		fs.writeFileSync(path.join(SITE, '_install', bigName), require('zlib').gzipSync(plain + '\n' + rows.join('') + 'CREATE TABLE `e2e_app_tbl` (`a` int);\nINSERT INTO `e2e_app_tbl` VALUES (7);\n'));   // + a table of the application (0.8.1401)
+		await p.reload();
+		// a picked / chosen file ticks "nubuilder4.sql …" by itself (0.8.1400); another choice clears it
+		await p.check('#choice_nn');
+		const bigOpt = await p.locator('#dump_pick option').evaluateAll((os, n) => os.filter((o) => o.textContent.includes(n)).map((o) => o.value)[0], bigName);
+		expect(!!bigOpt, 'large dump not offered');
+		await p.selectOption('#dump_pick', bigOpt);
+		expect(await p.isChecked('#choice_up'), 'picking a file did not choose the dump');
+		await p.check('#choice_nn');
+		expect(await p.$eval('#dump_pick', (x) => x.value) === '', 'another choice kept the picked file');
+		await p.setInputFiles('#dump', {name: 'x.sql', mimeType: 'text/plain', buffer: Buffer.from('SELECT 1;')});
+		expect(await p.isChecked('#choice_up'), 'choosing a file did not choose the dump');
+		await p.setInputFiles('#dump', []);
+		await p.selectOption('#dump_pick', bigOpt);
+		// 0.8.1402: Check with a dump shows a spinner on the button and a note while the server unpacks and checks it
+		const busySeen = p.waitForFunction(() => { const b = document.getElementById('insCheckDump'); return !!document.getElementById('insDumpBusy') && b && b.disabled && !!b.querySelector('.spinner-border'); }, null, {timeout: 20000, polling: 50}).then(() => true, () => false);
+		await Promise.all([p.waitForNavigation({timeout: 300000}), p.click('#insCheckDump', {noWaitAfter: true})]);
+		expect(await busySeen, 'no spinner / note while checking');
 		expect(await p.locator('#insNotice, #insDumpOk').count() >= 1, 'dump not accepted: ' + await p.locator('.invalid-feedback').allTextContents());
 		await p.check('#choice_up');
 		await next();
@@ -104,7 +122,10 @@ const expect = (ok, msg) => { if (!ok) throw new Error(msg); };
 		}
 		await next();                                                                                          // libraries
 		if (packs.length) expect(/TCPDF|PHPMailer/.test(await p.locator('#insSumLibs').textContent()), 'summary without libraries');
+		let slices = 0;                                        // 0.8.1401: a dump is imported in steps (action import_slice) before Install
+		p.on('request', (r) => { if (r.method() === 'POST' && /action=import_slice|name="action"\r\n\r\nimport_slice/.test(r.postData() || '')) slices++; });
 		await Promise.all([p.waitForNavigation({ timeout: 300000 }), p.click('#insInstall', { noWaitAfter: true })]);
+		expect(slices >= 1, 'dump not imported in steps');
 		const done = await p.locator('main').textContent();
 		expect(!/alert-danger/.test(await p.content()) || /insUpgraded/.test(await p.content()), 'install failed: ' + done.slice(0, 300));
 		// the structure of 4.9 (columns of every version up to 4.9 present)
@@ -116,6 +137,8 @@ const expect = (ok, msg) => { if (!ok) throw new Error(msg); };
 		expect(wl === 'nx_welcome_en,nx_welcome_fr', 'welcome templates of the chosen languages: ' + wl);
 		expect(sql("SELECT setting_value FROM " + NAME + ".zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'languages'") === '["en","fr"]', 'installed languages stored');
 		expect(!fs.readdirSync(path.join(SITE, '_install')).some((f) => /\.sql|\.zip|\.gz/.test(f)), 'uploaded file left in _install/');
+		expect(sql("SELECT COUNT(*) FROM " + NAME + ".zzzzsys_debug WHERE zzzzsys_debug_id LIKE 'e2ebig%'") === '35000', 'large dump not imported completely');
+		expect(sql('SELECT a FROM ' + NAME + '.e2e_app_tbl') === '7', 'table of the application not imported');
 		if (packs.length) {
 			const want = Object.keys(ticked).filter((k) => ticked[k]);
 			const got = fs.readdirSync(path.join(SITE, 'vendor/packs'));
@@ -129,7 +152,7 @@ const expect = (ok, msg) => { if (!ok) throw new Error(msg); };
 		await Promise.all([p.waitForNavigation(), p.click('button[type=submit]')]);
 		expect(!/p=login/.test(p.url()), 'login failed after the install');
 		expect(errs.length === 0, 'JavaScript errors: ' + errs.join(' · '));
-		console.log('install: ok (' + path.basename(DUMP) + ') – ' + ((await p.locator('body').count()) ? 'signed in' : ''));
+		console.log('install: ok (' + path.basename(DUMP) + ' + 70 MB, from _install/) – ' + ((await p.locator('body').count()) ? 'signed in' : ''));
 		// 0.8.705 / 0.8.1008: the same database again, now an existing nuBuilder Forte database (nuBuilder Next's own tables dropped, no
 		// nuconfig.php): accepted; the content step asks for a backup (tick required) and shows the integrity check
 		const own = sql("SELECT GROUP_CONCAT(table_name) FROM information_schema.tables WHERE table_schema = '" + NAME + "' AND table_name LIKE 'zzzzsys!_nunext!_%' ESCAPE '!'");

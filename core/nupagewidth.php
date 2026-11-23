@@ -29,7 +29,7 @@ final class NuPageWidth
 	public static function default(): string
 	{
 		try {
-			$raw = NuDB::$connected ? nu_setting_value(self::KEY) : null;
+			$raw = NuDB::$connected && is_file(nu_config_path()) ? nu_setting_value(self::KEY) : null;
 		} catch (Throwable) {
 			return 'standard';
 		}

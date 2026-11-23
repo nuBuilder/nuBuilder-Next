@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 define('NU_ROOT', dirname(__DIR__));
-define('NU_VERSION', '0.8.1395');
+define('NU_VERSION', '0.8.1407');
 // third-party code: vendor/bundled/ comes with nunext.zip (an update replaces it), vendor/packs/ = library packs (NuLibs,
 // an update never touches them). Bundled paths only through these constants.
 define('NU_VENDOR', 'vendor/bundled');
@@ -297,12 +297,15 @@ function nu_debug(): bool
 
 function nu_db(): NuDB
 {
-	static $db = null, $failing = false;
+	static $db = null, $failing = false, $opening = false;
 	if (NuDB::$override !== null) return NuDB::$override;
 	if ($db) return $db;
 	if ($failing) throw new RuntimeException('nuBuilder Next: no database connection');   // the error page itself asked again
-
+	// the error page of nu_config() (no nuconfig.php, e.g. the installer) asked for a setting: showing that page again would never end
+	if ($opening) throw new RuntimeException('nuBuilder Next: no nuconfig.php');
+	$opening = true;
 	$c = nu_config();
+	$opening = false;
 	try {
 		$db = new NuDB([
 			'type'       => $c['nuConfigDBType'],

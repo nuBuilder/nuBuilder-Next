@@ -251,6 +251,8 @@ Oder von Hand aktualisieren: die Dateien aus nunext.zip über die alten hochlade
 	'sess_end_all_confirm' => 'Alle Benutzer einschliesslich dir selbst abmelden (%d Sitzungen)? Danach ist eine neue Anmeldung nötig.',
 	'ins_dump_folder' => 'Grössere Dateien per FTP / SFTP in den Ordner %s kopieren und diese Seite neu laden.',
 	'ins_dump_err_size' => 'Die Datei ist grösser, als PHP für Uploads erlaubt (%s) – als .sql.gz senden oder per FTP nach _install/ kopieren.',
+	'ins_dump_err_zip_many' => 'Die .zip enthält mehrere .sql-Dateien und keine heisst nubuilder4.sql – nur den Dump zippen.',
+	'ins_dump_busy_hint' => 'Ein grosser Dump kann ein bis zwei Minuten dauern – bitte diese Seite offen lassen.',
 	'ins_manual_config' => 'Die Datenbank ist bereit, aber nuconfig.php konnte nicht geschrieben werden. Den Inhalt unten als %s speichern (herunterladen oder kopieren) und auf «Erneut prüfen» klicken.',
 	'ins_libs_copy' => 'Ohne Internet – oder wenn PHP GitHub nicht über HTTPS erreicht (Erweiterungen openssl / curl, CA-Zertifikate in der php.ini) – Pakete nach %s kopieren (%s) und «Erneut suchen» anklicken.',
 	'ins_next_backup' => 'Eine Kopie von nuconfig.php aufbewahren und die Datenbank regelmässig sichern.',

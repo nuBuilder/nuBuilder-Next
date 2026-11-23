@@ -94,10 +94,10 @@ final class NuDbState
 		$out = ['imported' => 0, 'upgraded' => null, 'steps' => []];
 		if ($choice === 'upload') {
 			if ($st['state'] !== 'empty' || $db->type !== 'mysql') throw new RuntimeException(t('dbs_err_not_needed'));
-			$sql = $dumpFile !== null && is_file($dumpFile) ? (string)file_get_contents($dumpFile) : '';
-			$chk = $sql !== '' ? NuInstall::checkDump($sql) : ['ok' => false, 'error' => t('ins_dump_err_none')];
+			$ok = $dumpFile !== null && is_file($dumpFile) && filesize($dumpFile) > 0;
+			$chk = $ok ? NuInstall::checkDump(NuSqlImport::statements($dumpFile), true) : ['ok' => false, 'error' => t('ins_dump_err_none')];
 			if (!$chk['ok']) throw new RuntimeException($chk['error']);
-			$out['imported'] = NuInstall::importSql($db, $sql, basename((string)$dumpFile));
+			$out['imported'] = NuSqlImport::run($db, (string)$dumpFile, null, true);                 // streamed: a dump of any size
 			$out['upgraded'] = NuInstall::upgradeTo49($db);
 		} else {
 			foreach (NuInstall::schemaFiles('nunext', $db->type, null) as $f) $out['imported'] += NuInstall::importFile($db, $f);

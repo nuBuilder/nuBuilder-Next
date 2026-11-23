@@ -18,6 +18,8 @@ return [
 	'home_fav' => 'Favorites',
 	'home_fav_add' => 'Add to favorites',
 	'home_unfav' => 'Remove from favorites',
+	'home_fav_added' => '%s added to favorites',
+	'home_fav_removed' => '%s removed from favorites',
 	'home_ctx_hidden_me' => '“%s” is hidden for you – Personalize shows it again.',
 	'home_fav_only' => 'Show favorites only',
 	'home_fav_edit' => 'Edit favorites',

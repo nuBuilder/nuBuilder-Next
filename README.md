@@ -1,4 +1,4 @@
-# nuBuilder Next 0.8.1395 – a modern front end for nuBuilder Forte 4
+# nuBuilder Next 0.8.1407 – a modern front end for nuBuilder Forte 4
 
 **An open-source, low-code platform for building and running web-based database applications – built on nuBuilder Forte 4.**
 
@@ -44,6 +44,9 @@ The full list: [FEATURES.md](FEATURES.md).
 4. Optional: a cron job for housekeeping – `*/15 * * * * php /path/to/nunext/nucron.php`.
 
 With Docker: `docker compose -f docker/compose.yml up -d` in the repository folder starts it with MariaDB (see `docker/README.md`).
+
+A copy of an existing nuBuilder Forte application? Pick its SQL dump (`.sql`, `.sql.gz` or `.zip`, any size from `_install/`) in the
+installer's *Content* step – it is checked and imported in steps.
 
 Prefer to set it up by hand, or install without internet? See *Installation* in the documentation.
 

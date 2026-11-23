@@ -2745,3 +2745,52 @@ T.home_tiles_empty = async (s) => {
 		expect(j.ok && own() === '0', 'empty save kept the tile page: ' + JSON.stringify(j) + ' rows ' + own());
 	} finally { db("DELETE FROM zzzzsys_nunext_list_view WHERE zzzzsys_nunext_list_view_id = 'e2e_empty_tp'"); await p.evaluate(() => { try { localStorage.removeItem('nunext-hf-tab'); } catch (e) { /* none */ } }); }
 };
+
+T.home_search_star = async (s) => {                    // 0.8.1399: ☆ at the right of a tile result toggles the favourite at once, message + Undo, Ctrl+Shift+F
+	const p = s.ga;
+	await open(p, 'index.php?p=home');
+	const isFav = () => p.$eval('[data-nu-tile="update"]', (a) => a.getAttribute('data-nu-fav') === '1');
+	const was = await isFav();
+	await p.fill('#nuHomeSearch', 'update'); await p.waitForTimeout(800);
+	const star = '#nuHomeSearchMore .nuHomeResStar[data-nu-star="t:update"]';
+	expect(await p.locator(star).count() === 1, 'no star on the tile result');
+	const look = await p.$eval(star, (b) => ({op: getComputedStyle(b).opacity, focus: b.tabIndex, hidden: b.getAttribute('aria-hidden')}));
+	expect(look.op === '1' && look.focus === -1 && look.hidden === 'true', 'star of the selected row: ' + JSON.stringify(look));
+	const other = await p.$$eval('#nuHomeSearchMore .nuHomeRes', (r) => r.filter((x) => !x.querySelector('[data-nu-res^="t:"]')).map((x) => !!x.querySelector('.nuHomeResStar')));
+	expect(!other.some(Boolean), 'a result that is no tile has a star');
+	await p.click(star); await p.waitForTimeout(800);
+	expect(/p=home/.test(p.url()) && await isFav() === !was && await p.$eval(star, (b) => b.classList.contains('on')) === !was, 'click did not toggle (or opened the row)');
+	expect(await p.locator('#nuHomeFavToast .alert').count() === 1, 'no message');
+	await p.click('#nuHomeFavToast .alert button'); await p.waitForTimeout(800);
+	expect(await isFav() === was, 'Undo did not put it back');
+	await p.press('#nuHomeSearch', 'Control+Shift+F'); await p.waitForTimeout(800);
+	expect(await isFav() === !was, 'Ctrl+Shift+F did not toggle');
+	// cleared search: the page reloads with the stored state
+	await Promise.all([p.waitForNavigation(), p.fill('#nuHomeSearch', '')]);
+	await p.waitForTimeout(300);
+	expect(await isFav() === !was, 'not stored');
+	await p.fill('#nuHomeSearch', 'update'); await p.waitForTimeout(800);
+	await p.click(star); await p.waitForTimeout(800);
+	expect(await isFav() === was, 'not put back');
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
+T.getting_ready_find_bad = async (s) => {               // 0.8.1405: red / amber dots on the steps, "n to fix" leads to the next red point
+	const p = s.ga;
+	await open(p, 'index.php?p=gettingready');
+	const st = await p.evaluate(() => [...document.querySelectorAll('.nuGrStep')].map((a) => ({g: a.dataset.grGroup,
+		red: a.querySelector('.nuGrStepCount').classList.contains('nuGrStepRed'), dot: (a.querySelector('.nuGrDot') || {}).className || ''})));
+	expect(st.every((x) => !x.red || /nuGrSt-bad/.test(x.dot)), 'a step with a red point has no red dot: ' + JSON.stringify(st));
+	if (!(await p.locator('a#grBad').count())) { s.skip = 'no red point on this site'; return; }
+	const seen = [];
+	for (let i = 0; i < 3; i++) {
+		await Promise.all([p.waitForNavigation(), p.click('a#grBad')]);
+		await p.waitForTimeout(300);
+		const t = await p.evaluate(() => { const x = document.querySelector(':target'); return x ? x.dataset.grSt + '|' + x.dataset.grItem : ''; });
+		expect(/^bad\|/.test(t), 'the link did not lead to a red point: ' + t + ' ' + p.url());
+		seen.push(t);
+	}
+	const reds = st.filter((x) => x.red).length;
+	expect(reds < 2 || new Set(seen.map((x) => x)).size > 1, 'always the same point: ' + seen.join(','));
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};

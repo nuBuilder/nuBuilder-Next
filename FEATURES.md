@@ -25,6 +25,8 @@ page) for how to use it.
 - **Notification centre** – a bell with unread messages, optionally also by e-mail; on wide screens the editor shows everything at once
   with a live preview of the notification and a summary of who gets it.
 - **Keyboard shortcuts** for save, clone, delete, search, print and more; *Back* returns to the page you came from; success messages close by themselves, warnings stay.
+- **Favourites from the search** – a star on each tile in the start page search adds or removes the favourite at once (Undo,
+  Ctrl+Shift+F).
 - **Recently used** – the start page row and the side bar, optionally without the pages that are already favourites.
 - **Secure sign-in** – two-step login (authenticator app or e-mail code), passkeys, single sign-on (OpenID Connect: Microsoft
   Entra ID, Google Workspace, Keycloak …) and *Forgot password* by e-mail.
@@ -134,9 +136,11 @@ page) for how to use it.
 - **Library packs** – install, update, roll back and remove older versions of the bundled libraries (TCPDF 7, PHPMailer, TinyMCE …) from the browser.
 - **Easy start** – installer, setup wizard, a tutorial (basic, in depth, coming from nuBuilder Forte) and built-in
   documentation.
+- **Installer with a nuBuilder Forte dump** – a complete dump of a Forte database (any size from `_install/`, checked statement by
+  statement, imported in steps with a progress figure; older 4.x brought to 4.9).
 - **Getting ready checklist** – after the installation a bar and a start page card lead through 30 points in eight steps (security,
   server, database, backups, e-mail, people, look, next steps); most check themselves, the rest are ticked by hand; hide for 7 days
-  or for good – new red security or backup points bring it back.
+  or for good – new red security or backup points bring it back; dots on the steps and a link to the next point to fix.
 - **Branding and demo mode** – logo, title, environment label; read-only demo users.
 
 ## For nuBuilder Forte users

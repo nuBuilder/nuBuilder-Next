@@ -128,6 +128,10 @@ def sync_site(site):
 
 def test_env(base, db, nub, site):
     env = dict(os.environ, BASE=base, DB=db, NUB=nub, SITE=site)
+    if site and not env.get('NUB_DIR'):                                       # installer test: the site's parent folder is served at NUB
+        env['NUB_DIR'] = os.path.dirname(os.path.abspath(site))
+    if env.get('NUB_DIR') and not env.get('DUMP') and os.path.isfile(os.path.join(env['NUB_DIR'], 'nubuilder4.sql')):
+        env['DUMP'] = os.path.join(env['NUB_DIR'], 'nubuilder4.sql')
     if not env.get('PKG') and os.path.exists('../nunext.zip'):                 # the last built package: update_check / libreq run too (0.8.679)
         env['PKG'] = os.path.abspath('../nunext.zip')
     code, out = run(['npm', 'root', '-g'])
@@ -136,9 +140,11 @@ def test_env(base, db, nub, site):
     return env
 
 
-def suite_list(nub):
+def suite_list(nub, env=None):
     on = os.environ.get
+    inst = bool(env and env.get('NUB_DIR') and env.get('DUMP')) and on('NUNEXT_TEST_INSTALL', '1') != '0'   # the installer wizard
     return [('smoke', 'dev/tests/smoke.js'), ('e2e', 'dev/tests/e2e.js')] + ([('compat', 'dev/tests/compat.js')] if nub else []) \
+        + ([('install', 'dev/tests/install.js')] if inst else []) \
         + ([('load', 'dev/tests/load.js')] if on('NUNEXT_TEST_LOAD') == '1' else []) \
         + ([('a11y', 'dev/tests/a11y.js')] if on('NUNEXT_TEST_A11Y') == '1' else []) \
         + ([('zap', 'dev/tests/zap.js')] if on('NUNEXT_TEST_ZAP', '1') != '0' else [])   # large data / accessibility: ~4 minutes each, on request; ZAP (0.8.883): skipped by itself without ../zap
@@ -183,7 +189,7 @@ def browser_tests():
     db = os.environ.get('NUNEXT_TEST_DB', '-unu -pnu nutest')
     nub = os.environ.get('NUNEXT_TEST_NUB', '')
     env = test_env(base, db, nub, site)
-    bad = [r for r in (run_suite(name, f, env, db) for name, f in suite_list(nub)) if r]
+    bad = [r for r in (run_suite(name, f, env, db) for name, f in suite_list(nub, env)) if r]
     if not nub:
         print('compat: skipped (NUNEXT_TEST_NUB not set)')
     return bad

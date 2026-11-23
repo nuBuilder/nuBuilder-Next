@@ -328,6 +328,52 @@ final class NuInstall
 		return [$dest, ''];
 	}
 
+	/**
+	 * Checks a dump of any size without reading it into memory: a .zip / .sql.gz is unpacked next to it as <name>.checked.sql (a plain
+	 * .sql is used where it is), then checkDump() reads it statement by statement – the application's tables too (the installer and the
+	 * database set-up start from an empty database: a complete dump of a nuBuilder Forte database is fine).
+	 * @return array{ok: bool, error: string, file: string, tables: int, forms: int, size: int, mtime?: int}
+	 */
+	public static function checkDumpFile(string $path): array
+	{
+		nu_time_limit(0);
+		$plain = (string)preg_replace('/\.(sql|sql\.gz|zip)$/i', '', $path) . '.checked.sql';
+		$fail = static fn(string $e) => ['ok' => false, 'error' => $e, 'file' => '', 'tables' => 0, 'forms' => 0, 'size' => 0];
+		try {
+			$file = NuSqlImport::plainCopy($path, $plain);
+		} catch (Throwable $e) {
+			return $fail(self::dumpReadError($path));
+		}
+		try {
+			$chk = self::checkDump(NuSqlImport::statements($file), true);   // the database is empty: the application's tables come along
+		} catch (Throwable $e) {
+			$chk = ['ok' => false, 'error' => $e->getMessage()];
+		}
+		if (!$chk['ok']) {
+			if ($file === $plain) @unlink($plain);
+			return $fail((string)$chk['error']);
+		}
+		clearstatcache(true, $file);
+		return ['ok' => true, 'error' => '', 'file' => $file, 'tables' => (int)$chk['tables'], 'forms' => (int)$chk['forms'], 'size' => (int)@filesize($file),
+			'mtime' => (int)@filemtime($file)];
+	}
+
+	/** Why a dump cannot be read: a .zip without / with several .sql files, or simply unreadable. */
+	public static function dumpReadError(string $path): string
+	{
+		if (str_ends_with(strtolower($path), '.zip') && class_exists('ZipArchive')) {
+			$z = new ZipArchive();
+			if ($z->open($path) !== true) return t('ins_dump_err_read');
+			$sqls = 0;
+			for ($i = 0; $i < $z->numFiles; $i++) if (preg_match('/\.sql$/i', (string)$z->getNameIndex($i))) $sqls++;
+			$pick = NuSqlImport::zipPick($z);
+			$z->close();
+			if ($sqls === 0) return t('ins_dump_err_zip_none');
+			if ($pick === null) return t('ins_dump_err_zip_many');
+		}
+		return t('ins_dump_err_read');
+	}
+
 	/** The SQL text of a .sql, .sql.gz or .zip (its nubuilder4.sql, otherwise its only .sql file); null when it cannot be read. */
 	public static function dumpSql(string $path): ?string
 	{
