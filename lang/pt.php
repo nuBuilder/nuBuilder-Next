@@ -1040,6 +1040,8 @@ return [
 	'form_delete_undo' => 'Não é possível anular.',
 	'form_flt_more' => 'Só os primeiros %d valores – use o campo de pesquisa para os outros',
 	'form_error' => 'Erro',
+	'php_warn' => 'Avisos do PHP (só você os vê – os utilizadores não recebem mensagem)',
+	'php_warn_more' => '+%d mais no registo de erros do servidor',
 	'ok' => 'OK',
 	'form_lookup_title' => 'Pesquisar',
 	'lk_clear' => 'Limpar',

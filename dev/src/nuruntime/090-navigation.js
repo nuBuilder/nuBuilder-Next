@@ -53,6 +53,44 @@
 		callHook('nuOnPopupOpenedGlobal', f, r, filter);
 	});
 
+	// nuBuilder Forte's ids of an open popup / lookup: the box #nuDragDialog, its iframe #nuWindow and the overlay #nuModal – form code
+	// sizes the popup from inside ($('#nuDragDialog', window.parent.document).css('width', …)) or asks parent.$('#nuModal').length.
+	// The ids go to the dialog that is open and leave it when it closes (Forte removes its dialog). A width set by such code wins
+	// over the width nuBuilder Next worked out (max-width), within the window.
+	(function forteDialogIds() {
+		var PAIR = ['nuPopupModal', 'nuLookupModal'];
+		function clear() {
+			['nuDragDialog', 'nuWindow', 'nuModal'].forEach(function (id) { var el = g(id); if (el) el.removeAttribute('id'); });
+		}
+		document.addEventListener('show.bs.modal', function (e) {
+			var m = e.target; if (!m || PAIR.indexOf(m.id) < 0) return;
+			clear();
+			var dlg = m.querySelector('.modal-dialog'), fr = m.querySelector('iframe');
+			if (dlg) {
+				dlg.id = 'nuDragDialog';
+				if (!dlg.nuWidthWatch && window.MutationObserver) {
+					dlg.nuWidthWatch = new MutationObserver(function () {
+						var w = dlg.style.width;
+						if (dlg.id === 'nuDragDialog' && w && dlg.style.maxWidth !== 'calc(100vw - 1rem)') dlg.style.maxWidth = 'calc(100vw - 1rem)';
+					});
+					dlg.nuWidthWatch.observe(dlg, {attributes: true, attributeFilter: ['style']});
+				}
+			}
+			if (fr) fr.id = 'nuWindow';
+		});
+		document.addEventListener('shown.bs.modal', function (e) {
+			var m = e.target; if (!m || PAIR.indexOf(m.id) < 0) return;
+			var bd = document.querySelectorAll('.modal-backdrop'); if (bd.length && !g('nuModal')) bd[bd.length - 1].id = 'nuModal';
+		});
+		document.addEventListener('hidden.bs.modal', function (e) {
+			var m = e.target; if (!m || PAIR.indexOf(m.id) < 0) return;
+			var dlg = m.querySelector('.modal-dialog');
+			if (dlg && dlg.id === 'nuDragDialog') { dlg.removeAttribute('id'); dlg.style.width = ''; dlg.style.height = ''; }
+			var fr = m.querySelector('iframe'); if (fr && fr.id === 'nuWindow') { fr.removeAttribute('id'); fr.style.width = ''; fr.style.height = ''; }
+			var o = g('nuModal'); if (o) o.removeAttribute('id');
+		});
+	})();
+
 	/** Run objects (buttons): open a form or run a procedure, see NuRender::runInfo(). */
 	// the button's own onclick (nuBuilder Forte's nuForm(…) …, written by NuRender::run – form code may have changed it): the leave
 	// question first when the form is left with unsaved changes

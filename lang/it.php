@@ -1040,6 +1040,8 @@ return [
 	'form_delete_undo' => 'L’operazione non si può annullare.',
 	'form_flt_more' => 'Solo i primi %d valori – per gli altri usa il campo di ricerca',
 	'form_error' => 'Errore',
+	'php_warn' => 'Avvisi PHP (li vedi solo tu – gli utenti non ricevono alcun messaggio)',
+	'php_warn_more' => '+%d altri nel registro errori del server',
 	'ok' => 'OK',
 	'form_lookup_title' => 'Cerca',
 	'lk_clear' => 'Svuota',

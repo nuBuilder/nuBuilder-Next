@@ -390,15 +390,18 @@ if (!function_exists('nuRunQuery')) {
 	{
 		$db = nu_db();
 		if (!preg_match('/^[A-Za-z0-9_]+$/', $table)) throw new RuntimeException("Invalid table name $table");
-		if ($db->type === 'sqlsrv') return new NuResult($db->run('SELECT * INTO ' . ($temporary ? '#' : '') . "[$table] FROM ($sql) nuSrc", $params));
-		if ($db->type === 'mysql') return new NuResult($db->run('CREATE' . ($temporary ? ' TEMPORARY' : '') . " TABLE `$table` AS ($sql)", $params));
-		return new NuResult($db->run('CREATE' . ($temporary ? ' TEMP' : '') . " TABLE $table AS $sql", $params));
+		// through nuRunQuery as nuBuilder Forte: a database error becomes a Debug result and -1, the procedure goes on
+		if ($db->type === 'sqlsrv') return nuRunQuery('SELECT * INTO ' . ($temporary ? '#' : '') . "[$table] FROM ($sql) nuSrc", $params);
+		if ($db->type === 'mysql') return nuRunQuery('CREATE' . ($temporary ? ' TEMPORARY' : '') . " TABLE `$table` AS ($sql)", $params);
+		return nuRunQuery('CREATE' . ($temporary ? ' TEMP' : '') . " TABLE $table AS $sql", $params);
 	}
 
 	function nuEncodeQueryRowResults(string $sql, array $params = [], array $prepend = []): string
 	{
-		$r = nu_db()->all($sql, $params);
-		$rows = array_merge($prepend ? [$prepend] : [], array_map(static fn($row) => array_values($row), $r));   // Forte: rows always as lists, $prefixedData one first row
+		// Forte: rows always as lists, $prefixedData one first row; a database error (nuRunQuery: Debug result, -1) gives no rows
+		$r = nuRunQuery($sql, $params);
+		$rows = $prepend ? [$prepend] : [];
+		if ($r instanceof NuResult) foreach ($r->rows as $row) $rows[] = array_values($row);
 		return base64_encode(json_encode($rows, JSON_UNESCAPED_UNICODE));
 	}
 

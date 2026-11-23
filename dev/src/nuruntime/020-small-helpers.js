@@ -84,7 +84,7 @@
 		var box = g('nuToasts');
 		if (!box) { box = document.createElement('div'); box.id = 'nuToasts'; box.className = 'toast-container position-fixed bottom-0 end-0 p-3'; document.body.appendChild(box); }
 		var t = document.createElement('div');
-		t.className = 'toast align-items-center border-0 text-bg-' + (type || 'success');
+		t.className = 'toast align-items-center border-0 text-bg-' + (type || 'success') + (opt && opt.cls ? ' ' + opt.cls : '');
 		t.setAttribute('role', type === 'danger' ? 'alert' : 'status'); t.setAttribute('aria-live', 'polite'); t.setAttribute('aria-atomic', 'true');
 		t.innerHTML = '<div class="d-flex"><div class="toast-body"></div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button></div>';
 		t.querySelector('.toast-body').textContent = msg;

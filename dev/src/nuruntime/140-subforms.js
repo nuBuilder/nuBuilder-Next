@@ -1,5 +1,7 @@
 	// =================================================================== subforms
 	api('nuSubformObject', function (sf) {
+		// '' (or nothing) = the main form, as nuBuilder Forte (id nuBuilder4EditForm, one row)
+		if (sf === '' || sf === undefined || sf === null) return nuFORM.subform('');
 		var info = (N.subforms || {})[sf] || {fields: []};
 		var o = {id: sf, foreign_key: info.foreign_key, primary_key: info.primary_key, object_id: info.object_id, table: info.table,
 			fields: ['ID'].concat(info.fields).concat(['nuDelete']), rows: [], deleted: [], edited: [], columns: [], chartData: null, chartDataPivot: null};

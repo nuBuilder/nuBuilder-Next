@@ -699,6 +699,8 @@ return [
 	'form_delete_undo' => 'This cannot be undone.',
 	'form_flt_more' => 'Only the first %d values – use the search field for others',
 	'form_error' => 'Error',
+	'php_warn' => 'PHP warnings (only you see this – users get no message)',
+	'php_warn_more' => '+%d more in the server\'s error log',
 	'ok' => 'OK',
 	'form_lookup_title' => 'Search',
 	'lk_clear' => 'Clear',

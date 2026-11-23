@@ -15,6 +15,9 @@
 
 	var N = window.nuNext || {};
 	var $ = window.jQuery;
+	// nuBuilder Forte's id of the loaded page (index.php: Date.now()); form code compares it with parent.nuDocumentID to know
+	// whether it runs inside a popup / framed list
+	if (window.nuDocumentID === undefined) window.nuDocumentID = Date.now();
 	var M = N.messages || {};
 	N.props = N.props || {};
 	N.globals = N.globals || {};
@@ -159,7 +162,7 @@
 		var box = g('nuToasts');
 		if (!box) { box = document.createElement('div'); box.id = 'nuToasts'; box.className = 'toast-container position-fixed bottom-0 end-0 p-3'; document.body.appendChild(box); }
 		var t = document.createElement('div');
-		t.className = 'toast align-items-center border-0 text-bg-' + (type || 'success');
+		t.className = 'toast align-items-center border-0 text-bg-' + (type || 'success') + (opt && opt.cls ? ' ' + opt.cls : '');
 		t.setAttribute('role', type === 'danger' ? 'alert' : 'status'); t.setAttribute('aria-live', 'polite'); t.setAttribute('aria-atomic', 'true');
 		t.innerHTML = '<div class="d-flex"><div class="toast-body"></div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button></div>';
 		t.querySelector('.toast-body').textContent = msg;
@@ -367,7 +370,7 @@
 		if (id) return nuSubformObject(id);
 		// '' = the main form as a one-row sub-form object, as nuBuilder Forte: ID, nuDelete, then the fields; checkboxes as 0 / 1
 		var v = mainValues(), keys = Object.keys(v);
-		return {id: '', foreign_key: '', primary_key: N.form.primary_key || '', object_id: '', table: N.form.table || '',
+		return {id: 'nuBuilder4EditForm', foreign_key: '', primary_key: N.form.primary_key || '', object_id: N.form.id, table: N.form.table || '', action: 'save',
 			fields: ['ID', 'nuDelete'].concat(keys), rows: [[N.record_id, 0].concat(keys.map(function (k) { var el = g(k); return el && el.type === 'checkbox' ? (el.checked ? 1 : 0) : v[k]; }))],
 			deleted: [0], edited: [[0, 0].concat(keys.map(function (k) { var el = g(k); return el && el.classList.contains('nuEdited') ? 1 : 0; }))], columns: [],
 			chartData: null, chartDataPivot: null};
@@ -920,8 +923,17 @@
 		});
 		(res.js || []).forEach(function (js) { try { globalEval(js); } catch (e) { reportError(e.message, 'PHP nuAddJavascript'); console.error(e); } });
 		nuDisplayError(res);
+		phpWarnings(res.warnings);
 	}
 	N.applyResult = applyResult;
+	// PHP warnings of the request (the server sends them only to the globeadmin): a notice instead of nuBuilder Forte's error message
+	function phpWarnings(w) {
+		if (!w || !w.length) return;
+		var shown = w.slice(0, 3).join('\n'), more = w.length - 3;
+		var text = (M.php_warn || 'PHP warnings') + ':\n' + shown + (more > 0 ? '\n' + String(M.php_warn_more || '+%d').replace('%d', more) : '');
+		nuToast(text, 'warning', 12000, {cls: 'nuPhpWarn'});
+	}
+	N.phpWarnings = phpWarnings;
 
 	function saveFile(f) {
 		var url = URL.createObjectURL(f.blob), a = document.createElement('a');
@@ -1041,6 +1053,44 @@
 		nuBs.modal(m).show();
 		callHook('nuOnPopupOpenedGlobal', f, r, filter);
 	});
+
+	// nuBuilder Forte's ids of an open popup / lookup: the box #nuDragDialog, its iframe #nuWindow and the overlay #nuModal – form code
+	// sizes the popup from inside ($('#nuDragDialog', window.parent.document).css('width', …)) or asks parent.$('#nuModal').length.
+	// The ids go to the dialog that is open and leave it when it closes (Forte removes its dialog). A width set by such code wins
+	// over the width nuBuilder Next worked out (max-width), within the window.
+	(function forteDialogIds() {
+		var PAIR = ['nuPopupModal', 'nuLookupModal'];
+		function clear() {
+			['nuDragDialog', 'nuWindow', 'nuModal'].forEach(function (id) { var el = g(id); if (el) el.removeAttribute('id'); });
+		}
+		document.addEventListener('show.bs.modal', function (e) {
+			var m = e.target; if (!m || PAIR.indexOf(m.id) < 0) return;
+			clear();
+			var dlg = m.querySelector('.modal-dialog'), fr = m.querySelector('iframe');
+			if (dlg) {
+				dlg.id = 'nuDragDialog';
+				if (!dlg.nuWidthWatch && window.MutationObserver) {
+					dlg.nuWidthWatch = new MutationObserver(function () {
+						var w = dlg.style.width;
+						if (dlg.id === 'nuDragDialog' && w && dlg.style.maxWidth !== 'calc(100vw - 1rem)') dlg.style.maxWidth = 'calc(100vw - 1rem)';
+					});
+					dlg.nuWidthWatch.observe(dlg, {attributes: true, attributeFilter: ['style']});
+				}
+			}
+			if (fr) fr.id = 'nuWindow';
+		});
+		document.addEventListener('shown.bs.modal', function (e) {
+			var m = e.target; if (!m || PAIR.indexOf(m.id) < 0) return;
+			var bd = document.querySelectorAll('.modal-backdrop'); if (bd.length && !g('nuModal')) bd[bd.length - 1].id = 'nuModal';
+		});
+		document.addEventListener('hidden.bs.modal', function (e) {
+			var m = e.target; if (!m || PAIR.indexOf(m.id) < 0) return;
+			var dlg = m.querySelector('.modal-dialog');
+			if (dlg && dlg.id === 'nuDragDialog') { dlg.removeAttribute('id'); dlg.style.width = ''; dlg.style.height = ''; }
+			var fr = m.querySelector('iframe'); if (fr && fr.id === 'nuWindow') { fr.removeAttribute('id'); fr.style.width = ''; fr.style.height = ''; }
+			var o = g('nuModal'); if (o) o.removeAttribute('id');
+		});
+	})();
 
 	/** Run objects (buttons): open a form or run a procedure, see NuRender::runInfo(). */
 	// the button's own onclick (nuBuilder Forte's nuForm(…) …, written by NuRender::run – form code may have changed it): the leave
@@ -1307,6 +1357,8 @@
 
 	// =================================================================== subforms
 	api('nuSubformObject', function (sf) {
+		// '' (or nothing) = the main form, as nuBuilder Forte (id nuBuilder4EditForm, one row)
+		if (sf === '' || sf === undefined || sf === null) return nuFORM.subform('');
 		var info = (N.subforms || {})[sf] || {fields: []};
 		var o = {id: sf, foreign_key: info.foreign_key, primary_key: info.primary_key, object_id: info.object_id, table: info.table,
 			fields: ['ID'].concat(info.fields).concat(['nuDelete']), rows: [], deleted: [], edited: [], columns: [], chartData: null, chartDataPivot: null};
@@ -1696,6 +1748,7 @@
 			}
 			if (!res.ok) { applyResult(res); return; }
 			try { if (res.js && res.js.length) sessionStorage.setItem('nuNextPendingJs', JSON.stringify(res.js)); } catch (x) { /* ignore */ }
+			if (res.warnings && res.warnings.length) nuStore.session.set('nuNextPhpWarn', JSON.stringify(res.warnings));   // shown after the reload
 			N.edited = false;
 			var afterSaveNow = function () {
 				callHook('nuAfterSaveGlobal');
@@ -6416,6 +6469,11 @@
 		forteHidden();
 		brRestore();                                                       // column widths dragged in this tab
 		rdRestore();                                                       // rows whose details were open
+		(function () {                                                    // PHP warnings: of this page (Before Edit …) and of the save that reloaded it
+			var w = (N.php_warnings || []).slice(), kept = nuStore.session.get('nuNextPhpWarn');
+			if (kept) { nuStore.session.remove('nuNextPhpWarn'); try { w = JSON.parse(kept).concat(w); } catch (x) { /* expected: not JSON */ } }
+			phpWarnings(w);
+		})();
 		if (typeof window.nuNextPageHook === 'function') window.nuNextPageHook();   // Global JS: nuOnPageLoad / nu:pageload after nuOnLoad
 		if (N.mode === 'edit') {                                            // nuAfterSave of the save that reloaded this page
 			try {

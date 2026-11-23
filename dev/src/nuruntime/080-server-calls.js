@@ -36,8 +36,17 @@
 		});
 		(res.js || []).forEach(function (js) { try { globalEval(js); } catch (e) { reportError(e.message, 'PHP nuAddJavascript'); console.error(e); } });
 		nuDisplayError(res);
+		phpWarnings(res.warnings);
 	}
 	N.applyResult = applyResult;
+	// PHP warnings of the request (the server sends them only to the globeadmin): a notice instead of nuBuilder Forte's error message
+	function phpWarnings(w) {
+		if (!w || !w.length) return;
+		var shown = w.slice(0, 3).join('\n'), more = w.length - 3;
+		var text = (M.php_warn || 'PHP warnings') + ':\n' + shown + (more > 0 ? '\n' + String(M.php_warn_more || '+%d').replace('%d', more) : '');
+		nuToast(text, 'warning', 12000, {cls: 'nuPhpWarn'});
+	}
+	N.phpWarnings = phpWarnings;
 
 	function saveFile(f) {
 		var url = URL.createObjectURL(f.blob), a = document.createElement('a');

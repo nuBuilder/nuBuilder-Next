@@ -100,6 +100,11 @@
 		forteHidden();
 		brRestore();                                                       // column widths dragged in this tab
 		rdRestore();                                                       // rows whose details were open
+		(function () {                                                    // PHP warnings: of this page (Before Edit …) and of the save that reloaded it
+			var w = (N.php_warnings || []).slice(), kept = nuStore.session.get('nuNextPhpWarn');
+			if (kept) { nuStore.session.remove('nuNextPhpWarn'); try { w = JSON.parse(kept).concat(w); } catch (x) { /* expected: not JSON */ } }
+			phpWarnings(w);
+		})();
 		if (typeof window.nuNextPageHook === 'function') window.nuNextPageHook();   // Global JS: nuOnPageLoad / nu:pageload after nuOnLoad
 		if (N.mode === 'edit') {                                            // nuAfterSave of the save that reloaded this page
 			try {

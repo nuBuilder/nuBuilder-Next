@@ -702,9 +702,13 @@ function nu_list_footer(int $total, int $page, int $per, string $route, array $p
 	$pages = (int)max(1, ceil($total / max(1, $per)));
 	$page  = max(1, min($page, $pages));
 	$link  = static fn(int $p) => h(nu_url($route, [$param => $p > 1 ? $p : null] + $params) . $anchor);
-	$btn   = static function (bool $on, int $p, string $cls, string $html, string $label) use ($link): string {
-		return $on ? '<a class="nuPagerBtn ' . $cls . '" href="' . $link($p) . '" aria-label="' . h($label) . '" title="' . h($label) . '">' . $html . '</a>'
-			: '<span class="nuPagerBtn ' . $cls . ' disabled" role="link" aria-disabled="true" aria-label="' . h($label) . '">' . $html . '</span>';   // aria-label needs a role
+	// the pager of a form's list carries nuBuilder Forte's ids (#nuFirst, #nuLast = previous page, #nuEnd) for form code; not Forte's
+	// #nuNext – an element with that id would stand for window.nuNext, nuBuilder Next's page data, wherever it is not set yet
+	$forte = $id === 'nuBrowseFooter' ? ['nuPagerFirst' => 'nuFirst', 'nuPagerPrev' => 'nuLast', 'nuPagerLast' => 'nuEnd'] : [];
+	$btn   = static function (bool $on, int $p, string $cls, string $html, string $label) use ($link, $forte): string {
+		$fid = isset($forte[$cls]) ? ' id="' . $forte[$cls] . '"' : '';
+		return $on ? '<a' . $fid . ' class="nuPagerBtn ' . $cls . '" href="' . $link($p) . '" aria-label="' . h($label) . '" title="' . h($label) . '">' . $html . '</a>'
+			: '<span' . $fid . ' class="nuPagerBtn ' . $cls . ' disabled" role="link" aria-disabled="true" aria-label="' . h($label) . '">' . $html . '</span>';   // aria-label needs a role
 	};
 	?>
 	<div class="nuListFooter <?= h($class) ?><?= $pages <= 1 ? ' nuListFooterOne' : '' ?>"<?= $id !== '' ? ' id="' . h($id) . '"' : '' ?>>

@@ -577,4 +577,5 @@ list_hscroll_keep
 record_view_mode
 record_view_first
 runphp_page
+forum_compat
 logout

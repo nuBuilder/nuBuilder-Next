@@ -1041,6 +1041,8 @@ return [
 	'form_delete_undo' => 'Dit kan niet ongedaan worden gemaakt.',
 	'form_flt_more' => 'Alleen de eerste %d waarden – gebruik het zoekveld voor de andere',
 	'form_error' => 'Fout',
+	'php_warn' => 'PHP-waarschuwingen (alleen jij ziet dit – gebruikers krijgen geen melding)',
+	'php_warn_more' => '+%d meer in het foutenlogboek van de server',
 	'ok' => 'OK',
 	'form_lookup_title' => 'Zoeken',
 	'lk_clear' => 'Leegmaken',

@@ -359,7 +359,7 @@ $client = [
 			'delete_confirm' => t('form_delete_confirm'), 'no_results' => t('eff_none'), 'delete_title' => t('form_delete_title'),
 			'delete_named' => t('form_delete_named'), 'delete_with' => t('form_delete_with'),
 			'delete_undo' => NuRecycle::days($meta) > 0 ? t('rb_delete_note', NuRecycle::days($meta)) : t('form_delete_undo'), 'rb_undo' => t('rb_undo'),
-			'rb_in_bin' => t('rb_in_bin'), 'error' => t('form_error'),
+			'rb_in_bin' => t('rb_in_bin'), 'error' => t('form_error'), 'php_warn' => t('php_warn'), 'php_warn_more' => t('php_warn_more'),
 		'ok' => t('ok'), 'cancel' => t('cancel'), 'code_fullscreen' => t('form_code_fullscreen'), 'code_hint' => t('form_code_hint'),
 			'code_readonly' => t('form_code_readonly'), 'code_discard' => t('form_code_discard'), 'code_dblclick' => t('form_code_dblclick'),
 			'delete' => t('delete'), 'lookup' => t('form_lookup_title'), 'lk_clear' => t('lk_clear'), 'lk_clear_tip' => t('lk_clear_tip'),
@@ -509,6 +509,7 @@ $uppyUse = $mode === 'edit' && (array_filter($meta->objects, static fn($o) => Nu
 $uppyDir = $uppyUse ? NuLibs::uppy() : '';
 $uppyNotice = $uppyUse && $uppyDir === '' && $u['globeadmin'] ? t('form_uppy_missing') . ' ' . t('lp_get_pack') : '';
 if ($uppyDir !== '') $head .= '<link rel="stylesheet" href="' . nu_asset($uppyDir . '/uppy.min.css') . '">';
+$client['php_warnings'] = NuPhp::warningsShown();                   // Before Browse / Before Edit / display procedures: notice for the globeadmin
 $client['codetools'] = nu_asset('assets/js/nu/nucodetools.js');      // loaded with CodeMirror when a code editor opens (review B3)
 $client['uppyBase'] = $uppyDir;                               // nuUppySetLanguage loads <uppyBase>/locales/<code>.min.js
 if ($googleLoader) $head .= '<script src="https://www.gstatic.com/charts/loader.js"></script>';   // as nuBuilder Forte
@@ -570,7 +571,8 @@ $foot = '<script>window.nuNext = ' . json_encode($client, JSON_HEX_TAG | JSON_HE
 nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategroy' ? 'notes' : 'forms',
 	['head' => $head, 'bare' => $bare, 'nu_form' => [$mode, (string)$meta->form['sfo_code']], 'container' => 'container-fluid nuFormContainer',
 		// nuLookupPage = the lookup's list only: a record opened from it (+) keeps its header with Save
-		'body_class' => 'nuForm nuForm-' . $mode . ($lookupTo !== '' && $mode === 'browse' ? ' nuLookupPage' : '') . (!empty($printMode) ? ' nuPrintView' : '')
+		// nuBrowseBody / nuEditBody: nuBuilder Forte's body classes (nuform.js) – form code styles or selects with them
+		'body_class' => 'nuForm nuForm-' . $mode . ' ' . ($mode === 'browse' ? 'nuBrowseBody' : 'nuEditBody') . ($lookupTo !== '' && $mode === 'browse' ? ' nuLookupPage' : '') . (!empty($printMode) ? ' nuPrintView' : '')
 		. ($design ? ' nuDesignMode' : '')]);
 ?>
 <?php if ($design): // design mode hides the header: the page's heading for screen readers (usability review G8) ?><h1 class="visually-hidden"><?= h($title) ?></h1><?php endif; ?>

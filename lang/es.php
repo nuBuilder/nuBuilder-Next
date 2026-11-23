@@ -1040,6 +1040,8 @@ return [
 	'form_delete_undo' => 'No se puede deshacer.',
 	'form_flt_more' => 'Solo los primeros %d valores: usa el campo de búsqueda para los demás',
 	'form_error' => 'Error',
+	'php_warn' => 'Advertencias de PHP (solo las ves tú; los usuarios no reciben ningún mensaje)',
+	'php_warn_more' => '+%d más en el registro de errores del servidor',
 	'ok' => 'Aceptar',
 	'form_lookup_title' => 'Buscar',
 	'lk_clear' => 'Vaciar',

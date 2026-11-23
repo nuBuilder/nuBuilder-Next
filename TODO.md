@@ -416,6 +416,12 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **Sample change history** (0.8.1256) – please verify on Settings → Sample data: tab *Changes* per sample; an outdated sample shows what is new in Overview.
 
 ## nuBuilder Forte compatibility
+- [ ] **Forum code fixes – please verify** (0.8.1394) – from running the forum's code: `nuSubformObject('')` = the main form;
+  `nuCreateTableFromSelect` / `db_fetch_value` / `nuEncodeQueryRowResults` go on after a database error (Debug result); popup / lookup
+  window carries `#nuDragDialog` / `#nuWindow` / `#nuModal` while open (a width set from inside wins); label classes nuNone / nuBlank /
+  nuDuplicate / nuDuplicateOrBlank, `nuHiddenLookup`, body `nuBrowseBody` / `nuEditBody`, `window.nuDocumentID`, pager `#nuFirst` /
+  `#nuLast` / `#nuEnd`; PHP warnings as a yellow notice for the globeadmin only. Not done (the owner): default `nuSelectBrowse`,
+  `nuSaveButtonEdited`. Check a popup resized by form code on a real application
 - [ ] **Two more forms of the Forte 4.5 database** (0.8.1217 / 0.8.1218) – please verify on the live application: checkbox `$(…).val()` in form
       code (stored value on saved records), a list in a run object following the filter selects of the form around it, its title and
       search row hidden, a narrow select readable, an export procedure that loads its library with `dirname(__FILE__)`

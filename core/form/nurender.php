@@ -225,6 +225,7 @@ final class NuRender
 			'check'    => 'form-check-label nuLabel',
 			default    => 'form-label nuLabel',
 		};
+		$cls .= ' ' . self::validClass($o);
 		$marks = $o['sob_all_type'] !== 'subform' ? $this->marks($o) : '';
 		$marks .= NuUserHelp::mark($o);                          // user help page of the field (sob_all_json nunext.help)
 		return '<label id="label_' . h($id) . '" for="' . h($for) . '" class="' . $cls . '">' . $text . $marks . '</label>';
@@ -232,6 +233,12 @@ final class NuRender
 
 	// ================================================================= validation markers (sob_all_validate) – display only
 
+
+	/** nuBuilder Forte's class of a label by the validation (nuLabelGetValidationClass) – form code selects e.g. label.nuBlank. */
+	private static function validClass(array $o): string
+	{
+		return match ((string)$o['sob_all_validate']) { '1' => 'nuBlank', '2' => 'nuDuplicate', '3' => 'nuDuplicateOrBlank', default => 'nuNone' };
+	}
 
 	/** 1 = no blanks, 2 = no duplicates, 3 = both: [required, unique]. */
 	private static function rules(array $o): array
@@ -590,7 +597,7 @@ final class NuRender
 		$attrs = ' data-nu-prefix="' . h($prefix) . '" data-nu-form="' . h($prefix === '' ? '' : (string)preg_replace('/(\d{3}|__ROW__)$/', '', $prefix))
 			. '" data-nu-object-id="' . h($o['zzzzsys_object_id']) . '" data-nu-target="' . h($id) . '"'
 			. ' data-nu-lookup-form="' . h($o['sob_lookup_zzzzsys_form_id']) . '"';
-		$hidden = '<input type="hidden" class="nuLookupId"' . $common . ' value="' . h($value) . '">';
+		$hidden = '<input type="hidden" class="nuLookupId nuHiddenLookup"' . $common . ' value="' . h($value) . '">';
 		$flow  = $sizeStyle === '' || str_contains($sizeStyle, '100%');
 		return $hidden . '<div class="input-group input-group-sm nuLookupGroup' . ($flow ? '' : ' nuLookupFixed') . '">'
 			. '<input type="text" class="form-control nuLookupCode ' . h($cls) . '" id="' . h($id) . 'code" data-nu-field="' . h($o['sob_all_id']) . 'code"' . $attrs
@@ -979,7 +986,7 @@ final class NuRender
 			$hidden = NuRecord::hiddenFor($c);
 			if ($fit) {
 				$pct = $hidden ? 0 : round($colW($c) / $fitTotal * 100, 3);
-				$head .= '<th id="title_' . h($sf . $c['sob_all_id']) . '" class="nuSubformTitle" data-nu-field="' . h($c['sob_all_id']) . '" data-nu-obj="'
+				$head .= '<th id="title_' . h($sf . $c['sob_all_id']) . '" class="nuSubformTitle' . ((string)$c['sob_all_validate'] === '1' ? ' nuBlank' : '') . '" data-nu-field="' . h($c['sob_all_id']) . '" data-nu-obj="'
 					. h((string)$c['zzzzsys_object_id']) . '" data-nu-sf-form="' . h((string)$o['sob_subform_zzzzsys_form_id']) . '" style="width:' . $pct . '%'
 					. ($hidden ? ';display:none' : '') . '">'
 					. self::closeFragment((string)$c['sob_all_label']) . $this->marks($c) . '</th>';
@@ -987,7 +994,7 @@ final class NuRender
 			}
 			// + 4 px = the cell's side padding (2 px each, nuform.css): the control gets the object's width as in nuBuilder Forte
 			$w = max(30, (int)$c['sob_all_width'] + ($c['sob_all_type'] === 'lookup' ? self::lookupDescWidth($c) + 40 : 0)) + 4;
-			$head .= '<th id="title_' . h($sf . $c['sob_all_id']) . '" class="nuSubformTitle" data-nu-field="' . h($c['sob_all_id']) . '" data-nu-obj="'
+			$head .= '<th id="title_' . h($sf . $c['sob_all_id']) . '" class="nuSubformTitle' . ((string)$c['sob_all_validate'] === '1' ? ' nuBlank' : '') . '" data-nu-field="' . h($c['sob_all_id']) . '" data-nu-obj="'
 				. h((string)$c['zzzzsys_object_id']) . '" data-nu-sf-form="' . h((string)$o['sob_subform_zzzzsys_form_id']) . '" style="min-width:' . $w
 				. 'px;width:' . $w . 'px' . ($hidden ? ';display:none' : '') . '">'
 				. self::closeFragment((string)$c['sob_all_label']) . $this->marks($c) . '</th>';

@@ -31,9 +31,12 @@ if (!function_exists('db_fetch_value')) {
 	/** Value of one column of one record, false when the record does not exist. */
 	function db_fetch_value($table, $pk, $recordId, $column): mixed
 	{
-		$r = nu_db()->all('SELECT ' . nu_compat_ident((string)$column) . ' AS v FROM ' . nu_compat_ident((string)$table)
+		// through nuRunQuery as nuBuilder Forte: a database error becomes a Debug result and false, the procedure goes on
+		$r = nuRunQuery('SELECT ' . nu_compat_ident((string)$column) . ' AS v FROM ' . nu_compat_ident((string)$table)
 			. ' WHERE ' . nu_compat_ident((string)$pk) . ' = ?', [$recordId]);
-		return count($r) === 1 ? $r[0]['v'] : false;
+		if (!$r instanceof NuResult || count($r->rows) !== 1) return false;
+		$row = $r->assoc($r->rows[0]);
+		return $row['v'] ?? null;
 	}
 
 	/** Sets one column of one record. */

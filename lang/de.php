@@ -703,6 +703,8 @@ return [
 	'form_delete_undo' => 'Das lässt sich nicht rückgängig machen.',
 	'form_flt_more' => 'Nur die ersten %d Werte – für andere das Suchfeld verwenden',
 	'form_error' => 'Fehler',
+	'php_warn' => 'PHP-Warnungen (nur für dich sichtbar – Benutzer sehen keine Meldung)',
+	'php_warn_more' => '+%d weitere im Fehlerprotokoll des Servers',
 	'ok' => 'OK',
 	'form_lookup_title' => 'Suchen',
 	'lk_clear' => 'Leeren',

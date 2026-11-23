@@ -1084,3 +1084,8 @@ html.nuPhoneCards #nuBrowseTable > tbody > tr.nuBrowseRow > td.nuCellTd:has(> .n
 	.nuSubformScroll:has(> .nuSfPhCards) { max-height: none !important; overflow: visible; }
 }
 /* ---- usability review G3 / G5 / G7 / G14 / G15 -------------------------------------------------------------- */
+
+/* PHP warnings for the globeadmin (nuruntime.js phpWarnings): one line per warning, a dark close button on the yellow toast */
+.toast.nuPhpWarn { width: min(34rem, calc(100vw - 2rem)); }
+.toast.nuPhpWarn .toast-body { white-space: pre-line; overflow-wrap: anywhere; font-size: .8125rem; }
+.toast.nuPhpWarn .btn-close { filter: none; }

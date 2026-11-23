@@ -73,7 +73,7 @@
 		if (id) return nuSubformObject(id);
 		// '' = the main form as a one-row sub-form object, as nuBuilder Forte: ID, nuDelete, then the fields; checkboxes as 0 / 1
 		var v = mainValues(), keys = Object.keys(v);
-		return {id: '', foreign_key: '', primary_key: N.form.primary_key || '', object_id: '', table: N.form.table || '',
+		return {id: 'nuBuilder4EditForm', foreign_key: '', primary_key: N.form.primary_key || '', object_id: N.form.id, table: N.form.table || '', action: 'save',
 			fields: ['ID', 'nuDelete'].concat(keys), rows: [[N.record_id, 0].concat(keys.map(function (k) { var el = g(k); return el && el.type === 'checkbox' ? (el.checked ? 1 : 0) : v[k]; }))],
 			deleted: [0], edited: [[0, 0].concat(keys.map(function (k) { var el = g(k); return el && el.classList.contains('nuEdited') ? 1 : 0; }))], columns: [],
 			chartData: null, chartDataPivot: null};

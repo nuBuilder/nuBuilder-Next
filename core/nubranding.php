@@ -94,9 +94,15 @@ final class NuBranding
 		$b = self::get();
 		$out = '';
 		if (($v = self::version()) !== '') $out .= '<link rel="stylesheet" href="' . h(nu_url('brand', ['a' => 'css', 'v' => $v])) . '">' . "\n\t";
-		if ($b['favicon'] && $b['logo']) $out .= '<link rel="icon" href="' . h(self::logoUrl(false)) . '">';
-		else $out .= '<link rel="icon" href="' . nu_asset('assets/img/favicon.svg') . '" type="image/svg+xml">';
-		return $out;
+		return $out . self::faviconTag();
+	}
+
+	/** The browser icon of nuBuilder Next (or the logo when Branding uses it as icon); also for pages without nu_head. */
+	public static function faviconTag(): string
+	{
+		$b = self::get();
+		if ($b['favicon'] && $b['logo']) return '<link rel="icon" href="' . h(self::logoUrl(false)) . '">';
+		return '<link rel="icon" href="' . nu_asset('assets/img/favicon.svg') . '" type="image/svg+xml">';
 	}
 
 	public static function logoUrl(bool $dark): string

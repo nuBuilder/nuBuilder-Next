@@ -1234,7 +1234,7 @@ T.forte_align = async (s) => {
 	const php = `nuRunQuery('DROP TABLE IF EXISTS e2e_align_t');
 nuCreateTableFromSelect('e2e_align_t', 'SELECT 1 AS a');
 $again = 'no error';
-try { nuCreateTableFromSelect('e2e_align_t', 'SELECT 2 AS a'); } catch (Throwable $e) { $again = 'refused'; }
+if (nuCreateTableFromSelect('e2e_align_t', 'SELECT 2 AS a') === -1) $again = 'refused';
 $kept = db_fetch_row(nuRunQuery('SELECT a FROM e2e_align_t'))[0];
 nuRunQuery('DROP TABLE e2e_align_t');
 nuSetProperty('E2E_P', 'north'); nuSetProperty('E2E_Z', '0');
@@ -1773,14 +1773,69 @@ T.runphp_page = async (s) => {
 		const [w] = await Promise.all([p.context().waitForEvent('page'), p.evaluate(() => { nuRunPHP('e2e_runphp'); })]);
 		await w.waitForSelector('#e2eNext', { timeout: 15000 });
 		expect(/[?&]p=runphp&i=[0-9a-f]{24}/.test(w.url()), 'own address: ' + w.url());
+		const icon = () => w.evaluate(() => { const l = document.querySelectorAll('link[rel~="icon"]'); return l.length + '|' + (l[0] ? l[0].getAttribute('href') : ''); });
+		const i1 = await icon();
+		expect(/^1\|.*(favicon|brand)/.test(i1), 'the output page has nuBuilder Next\'s icon, not the server\'s /favicon.ico: ' + i1);
 		await Promise.all([w.waitForNavigation(), w.click('#e2eNext')]);
 		const got = await w.textContent('#e2eGot');
 		expect(got === 'X=2|R=' + ord, 'link with a parameter runs the procedure again with the form\'s hash: ' + got + ' / ' + w.url());
+		const i2 = await icon(); expect(i2.startsWith('1|'), 'a rerun has one icon too: ' + i2);
 		await w.reload(); expect((await w.textContent('#e2eGot')) === got, 'reload runs it again');
 		const bad = await w.goto(new URL('index.php?p=runphp&i=' + '0'.repeat(24), w.url()).href);
 		expect(bad.status() === 410, 'unknown token: ' + bad.status());
 		await w.close();
 	} finally {
 		sql("DELETE FROM zzzzsys_php WHERE zzzzsys_php_id = 'e2e_runphp'");
+	}
+};
+
+T.forum_compat = async (s) => {
+	// code from the nuBuilder Forte forum: nuSubformObject('') = the main form, Forte's popup ids, label / lookup / body classes,
+	// nuDocumentID, the list pager's ids, database errors of PHP helpers and PHP warnings for the globeadmin
+	const p = s.ga;
+	const b64 = (t) => Buffer.from(t).toString('base64');
+	const ord = sql("SELECT sample_order_id FROM sample_order ORDER BY sample_order_id LIMIT 1");
+	await open(p, 'index.php?p=form&f=sampleorder&r=' + ord); await p.waitForSelector('#nuSaveButton');
+	const e = await p.evaluate(() => {
+		const o = nuSubformObject('');
+		const lab = (id) => (document.getElementById('label_' + id) || {}).className || '';
+		return { id: o.id, rows: o.rows.length, fields: o.fields.slice(0, 2), obj: o.object_id, body: document.body.className,
+			doc: typeof window.nuDocumentID, hidden: document.querySelectorAll('input.nuHiddenLookup').length,
+			lk: lab('ord_sample_customer_id'), date: lab('ord_date'), num: lab('ord_number') };
+	});
+	expect(e.id === 'nuBuilder4EditForm' && e.rows === 1 && e.fields[0] === 'ID' && e.obj === 'sampleorder', "nuSubformObject(''): " + JSON.stringify(e));
+	expect(/\bnuEditBody\b/.test(e.body) && e.doc === 'number' && e.hidden >= 1, 'body class, nuDocumentID, nuHiddenLookup: ' + JSON.stringify(e));
+	expect(/\bnuBlank\b/.test(e.lk) && /\bnuNone\b/.test(e.date) && /\bnuDuplicate\b/.test(e.num), 'label classes by validation: ' + JSON.stringify(e));
+	// popup: Forte's ids while it is open, a width set from inside wins, gone after closing
+	await p.evaluate(() => nuPopup('samplecustomer', '-1'));
+	await p.waitForSelector('#nuPopupModal.show #nuWindow');
+	await p.waitForSelector('#nuModal', { state: 'attached' });
+	const pw = await p.evaluate(() => { $('#nuDragDialog').css('width', '520px'); return new Promise((r) => setTimeout(() => r({
+		dlg: document.getElementById('nuDragDialog').classList.contains('modal-dialog'), w: Math.round(document.getElementById('nuDragDialog').getBoundingClientRect().width),
+		fr: document.getElementById('nuWindow').tagName }), 150)); });
+	expect(pw.dlg && pw.fr === 'IFRAME' && Math.abs(pw.w - 520) <= 2, 'popup ids + width from code: ' + JSON.stringify(pw));
+	await p.evaluate(() => nuBs.modal(document.getElementById('nuPopupModal')).hide());
+	await p.waitForFunction(() => !document.getElementById('nuDragDialog') && !document.getElementById('nuWindow') && !document.getElementById('nuModal'));
+	// list pager ids (two pages of customers)
+	await open(p, 'index.php?p=form&f=samplecustomer'); await p.waitForSelector('#nuBrowseTable');
+	const pg = await p.evaluate(() => ({ body: document.body.className, ids: ['nuFirst', 'nuLast', 'nuEnd'].map((i) => !!document.getElementById(i)),
+		next: typeof window.nuNext === 'object' && !(window.nuNext instanceof Element) }));
+	expect(/\bnuBrowseBody\b/.test(pg.body) && pg.ids.every(Boolean) && pg.next, 'list: body class, #nuFirst / #nuLast / #nuEnd: ' + JSON.stringify(pg));
+	// PHP: a database error in nuCreateTableFromSelect / db_fetch_value goes on (Debug result), a warning reaches the globeadmin as a notice
+	const code = "$a = nuCreateTableFromSelect('e2e_fc_t', 'SELECT x FROM e2e_no_such_table');\n$b = db_fetch_value('e2e_no_such_table', 'id', '1', 'x');\n"
+		+ "$c = $e2eUndefinedVar;\nnuSetProperty('E2E_FC', ($a === -1 ? 'm1' : 'x') . '|' . ($b === false ? 'false' : 'x'));";
+	sql("DELETE FROM zzzzsys_php WHERE zzzzsys_php_id = 'e2e_fc'; INSERT INTO zzzzsys_php (zzzzsys_php_id, sph_code, sph_description, sph_group, sph_php, sph_global) VALUES ('e2e_fc', 'e2e_fc', 'e2e', 'e2e', FROM_BASE64('" + b64(code) + "'), '1')");
+	try {
+		await open(p, 'index.php?p=form&f=sampleorder&r=' + ord); await p.waitForSelector('#nuSaveButton');
+		const [resp] = await Promise.all([p.waitForResponse((x) => /p=formapi/.test(x.url()) && (x.request().postData() || '').includes('e2e_fc')),
+			p.evaluate(() => nuRunPHPHidden('e2e_fc'))]);
+		const j = await resp.json();
+		expect(!(j.errors || []).length && (j.props || {}).E2E_FC === 'm1|false', 'database errors go on: ' + JSON.stringify({ e: j.errors, p: j.props }));
+		expect((j.warnings || []).some((w) => /e2eUndefinedVar/.test(w)), 'warning sent to the globeadmin: ' + JSON.stringify(j.warnings));
+		await p.waitForSelector('.toast.nuPhpWarn.show', { timeout: 5000 });
+		const n = sql("SELECT COUNT(*) FROM zzzzsys_debug WHERE deb_message LIKE '%e2e_no_such_table%'");
+		expect(+n >= 2, 'Debug results of both database errors: ' + n);
+	} finally {
+		sql("DELETE FROM zzzzsys_php WHERE zzzzsys_php_id = 'e2e_fc'; DELETE FROM zzzzsys_debug WHERE deb_message LIKE '%e2e_no_such_table%'");
 	}
 };

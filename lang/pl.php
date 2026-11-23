@@ -1041,6 +1041,8 @@ return [
 	'form_delete_undo' => 'Tej operacji nie można cofnąć.',
 	'form_flt_more' => 'Tylko pierwsze %d wartości – dla innych użyj pola wyszukiwania',
 	'form_error' => 'Błąd',
+	'php_warn' => 'Ostrzeżenia PHP (widzisz je tylko ty – użytkownicy nie dostają komunikatu)',
+	'php_warn_more' => '+%d więcej w dzienniku błędów serwera',
 	'ok' => 'OK',
 	'form_lookup_title' => 'Szukaj',
 	'lk_clear' => 'Wyczyść',

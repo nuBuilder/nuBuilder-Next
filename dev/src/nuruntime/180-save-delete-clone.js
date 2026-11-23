@@ -88,6 +88,7 @@
 			}
 			if (!res.ok) { applyResult(res); return; }
 			try { if (res.js && res.js.length) sessionStorage.setItem('nuNextPendingJs', JSON.stringify(res.js)); } catch (x) { /* ignore */ }
+			if (res.warnings && res.warnings.length) nuStore.session.set('nuNextPhpWarn', JSON.stringify(res.warnings));   // shown after the reload
 			N.edited = false;
 			var afterSaveNow = function () {
 				callHook('nuAfterSaveGlobal');

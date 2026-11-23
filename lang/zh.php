@@ -1040,6 +1040,8 @@ return [
 	'form_delete_undo' => '此操作无法撤销。',
 	'form_flt_more' => '仅显示前 %d 个值——其他值请使用搜索框',
 	'form_error' => '错误',
+	'php_warn' => 'PHP 警告（仅你可见 – 用户不会收到消息）',
+	'php_warn_more' => '另有 %d 条见服务器错误日志',
 	'ok' => '确定',
 	'form_lookup_title' => '搜索',
 	'lk_clear' => '清除',

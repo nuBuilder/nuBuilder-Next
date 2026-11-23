@@ -82,7 +82,10 @@ jobs:
         run: |
           [ -f srv.log ] || { echo "no server log – the job stopped before the web server was started"; exit 0; }
           grep -E "PHP (Warning|Notice|Deprecated): .* in Unknown on line 0" srv.log | sed "s/^/::notice::PHP start-up (not our code): /" || true
-          if grep -E "PHP (Fatal error|Parse error|Warning|Notice|Deprecated)" srv.log | grep -v " in Unknown on line 0"; then echo "::error::PHP messages in the server log (above)"; exit 1; fi
+          # deprecations inside third-party libraries (nuBuilder Forte's third_party/ – e.g. its TCPDF on PHP 8.5 – or vendor/) are not
+          # ours to fix: shown as notices, they do not fail the job
+          grep -E "PHP Deprecated: .* in [^ ]*/(third_party|vendor)/" srv.log | sed "s/^/::notice::third-party library: /" || true
+          if grep -E "PHP (Fatal error|Parse error|Warning|Notice|Deprecated)" srv.log | grep -v " in Unknown on line 0" | grep -vE "PHP Deprecated: .* in [^ ]*/(third_party|vendor)/"; then echo "::error::PHP messages in the server log (above)"; exit 1; fi
           echo "no PHP messages in the server log"
       - if: failure()
         run: cat srv.log 2>/dev/null || true
@@ -139,7 +142,10 @@ jobs:
         run: |
           [ -f srv.log ] || { echo "no server log – the job stopped before the web server was started"; exit 0; }
           grep -E "PHP (Warning|Notice|Deprecated): .* in Unknown on line 0" srv.log | sed "s/^/::notice::PHP start-up (not our code): /" || true
-          if grep -E "PHP (Fatal error|Parse error|Warning|Notice|Deprecated)" srv.log | grep -v " in Unknown on line 0"; then echo "::error::PHP messages in the server log (above)"; exit 1; fi
+          # deprecations inside third-party libraries (nuBuilder Forte's third_party/ – e.g. its TCPDF on PHP 8.5 – or vendor/) are not
+          # ours to fix: shown as notices, they do not fail the job
+          grep -E "PHP Deprecated: .* in [^ ]*/(third_party|vendor)/" srv.log | sed "s/^/::notice::third-party library: /" || true
+          if grep -E "PHP (Fatal error|Parse error|Warning|Notice|Deprecated)" srv.log | grep -v " in Unknown on line 0" | grep -vE "PHP Deprecated: .* in [^ ]*/(third_party|vendor)/"; then echo "::error::PHP messages in the server log (above)"; exit 1; fi
           echo "no PHP messages in the server log"
       - if: failure()
         run: cat srv.log 2>/dev/null || true

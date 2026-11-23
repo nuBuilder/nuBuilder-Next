@@ -3,6 +3,36 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.1395 – Release gate
+- Release gate
+
+## 0.8.1394 – Forum code on nuBuilder Next
+- Code from the nuBuilder Forte forum runs in more cases (found by running the forum's 4.x code samples on nuBuilder Forte and on
+  nuBuilder Next):
+  - JavaScript `nuSubformObject('')` returns the main form (id nuBuilder4EditForm, one row), as in nuBuilder Forte – it failed with a
+    selector error.
+  - PHP `nuCreateTableFromSelect()`, `db_fetch_value()` and `nuEncodeQueryRowResults()` handle a database error as `nuRunQuery()`
+    does: a Debug result, then -1 / false / no rows, and the code goes on (before, the procedure stopped).
+  - A popup or lookup window carries nuBuilder Forte's ids while it is open (`#nuDragDialog`, the iframe `#nuWindow`, the overlay
+    `#nuModal`): code that sizes the popup from inside or checks whether it runs in one works. A width set by such code is kept.
+  - Labels get nuBuilder Forte's classes by their validation (`nuNone`, `nuBlank`, `nuDuplicate`, `nuDuplicateOrBlank`), the id field
+    of a lookup `nuHiddenLookup`, the page `nuBrowseBody` / `nuEditBody`; `window.nuDocumentID` is set; the list pager has the ids
+    `#nuFirst`, `#nuLast` (previous page) and `#nuEnd`.
+- PHP warnings of procedures and form events (an undefined variable, say) are shown to the globeadmin as a yellow notice (the first
+  three; the rest in the server's error log). Users still see nothing.
+
+## 0.8.1393 – Icon of the procedure output page
+- Procedure output page (nuRunPHP in a new window): the page now carries nuBuilder Next's browser icon (or the logo when Branding
+  uses it as icon). Without one, the browser showed the icon of the web server's root folder – often that of another program.
+  Output with its own icon keeps it.
+
+## 0.8.1392 – CI: third-party deprecations
+- Automatic tests on GitHub: deprecation notices from third-party libraries (e.g. the TCPDF copy of nuBuilder Forte on
+  PHP 8.5) are shown as notices and no longer fail the job; messages from nuBuilder Next's own code still do.
+
+## 0.8.1391 – Notes
+- Development notes: v0.8.1390 published on GitHub.
+
 ## 0.8.1390 – Release gate
 - Release gate: full test run (smoke, end-to-end, cross-tests against nuBuilder Forte, ZAP); the documentation, the tutorial,
   FEATURES.md and the open points were brought up to date first.

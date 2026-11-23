@@ -1040,6 +1040,8 @@ return [
 	'form_delete_undo' => 'Cette action est irréversible.',
 	'form_flt_more' => 'Seules les %d premières valeurs – utilisez le champ de recherche pour les autres',
 	'form_error' => 'Erreur',
+	'php_warn' => 'Avertissements PHP (visibles par vous seul – les utilisateurs ne voient aucun message)',
+	'php_warn_more' => '+%d autres dans le journal d\'erreurs du serveur',
 	'ok' => 'OK',
 	'form_lookup_title' => 'Rechercher',
 	'lk_clear' => 'Effacer',

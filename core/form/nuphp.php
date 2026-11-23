@@ -18,6 +18,8 @@ final class NuPhp
 	public static ?object $lookupRow  = null;   // nuLookupRecord
 	public static array $subforms     = [];     // posted subform data for nuSubformObject
 	public static array $debug        = [];
+	/** Warnings / notices of the code in this request ("<event>: <message> (line n)") – shown to the globeadmin (warningsShown). */
+	public static array $warnings     = [];
 	public static string $output      = '';
 	public static ?string $openRecord = null;   // nuReturnNewRecord(): the record the form opens after the save
 	/** The procedure's own variable $result after it ran (nuBuilder's nuEvalSafe → nuRunPHPHiddenResult; the upload procedure's answer). */
@@ -114,7 +116,9 @@ final class NuPhp
 
 		set_error_handler(static function (int $no, string $str, string $file, int $line) use ($label): bool {
 			if (!(error_reporting() & $no)) return false;
-			self::$debug[] = "$label: $str" . (str_contains($file, 'eval') ? " (line $line)" : '');
+			$msg = "$label: $str" . (str_contains($file, 'eval') ? " (line $line)" : '');
+			self::$debug[] = $msg;
+			if (count(self::$warnings) < 50 && !in_array($msg, self::$warnings, true)) self::$warnings[] = $msg;
 			return true;                                   // warnings/notices are logged, not fatal (like nuBuilder)
 		});
 		ob_start();
@@ -212,10 +216,22 @@ final class NuPhp
 		self::$debug = [];
 	}
 
+	/**
+	 * The request's PHP warnings for the browser – only for the globeadmin (nuBuilder Forte showed them to everyone in its error
+	 * message; here users never see them, the globeadmin gets a notice). [] otherwise.
+	 */
+	public static function warningsShown(): array
+	{
+		if (!self::$warnings || PHP_SAPI === 'cli') return [];
+		$u = NuAuth::user();
+		return $u && !empty($u['globeadmin']) ? self::$warnings : [];
+	}
+
 	/** What a client request gets back. */
 	public static function result(): array
 	{
-		return [
+		$w = self::warningsShown();
+		return ($w ? ['warnings' => $w] : []) + [
 			'errors' => self::$errors,
 			'js'     => self::$js,
 			'values' => (object)self::$formValues,

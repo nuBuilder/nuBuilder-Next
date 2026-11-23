@@ -14,6 +14,9 @@
 
 	var N = window.nuNext || {};
 	var $ = window.jQuery;
+	// nuBuilder Forte's id of the loaded page (index.php: Date.now()); form code compares it with parent.nuDocumentID to know
+	// whether it runs inside a popup / framed list
+	if (window.nuDocumentID === undefined) window.nuDocumentID = Date.now();
 	var M = N.messages || {};
 	N.props = N.props || {};
 	N.globals = N.globals || {};

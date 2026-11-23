@@ -82,6 +82,24 @@ that supports it.</p>
 <td>Write such code so it defines its variables in every case – it then works in both</td>
 </tr>
 <tr>
+<td>PHP warnings of procedures and form events</td>
+<td>Shown to every user in the error message</td>
+<td>Users see nothing; the globeadmin gets a yellow notice with the warnings (the first three, the rest in the server's error log)</td>
+<td>–</td>
+</tr>
+<tr>
+<td>Popup and lookup window</td>
+<td>A drag dialog <code>#nuDragDialog</code> with the iframe <code>#nuWindow</code> and the overlay <code>#nuModal</code></td>
+<td>A dialog that carries the same ids while it is open: code that sizes it from inside (<code>$('#nuDragDialog', window.parent.document).css('width', …)</code>) or asks <code>parent.$('#nuModal').length</code> works; it cannot be dragged</td>
+<td>–</td>
+</tr>
+<tr>
+<td>Element ids and classes form code selects</td>
+<td>Labels <code>nuNone</code> / <code>nuBlank</code> / <code>nuDuplicate</code> / <code>nuDuplicateOrBlank</code>, the lookup id field <code>nuHiddenLookup</code>, body <code>nuBrowseBody</code> / <code>nuEditBody</code>, the list pager <code>#nuFirst</code> / <code>#nuLast</code> (previous page) / <code>#nuNext</code> / <code>#nuEnd</code>, <code>window.nuDocumentID</code></td>
+<td>The same, except the pager's <code>#nuNext</code> (the name of nuBuilder Next's page data); the save button's edited state is the class <code>nuSaveEdited</code>, not <code>nuSaveButtonEdited</code>; the sub-form markup (<code>.nuSubformScrollDiv</code>, <code>.nuSubformTitleHolder</code>) differs</td>
+<td>–</td>
+</tr>
+<tr>
 <td>Rights on the system forms (users, access levels, forms, procedures, setup …)</td>
 <td>Only the form itself opens; nothing else changes</td>
 <td>The matching admin tools come with it: their tiles appear on the start page and their pages open; Save / Add / Delete on users, access levels, forms, procedures, SQL or setup count as admin-equivalent rights</td>
