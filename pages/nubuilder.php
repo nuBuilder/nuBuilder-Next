@@ -89,7 +89,14 @@ foreach ([__DIR__ . '/../lang/en.php'] as $f) foreach (array_keys(require $f) as
 $labels = [];
 foreach ($keys as $k) $labels[$k] = t($k);
 
-$data = ['csrf' => nu_csrf_token(), 'labels' => $labels, 'can_save' => $canSave, 'new' => true];
+// forms a lookup of a new field can look up in: application forms with a table (not sub-forms, launch forms or custom pages)
+$lookupForms = [];
+foreach (nu_forms() as $fid => $f) {
+	if (!$f['real'] || $f['system'] || $f['table'] === '' || in_array($f['type'], ['subform', 'launch', 'page'], true)) continue;
+	$lookupForms[] = [(string)$fid, $f['description'] . ' (' . $f['code'] . ')'];
+}
+usort($lookupForms, static fn($a, $b) => strcasecmp($a[1], $b[1]));
+$data = ['csrf' => nu_csrf_token(), 'labels' => $labels, 'can_save' => $canSave, 'new' => true, 'lookup_forms' => $lookupForms];
 
 $head = '<link rel="stylesheet" href="' . nu_asset('assets/css/nubuilder.css') . '">'
 	. '<link rel="stylesheet" href="' . nu_asset(NU_TOMSELECT . '/tom-select.bootstrap5.min.css') . '">';   // searchable selects: Table (new form), form lists
@@ -103,7 +110,7 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 ?>
 <?php if ($isNew): ?>
 	<div class="row"><?php /* review M7: narrow pages start at the left like every other page */ ?>
-		<div class="col-lg-10 col-xl-8">
+		<div class="col-lg-11 col-xl-10 col-xxl-9"><?php /* wide enough for the column grid with "Shown as" */ ?>
 			<?= $crumb   // inside the centred column, so it lines up with the card ?>
 			<div class="d-flex flex-wrap align-items-center gap-2 mb-3"><h1 class="h3 mb-0 me-auto"><i class="bi bi-magic me-2"></i><?= h(t('builder_new_form')) ?></h1></div>
 			<form class="card shadow-sm nbIsExisting" id="nbNewForm" novalidate>
@@ -176,6 +183,7 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 												<th scope="col" class="nbPickC"><input class="form-check-input" type="checkbox" id="nbPickAll" aria-label="<?= h(t('builder_pick_all')) ?>" title="<?= h(t('builder_pick_all')) ?>"></th>
 												<th scope="col" class="small"><?= h(t('builder_pick_col')) ?></th>
 												<th scope="col" class="small"><?= h(t('builder_obj_label')) ?></th>
+												<th scope="col" class="small"><?= h(t('builder_shown')) ?></th>
 												<th scope="col" class="small text-center text-nowrap"><input class="form-check-input me-1" type="checkbox" id="nbPickAllList"
 													aria-label="<?= h(t('builder_pick_all_list')) ?>" title="<?= h(t('builder_pick_all_list')) ?>"><?= h(t('builder_pick_list')) ?></th>
 												<th scope="col" class="small text-center text-nowrap"><?= h(t('builder_col_filter')) ?></th>
@@ -213,6 +221,7 @@ $crumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-2"><li cla
 										<th scope="col" class="small"><?= h(t('builder_col_name')) ?></th>
 										<th scope="col" class="small"><?= h(t('builder_obj_label')) ?></th>
 										<th scope="col" class="small"><?= h(t('builder_col_type')) ?></th>
+										<th scope="col" class="small"><?= h(t('builder_shown')) ?></th>
 										<th scope="col" class="small"><?= h(t('builder_col_length')) ?></th>
 										<th scope="col" class="small text-center"><?= h(t('builder_col_required')) ?></th>
 										<th scope="col"><span class="visually-hidden"><?= h(t('actions')) ?></span></th>

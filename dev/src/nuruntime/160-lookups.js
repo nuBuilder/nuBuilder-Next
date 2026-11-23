@@ -82,9 +82,13 @@
 			var head = m.querySelector('.modal-header');
 			var room = window.innerHeight - 56 - (head ? head.offsetHeight : 48);
 			fr.style.height = Math.max(240, Math.min(room, Math.ceil(bottom))) + 'px';
+			// the list has moved its buttons, marked the chosen row and the size fits: now it may be seen
+			if (d.documentElement.classList.contains('nuLookupReady')) reveal(dlg);
 		} catch (x) { /* another origin */ }
 	}
 	window.nuNextLookupFit = lookupFit;
+	// until then the dialog's content stays invisible (class nuLkWait) – no flash of the list at another size or before its code ran
+	function reveal(dlg) { window.clearTimeout(LK.wait); dlg.classList.remove('nuLkWait'); }
 	window.nuNextLookupCurrent = function () { var h = LK.target && g(LK.target); return h ? String(h.value || '') : ''; };
 	window.nuNextLookupClear = function () {
 		var t = LK.target;
@@ -103,6 +107,13 @@
 			fr.addEventListener('load', lookupFit);
 			// a frame that loaded while the dialog was still fading in measured nothing – fit again once it is shown
 			modal.addEventListener('shown.bs.modal', function () { lookupFit(); setTimeout(lookupFit, 250); });
+		}
+		var dlg = modal.querySelector('.modal-dialog');
+		if (fr && dlg) {
+			fr.setAttribute('src', 'about:blank');                // the list of the last lookup must not show (or be measured) again
+			dlg.classList.add('nuLkWait');
+			window.clearTimeout(LK.wait);
+			LK.wait = window.setTimeout(function () { reveal(dlg); }, 3000);   // a list that never reports: show it anyway
 		}
 		go(function () { return formUrl(info.form, '', {lookup: target, lo: info.object, q: search || ''}); }, function (url) { $(modal).find('iframe').attr('src', url); });
 		nuBs.modal(modal).show();

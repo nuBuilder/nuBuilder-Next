@@ -1951,3 +1951,31 @@ T.record_view_first = async (s) => {
 		sql("DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'view_first_ga'");
 	}
 };
+
+T.lookup_no_flash = async (s) => {                    // 0.8.1411: the lookup dialog shows its list only once it is fitted – no first look at another size
+	const p = s.ga;
+	await open(p, 'index.php?p=form&f=sampleorder&r=sample_ord_1');
+	const watch = () => p.evaluate(() => new Promise((done) => {
+		const out = [], t0 = performance.now(), dlg = document.querySelector('#nuLookupModal .modal-dialog');
+		(function tick() {
+			const c = dlg.querySelector('.modal-content'), m = document.getElementById('nuLookupModal');
+			if (m.classList.contains('show')) out.push({w: Math.round(dlg.getBoundingClientRect().width), op: +getComputedStyle(c).opacity,
+				fr: (() => { try { const d = dlg.querySelector('iframe').contentDocument; return d && d.documentElement.classList.contains('nuLookupReady'); } catch (x) { return false; } })()});
+			if (performance.now() - t0 < 2500) requestAnimationFrame(tick); else done(out);
+		})();
+	}));
+	const slow = async (r) => { await new Promise((ok) => setTimeout(ok, 700)); await r.continue().catch(() => {}); };
+	await p.route(/[?&]lookup=/, slow);                 // a slow list (live server): the dialog is open well before the frame is ready
+	try {
+	for (let round = 0; round < 2; round++) {           // the second time with the last list still in the frame
+		const w = watch();
+		await p.click('.nuLookupButton[data-nu-target="ord_sample_customer_id"]');
+		const out = await w;
+		const last = out[out.length - 1];
+		expect(last && last.op === 1 && last.fr, 'dialog not shown in the end: ' + JSON.stringify(last));
+		const early = out.filter((x) => x.op > 0.05 && (!x.fr || Math.abs(x.w - last.w) > 2));
+		expect(!early.length, 'seen before it was ready / fitted (round ' + round + '): ' + JSON.stringify(early.slice(0, 3)) + ' final ' + last.w);
+		await p.keyboard.press('Escape'); await p.waitForTimeout(700);
+	}
+	} finally { await p.unroute(/[?&]lookup=/, slow); }
+};

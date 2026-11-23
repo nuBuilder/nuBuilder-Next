@@ -13,7 +13,7 @@
 		var wrap = $('#nbPickWrap'), body = $('#nbPickRows'), all = $('#nbPickAll'), allL = $('#nbPickAllList');
 		var cols = [], touched = false, dragged = null;
 		var TEXT = ['text', 'mediumtext', 'longtext', 'ntext'];
-		function rows() { return $$('tr', body); }
+		function rows() { return $$('tr:not(.nbExtra)', body); }
 		function autoPk() {
 			var v = $('#nb_pk').value;
 			var a = cols.filter(function (c) { return c.auto; })[0];
@@ -31,14 +31,16 @@
 				x.classList.toggle('nbPickOff', off);
 				$('.nbPickList', x).disabled = off; $('.nbPickLabel', x).disabled = off;
 				$('.nbPickFlt', x).disabled = off || !$('.nbPickList', x).checked;   // a filter needs the list column
+				if (x._sh) x._sh.disable(off);
 				$('.nbPickUp', x).disabled = i === 0; $('.nbPickDown', x).disabled = i === r.length - 1;
 			});
 		}
 		function touch() { touched = true; sync(); }
 		function move(tr, dir, focusCls) {
-			var to = dir < 0 ? tr.previousElementSibling : tr.nextElementSibling;
+			var to = mainSibling(tr, dir);
 			if (!to) return;
-			body.insertBefore(tr, dir < 0 ? to : to.nextElementSibling);
+			if (dir < 0) body.insertBefore(tr, to); else (to._x || to).after(tr);
+			placeExtras(body);
 			touch();
 			var f = $(focusCls || '.nbPickUp', tr);
 			if (f && f.disabled) f = $(dir < 0 ? '.nbPickDown' : '.nbPickUp', tr);
@@ -57,6 +59,11 @@
 			up.addEventListener('click', function () { move(tr, -1, '.nbPickUp'); });
 			dn.addEventListener('click', function () { move(tr, 1, '.nbPickDown'); });
 			[cb, ls, fl].forEach(function (x) { x.addEventListener('change', touch); });
+			var sh = shownCtl(kindOf(c.type, c.length), 7);
+			tr._sh = sh; tr._x = sh.row; sh.row._row = tr;
+			sh.sel.addEventListener('change', touch);
+			sh.row.addEventListener('input', function () { touched = true; });
+			sh.row.addEventListener('change', function () { touched = true; });
 			lb.addEventListener('input', function () { touched = true; });
 			tr.addEventListener('keydown', function (e) {
 				if (!e.altKey || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
@@ -71,10 +78,11 @@
 				dragged = tr; tr.classList.add('nbPickDragging');
 				try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', c.name); e.dataTransfer.setDragImage(tr, 10, 10); } catch (x) { /* old browsers */ }
 			});
-			grip.addEventListener('dragend', function () { tr.classList.remove('nbPickDragging'); dragged = null; touch(); });
+			grip.addEventListener('dragend', function () { tr.classList.remove('nbPickDragging'); dragged = null; placeExtras(body); touch(); });
 			tr.appendChild(h('td', {'class': 'nbPickC'}, [grip, cb]));
 			tr.appendChild(h('td', {}, [h('code', {'class': 'nbPickName', text: c.name}), h('span', {'class': 'small text-body-secondary ms-1', text: c.type || ''})]));
 			tr.appendChild(h('td', {}, [lb]));
+			tr.appendChild(h('td', {}, [sh.sel]));
 			tr.appendChild(h('td', {'class': 'text-center'}, [ls]));
 			tr.appendChild(h('td', {'class': 'text-center'}, [fl]));
 			tr.appendChild(h('td', {'class': 'text-nowrap text-end'}, [up, dn]));
@@ -87,7 +95,8 @@
 				var on = c.name !== pk;
 				var list = on && n < 6 && TEXT.indexOf(String(c.type).toLowerCase()) < 0;
 				if (list) n++;
-				body.appendChild(row(c, on, list));
+				var tr = row(c, on, list);
+				body.appendChild(tr); body.appendChild(tr._x);
 			});
 			touched = false;
 			sync();
@@ -96,6 +105,7 @@
 			if (!dragged) return;
 			e.preventDefault();
 			var over = e.target.closest ? e.target.closest('tr') : null;
+			if (over && over._row) over = over._row;            // the settings line of a row counts as the row
 			if (!over || over === dragged || over.parentNode !== body) return;
 			var b = over.getBoundingClientRect();
 			body.insertBefore(dragged, e.clientY > b.top + b.height / 2 ? over.nextElementSibling : over);
@@ -113,8 +123,8 @@
 			touched: function () { return touched; },
 			value: function () {
 				return rows().filter(function (x) { return $('.nbPickOn', x).checked; }).map(function (x) {
-					return {name: x.getAttribute('data-name'), label: $('.nbPickLabel', x).value.trim(), browse: $('.nbPickList', x).checked,
-						filter: $('.nbPickList', x).checked && $('.nbPickFlt', x).checked};
+					return Object.assign({name: x.getAttribute('data-name'), label: $('.nbPickLabel', x).value.trim(), browse: $('.nbPickList', x).checked,
+						filter: $('.nbPickList', x).checked && $('.nbPickFlt', x).checked}, x._sh.value());
 				});
 			}
 		};
@@ -159,6 +169,83 @@
 	}
 	function $(s, r) { return (r || document).querySelector(s); }
 	function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
+
+	// "Shown as" of a column (new table and chosen columns of an existing one): the object type, the first choice = what the
+	// wizard makes by itself; Select / Multiselect / Lookup open a line below the row for their options / the form to look up in
+	var SHOWN = {
+		text: ['text', 'textarea', 'select', 'multiselect', 'editor', 'lookup'], longtext: ['textarea', 'editor', 'text', 'multiselect'],
+		int: ['number', 'select', 'lookup', 'checkbox'], decimal: ['number', 'select'], date: ['date', 'text'], datetime: ['date', 'text'],
+		time: ['time', 'text'], bool: ['checkbox', 'yesno'], id: ['text', 'lookup', 'select']
+	};
+	// the kind of a column: a type of the new-table grid or a database type of an existing table
+	function kindOf(type, length) {
+		var x = String(type || '').toLowerCase();
+		if (x === 'uuid' || x === 'id') return 'id';
+		if (x === 'bigint') return 'int';
+		if (SHOWN[x]) return x;
+		if (/^(tinyint|bit|boolean|bool)$/.test(x) && (x !== 'tinyint' || !length || +length <= 1)) return 'bool';
+		if (/text$|^(mediumtext|longtext|ntext|clob)$/.test(x)) return 'longtext';
+		if (/int$/.test(x)) return 'int';
+		if (/^(decimal|numeric|float|double|real|money|smallmoney)/.test(x)) return 'decimal';
+		if (x === 'date') return 'date';
+		if (/^(datetime|datetime2|timestamp|smalldatetime|datetimeoffset)$/.test(x)) return 'datetime';
+		if (x === 'time') return 'time';
+		return 'text';
+	}
+	function shownCtl(kind, colspan) {
+		var sel = h('select', {'class': 'form-select form-select-sm nbShown', 'aria-label': t('builder_shown')});
+		var x = h('tr', {'class': 'nbExtra', hidden: true}), cell = h('td', {colspan: String(colspan)});
+		x.appendChild(cell);
+		var opt = null, look = null;
+		function fill(k) {
+			sel.innerHTML = '';
+			(SHOWN[k] || SHOWN.text).forEach(function (v) { sel.appendChild(h('option', {value: v, text: t('builder_shown_' + v)})); });
+		}
+		function extra() {
+			cell.innerHTML = ''; opt = null; look = null;
+			var v = sel.value, grid = h('div', {'class': 'nbExtraGrid'});
+			if (v === 'select' || v === 'multiselect') {
+				opt = h('input', {'class': 'form-control form-control-sm font-monospace nbShownOpts', maxlength: 4000, autocomplete: 'off', spellcheck: 'false',
+					placeholder: '1|' + t('builder_shown_opt1') + '|2|' + t('builder_shown_opt2'), 'aria-label': t('builder_select_sql')});
+				grid.append(h('label', {'class': 'small text-body-secondary', text: t('builder_select_sql')}), opt,
+					h('span', {'class': 'small text-body-secondary nbExtraHint', text: t('builder_shown_opts_hint')}));
+			} else if (v === 'lookup') {
+				look = h('select', {'class': 'form-select form-select-sm nbShownLookup', 'aria-label': t('builder_shown_lookup_form')});
+				look.appendChild(h('option', {value: '', text: t('please_select')}));
+				(D.lookup_forms || []).forEach(function (f) { look.appendChild(h('option', {value: f[0], text: f[1]})); });
+				grid.append(h('label', {'class': 'small text-body-secondary', text: t('builder_shown_lookup_form')}), look,
+					h('span', {'class': 'small text-body-secondary nbExtraHint', text: t('builder_shown_lookup_hint')}));
+			}
+			x.hidden = !grid.children.length;
+			if (grid.children.length) {
+				cell.appendChild(grid);
+				if (look && window.TomSelect) new TomSelect(look, {create: false, maxOptions: null, allowEmptyOption: false, placeholder: t('please_select'),
+					dropdownParent: 'body', render: {no_results: function () { return '<div class="no-results">' + t('no_records') + '</div>'; }}});
+			}
+		}
+		sel.addEventListener('change', extra);
+		fill(kind);
+		return {
+			sel: sel, row: x,
+			setKind: function (k) { fill(k); extra(); },
+			disable: function (off) { sel.disabled = off; x.classList.toggle('nbExtraOff', off); },
+			value: function () {
+				var r = {shown: sel.value};
+				if (opt) r.options = opt.value.trim();
+				if (look) r.lookup = look.value;
+				return r;
+			}
+		};
+	}
+	// the line of a row's settings follows the row (after moving, dragging, a new row)
+	function placeExtras(body) {
+		$$('tr:not(.nbExtra)', body).forEach(function (tr) { if (tr._x && tr.nextElementSibling !== tr._x) tr.after(tr._x); });
+	}
+	function mainSibling(tr, dir) {
+		var n = dir < 0 ? tr.previousElementSibling : tr.nextElementSibling;
+		while (n && n.classList.contains('nbExtra')) n = dir < 0 ? n.previousElementSibling : n.nextElementSibling;
+		return n;
+	}
 
 	// remove button of a list row: the row is crossed out and the same button brings it back; crossed-out rows are
 	// left out when the panel (or the new form) is saved – window.nuToggleRemoved in nuapp.js
@@ -315,6 +402,10 @@
 			var type = h('select', {'class': 'form-select form-select-sm', 'data-f': 'type', 'aria-label': t('builder_col_type')});
 			COLTYPES.forEach(function (x) { type.appendChild(h('option', {value: x, text: t('builder_coltype_' + x)})); });
 			type.value = c.type || 'text';
+			var sh = shownCtl(kindOf(type.value), 7);
+			tr._sh = sh; tr._x = sh.row; sh.row._row = tr;
+			// a removed row (crossed out) takes its settings line along
+			new MutationObserver(function () { sh.row.classList.toggle('nuRowRemoved', tr.classList.contains('nuRowRemoved')); }).observe(tr, {attributes: true, attributeFilter: ['class']});
 			var len = h('input', {'class': 'form-control form-control-sm nbLen', 'data-f': 'length', value: c.length || DEFLEN[type.value] || '', maxlength: 8, 'aria-label': t('builder_col_length')});
 			var req = h('input', {type: 'checkbox', 'class': 'form-check-input', 'data-f': 'required', 'aria-label': t('builder_col_required')});
 			function syncLen() {
@@ -324,7 +415,7 @@
 				req.disabled = type.value === 'bool';
 				if (req.disabled) req.checked = false;
 			}
-			type.addEventListener('change', function () { len.value = ''; syncLen(); });
+			type.addEventListener('change', function () { len.value = ''; syncLen(); sh.setKind(kindOf(type.value)); });
 			syncLen();
 			name.addEventListener('input', function () {           // label follows the name until edited
 				if (!label.dataset.touched) label.value = this.value.replace(/^[a-z]{2,5}_/, '').replace(/_/g, ' ').replace(/\b\w/g, function (m) { return m.toUpperCase(); });
@@ -333,16 +424,18 @@
 			tr.appendChild(h('td', {}, [name]));
 			tr.appendChild(h('td', {}, [label]));
 			tr.appendChild(h('td', {}, [type]));
+			tr.appendChild(h('td', {}, [sh.sel]));
 			tr.appendChild(h('td', {}, [len]));
 			tr.appendChild(h('td', {'class': 'text-center'}, [req]));
 			tr.appendChild(h('td', {'class': 'text-nowrap'}, [
 				h('button',
 					{type: 'button', 'class': 'btn btn-link btn-sm px-1', 'aria-label': t('builder_up'),
-						onclick: function () { if (tr.previousElementSibling) tr.parentNode.insertBefore(tr, tr.previousElementSibling); }},
+						onclick: function () { var p = mainSibling(tr, -1); if (p) { tr.parentNode.insertBefore(tr, p); placeExtras(tr.parentNode); } }},
 					[h('i', {'class': 'bi bi-chevron-up'})]),
 				removeBtn(tr)
 			]));
 			$('#nbColRows').appendChild(tr);
+			$('#nbColRows').appendChild(sh.row);
 			if (!c.name) name.focus();
 		}
 		$('#nbAddCol').addEventListener('click', function () { addCol(); });
@@ -376,10 +469,10 @@
 				d.pk_type = $('#nb_new_pk_type').value;
 				d.audit = $('#nb_audit').checked;
 				d.nulog = $('#nb_nulog').checked;
-				d.columns = $$('#nbColRows tr:not(.nuRowRemoved)').map(function (tr) {
+				d.columns = $$('#nbColRows tr:not(.nuRowRemoved):not(.nbExtra)').map(function (tr) {
 					var c = {};
 					$$('[data-f]', tr).forEach(function (x) { c[x.getAttribute('data-f')] = x.type === 'checkbox' ? x.checked : x.value; });
-					return c;
+					return Object.assign(c, tr._sh.value());
 				});
 				if (d.table && existingTables.indexOf(d.table.toLowerCase()) >= 0) {
 					err.textContent = t('builder_err_table_exists').replace('%s', d.table);

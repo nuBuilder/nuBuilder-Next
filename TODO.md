@@ -32,14 +32,12 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 
 ## SQL Server
 - [ ] **Row details child tables** (0.8.1316) – NuRowDetails::candidates finds child tables by column name only (no foreign key query on SQL Server); rows read with OFFSET / FETCH, names in [brackets]; untested there
-- [ ] **Suggestions while typing** (0.8.1212) – NuSuggest::rows wraps the query as `SELECT TOP n * FROM (…) nuS` on SQL Server (falls back to the query as written when that fails, e.g. with ORDER BY); untested there
 - [ ] **Pivot date groups on SQL Server** (0.8.1151) – NuPivot::dimExpr (DATEPART / FORMAT / iso_week, weekday via @@DATEFIRST) untested; open a pivot with a date by month / week / weekday
 - [ ] **Column totals of form lists** (0.8.1127) – SUM / AVG use TRY_CONVERT(DECIMAL(38, 10), column) on SQL Server; untested there. A failing
       query shows the list without totals and writes a Debug result.
 - [ ] **Prompt generator table details** (0.8.1102) – the catalog queries for SQL Server (sys.indexes, sys.foreign_keys, sys.check_constraints,
       sys.triggers, sys.computed_columns, sys.views) are untested; a failing one only leaves its part out.
 - [ ] **Restore database from a backup on SQL Server** (0.8.1031) – only offered on MySQL / MariaDB; the SQL Server dump (GO batches) is read by NuSqlImport (dialect sqlsrv), but dropping / restoring was not tried on a server.
-- [ ] **SQL check on SQL Server** (0.8.999) – the code editors' SQL check uses SET NOEXEC ON there (compiled, not run); untested here: check that a wrong column / table is marked with the right line and that NOEXEC is switched off again.
 - [ ] **Nothing ran on a real SQL Server yet** (no image / pdo_sqlsrv here; code checked with simulated catalogues and sqlglot; installation,
       lists and Adminer with a fixed TCP port work on the owner's SQL Server Express – 0.8.793): own tables and migration steps (0004,
       0020, 0021 …, missing columns added automatically), App cloner, backups with the whole database, list views' catalogue SQL, start
@@ -129,6 +127,8 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       protect_fields is off.
 
 ## Forms and design mode
+- [ ] **Shown as in the New form wizard** (0.8.1412) – please verify: a new table with a select (options), a lookup and a Yes / No select; an existing table's column list with a changed type – the objects in design mode match
+- [ ] **Debug icon and lookup dialog** (0.8.1409 / 0.8.1411) – please verify on the live server: the red bug appears after an error of form code and goes after *Mark as read*; a lookup opens once at its final size
 - [ ] **Lists on phones keep their sideways position** (0.8.1383) – please verify: sort / page / reload a wide list on a phone; the sorted column comes into view
 - [ ] **View mode of records** (0.8.1384 / 0.8.1385) – please verify: View button / Ctrl+Shift+V on own forms with tabs, sub-forms and lookups; key facts (design mode → Data); ← / → after opening a record from a list; "Always open in view mode" per form, Edit keeps the record in editing after Save; print of the sheet. Open: users with view right only opening in view mode by default (not built)
 - [ ] **List SQL in the browser opt-in** (0.8.1377) – please verify on forms whose code uses `browse_sql`: Compatibility check → nuBuilder Forte 4.9 features lists them; switch on *Send the list's SQL to the form's JavaScript* in design mode → Browse list where the JavaScript needs it (framed lists that follow the outer form); procedures started from a list get `nuHash()['browse_sql']` without the switch.
@@ -147,7 +147,6 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **Record check per form** (0.8.1234) – please verify: design mode → Form → Data "Any record may be opened" lets a link to a record outside the list open; `nuNextRecordCheck(false)` in Before Edit does the same for one record.
 - [ ] **List cells one line, widths while sorting** (0.8.1228 / 0.8.1232 / 0.8.1233) – please verify on a list with long text: one line with …, tooltip with the whole text; sorting / paging keeps the column widths.
 - [ ] **Remembered tab without a flash** (0.8.1224) – please verify on a form with tabs: after a refresh the first tab no longer shows for a moment.
-- [ ] **Suggestions while typing** (0.8.1212) – please verify on a real form: a query with fill of two fields, a sub-form column, "Only values of the list", phones. Not built: Form with AI key, a preview of the rows in design mode, a procedure as source
 - [ ] **Please verify: code pane beside the record** (0.8.1197 / 0.8.1199) – Ctrl+Shift+B or Design ▾ → Code on a record of a real form: every part
       as in design mode's Code tab, cards with counts, one Save for several parts (live and with an open draft), Esc with unsaved changes; User Home shows Before Edit only.
 - [ ] **Please verify: form info and browse SQL "As run"** (0.8.1180–0.8.1187) – the (i) panel in section cards, description / code changed in the

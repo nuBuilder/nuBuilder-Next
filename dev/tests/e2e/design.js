@@ -438,7 +438,7 @@ T.new_form_pick = async (s) => {                        // 0.8.675: New form on 
 		await row('cus_phone').locator('.nbPickFlt').check();   // 0.8.688: column filter of the list
 		await row('cus_since').locator('.nbPickLabel').focus(); await p.keyboard.press('Alt+ArrowUp');
 		expect(await row('cus_email').locator('.nbPickList').isDisabled(), 'list box of an unticked column enabled');
-		const order = await p.$$eval('#nbPickRows tr', (r) => r.map((x) => x.getAttribute('data-name')));
+		const order = await p.$$eval('#nbPickRows tr[data-name]', (r) => r.map((x) => x.getAttribute('data-name')));
 		expect(order.indexOf('cus_name') < order.indexOf('cus_code') && order.indexOf('cus_since') < order.indexOf('cus_active'), 'order: ' + order.join(','));
 		await p.click('#nbStepNext'); await p.waitForTimeout(200);
 		await Promise.all([p.waitForURL(/design=1/), p.click('#nbCreate')]);
@@ -3473,4 +3473,76 @@ T.form_code_prefix = async (s) => {
 	expect(await p.locator('#nuBrowseTable').count() === 1, 'form opened with code: not found');
 	const r = await p.request.get(BASE + 'index.php?p=form&f=code:no_such_form_e2e');
 	expect(r.status() === 404, 'unknown code: ' + r.status());
+};
+
+T.new_form_shown = async (s) => {                      // 0.8.1412: New form wizard – "Shown as" per column (select with options, lookup, Yes / No)
+	const p = s.ga, code = 'e2eShown' + Date.now().toString(36), tbl = 'e2e_shown_' + Date.now().toString(36), code2 = code + 'x';
+	const ids = [];
+	const pickShown = (row, v) => row.locator('select.nbShown').selectOption(v);
+	try {
+		// new table: a select with options and a lookup on the sample customers
+		await open(p, 'index.php?p=builder&new=1&start=wizard');
+		await p.fill('#nb_desc', 'E2E shown'); await p.fill('#nb_code', code);
+		await p.click('#nbStepNext'); await p.waitForTimeout(200);
+		await p.click('label[for="nb_mode_new"]');
+		await p.fill('#nb_new_table', tbl);
+		let rows = p.locator('#nbColRows > tr:not(.nbExtra)');
+		await rows.nth(0).locator('[data-f=name]').fill('e2e_status');
+		await rows.nth(0).locator('[data-f=type]').selectOption('int');
+		expect((await rows.nth(0).locator('select.nbShown option').allTextContents()).length === 4, 'int offers four types');
+		await pickShown(rows.nth(0), 'select');
+		const x0 = p.locator('#nbColRows > tr.nbExtra').nth(0);
+		expect(await x0.isVisible() && await x0.locator('.nbShownOpts').count() === 1, 'no options line below a select');
+		await x0.locator('.nbShownOpts').fill('1|Open|2|Closed');
+		await p.click('#nbAddCol');
+		rows = p.locator('#nbColRows > tr:not(.nbExtra)');
+		await rows.nth(1).locator('[data-f=name]').fill('e2e_customer_id');
+		await rows.nth(1).locator('[data-f=type]').selectOption('id');
+		await pickShown(rows.nth(1), 'lookup');
+		const x1 = rows.nth(1).locator('xpath=following-sibling::tr[1]');
+		expect(await x1.evaluate((e) => e.classList.contains('nbExtra')), 'settings line not right below its row');
+		await x1.locator('select.nbShownLookup').evaluate((e) => { if (e.tomselect) e.tomselect.setValue('samplecustomer'); else { e.value = 'samplecustomer'; e.dispatchEvent(new Event('change')); } });
+		// moving the row up takes the settings line along
+		await rows.nth(1).locator('button[aria-label]').first().click();
+		const seq = await p.$$eval('#nbColRows > tr', (r) => r.map((x) => x.classList.contains('nbExtra') ? 'x' : x.querySelector('[data-f=name]').value));
+		expect(seq.join(',') === 'e2e_customer_id,x,e2e_status,x', 'order after moving: ' + seq.join(','));
+		await p.click('#nbStepNext'); await p.waitForTimeout(200);
+		await Promise.all([p.waitForURL(/design=1/), p.click('#nbCreate')]);
+		ids.push(sql(`SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_code = '${code}'`));
+		const o = (col, f) => sql(`SELECT ${col} FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id = '${ids[0]}' AND sob_all_id = '${f}'`);
+		expect(o('sob_all_type', 'e2e_status') === 'select' && o('sob_select_sql', 'e2e_status') === '1|Open|2|Closed' && o('sob_select_multiple', 'e2e_status') === '0', 'select not made');
+		expect(o('sob_all_type', 'e2e_customer_id') === 'lookup' && o('sob_lookup_zzzzsys_form_id', 'e2e_customer_id') === 'samplecustomer'
+			&& o('sob_lookup_code', 'e2e_customer_id') !== '' && o('sob_lookup_description', 'e2e_customer_id') !== '', 'lookup not made');
+		// existing table: a Yes / No select for the checkbox column, a multiselect without options
+		await open(p, 'index.php?p=builder&new=1&start=wizard');
+		await p.fill('#nb_desc', 'E2E shown 2'); await p.fill('#nb_code', code2);
+		await p.click('#nbStepNext'); await p.waitForTimeout(200);
+		await p.waitForFunction(() => document.querySelector('#nb_table option[value="sample_customer"]'));
+		await p.evaluate(() => { const x = document.getElementById('nb_table'); if (x.tomselect) x.tomselect.setValue('sample_customer'); else { x.value = 'sample_customer'; x.dispatchEvent(new Event('change')); } });
+		await p.waitForSelector('#nbPickRows tr[data-name="cus_active"]', {state: 'attached'});
+		await p.click('#nbPickBtn'); await p.waitForTimeout(400);
+		const row = (n) => p.locator(`#nbPickRows tr[data-name="${n}"]`);
+		expect((await row('cus_active').locator('select.nbShown').inputValue()) === 'checkbox', 'tinyint(1) not a checkbox by default');
+		await pickShown(row('cus_active'), 'yesno');
+		await pickShown(row('cus_country'), 'multiselect');
+		await row('cus_country').locator('.nbPickOn').uncheck();
+		expect(await row('cus_country').locator('select.nbShown').isDisabled(), 'shown as of an unticked column enabled');
+		await row('cus_country').locator('.nbPickOn').check();
+		await p.click('#nbStepNext'); await p.waitForTimeout(200);
+		await Promise.all([p.waitForURL(/design=1/), p.click('#nbCreate')]);
+		ids.push(sql(`SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_code = '${code2}'`));
+		const o2 = (col, f) => sql(`SELECT ${col} FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id = '${ids[1]}' AND sob_all_id = '${f}'`);
+		expect(o2('sob_all_type', 'cus_active') === 'select' && /^1\|.+\|0\|.+$/.test(o2('sob_select_sql', 'cus_active')), 'yes / no select not made');
+		expect(o2('sob_all_type', 'cus_country') === 'select' && o2('sob_select_multiple', 'cus_country') === '1', 'multiselect not made');
+		expect(o2('sob_all_type', 'cus_name') === 'input', 'an unchanged column changed');
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		for (const c of [code, code2]) { const id = sql(`SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_code = '${c}'`); if (id) ids.push(id); }
+		for (const id of [...new Set(ids.filter(Boolean))]) {
+			sql(`DELETE FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id = '${id}'`); sql(`DELETE FROM zzzzsys_tab WHERE syt_zzzzsys_form_id = '${id}'`);
+			sql(`DELETE FROM zzzzsys_browse WHERE sbr_zzzzsys_form_id = '${id}'`); sql(`DELETE FROM zzzzsys_access_form WHERE slf_zzzzsys_form_id = '${id}'`);
+			sql(`DELETE FROM zzzzsys_php WHERE zzzzsys_php_id LIKE '${id}%'`); sql(`DELETE FROM zzzzsys_nunext_form_draft WHERE form_id = '${id}'`); sql(`DELETE FROM zzzzsys_form WHERE zzzzsys_form_id = '${id}'`);
+		}
+		sql(`DROP TABLE IF EXISTS ${tbl}`);
+	}
 };

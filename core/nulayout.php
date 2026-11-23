@@ -267,6 +267,7 @@ function nu_layout_nav(array $u, array $nav, bool $compact, bool $hf, bool $side
 						data-url="<?= h(nu_url('palette')) ?>" data-vendor="<?= h(nu_url('vendor')) ?>" data-csrf="<?= h(nu_csrf_token()) ?>"
 							data-t="<?= h(json_encode($palT, JSON_UNESCAPED_UNICODE)) ?>"><i class="bi bi-search"></i></button>
 				<?php endif; ?>
+				<?php nu_debug_bell(); ?>
 				<?php nu_bell(); ?>
 				<?php // compact bar on phones: theme and language move into the user menu (nu_menu_prefs) – the bar fits also with an environment label ?>
 				<?php nu_theme_menu('btn btn-sm btn-outline-secondary', $compact ? 'd-none d-md-block' : ''); ?>
@@ -547,6 +548,7 @@ function nu_layout_end(string $extraBody = '', bool $bare = false): void
 <?= NuCustomCode::page() !== 'form' ? nu_plugin_tags('js') . NuCustomCode::jsTag() : '' /* plugins + Global JS – form pages load them in pages/nuform.php before Setup → Header */ ?>
 <?php if (!$bare && NuAdmin::any()): ?><script src="<?= nu_asset('assets/js/nupalette.js') ?>"></script><?php endif; ?>
 <?php if (!$bare && !empty($GLOBALS['nu_bell_on'])): ?><script src="<?= nu_asset('assets/js/nunotify.js') ?>"></script><?php endif; ?>
+<?php if (!$bare && !empty($GLOBALS['nu_dbg_on'])): ?><script src="<?= nu_asset('assets/js/nudebugbell.js') ?>"></script><?php endif; ?>
 <?php if (NuSidebar::$drawn): ?><script src="<?= nu_asset('assets/js/nusidebar.js') ?>"></script><?php endif; ?>
 <?php if (!$bare && NuAuth::user() && NuSysInfo::allowed()): ?><script src="<?= nu_asset('assets/js/nusysinfo.js') ?>"></script><?php endif; /* System info dialog */ ?>
 <?php if (!$bare && NuAuth::user() && NuHomeForms::allowed()): ?><script src="<?= nu_asset('assets/js/nuhomeforms.js') ?>"></script><?php endif; /* Home forms panel */ ?>
@@ -642,6 +644,41 @@ function nu_bell(): void
 						<div class="d-flex align-items-center gap-3 px-3 py-2 border-top small"><a class="text-decoration-none" href="<?= h(nu_url('notifications')) ?>"><?= h(t('ntf_show_all')) ?></a>
 							<?php if (NuNotify::canManage()): ?><a class="text-decoration-none ms-auto"
 								href="<?= h(nu_url('notifications', ['tab' => 'manage'])) ?>"><i class="bi bi-gear me-1"></i><?= h(t('ntf_manage')) ?></a><?php endif; ?></div>
+					</div>
+				</div>
+	<?php
+}
+
+/**
+ * The debug icon (core/nudebugbell.php · assets/js/nudebugbell.js): a red bug with the number of new Debug results – the wrapper stays
+ * hidden while there is nothing new, so the script can show it after a check without a reload.
+ */
+function nu_debug_bell(): void
+{
+	try {
+		if (!NuDebugBell::allowed()) return;
+		$s = NuDebugBell::summary();
+	} catch (Throwable $ig) {
+		nu_ignored($ig, 'debug icon left out');
+		return;
+	}
+	$GLOBALS['nu_dbg_on'] = true;
+	$tx = [];
+	foreach (['dbg_bell', 'dbg_bell_n', 'dbg_new_n', 'dbg_nothing_new', 'dbg_mark_read', 'dbg_open', 'dbg_none'] as $k) $tx[$k] = t($k);
+	$n = $s['n'];
+	$label = t('dbg_bell_n', $n);
+	?>
+				<div class="dropdown nuDbg" id="nuDbg" data-url="<?= h(nu_url('debugbell')) ?>" data-t="<?= h(json_encode($tx, JSON_UNESCAPED_UNICODE)) ?>"<?= $n ? '' : ' hidden' ?>>
+					<button type="button" class="btn btn-sm btn-outline-danger nuDbgBtn" id="nuDbgBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside"
+						aria-expanded="false" aria-label="<?= h($label) ?>"
+						title="<?= h($label) ?>"><i class="bi bi-bug-fill"></i><span class="nuBellBadge nuDbgBadge"><?= $n > 99 ? '99+' : $n ?></span></button>
+					<div class="dropdown-menu dropdown-menu-end p-0 shadow nuBellPanel nuDbgPanel" aria-labelledby="nuDbgBtn">
+						<div class="d-flex align-items-center gap-2 px-3 py-2 border-bottom"><span class="fw-semibold me-auto"><?= h(t('dbg_bell')) ?></span>
+							<span class="small text-body-secondary nuDbgCount"><?= h(t('dbg_new_n', $n)) ?></span></div>
+						<div class="nuDbgList" aria-live="polite"><div class="px-3 py-4 text-center small text-body-secondary">…</div></div>
+						<div class="d-flex align-items-center gap-3 px-3 py-2 border-top small">
+							<button type="button" class="btn btn-link btn-sm p-0 text-decoration-none nuDbgRead"><?= h(t('dbg_mark_read')) ?></button>
+							<a class="text-decoration-none ms-auto" id="nuDbgOpen" href="<?= h(nu_url('debug')) ?>"><?= h(t('dbg_open')) ?> <i class="bi bi-arrow-right"></i></a></div>
 					</div>
 				</div>
 	<?php

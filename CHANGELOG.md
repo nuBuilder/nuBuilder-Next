@@ -3,6 +3,37 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.1413 – Release gate
+- Release gate: full test run (smoke, end-to-end, compatibility with nuBuilder Forte, installer wizard, security scan).
+- Documentation: Shown as in the New form wizard (tutorial), the debug icon (tutorial), points to verify.
+
+## 0.8.1412 – New form wizard: Shown as per column
+- New form wizard: "Shown as" for every column – choose the object a column gets, as in nuBuilder Forte's form builder.
+  It starts with what the wizard makes by itself and offers what fits the column: select and multiselect (a line below
+  the row takes the options: value|text pairs, a JSON list or a query), lookup (choose the form to look up in), a Yes / No
+  select, text area or rich text editor. Works for a new table and for the chosen columns of an existing one; the wizard
+  is a little wider so the column grid fits.
+
+## 0.8.1411 – Lookup dialog without the size jump
+- Lookups: the dialog no longer appears at another size for a moment and then jumps to fit the list. Its content stays
+  invisible until the list inside is ready and the dialog has its final size, then fades in; the list of the previous
+  lookup is no longer shown while the next one loads.
+
+## 0.8.1410 – SQL check message on SQL Server
+- SQL check of the code editors on SQL Server: the message of a marked line no longer starts with the ODBC driver's prefix
+  ("[Microsoft][ODBC Driver 17 for SQL Server][SQL Server]") – only SQL Server's own text is shown.
+
+## 0.8.1409 – Debug icon in the top bar
+- Debug icon in the top bar: as soon as new Debug results are written (an error in form code, a failing query of a field,
+  nuDebug() …), a red bug with their number appears next to the bell. A click lists the newest entries; "Mark as read" or
+  opening Debug results makes it go away. It appears only while there is something new and only for users who may open
+  Debug results, and it looks again every minute and right after a button or a save of a form talked to the server.
+
+## 0.8.1408 – SQL Server: sample refresh
+- SQL Server: refreshing or installing a sample set (sales sample, ticket system) no longer stops with "Table … already exists
+  and is not part of the sample data" right after its old tables were removed. A table dropped on SQL Server was still
+  counted as existing until the next page load; every statement that may change tables on SQL Server now refreshes that list.
+
 ## 0.8.1407 – Release gate
 - Release gate (documentation: installer with a nuBuilder Forte dump, star in the start page search, Getting ready dots; README install note; FEATURES).
 

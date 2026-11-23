@@ -993,6 +993,8 @@ html.nuPhoneCards body:not(.nuPrintView) #nuBrowseTable > tbody > tr.nuBrowseRow
    already chosen marked; the dialog's size is fitted by nuruntime.js lookupFit */
 .nuLookupDialog .modal-body { overflow: hidden; }
 .nuLookupDialog .nuLookupFrame { height: 50vh; }
+.nuLookupDialog .modal-content { transition: opacity .12s ease-out; }
+.nuLookupDialog.nuLkWait .modal-content { opacity: 0; }
 body.nuLookupPage { background: var(--bs-body-bg); }
 body.nuLookupPage main#main { padding: .75rem 1rem .25rem !important; }
 .nuLookupPage .nuFormHeader { display: none !important; }

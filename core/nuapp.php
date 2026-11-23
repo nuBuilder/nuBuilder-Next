@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 define('NU_ROOT', dirname(__DIR__));
-define('NU_VERSION', '0.8.1407');
+define('NU_VERSION', '0.8.1413');
 // third-party code: vendor/bundled/ comes with nunext.zip (an update replaces it), vendor/packs/ = library packs (NuLibs,
 // an update never touches them). Bundled paths only through these constants.
 define('NU_VENDOR', 'vendor/bundled');
@@ -88,7 +88,7 @@ const NU_AUTOLOAD = [
 		'NuUserfieldsPage' => 'core/nuuserfieldspage.php', 'NuVendorPage' => 'core/nuvendorpage.php', 'NuWebhooksPage' => 'core/nuwebhookspage.php',
 	'NuBuilderApi' => 'core/form/nubuilderapi.php', 'NuFormApiPage' => 'core/form/nuformapipage.php', 'NuLoginPage' => 'core/nuloginpage.php',
 		'NuInstallPage' => 'core/nuinstallpage.php', 'NuEmailPage' => 'core/nuemailpage.php', 'NuAccessLevelPage' => 'core/nuaccesslevelpage.php',
-		'NuDashboardApiPage' => 'core/nudashboardapipage.php', 'NuDebugPage' => 'core/nudebugpage.php',
+		'NuDashboardApiPage' => 'core/nudashboardapipage.php', 'NuDebugPage' => 'core/nudebugpage.php', 'NuDebugBell' => 'core/nudebugbell.php',
 		'NuEmailTemplatesPage' => 'core/nuemailtemplatespage.php', 'NuFormatApiPage' => 'core/nuformatapipage.php',
 		'NuFormatsPage' => 'core/nuformatspage.php', 'NuNotifyApiPage' => 'core/nunotifyapipage.php', 'NuSessionsPage' => 'core/nusessionspage.php',
 		'NuUploadPage' => 'core/nuuploadpage.php', 'NuUserPage' => 'core/nuuserpage.php', 'NuFormPage' => 'core/form/nuformpage.php',

@@ -138,6 +138,8 @@ final class NuDB
 		elseif (str_starts_with(ltrim($sql), '(')) return;      // (SELECT …) UNION (SELECT …)
 		else $verb = '';                                        // starts with a "-- comment" line or the like: could be anything
 		if ($verb === 'SELECT' || $verb === 'SHOW' || $verb === 'SET' || $verb === 'EXPLAIN') return;
+		// SQL Server wraps DDL in a batch ("IF OBJECT_ID('t') IS NOT NULL DROP TABLE t", EXEC sp_rename …): such a statement may change tables too
+		if (in_array($verb, ['IF', 'EXEC', 'EXECUTE', 'BEGIN', 'DECLARE'], true)) $verb = '';
 		if ($verb === '' || $verb === 'CREATE' || $verb === 'DROP' || $verb === 'RENAME' || $verb === 'ALTER') {
 			$this->tableCache = [];
 			if (isset($_SESSION[NuSess::ROW_DETAILS_FOUND])) unset($_SESSION[NuSess::ROW_DETAILS_FOUND]);   // NuRowDetails::candidates: tables changed

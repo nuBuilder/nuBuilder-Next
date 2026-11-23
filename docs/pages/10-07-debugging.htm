@@ -4,9 +4,10 @@
 	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles)</p>
 	<ul>
 <li><code>nuDebug($a, $b, …)</code> writes to <em>Log → Debug</em> (nuBuilder Forte (4.x) format). <code>nuDebug::setFlag('import')-&gt;log(…)</code> sets a flag to filter by.</li>
+<li id="debug-icon">A red bug next to the bell shows that new Debug results were written – by <code>nuDebug()</code>, a failing query of a field, an error in form code and the like. It shows the number, and a click lists the newest entries. It appears only while there is something new, and only for users who may open Debug results. <em>Mark as read</em> or opening <em>Log → Debug</em> makes it go away. It looks again every minute and right after a button or a save of a form talked to the server.</li>
 <li><code>$nuConfigDebug = true</code> shows database errors on screen – only for testing.</li>
 <li>Form pages allow inline scripts (needed for form code); all other pages use a strict Content-Security-Policy. Forms with charts (or <code>nuChart</code> in their code) also allow www.gstatic.com for Google Charts.</li>
 </ul>
 	<p class="doc-see">See also: <a href="#log">Record log, audit trail and debug results</a></p>
-	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nudebug.php</code></li></ul></details>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nudebug.php</code></li><li><code>core/nudebugbell.php</code></li></ul></details>
 </section>

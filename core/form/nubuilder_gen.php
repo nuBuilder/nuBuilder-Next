@@ -54,7 +54,7 @@ final class NuBuilderGen
 						$f['browse'] = !empty($p['browse']);
 						$f['filter'] = !empty($p['browse']) && !empty($p['filter']);   // column filter of the list
 						$f['pick'] = true;
-						$fields[] = $f;
+						$fields[] = self::shown($f, $p);
 					}
 				}
 			}
@@ -62,7 +62,7 @@ final class NuBuilderGen
 			$spec   = self::validateNewTable($table, $pk, is_array($in['columns'] ?? null) ? $in['columns'] : [], $audit, $nulog);
 			$pk     = $spec['pk'];
 			$prefix = self::commonPrefix(array_column($spec['columns'], 'name'));
-			foreach ($spec['columns'] as $c) $fields[] = self::fromSpec($c, $c['label'] !== '' ? $c['label'] : self::label($c['name'], $prefix));
+			foreach ($spec['columns'] as $c) $fields[] = self::shown(self::fromSpec($c, $c['label'] !== '' ? $c['label'] : self::label($c['name'], $prefix)), $c);
 			if ($audit) {
 				foreach (array_keys(NuDDL::AUDIT) as $name) {
 					$f = self::fromSpec(['name' => $name, 'type' => NuDDL::AUDIT[$name] === 'datetime' ? 'datetime' : 'text', 'length' => '50', 'required' => false], t('builder_audit_' . $name));
@@ -101,7 +101,7 @@ final class NuBuilderGen
 						'sob_all_top' => $top, 'sob_all_left' => 170, 'sob_all_width' => $f['w'], 'sob_all_height' => $f['h'], 'sob_all_cloneable' => $f['access'] === '1' ? '0' : '1',
 						'sob_all_align' => $f['numeric'] && $f['itype'] !== 'checkbox' ? 'right' : 'left', 'sob_all_validate' => $f['validate'], 'sob_all_access' => $f['access'],
 						'sob_input_type' => $f['otype'] === 'input' ? $f['itype'] : null, 'sob_input_format' => $f['fmt'],
-					]);
+					] + ($f['extra'] ?? []));
 					$top += $f['h'] + 10; $order += 10;
 					$inList = !empty($f['pick']) ? $f['browse'] : ($f['browse'] && $browse < 6 && $f['otype'] !== 'textarea');   // chosen columns: as ticked
 					if ($inList && $type !== 'edit' && $type !== 'subform') {
@@ -179,7 +179,8 @@ final class NuBuilderGen
 			if (!in_array($type, NuDDL::TYPES, true)) NuBuilderApi::err(t('builder_err_column_type', $name));
 			$length = trim((string)($r['length'] ?? ''));
 			if ($length !== '' && !preg_match('/^\d{1,5}([,.]\d{1,2})?$/', $length)) NuBuilderApi::err(t('builder_err_column_length', $name));
-			$columns[] = ['name' => $name, 'type' => $type, 'length' => $length, 'required' => !empty($r['required']), 'label' => trim((string)($r['label'] ?? ''))];
+			$columns[] = ['name' => $name, 'type' => $type, 'length' => $length, 'required' => !empty($r['required']), 'label' => trim((string)($r['label'] ?? '')),
+				'shown' => (string)($r['shown'] ?? ''), 'options' => (string)($r['options'] ?? ''), 'lookup' => (string)($r['lookup'] ?? '')];
 		}
 		if (!$columns) NuBuilderApi::err(t('builder_err_no_columns'));
 		return ['pk' => $pk, 'columns' => $columns];
@@ -206,6 +207,47 @@ final class NuBuilderGen
 			'bool'           => self::field($c['name'], $label, 'input', 'checkbox', null, 20, 20, false, false),
 			default          => self::field($c['name'], $label, 'input', 'text', null, $len > 0 ? min(400, max(80, $len * 5)) : 250, 22, false, $req),
 		};
+	}
+
+	public const SHOWN = ['text', 'textarea', 'editor', 'number', 'date', 'time', 'checkbox', 'select', 'multiselect', 'yesno', 'lookup'];
+
+	/**
+	 * "Shown as" of the wizard: another object type for a column – select / multiselect with their options, Yes / No as a select,
+	 * a lookup on another form (its code and description = the first two columns of that form's list). '' = as made by default.
+	 */
+	public static function shown(array $f, array $in): array
+	{
+		$s = (string)($in['shown'] ?? '');
+		if ($s === '' || !in_array($s, self::SHOWN, true)) return $f;
+		$keep = ['name' => $f['name'], 'label' => $f['label'], 'validate' => $f['validate'], 'access' => $f['access'], 'browse' => $f['browse']]
+			+ array_intersect_key($f, ['pick' => 1, 'filter' => 1]);
+		$mk = static fn(string $otype, ?string $itype, ?string $fmt, int $w, int $h, bool $num, array $extra = []): array
+			=> ['otype' => $otype, 'itype' => $itype, 'fmt' => $fmt, 'w' => $w, 'h' => $h, 'numeric' => $num, 'extra' => $extra] + $keep;
+		switch ($s) {
+			case 'text':     return $mk('input', 'text', null, 250, 22, false);
+			case 'textarea': return $mk('textarea', null, null, 400, 60, false);
+			case 'editor':   return $mk('editor', null, null, 400, 150, false);
+			case 'number':   return $mk('input', 'number', null, 100, 22, true);
+			case 'date':     return $f['itype'] === 'nuDate' ? $f : $mk('input', 'nuDate', 'D|dd.mm.yyyy', 110, 22, false);
+			case 'time':     return $mk('input', 'time', null, 100, 22, false);
+			case 'checkbox': return $mk('input', 'checkbox', null, 20, 20, false);
+			case 'yesno':    return $mk('select', null, null, 120, 22, false, ['sob_select_sql' => '1|' . t('yes') . '|0|' . t('no'), 'sob_select_multiple' => '0']);
+			case 'select':
+			case 'multiselect':
+				$opt = trim((string)($in['options'] ?? ''));
+				if (mb_strlen($opt) > 4000) NuBuilderApi::err(t('builder_err_options_long', $f['name']));
+				$multi = $s === 'multiselect';
+				return $mk('select', null, null, 200, $multi ? 80 : 22, false, ['sob_select_sql' => $opt !== '' ? $opt : null, 'sob_select_multiple' => $multi ? '1' : '0']);
+		}
+		// lookup
+		$form = (string)($in['lookup'] ?? '');
+		$lf = $form !== '' ? nu_form($form) : null;
+		if (!$lf || ($lf['table'] ?? '') === '') NuBuilderApi::err(t('builder_err_lookup_form', $f['name']));
+		$cols = array_column(nu_db()->all('SELECT sbr_display FROM zzzzsys_browse WHERE sbr_zzzzsys_form_id = ? ORDER BY sbr_order', [$form]), 'sbr_display');
+		$cols = array_values(array_filter(array_map('strval', $cols), static fn($c) => $c !== ''));
+		$code = $cols[0] ?? (string)nu_db()->value('SELECT sfo_primary_key FROM zzzzsys_form WHERE zzzzsys_form_id = ?', [$form]);
+		return $mk('lookup', null, null, 120, 22, false, ['sob_lookup_zzzzsys_form_id' => $form, 'sob_lookup_code' => $code,
+			'sob_lookup_description' => $cols[1] ?? $code, 'sob_lookup_description_width' => 200]);
 	}
 
 	/** Object for a column of an existing table. */

@@ -86,6 +86,7 @@ $routes = [
 	'log'         => [],
 	'notifications' => [],
 	'notifyapi'   => ['json' => true],
+	'debugbell'   => ['json' => true],
 	'homejs'      => ['json' => true],
 	'globalcodefile' => ['json' => true, 'public' => true],
 		// Global JS & CSS as files (NuCustomCode::serve; ?p=customcode until 0.8.573)   // JavaScript of the start page hook nu_home (NuHomeHook::serveJs)
@@ -237,7 +238,7 @@ if (nu_is_post()) nu_csrf_verify();
 // so code, SQL and texts saved here are not changed by a save without a change (dev/tests/compat.js meta:sqlbuilder)
 if (nu_is_post()) array_walk_recursive($_POST, static function (&$v): void { if (is_string($v) && str_contains($v, "\r")) $v = str_replace(["\r\n", "\r"], "\n", $v); });
 // the bell asks every minute: that alone must not keep an idle session alive (NuAuth::user)
-if ($p === 'notifyapi' && !nu_is_post()) define('NU_PASSIVE', true);
+if (($p === 'notifyapi' || $p === 'debugbell') && !nu_is_post()) define('NU_PASSIVE', true);
 if ($p === 'formapi' && ($_GET['presence'] ?? '') === '1') define('NU_PASSIVE', true);   // the "also open" ping is no activity
 // a page's background poll (?passive=1) does not count as activity either
 if ($p === 'page' && ($_GET['passive'] ?? '') === '1' && !defined('NU_PASSIVE')) define('NU_PASSIVE', true);

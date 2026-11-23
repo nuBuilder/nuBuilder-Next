@@ -312,8 +312,8 @@
 		<h3>Creating a form</h3>
 		<p><a data-open="builder" data-args="new=1">New form</a> first asks how to start: <em>Step by step</em> (the wizard), <em>Describe it – AI creates it</em>, <em>Copy an existing form</em> or a <em>custom page</em>. The wizard asks in three steps: the form (description, code, type), the table and its fields, then the layout and who may use it. For the table there are two ways:</p>
 		<ul>
-			<li><strong>Existing table</strong>: pick the table and its primary key – objects and list columns are generated from the columns; <em>Choose columns and order</em> picks only some of them, their labels and their order. Views are listed in a group of their own: the key column is suggested, and a view the database cannot save to makes the form a <em>Browse</em> form.</li>
-			<li><strong>New table</strong>: enter the columns (name, label, type, length, required). The table gets a nuBuilder-Forte-style text primary key and, if you like, audit columns (created / updated at / by) that are filled on every save.</li>
+			<li><strong>Existing table</strong>: pick the table and its primary key – objects and list columns are generated from the columns; <em>Choose columns and order</em> picks only some of them, their labels, their order and what each one is <em>shown as</em> (a select with its options, a lookup, …). Views are listed in a group of their own: the key column is suggested, and a view the database cannot save to makes the form a <em>Browse</em> form.</li>
+			<li><strong>New table</strong>: enter the columns (name, label, type, length, required) and choose what each is <em>shown as</em> – e.g. <em>Select</em> with its options right below the row, or <em>Lookup</em> on another form. The table gets a nuBuilder-Forte-style text primary key and, if you like, audit columns (created / updated at / by) that are filled on every save.</li>
 		</ul>
 		<p>Afterwards the form opens in <a data-lesson="design-mode">design mode</a>. Give your forms a meaningful <em>code</em> and a <em>group</em> – the forms list and the access level page filter by them.</p>
 		<div class="tut-note">A new form is not yet in any access level: only the globeadmin can open it until you add it to an <a data-lesson="access-levels">access level</a>.</div>
@@ -607,7 +607,7 @@
 		<ul>
 			<li>The <a data-open="log">Log</a> records logins and failed logins, two-factor events, password changes, changes to users, access levels, forms and settings, exports, imports and updates. Filter by event, user, date or text.</li>
 			<li>The <a data-open="audit">Audit trail</a> records every change made in the forms – one row per column with old and new value, also sub-form rows, deletes, clones and data imports. In a record, ⋮ → <em>History of this record</em> shows its changes; ↺ puts an old value or a deleted row back.</li>
-			<li><a data-open="debug">Debug</a> collects what <code>nuDebug()</code> writes in PHP code – your main tool when a procedure or event does not do what it should.</li>
+			<li><a data-open="debug">Debug</a> collects what <code>nuDebug()</code> writes in PHP code – your main tool when a procedure or event does not do what it should. A red bug next to the bell shows that new entries were written.</li>
 			<li><em>Keep the log (days)</em> in the security settings deletes old entries automatically (0 = keep for ever); <em>Delete older entries…</em> on the Log page cleans up by hand (globeadmin).</li>
 		</ul>
 		<p><a data-help="log">Log and debug results</a></p>

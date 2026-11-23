@@ -1325,6 +1325,19 @@ $jdb->exec("CREATE TABLE tje (id TEXT)");
 NuUpdate::tableJson($jdb, 'tje', $jf);
 check('backup json: empty table = []', file_get_contents($jf) === '[]');
 @unlink($jf);
+// SQL check: the ODBC driver's prefix is not part of the message
+$sqm = new ReflectionMethod(NuSqlCheck::class, 'message');
+$sqe = new PDOException('x'); $sqe->errorInfo = ['42000', 102, "[Microsoft][ODBC Driver 17 for SQL Server][SQL Server]Incorrect syntax near 'WH'."];
+check('sql check: ODBC prefix removed', $sqm->invoke(null, $sqe) === "Incorrect syntax near 'WH'.", $sqm->invoke(null, $sqe));
+// SQL Server's DROP TABLE (IF OBJECT_ID … DROP TABLE …) forgets the cached list of tables
+$jdb->tableExists('tj');
+$nw = new ReflectionMethod(NuDB::class, 'noteWrite');
+$tc = new ReflectionProperty(NuDB::class, 'tableCache');
+$nw->invoke($jdb, "IF OBJECT_ID('tj') IS NOT NULL DROP TABLE tj");
+$c1 = $tc->getValue($jdb);
+$jdb->tableExists('tj');
+$nw->invoke($jdb, "EXEC sp_rename 'tj', 'tk'");
+check('table cache: SQL Server batches (IF … DROP, EXEC) clear it', $c1 === [] && $tc->getValue($jdb) === []);
 
 // 0.8.874: Markdown in report fields, HTML made safe for TCPDF
 $mdh = NuMarkdown::toHtml("# Title\nA **b** *i* `c` ~~d~~ [l](https://x.org) [j](javascript:x) <b>x</b>\nnext\n\n- one\n- two\n  - deep\n1. first\n\n| a | b |\n|---|--:|\n| 1 | 2 |\n\n> q\n\n---");

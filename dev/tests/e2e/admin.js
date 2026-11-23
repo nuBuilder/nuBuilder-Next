@@ -1094,3 +1094,49 @@ T.app_folder_delete = async (s) => {
 		for (const b of fs.readdirSync(path.join(SITE, '_backup')).filter((n) => n.startsWith('project-restore-'))) fs.rmSync(path.join(SITE, '_backup', b));
 	}
 };
+
+T.debug_bell = async (s) => {                         // 0.8.1409: red bug in the top bar while there are new Debug results
+	const p = s.ga;
+	const row = (id) => sql("INSERT INTO zzzzsys_debug (zzzzsys_debug_id, deb_message, deb_added) VALUES ('" + id + "', "
+		+ "'2026-01-01 10:00:00 - Before Save of e2e_dbg line 3\\n\\n<br>\\n\\n[0] : E2E boom " + id + "', UNIX_TIMESTAMP())");
+	const gone = () => sql("DELETE FROM zzzzsys_debug WHERE zzzzsys_debug_id LIKE 'e2e_dbg%'");
+	try {
+		gone();
+		await open(p, 'index.php?p=home');
+		await p.evaluate((u) => NuUtil.post(u, {action: 'read'}), await p.getAttribute('#nuDbg', 'data-url'));
+		await open(p, 'index.php?p=home');
+		expect(await p.locator('#nuDbg').isHidden(), 'icon shown without new results');
+		await p.waitForTimeout(1100);                     // "new" = written after the second of the last mark
+		row('e2e_dbg1');
+		await open(p, 'index.php?p=home');
+		expect(await p.locator('#nuDbgBtn').isVisible(), 'icon not shown after a new result');
+		expect((await p.textContent('#nuDbg .nuDbgBadge')).trim() === '1', 'count is not 1');
+		await p.click('#nuDbgBtn');
+		await p.waitForSelector('#nuDbg .nuDbgItem');
+		const first = await p.$eval('#nuDbg .nuDbgItem', (a) => ({t: a.querySelector('.nuDbgTitle').textContent, x: (a.querySelector('.nuDbgText') || {}).textContent, n: a.classList.contains('nuDbgNew')}));
+		expect(first.t === 'Before Save of e2e_dbg' && /^E2E boom e2e_dbg1/.test(first.x || '') && first.n, 'list entry: ' + JSON.stringify(first));
+		await p.click('#nuDbg .nuDbgRead'); await p.waitForTimeout(500);
+		expect(await p.locator('#nuDbg').isHidden(), 'Mark as read did not hide it');
+		await open(p, 'index.php?p=home');
+		expect(await p.locator('#nuDbg').isHidden(), 'shown again after Mark as read');
+		// without a reload: a server call of a form makes it look again
+		await p.waitForTimeout(1100);
+		row('e2e_dbg2');
+		await p.evaluate(() => document.dispatchEvent(new CustomEvent('nu:formapi')));
+		await p.waitForSelector('#nuDbg:not([hidden])', {timeout: 5000});
+		// opening Debug results counts as read
+		await open(p, 'index.php?p=debug');
+		await open(p, 'index.php?p=home');
+		expect(await p.locator('#nuDbg').isHidden(), 'still shown after opening Debug results');
+		// users without the Debug results right never get it
+		await p.waitForTimeout(1100);
+		row('e2e_dbg3');
+		const u = await login('sample_anna', UPW);
+		await open(u, 'index.php?p=home');
+		expect(await u.locator('#nuDbg').count() === 0, 'drawn for a user without the right');
+		expect((await u.evaluate(() => fetch('index.php?p=debugbell').then((r) => r.status))) === 403, 'route open to a user without the right');
+		await u.close();
+	} finally {
+		gone();
+	}
+};

@@ -18,6 +18,8 @@
 					if (!window.confirm((res.errors && res.errors[0] && res.errors[0].message) || '')) return {ok: false, errors: []};
 					return call(action, $.extend({}, data, {preview_confirm: true}));
 				}
+				// the debug icon of the top bar looks for new Debug results after a call (assets/js/nudebugbell.js)
+				try { document.dispatchEvent(new CustomEvent('nu:formapi', {detail: {action: action}})); } catch (x) { /* old browser */ }
 				return res;
 			});
 	}

@@ -37,6 +37,7 @@ page) for how to use it.
 
 ## For building applications
 
+- **Debug icon** – a red bug with a count appears in the top bar as soon as new Debug results are written (form code errors, failing queries, nuDebug()); a click lists the newest, *Mark as read* hides it
 - **Form designer** – design a form where it runs: drag and arrange objects, a properties panel for every object type, the
   list's columns and settings right on the list, responsive layouts for phones (grid rows that always fit), tabs (with unique names), events and code in one place;
   *Properties…* in an object's right-click menu opens it selected in design mode; the properties panel has section chips that stay
@@ -57,7 +58,7 @@ page) for how to use it.
   procedures, URLs, saved pivots – shown only to users who may open them), calendars on forms; grid sub-forms can fit their columns to the width and show their rows as cards on phones (or keep the table).
 - **Button settings in one dialogue** – right-click a button (or Alt+click): what it runs, target, record, filter, where it opens,
   JavaScript events, label, icon and access in one place, live or into the open draft.
-- **New form wizard** – from a table or a view, with the columns and their order chosen up front; text or UUID keys for new
+- **New form wizard** – from a table or a view, with the columns, their order and the object each one gets (select with its options, lookup, Yes/No select, rich text …) chosen up front; text or UUID keys for new
   tables; change a column's type with a data check first.
 - **Forms with AI** – describe a form (or a small app of several forms), paste the prompt into any AI chat and the answer
   back; it is checked before anything is created and lands as a draft. A context file (functions, examples, table structure –

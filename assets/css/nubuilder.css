@@ -5,6 +5,14 @@
 .nbColGrid td:first-child { min-width: 9rem; }
 .nbColGrid td:nth-child(2) { min-width: 8.5rem; }   /* label */
 .nbColGrid td:nth-child(3) { min-width: 10.5rem; }  /* type: the longest name ("Record ID (lookup)") fits; the grid scrolls sideways on phones */
+.nbColGrid td:nth-child(4) { min-width: 10.5rem; }  /* shown as */
+/* "Shown as": the line of the row's settings (options of a select, the form of a lookup) right below the row */
+.nbExtra > td { background: color-mix(in srgb, var(--bs-primary) 6%, transparent); border-bottom-width: 1px; padding: .3rem .4rem .45rem 2.2rem !important; }
+.nbExtraGrid { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .25rem .75rem; align-items: center; width: 0; min-width: 100%; }   /* never widens the table */
+.nbExtraGrid > label { white-space: nowrap; }
+.nbExtraHint { grid-column: 2; }
+.nbExtra.nbExtraOff, .nbExtra.nuRowRemoved { opacity: .45; pointer-events: none; }
+.nbExtraGrid .ts-wrapper.form-select { padding: 0; }
 /* table mode of the wizard: classes of #nbNewForm set by the page (start) and nubuilder.js applyMode() – was :has() */
 #nbNewForm.nbIsNew .nbExisting { display: none !important; }
 #nbNewForm.nbIsNew:not(.nbIsLaunch) .nbNew { display: block !important; }
@@ -27,6 +35,7 @@
 .nbPickGrid td { padding: .2rem .4rem; }
 .nbPickGrid .nbPickC { width: 3.2rem; white-space: nowrap; }
 .nbPickGrid td:nth-child(3) { min-width: 10rem; }
+.nbPickGrid td:nth-child(4) { min-width: 10rem; }   /* shown as */
 .nbPickGrip { cursor: grab; color: var(--bs-secondary-color); }
 .nbPickDragging { opacity: .5; }
 .nbPickOff .nbPickName { color: var(--bs-secondary-color); text-decoration: line-through; }

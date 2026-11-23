@@ -1373,6 +1373,18 @@ button.nuDbStar:hover, button.nuDbStar:focus-visible { background: var(--bs-tert
 .nuBellRing > .bi { display: inline-block; animation: nuBellRing .9s ease-in-out 1; transform-origin: 50% 0; }
 @keyframes nuBellRing { 0%, 100% { transform: rotate(0); } 15% { transform: rotate(14deg); } 30% { transform: rotate(-12deg); } 45% { transform: rotate(9deg); } 60% { transform: rotate(-6deg); } 75% { transform: rotate(3deg); } }
 @media (prefers-reduced-motion: reduce) { .nuBellRing > .bi { animation: none; } }
+/* the debug icon (core/nudebugbell.php): only there while new Debug results exist – red, with the bell's badge and panel */
+.nuDbgBtn { position: relative; }
+.nuDbgPanel { width: min(26rem, calc(100vw - 1rem)); }
+.nuDbgList { max-height: 22rem; overflow-y: auto; }
+.nuDbgRead, #nuDbgOpen { white-space: nowrap; }
+.nuDbgItem { display: flex; gap: .6rem; padding: .5rem 1rem; border-bottom: 1px solid var(--bs-border-color-translucent); color: var(--bs-body-color); text-decoration: none; }
+.nuDbgItem:hover, .nuDbgItem:focus-visible { background: var(--bs-tertiary-bg); color: var(--bs-body-color); }
+.nuDbgItem.nuDbgNew { background: var(--bs-danger-bg-subtle); }
+.nuDbgAt { flex: none; font-size: .8rem; color: var(--bs-secondary-color); font-variant-numeric: tabular-nums; padding-top: .1rem; }
+.nuDbgMain { display: flex; flex-direction: column; min-width: 0; }
+.nuDbgTitle { font-size: .875rem; font-weight: 600; overflow-wrap: anywhere; }
+.nuDbgText { font-size: .78rem; color: var(--bs-secondary-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .nuBellPanel { width: min(380px, calc(100vw - 1.5rem)); }
 .nuBellList { max-height: min(60vh, 460px); overflow-y: auto; }
 .nuBellItem { padding: .65rem .9rem; border-bottom: 1px solid var(--bs-border-color-translucent); }

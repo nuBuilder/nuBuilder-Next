@@ -18,6 +18,9 @@ $hasUser = isset($cols['deb_user_id']);
 ['db' => $db, 'T' => $T]
 	= NuDebugPage::post(get_defined_vars());   // the POST actions (code review R7, nudebugpage.php)
 
+// opening Debug results counts as having seen them: the red bug of the top bar goes away (core/nudebugbell.php)
+if (!nu_is_post() && NuDebugBell::allowed() && NuDebugBell::summary()['n'] > 0) NuDebugBell::markRead();
+
 $q    = trim((string)($_GET['q'] ?? ''));
 $flag = (string)($_GET['flag'] ?? '');
 $user = (string)($_GET['user'] ?? '');
