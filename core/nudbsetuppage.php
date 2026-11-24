@@ -19,11 +19,13 @@ final class NuDbsetupPage
 					if ($ok) { session_regenerate_id(true); $_SESSION[NuSess::DB_SETUP_AUTH] = true; nu_redirect(nu_url('dbsetup')); }
 					$errors['token'] = t($entered === '' ? 'ins_err_token_empty' : 'ins_err_token');
 				}
-			} elseif ($auth && in_array($action, ['setup', 'repair'], true) && !is_array($done)) {
+			} elseif ($auth && in_array($action, ['setup', 'repair', 'upgrade'], true) && !is_array($done)) {
 				try {
 					// an existing database (tables missing): the integrity check first – problems need the tick "go on anyway"
 					if ($action === 'repair' && NuIntegrity::blocking(NuIntegrity::run(), ['tables']) && nu_check('integrity_ack') !== '1') throw new RuntimeException(t('ic_ack_needed'));
-					$choice = $action === 'setup' && nu_post('choice') === 'upload' ? 'upload' : 'nunext';
+					if ($action === 'upgrade' && NuIntegrity::blocking(NuIntegrity::run(), ['tables']) && nu_check('integrity_ack') !== '1') throw new RuntimeException(t('ic_ack_needed'));
+					if ($action === 'upgrade' && nu_check('backup_ack') !== '1') throw new RuntimeException(t('ins_backup_needed'));
+					$choice = $action === 'upgrade' ? 'upgrade' : ($action === 'setup' && nu_post('choice') === 'upload' ? 'upload' : 'nunext');
 					$file = null;
 					if ($choice === 'upload') {
 						$path = null;

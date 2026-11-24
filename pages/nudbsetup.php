@@ -43,22 +43,35 @@ nu_center_start(t('dbs_title'), $dbName !== '' ? t('dbs_subtitle', $dbName) : ''
 <?php if (is_array($done)): ?>
 	<div class="text-center" id="dbsDone">
 		<i class="bi bi-check-circle text-success display-6"></i>
-		<p class="mt-2 mb-1 fw-semibold"><?= h(t($done['state'] === 'partial' ? 'dbs_done_repair' : 'dbs_done_setup')) ?></p>
+		<p class="mt-2 mb-1 fw-semibold"><?= h(t($done['state'] === 'old' ? 'dbs_done_upgrade' : ($done['state'] === 'partial' ? 'dbs_done_repair' : 'dbs_done_setup'))) ?></p>
 		<?php if ($done['imported']): ?><p class="small text-body-secondary mb-1"><?= h(t('ins_done_imported', $done['imported'])) ?></p><?php endif; ?>
 		<?php $up = $done['upgraded']; if ($up && ($up['tables'] + $up['columns'] + $up['changed'])): ?><p class="small text-body-secondary mb-1"><?= h(t('ins_done_upgraded', $up['tables'], $up['columns'] + $up['changed'])) ?></p><?php endif; ?>
 		<a class="btn btn-primary mt-3" id="dbsContinue" href="<?= h(nu_url($isGa ? 'home' : 'login')) ?>"><?= h(t($isGa ? 'dbs_continue' : 'ins_login')) ?></a>
 	</div>
 
 <?php elseif ($st['state'] === 'old'): ?>
-	<div class="alert alert-warning small" id="dbsOld"><?= h(t('dbs_old_text')) ?></div>
+	<div class="alert alert-warning small" id="dbsOld"><?= h(t('dbs_old_up_text')) ?></div>
 	<p class="small mb-1"><?= h(t('dbs_old_missing', count($st['columns']))) ?></p>
 	<ul class="small text-body-secondary mb-3 dbsList"><?php foreach (array_slice($st['columns'], 0, 12) as $c): ?><li><code><?= h($c) ?></code></li><?php endforeach; ?><?php if (count($st['columns']) > 12): ?><li>…</li><?php endif; ?></ul>
-	<?= $icHtml(null) ?>
-	<p class="small mb-1 fw-semibold"><?= h(t('dbs_old_what')) ?></p>
-	<ol class="small mb-0">
-		<li><?= h(t('dbs_old_opt_new')) ?></li>
-		<li><?= h(t('dbs_old_opt_forte')) ?></li>
-	</ol>
+	<?php if ($auth): ?>
+		<?= $icHtml($icR && NuIntegrity::blocking($icR, ['tables']) ? 'dbsUpgradeForm' : null) ?>
+		<form method="post" action="<?= h(nu_url('dbsetup')) ?>" data-nu-once id="dbsUpgradeForm">
+			<?= nu_csrf_field() ?><input type="hidden" name="action" value="upgrade">
+			<div class="alert alert-warning small" id="dbsUpBackup"><div class="fw-semibold mb-1"><i class="bi bi-shield-exclamation me-1"></i><?= h(t('ins_backup_title')) ?></div>
+				<div class="mb-2"><?= h(t('dbs_old_up_backup')) ?></div>
+				<div class="form-check mb-0"><input class="form-check-input" type="checkbox" name="backup_ack" value="1" id="dbsUpBackupAck" required>
+					<label class="form-check-label fw-semibold" for="dbsUpBackupAck"><?= h(t('ins_backup_ack')) ?></label></div></div>
+			<button class="btn btn-primary w-100" type="submit" id="dbsUpgrade" data-nu-busy="<?= h(t('dbs_working')) ?>"><i class="bi bi-arrow-up-circle me-1"></i><?= h(t('dbs_old_up_btn')) ?></button>
+		</form>
+		<p class="small mt-3 mb-1 fw-semibold"><?= h(t('dbs_old_up_alt')) ?></p>
+		<ol class="small mb-0">
+			<li><?= h(t('dbs_old_opt_new')) ?></li>
+			<li><?= h(t('dbs_old_opt_forte')) ?></li>
+		</ol>
+	<?php else: ?>
+		<p class="small text-body-secondary"><?= h(t('dbs_who')) ?></p>
+		<a class="btn btn-primary w-100 mb-3" href="<?= h(nu_url('login')) ?>" id="dbsLogin"><i class="bi bi-box-arrow-in-right me-1"></i><?= h(t('dbs_sign_in_ga')) ?></a>
+	<?php endif; ?>
 	<?php if ($user): ?><form method="post" action="<?= h(nu_url('logout')) ?>"
 		class="mt-3"><?= nu_csrf_field() ?><button class="btn btn-outline-secondary btn-sm"
 		type="submit"><i class="bi bi-box-arrow-right me-1"></i><?= h(t('nav_logout')) ?></button></form><?php endif; ?>

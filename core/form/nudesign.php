@@ -126,6 +126,7 @@ final class NuDesign
 			'files' => $db->tableExists('zzzzsys_file') ? array_map(static fn($f) => [$f['zzzzsys_file_id'], $f['sfi_code'] . ($f['sfi_description'] ? ' – ' . $f['sfi_description'] : '')],
 				$db->all('SELECT zzzzsys_file_id, sfi_code, sfi_description FROM zzzzsys_file ORDER BY sfi_code')) : [],
 			'formats_all' => NuFormat::choices(), 'format_designer' => nu_format_designer_data(),
+			'audit_cols' => $meta->auditColumns(),                      // audit columns the table has, for the switch of Data
 			'record_check' => (bool)NuSecurity::get('record_check'),     // the global switch, for the tip of "Any record can be opened"
 			'details_candidates' => NuRowDetails::candidates($meta),      // row details: sub-forms and child tables to show
 			'form_tags' => NuFormMeta::tagValues(),                     // suggestions of Department / Team

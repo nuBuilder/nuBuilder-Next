@@ -43,7 +43,8 @@ page) for how to use it.
   *Properties…* in an object's right-click menu opens it selected in design mode; the properties panel has section chips that stay
   at the top (jump, fold / unfold all, one-line summaries of folded sections); *Set order by position* sorts the tab order by where
   the objects are (rows or columns, content boxes kept together); a selected content box keeps its objects visible and moves them
-  along; *Discard* only while the draft holds changes.
+  along; *Discard* only while the draft holds changes; the switch *Audit columns* (Form settings → Data) shows and sets whether the server fills
+  created_at / created_by / updated_at / updated_by.
 - **A list's design in a side pane** – browse SQL, PHP (Before Browse), JavaScript, columns with all their settings, row details and list settings next to the running list;
   *As run* shows the SQL the list really ran, hash variables filled in and unset ones marked.
 - **A form's code beside the record** – every JavaScript, CSS and PHP event of a form in a side pane on the record (Ctrl+Shift+B), grouped in cards, saved in one go;
@@ -139,6 +140,8 @@ page) for how to use it.
   documentation.
 - **Installer with a nuBuilder Forte dump** – a complete dump of a Forte database (any size from `_install/`, checked statement by
   statement, imported in steps with a progress figure; older 4.x brought to 4.9).
+- **Existing older Forte databases** – the installer and *Set up the database* bring an existing database of nuBuilder Forte before
+  4.9 (e.g. 4.5) to the structure of 4.9 after a backup tick, as Forte's own update does.
 - **Getting ready checklist** – after the installation a bar and a start page card lead through 30 points in eight steps (security,
   server, database, backups, e-mail, people, look, next steps); most check themselves, the rest are ticked by hand; hide for 7 days
   or for good – new red security or backup points bring it back; dots on the steps and a link to the next point to fix.

@@ -114,6 +114,8 @@ final class NuPhp
 		// nuBuilder Forte runs the code inside nuEval($phpid): code reads $phpid (<form id>_BS …) to know its event
 		if (!isset($vars['phpid']) && isset(self::EVENT_OF[$label])) $vars['phpid'] = (string)($hash['FORM_ID'] ?? '') . '_' . self::EVENT_OF[$label];
 
+		// nuBuilder Forte's global $nuSetup (the row of zzzzsys_setup as an object): its system forms read $GLOBALS['nuSetup']->set_denied
+		if (!isset($GLOBALS['nuSetup'])) $GLOBALS['nuSetup'] = (object)NuMailer::setupRow();
 		set_error_handler(static function (int $no, string $str, string $file, int $line) use ($label): bool {
 			if (!(error_reporting() & $no)) return false;
 			$msg = "$label: $str" . (str_contains($file, 'eval') ? " (line $line)" : '');

@@ -227,7 +227,8 @@ try {
 				?? null) ? $in['fields'] : []) + NuUserHelp::formKeysIn(is_array($in['fields']
 				?? null) ? $in['fields'] : []) + NuRowDetails::keysIn(is_array($in['fields']
 				?? null) ? $in['fields'] : []) + NuCalendar::keysIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuRecycle::keysIn(is_array($in['fields']
-				?? null) ? $in['fields'] : []) + NuRecordView::keysIn(is_array($in['fields'] ?? null) ? $in['fields'] : [])) {      // department / team, help pages: sfo_json nunext
+				?? null) ? $in['fields'] : []) + NuRecordView::keysIn(is_array($in['fields'] ?? null) ? $in['fields'] : [])
+					+ NuFormMeta::auditIn(is_array($in['fields'] ?? null) ? $in['fields'] : [])) {      // department / team, help pages: sfo_json nunext
 				$fields['sfo_json'] = NuFormMeta::mergeNunextJson($fields['sfo_json'] ?? ($meta->form['sfo_json'] ?? null), $tags);
 			}
 			if ($fields) $db->update('zzzzsys_form', $fields, 'zzzzsys_form_id', $formId);

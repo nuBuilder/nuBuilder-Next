@@ -331,6 +331,28 @@ final class NuFormMeta
 	 * check of NuRecord::visible() on this form (open, save, delete); set in design mode → Form → Data. design API field
 	 * record_check '1' (default, checked) | '0' (not checked). nuBuilder Forte ignores the key.
 	 */
+	/**
+	 * Audit columns (created_at / created_by / updated_at / updated_by filled by the server on save): sfo_json nunext.audit = true.
+	 * The design API's form.save field "audit" ('1' / '0') → the key (null removes it).
+	 */
+	public static function auditIn(array $fields): array
+	{
+		if (!array_key_exists('audit', $fields)) return [];
+		return ['audit' => in_array((string)$fields['audit'], ['1', 'true', 'on'], true) ? true : null];
+	}
+
+	/** The audit columns the form's table has (names as in the table). @return list<string> */
+	public function auditColumns(): array
+	{
+		$t = $this->table();
+		if ($t === '' || !NuDDL::validName($t) || !nu_db()->tableExists($t)) return [];
+		try { $cols = array_keys(nu_db()->columns($t)); } catch (Throwable $ig) { nu_ignored($ig, 'columns of the form table'); return []; }
+		$lower = array_change_key_case(array_combine($cols, $cols));
+		$out = [];
+		foreach (array_keys(NuDDL::AUDIT) as $a) if (isset($lower[$a])) $out[] = (string)$lower[$a];
+		return $out;
+	}
+
 	public static function recordCheckIn(array $fields): array
 	{
 		if (!array_key_exists('record_check', $fields)) return [];

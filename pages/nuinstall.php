@@ -160,6 +160,9 @@ if ($late) {
 				if (!$S['content']['backup_ack']) { $errors['backup_ack'] = t('ins_backup_needed'); break; }
 				$S['content']['ic_ack'] = nu_check('integrity_ack') === '1';
 				if (NuInstallPage::integrity($S)['errors'] && !$S['content']['ic_ack']) { $errors['_'] = t('ic_ack_needed'); break; }
+				// older than nuBuilder Forte 4.9: brought to 4.9's structure on Install – only with the tick
+				$S['content']['upgrade_ack'] = nu_check('upgrade_ack') === '1';
+				if (!empty($S['detect']['old']) && !$S['content']['upgrade_ack']) { $errors['upgrade_ack'] = t('ins_up49_needed'); break; }
 			}
 			$go('admin');
 
@@ -275,6 +278,7 @@ if ($late) {
 				if ($stepped) $det = ['kind' => 'empty'] + $det;               // imported in steps just now: the tables are the dump's own
 				if ($det['kind'] === 'nubuilder' && empty($S['content']['backup_ack'])) throw new RuntimeException(t('ins_backup_needed'));   // checked again
 				if ($det['kind'] === 'nubuilder' && NuInstallPage::integrity($S)['errors'] && empty($S['content']['ic_ack'])) throw new RuntimeException(t('ic_ack_needed'));   // checked again
+				if ($det['kind'] === 'nubuilder' && !empty($det['old']) && empty($S['content']['upgrade_ack'])) throw new RuntimeException(t('ins_up49_needed'));
 				$S['detect'] = $det;
 				$imported = 0;
 				if ($det['kind'] === 'empty' || ($det['kind'] === 'other' && $S['content']['confirm_other'])) {
@@ -294,6 +298,11 @@ if ($late) {
 					// a nubuilder4.sql of an older 4.x version gets the structure of 4.9 (a 4.9 dump stays as it is)
 					if ($S['content']['choice'] !== 'nunext' && $db->type === 'mysql') $S['upgraded'] = NuInstall::upgradeTo49($db);
 					try { NuSettings::create($db); } catch (Throwable $e) { error_log('nuBuilder Next install, settings table: ' . $e->getMessage()); }   // nuBuilder's settings (zzzzsys_config)
+				}
+				if ($det['kind'] === 'nubuilder' && !empty($det['old'])) {         // an existing database of nuBuilder Forte before 4.9
+					$up = NuInstall::upgradeExisting($db);
+					$S['upgraded'] = $up;
+					$imported += $up['statements'];
 				}
 				$S['imported'] = $imported;
 				$cfg = NuInstall::buildConfig($S);
@@ -489,6 +498,14 @@ nu_head($title, nu_ts_head());   // time zone: searchable
 							type="checkbox" name="backup_ack" value="1" id="insBackupAck"<?= !empty($S['content']['backup_ack']) ? ' checked' : '' ?>>
 							<label class="form-check-label fw-semibold" for="insBackupAck"><?= h(t('ins_backup_ack')) ?></label><?= $fb('backup_ack') ?></div>
 					</div>
+					<?php if (!empty($det['old'])): ?>
+					<div class="alert alert-warning" id="insUpgrade49"><div class="fw-semibold mb-1"><i class="bi bi-arrow-up-circle me-1"></i><?= h(t('ins_up49_title')) ?></div>
+						<div class="small mb-2"><?= h(t('ins_up49_text', $det['old'])) ?></div>
+						<div class="form-check mb-0"><input type="hidden" name="upgrade_ack" value="0"><input class="form-check-input<?= $err('upgrade_ack') ?>"
+							type="checkbox" name="upgrade_ack" value="1" id="insUpgradeAck"<?= !empty($S['content']['upgrade_ack']) ? ' checked' : '' ?>>
+							<label class="form-check-label fw-semibold" for="insUpgradeAck"><?= h(t('ins_up49_ack')) ?></label><?= $fb('upgrade_ack') ?></div>
+					</div>
+					<?php endif; ?>
 					<div class="border rounded p-3 mb-3<?= $icR['errors'] ? ' border-danger' : '' ?>" id="insIntegrity">
 						<div class="fw-semibold small mb-2"><i class="bi bi-clipboard2-pulse me-1"></i><?= h(t('ic_title')) ?><?= NuListView::infoTip(t('ic_tip')) ?></div>
 						<?= NuIntegrity::html($icR, 'insContentForm') ?>

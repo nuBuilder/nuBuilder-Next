@@ -3546,3 +3546,106 @@ T.new_form_shown = async (s) => {                      // 0.8.1412: New form wiz
 		sql(`DROP TABLE IF EXISTS ${tbl}`);
 	}
 };
+
+T.design_list_work_stays = async (s) => {               // 0.8.1414: editing the Browse list workspace on a list page – no reload per field, the focus stays
+	const p = s.ga, f = 'samplecustomer';
+	const sel = (q) => sql(q);
+	sql(`DELETE FROM zzzzsys_nunext_form_draft WHERE form_id = '${f}'`);
+	let loads = 0;
+	const onLoad = () => { loads++; };
+	try {
+		await open(p, `index.php?p=form&f=${f}&design=1&dswork=list`);
+		await p.waitForSelector('#nuDsListCols tr.nuDsListCol');
+		p.on('load', onLoad);
+		const first = p.locator('#nuDsListCols tr.nuDsListCol').first();
+		const was = await first.locator('input[data-lc=title]').inputValue();
+		await first.locator('input[data-lc=title]').fill(was + ' X');
+		await p.keyboard.press('Tab');                      // to the next field: display
+		await p.waitForFunction(() => /saved|gespeichert/i.test(document.getElementById('nuDsMsg').textContent), null, {timeout: 8000}).catch(() => {});
+		await p.waitForTimeout(600);
+		expect(loads === 0, 'the page reloaded after a field (' + loads + ')');
+		expect(await p.locator('#nuDsWork').isVisible(), 'workspace closed');
+		expect(await p.evaluate(() => document.activeElement && document.activeElement.getAttribute('data-lc')) === 'display', 'focus not on the next field: '
+			+ await p.evaluate(() => document.activeElement && document.activeElement.outerHTML.slice(0, 80)));
+		// a second field in a row
+		await p.keyboard.press('Tab');                      // width
+		await p.keyboard.type('77');
+		await p.keyboard.press('Tab');
+		await p.waitForTimeout(1500);
+		expect(loads === 0 && await p.locator('#nuDsWork').isVisible(), 'second change closed the workspace');
+		const draft = sel(`SELECT snapshot FROM zzzzsys_nunext_form_draft WHERE form_id = '${f}'`);
+		expect(draft.includes(was + ' X') && /"sbr_width":"?\d*77/.test(draft), 'changes not in the draft');
+		// back to the form: the list is drawn again with the change
+		await Promise.all([p.waitForEvent('load'), p.click('#nuDsWorkClose')]);
+		await p.waitForSelector('#nuBrowseTable');
+		expect((await p.locator('#nuBrowseTable thead th').allTextContents()).some((x) => x.includes(was + ' X')), 'list not drawn again after closing');
+	} finally {
+		p.off('load', onLoad);
+		sql(`DELETE FROM zzzzsys_nunext_form_draft WHERE form_id = '${f}'`);
+	}
+};
+
+T.design_audit_switch = async (s) => {                  // 0.8.1417: design mode → Data → "Audit columns" shows / sets sfo_json nunext.audit
+	const p = s.ga, f = 'samplecustomer';
+	if (sql(`SELECT sfo_table FROM zzzzsys_form WHERE zzzzsys_form_id = '${f}'`) !== 'sample_customer') { s.skip = 'no sample customers'; return; }
+	const keep = path.join(os.tmpdir(), 'nunext-e2e-aud-' + process.pid + '.sql');
+	execSync('mysqldump ' + DB + ' sample_customer zzzzsys_form > ' + keep);
+	sql(`DELETE FROM zzzzsys_nunext_form_draft WHERE form_id = '${f}'`);
+	const sw = '#nuDsPanel input[data-key="audit"]';
+	const openData = async () => {
+		await open(p, `index.php?p=form&f=${f}&r=sample_cus_01&design=1`);
+		await p.waitForSelector('#nuDsPanel');
+		await p.evaluate(() => { const b = [...document.querySelectorAll('#nuDsPanel [data-sec-key="data"]')][0]; if (b && b.tagName !== 'SECTION' && b.getAttribute('aria-expanded') === 'false') b.click(); });
+		await p.waitForSelector(sw, { state: 'attached' });
+	};
+	try {
+		await openData();
+		expect(await p.$eval(sw, (a) => a.disabled && !a.checked), 'switch not disabled on a table without the columns');
+		sql("ALTER TABLE sample_customer ADD created_at DATETIME NULL, ADD created_by VARCHAR(50) NULL, ADD updated_at DATETIME NULL, ADD updated_by VARCHAR(50) NULL");
+		await openData();
+		expect(await p.$eval(sw, (a) => !a.disabled && !a.checked), 'switch not usable with the columns');
+		expect(/all four|alle vier/i.test(await p.$eval(sw, (a) => a.parentNode.querySelector('.nuInfoTip').getAttribute('aria-label'))), 'tip does not say the columns are there');
+		await p.$eval(sw, (a) => a.click());
+		await p.waitForTimeout(1500);
+		const snap = sql(`SELECT snapshot FROM zzzzsys_nunext_form_draft WHERE form_id = '${f}' AND status = 'open'`) || '';
+		expect(/audit[\\"]*:\s*true/.test(snap), 'draft has no audit = true');
+		sql(`DELETE FROM zzzzsys_nunext_form_draft WHERE form_id = '${f}'`);
+		// stored on the live form: the switch shows it, and a save fills the columns
+		sql(`UPDATE zzzzsys_form SET sfo_json = '{"nunext":{"audit":true}}' WHERE zzzzsys_form_id = '${f}'`);
+		await openData();
+		expect(await p.$eval(sw, (a) => a.checked), 'switch off although the form has audit = true');
+		await open(p, `index.php?p=form&f=${f}&r=sample_cus_01`);
+		await p.fill('#cus_email', 'audit' + Date.now() + '@example.com');
+		await save(p);
+		expect(sql("SELECT updated_by FROM sample_customer WHERE sample_customer_id = 'sample_cus_01'") === 'globeadmin', 'updated_by not filled: ' + sql("SELECT CONCAT_WS('/', IFNULL(updated_by,'-'), cus_email) FROM sample_customer WHERE sample_customer_id = 'sample_cus_01'") + ' ' + p.url());
+	} finally {
+		sql(`DELETE FROM zzzzsys_nunext_form_draft WHERE form_id = '${f}'`);
+		sql('DROP TABLE IF EXISTS sample_customer');
+		execSync('mysql ' + DB + ' < ' + keep); fs.unlinkSync(keep);
+	}
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
+T.design_list_width_zero = async (s) => {               // 0.8.1419: Browse list workspace – typing width 0 hides the column (it became 100 before)
+	const p = s.ga, f = 'samplecustomer';
+	sql(`DELETE FROM zzzzsys_nunext_form_draft WHERE form_id = '${f}'`);
+	try {
+		await open(p, `index.php?p=form&f=${f}&design=1&dswork=list`);
+		await p.waitForSelector('#nuDsListCols tr.nuDsListCol');
+		// a column that is shown (width input enabled)
+		const rows = p.locator('#nuDsListCols tr.nuDsListCol');
+		let i = 0;
+		while (i < await rows.count() && await rows.nth(i).locator('input[data-lc=width]').isDisabled()) i++;
+		const disp = await rows.nth(i).locator('[data-lc=display]').inputValue();
+		const w = rows.nth(i).locator('input[data-lc=width]');
+		await w.click(); await w.fill('0'); await p.keyboard.press('Tab');
+		await p.waitForFunction((n) => { const r = [...document.querySelectorAll('#nuDsListCols tr.nuDsListCol')].find((x) => (x.querySelector('[data-lc=display]') || {}).value === n);
+			return r && r.querySelector('button i.bi-eye-slash'); }, disp, { timeout: 8000 }).catch(() => {});
+		const shown = await p.evaluate((n) => { const r = [...document.querySelectorAll('#nuDsListCols tr.nuDsListCol')].find((x) => (x.querySelector('[data-lc=display]') || {}).value === n);
+			return r ? { slash: !!r.querySelector('button i.bi-eye-slash'), off: r.querySelector('input[data-lc=width]').disabled } : null; }, disp);
+		expect(shown && shown.slash && shown.off, 'column ' + disp + ' not hidden after width 0: ' + JSON.stringify(shown));
+	} finally {
+		sql(`DELETE FROM zzzzsys_nunext_form_draft WHERE form_id = '${f}'`);
+	}
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};

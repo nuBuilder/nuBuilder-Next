@@ -16,9 +16,10 @@ defined('NU_ROOT') || exit;
  */
 final class NuSample
 {
-	public const VERSION = 25;   // what each version changed: CHANGES (shown on the Sample data page)
+	public const VERSION = 26;   // what each version changed: CHANGES (shown on the Sample data page)
 	/** Change history of the sample, newest first (English, like the changelog; shown on the Sample data page). Add a line with every new VERSION. */
 	public const CHANGES = [
+		26 => 'Start page: the tiles Orders to Excel and Excel with chart have icons.',
 		25 => 'Customers: the phone mask matches the stored numbers (+1 555 110 2000).',
 		24 => 'Three shared pivots of the orders list.',
 		23 => 'Orders: the customer\'s name no longer runs into the label Status.',
@@ -1391,6 +1392,8 @@ ORDER BY
 #home_hello::before { content: "\f4f4"; }       /* play-fill: procedure */
 #home_hidden::before { content: "\f33f"; }      /* eye-slash-fill: hidden procedure */
 #home_rpt_customers::before, #home_rpt_orders::before { content: "\f38b"; }   /* file-earmark-text: report */
+#home_xlsx::before { content: "\f368"; }          /* file-earmark-excel: Excel file */
+#home_xlsx_pss::before { content: "\f35a"; }      /* file-earmark-bar-graph: Excel with a chart */
 .sampleNote { padding: .75rem 1rem; border: 1px solid var(--bs-border-color); border-radius: .75rem; background: var(--bs-tertiary-bg); font-size: .92rem; }
 .btn.sampleButton { border-radius: .6rem; }
 .sampleLook ul { margin: 0 0 .5rem; padding-left: 1.2rem; } .sampleLook li { margin-bottom: .25rem; } .sampleLook p { margin: 0; color: var(--bs-secondary-color); }

@@ -23,9 +23,6 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       entry in docs/nunext-functions.json; the examples `e` / sample results `x` are never executed. Proposal: an e2e test that runs every
       example – PHP against the test database, JavaScript on a test form – and compares with `x`; functions with side effects (mail,
       windows, downloads) marked "not runnable" in the entry.
-- [ ] **Audit columns switch** (proposed 3 Nov 2026): created_at / created_by / updated_at / updated_by are stamped only for forms with
-      sfo_json nunext.audit = true (set by the New form wizard for a new table). The mark is invisible – proposal: a switch in design
-      mode → Form settings with an (i) tip, so it can be seen and turned off (and on for an existing table with the four columns).
 - [ ] **Drawing order of objects** (absolute layout): nuBuilder Forte sorts content boxes first, then sob_all_order, then the tab order,
       run objects last at the same order; nuBuilder Next sorts tab, sob_all_order, top, left. Matters only for objects with the same order
       value (stacking, keyboard Tab order) – align exactly if wanted (0.8.567 fixed the z-index).
@@ -127,6 +124,7 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       protect_fields is off.
 
 ## Forms and design mode
+- [ ] **Please verify 0.8.1414–0.8.1417** – design mode Browse list workspace on a list page: editing a column keeps the workspace open and the focus (0.8.1414); long press on a menu entry / heading on a phone selects no text (0.8.1415); sample start page Excel tiles with icons after a sample refresh (0.8.1416); Form settings → Data switch *Audit columns* on a form whose table has the four columns (0.8.1417).
 - [ ] **Shown as in the New form wizard** (0.8.1412) – please verify: a new table with a select (options), a lookup and a Yes / No select; an existing table's column list with a changed type – the objects in design mode match
 - [ ] **Debug icon and lookup dialog** (0.8.1409 / 0.8.1411) – please verify on the live server: the red bug appears after an error of form code and goes after *Mark as read*; a lookup opens once at its final size
 - [ ] **Lists on phones keep their sideways position** (0.8.1383) – please verify: sort / page / reload a wide list on a phone; the sorted column comes into view
@@ -417,6 +415,7 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **Sample change history** (0.8.1256) – please verify on Settings → Sample data: tab *Changes* per sample; an outdated sample shows what is new in Overview.
 
 ## nuBuilder Forte compatibility
+- [ ] **Existing database of nuBuilder Forte before 4.9** (0.8.1418) – the installer (content step: tick “Bring the database to nuBuilder Forte 4.9”) and Set up the database (button *Bring to nuBuilder Forte 4.9*) on a real old database; afterwards Forte's old system forms (e.g. run list, table list of the report builder) need Forte's own update to 4.9 – check with Forte running on the same database.
 - [ ] **Forum code fixes – please verify** (0.8.1394) – from running the forum's code: `nuSubformObject('')` = the main form;
   `nuCreateTableFromSelect` / `db_fetch_value` / `nuEncodeQueryRowResults` go on after a database error (Debug result); popup / lookup
   window carries `#nuDragDialog` / `#nuWindow` / `#nuModal` while open (a width set from inside wins); label classes nuNone / nuBlank /

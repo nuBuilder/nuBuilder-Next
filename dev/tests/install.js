@@ -8,6 +8,7 @@
  * Library packs (0.8.405): LIBPACKS=<folder with signed nunext-lib-*.zip> copies them into _install/ (plus a changed copy that must be
  * refused); the step "Libraries" must offer them (TCPDF / PHPMailer ticked, phpMyAdmin not) and install the ticked ones.
  * Without LIBPACKS the step is only passed.
+ * OLD_DUMP=<nubuilder4.sql of a version before 4.9>: also an existing database of that version (imported as it is) – brought to 4.9.
  */
 'use strict';
 const { chromium } = require('playwright');
@@ -22,6 +23,7 @@ const DUMP = process.env.DUMP;
 const DB = process.env.DB || '-unu -pnu';
 const NAME = 'nuinst_e2e';
 const LIBPACKS = process.env.LIBPACKS || '';
+const OLD_DUMP = process.env.OLD_DUMP || '';   // optional: nubuilder4.sql of a Forte version before 4.9, imported as an existing database
 if (!NUB_DIR || !DUMP) { console.error('NUB_DIR and DUMP are needed'); process.exit(2); }
 const SITE = path.join(NUB_DIR, 'nuinst');
 const BASE = NUB + 'nuinst/';
@@ -79,7 +81,7 @@ const expect = (ok, msg) => { if (!ok) throw new Error(msg); };
 		// the real one
 		// 0.8.1398: a dump larger than 64 MB (unpacked), copied into _install/, is checked and imported as a stream
 		const bigName = 'zz-e2e-big.sql.gz', pad = 'x'.repeat(2000), rows = [];
-		for (let b = 0; b < 700; b++) rows.push('INSERT INTO `zzzzsys_debug` VALUES ' + Array.from({length: 50}, (_, i) => `('e2ebig${b}_${i}','${pad}',NULL,1,NULL,NULL)`).join(',') + ';\n');
+		for (let b = 0; b < 700; b++) rows.push('INSERT INTO `zzzzsys_debug` (zzzzsys_debug_id, deb_message, deb_added) VALUES ' + Array.from({length: 50}, (_, i) => `('e2ebig${b}_${i}','${pad}',1)`).join(',') + ';\n');
 		fs.writeFileSync(path.join(SITE, '_install', bigName), require('zlib').gzipSync(plain + '\n' + rows.join('') + 'CREATE TABLE `e2e_app_tbl` (`a` int);\nINSERT INTO `e2e_app_tbl` VALUES (7);\n'));   // + a table of the application (0.8.1401)
 		await p.reload();
 		// a picked / chosen file ticks "nubuilder4.sql …" by itself (0.8.1400); another choice clears it
@@ -189,6 +191,41 @@ const expect = (ok, msg) => { if (!ok) throw new Error(msg); };
 		expect(!/p=login/.test(q.url()), 'login failed after the install on the existing database');
 		await ctx2.close();
 		console.log('install on an existing database: ok');
+		// 0.8.1418: an existing database of an older nuBuilder Forte (OLD_DUMP = e.g. the nubuilder4.sql of 4.5, imported as it is, not
+		// uploaded): the content step offers to bring it to 4.9 (tick required), Install does it, the globeadmin's sign-in goes on
+		if (OLD_DUMP) {
+			sql('DROP DATABASE IF EXISTS ' + NAME + '; CREATE DATABASE ' + NAME + ';');
+			execSync('mysql ' + DB, { input: Buffer.concat([Buffer.from('USE ' + NAME + ';\n'), fs.readFileSync(OLD_DUMP)]) });   // DB may name a database already
+			fs.unlinkSync(path.join(SITE, 'nuconfig.php'));
+			const ctx3 = await browser.newContext(), r = await ctx3.newPage();
+			const next3 = async () => { await Promise.all([r.waitForNavigation({ timeout: 300000 }), r.click('#insNext')]); };
+			await r.goto(BASE);
+			if (await r.locator('main form button[type=submit]').count() && !(await r.locator('#insDbForm').count())) await Promise.all([r.waitForNavigation(), r.click('main form button[type=submit]')]);
+			await r.selectOption('#type', 'mysql');
+			for (const [id, v] of [['host', '127.0.0.1'], ['port', '3306'], ['name', NAME], ['user', 'nu'], ['password', 'nu']]) await r.fill('#' + id, v);
+			await next3();
+			expect(await r.locator('#insUpgrade49').count() === 1, 'no offer to bring the older database to 4.9');
+			expect(!(await r.locator('#insIntegrity .text-danger, #insIntegrity [data-ic="views"]').count()), 'the views of 4.5 are listed as a problem');
+			await r.check('#insBackupAck');
+			if (await r.locator('#nuIcAck').count()) await r.check('#nuIcAck');
+			await next3();
+			expect(await r.locator('#insUpgradeAck.is-invalid').count() === 1, 'went on without the upgrade tick');
+			await r.check('#insUpgradeAck'); await r.check('#insBackupAck');
+			if (await r.locator('#nuIcAck').count()) await r.check('#nuIcAck');
+			await next3();
+			await r.fill('#user', 'globeadmin'); await r.fill('#password', 'Install-Test-3'); await r.fill('#password2', 'Install-Test-3');
+			await next3(); await next3(); await next3();
+			await Promise.all([r.waitForNavigation({ timeout: 300000 }), r.click('#insInstall', { noWaitAfter: true })]);
+			expect(await r.locator('#insUpgraded').count() === 1, 'no upgrade reported: ' + (await r.locator('main').innerText()).slice(0, 300));
+			expect(sql("SELECT TABLE_TYPE FROM information_schema.TABLES WHERE TABLE_SCHEMA = '" + NAME + "' AND TABLE_NAME = 'zzzzsys_report_data'") === 'BASE TABLE', 'zzzzsys_report_data still a view');
+			expect(sql("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = '" + NAME + "' AND TABLE_NAME = 'zzzzsys_object' AND COLUMN_NAME = 'sob_all_json'") === '1', 'columns of 4.9 missing');
+			await r.goto(BASE + 'index.php?p=login');
+			await r.fill('input[name=username]', 'globeadmin'); await r.fill('input[name=password]', 'Install-Test-3');
+			await Promise.all([r.waitForNavigation(), r.click('button[type=submit]')]);
+			expect(!/p=login|p=dbsetup/.test(r.url()), 'after the sign-in: ' + r.url());
+			await ctx3.close();
+			console.log('install on an existing database of ' + path.basename(path.dirname(OLD_DUMP)) + ': ok');
+		}
 	} catch (e) {
 		failed = true;
 		console.error('install: FAILED – ' + e.message);

@@ -1087,6 +1087,9 @@ html.nuNoNavbar .nu-navbar { display: none !important; }
 .nuInfoTip { color: var(--bs-secondary-color); cursor: help; }
 .nuInfoTip:hover, .nuInfoTip:focus { color: var(--bs-primary); outline: none; }
 .nuInfoTip, [data-nu-doc] { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+/* menus: a long press on a phone opens the entry, it never selects its text (fields inside a menu stay selectable) */
+.dropdown-menu, .nuHomeCtx, .nuObjMenu { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+.dropdown-menu.nuFormInfo, :is(.dropdown-menu, .nuHomeCtx, .nuObjMenu) :is(input, textarea, select, [contenteditable], pre, code, .CodeMirror, .cm-editor) { -webkit-user-select: text; user-select: text; }
 .nuInfoTip.nuTipHeld { color: var(--bs-primary); transform: scale(1.35); transition: transform .12s; display: inline-block; }   /* long tap: lifting the finger opens the documentation */
 .updHistoryItem > summary { cursor: pointer; list-style-position: outside; }
 .updHistoryText { max-height: 28rem; overflow-y: auto; }

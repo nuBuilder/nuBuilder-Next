@@ -78,10 +78,13 @@
 			if (!j.ok) throw new Error(j.error || 'Error');
 			if (j.form) S = j;
 			if (j.object_id && j.missing_column) missing[j.object_id] = j.missing_column;
+			// the Browse list workspace on a list page: the list behind it is drawn again when the workspace closes – a reload now
+			// would close the workspace after every field (the next field the user went to with Tab included)
+			if (reload && BROWSE && W.kind === 'list') { W.ranCode = true; reload = false; }
 			if (reload) { refreshKeep(); return j; }
 			busy(false); say(t('ds_saved'));
 			renderBar(); renderPanel(); renderFly();
-			if (W.kind === 'list') renderWork();
+			if (W.kind === 'list') keepWorkFocus(renderWork);
 			return j;
 		}).catch(function (e) { busy(false); if (e.message) say(e.message, true); renderBar(); throw e; });
 	}
@@ -910,7 +913,9 @@
 				['l', 'c', 'r'].map(function (a) { return el('option', {value: a, text: t({l: 'om_left', c: 'om_center', r: 'om_right'}[a]), selected: (c.sbr_align || 'l') === a ? true : null}); }));
 			title.addEventListener('change', function () { part({title: title.value}); });
 			disp.addEventListener('change', function () { if (disp.value.trim() !== '') part({display: disp.value.trim()}); });
-			width.addEventListener('change', function () { var w = Math.max(1, parseInt(width.value, 10) || 100); part({width: w}); });
+			width.addEventListener('change', function () {        // 0 hides the column (as the eye does)
+				var n = parseInt(width.value, 10); part({width: n === 0 ? 0 : Math.max(1, n || 100)});
+			});
 			align.addEventListener('change', function () { part({align: align.value}); });
 			var btn = function (ic, tip, dc, fn,
 				dis) { return el('button',
@@ -1674,6 +1679,17 @@
 	function renderForm() {
 		var f = S.form;
 		panel.appendChild(head(t('ds_form'), f.sfo_description || f.sfo_code || '', 'bi-window', ''));
+		function auditSwitch(f) {
+			var on = (function () { try { return ((JSON.parse(f.sfo_json || '{}') || {}).nunext || {}).audit === true; } catch (x) { return false; } })();
+			var have = D.audit_cols || [], all = ['created_at', 'created_by', 'updated_at', 'updated_by'];
+			var missing = all.filter(function (c) { return have.map(function (h) { return h.toLowerCase(); }).indexOf(c) < 0; });
+			var tip = t('ds_audit_tip') + ' ' + (!have.length ? t('ds_audit_none') : missing.length ? t('ds_audit_missing').replace('%s', missing.join(', ')) : t('ds_audit_all'));
+			var w = field(t('ds_audit'), 'check', on ? '1' : '0',
+				function (v) { change('form.save', {fields: {audit: v}}, false).catch(function () { /* said */ }); }, {key: 'audit', tip: tip});
+			var cb = w.querySelector('input');
+			if (cb && !have.length && !on) cb.disabled = true;     // nothing to fill: the table has none of the four columns
+			return w;
+		}
 		var fsave = function (key,
 			reload) { return function (v) { var x = {}; x[key] = v; change('form.save', {fields: x}, false).then(function () { if (reload) reloadKeep(); }).catch(function () { /* said */ }); }; };
 		if (!D.userhome) {      // nuBuilder Forte's User Home: its form row belongs to Forte (only tabs, objects and Before Edit are edited)
@@ -1703,6 +1719,8 @@
 				field(t('ds_rc_any'), 'check', (function () { try { return ((JSON.parse(f.sfo_json || '{}') || {}).nunext || {}).record_check === false ? '1' : '0'; } catch (x) { return '0'; } })(),
 					function (v) { change('form.save', {fields: {record_check: v === '1' ? '0' : '1'}}, false).catch(function () { /* said */ }); },
 					{key: 'record_check', tip: D.record_check ? t('ds_rc_any_tip') : t('ds_rc_any_tip_off')}),
+				// audit columns: created_at / created_by / updated_at / updated_by filled on save (sfo_json nunext.audit)
+				auditSwitch(f),
 				// recycle bin: days the form keeps its deleted records – 0 / empty = off (sfo_json nunext.recycle)
 				field(t('ds_recycle_days'), 'number',
 					(function () { try { var r = ((JSON.parse(f.sfo_json || '{}') || {}).nunext || {}).recycle; return r && r.days ? String(r.days) : ''; } catch (x) { return ''; } })(),
@@ -2918,6 +2936,23 @@
 		if (W.opener && document.body.contains(W.opener)) { try { W.opener.focus({preventScroll: true}); } catch (x) { /* ignore */ } }
 		W.opener = null;
 		if (W.ranCode) { W.ranCode = false; reloadKeep(); }        // changed code runs only after a reload
+	}
+	// draws the workspace again and puts the focus back on the control it was on: found again by its id, its column + field
+	// (data-col / data-lc), its data-key – else by its position among the workspace's controls
+	function keepWorkFocus(draw) {
+		var sel = 'input, select, textarea, button, [tabindex]:not([tabindex="-1"])', esc = function (v) { return window.CSS && CSS.escape ? CSS.escape(v) : v; };
+		var a = document.activeElement, list = Array.prototype.slice.call(work.querySelectorAll(sel)), i = a && work.contains(a) ? list.indexOf(a) : -1;
+		var q = '';
+		if (i >= 0) {
+			var row = a.closest('[data-col]');
+			if (a.id) q = '#' + esc(a.id);
+			else if (row && a.getAttribute('data-lc')) q = '[data-col="' + esc(row.getAttribute('data-col')) + '"] [data-lc="' + esc(a.getAttribute('data-lc')) + '"]';
+			else if (a.getAttribute('data-key')) q = '[data-key="' + esc(a.getAttribute('data-key')) + '"]';
+		}
+		draw();
+		if (i < 0) return;
+		var b = (q && work.querySelector(q)) || work.querySelectorAll(sel)[i];
+		if (b) { try { b.focus({preventScroll: true}); if (b.select && /^(text|number|search)$/.test(b.type || '')) b.select(); } catch (x) { /* ignore */ } }
 	}
 	function renderRail() {
 		document.querySelectorAll('[data-work]').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-work') === W.kind ? 'true' : 'false'); });

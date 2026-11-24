@@ -242,7 +242,8 @@ final class NuInstall
 		$kind = !$tables ? 'empty' : (count(array_intersect(['zzzzsys_user', 'zzzzsys_access', 'zzzzsys_form'], $tables)) === 3 ? 'nubuilder' : 'other');
 		$users = $kind === 'nubuilder' ? (int)$db->value('SELECT COUNT(*) FROM zzzzsys_user') : 0;
 		$forms = $kind === 'nubuilder' ? (int)$db->value('SELECT COUNT(*) FROM zzzzsys_form') : 0;
-		return ['kind' => $kind, 'tables' => count($tables), 'nu' => count($nu), 'users' => $users, 'forms' => $forms];
+		$old = $kind === 'nubuilder' ? count(self::missing49($db)) : 0;          // columns of 4.9 missing: a database of an older 4.x
+		return ['kind' => $kind, 'tables' => count($tables), 'nu' => count($nu), 'users' => $users, 'forms' => $forms, 'old' => $old];
 	}
 
 	/** SQL files for an empty database, by choice: 'nubuilder' (complete nuBuilder system) or 'nunext' (nuBuilder Next's scripts). */
@@ -450,6 +451,41 @@ final class NuInstall
 		$res['tables'] = count($created);
 		$res['app'] = count(array_filter(array_keys($created), static fn($t) => !str_starts_with($t, 'zzzzsys_')));
 		return $res;
+	}
+
+	/** Views of nuBuilder Forte 4.5 that 4.9 replaced (upgradeTo49 drops them; zzzzsys_report_data becomes a table). */
+	public const LEGACY_VIEWS = ['zzzzsys_object_list', 'zzzzsys_run_list', 'zzzzsys_report_data'];
+
+	/**
+	 * Columns of nuBuilder Forte 4.9 an existing database lacks ("table.column") – a database of an older 4.x version (MySQL only;
+	 * tables that do not exist at all are not counted: upgradeTo49 creates them). @return list<string>
+	 */
+	public static function missing49(NuDB $db): array
+	{
+		if ($db->type !== 'mysql') return [];
+		$cols = [];
+		foreach ($db->all('SELECT TABLE_NAME AS t, COLUMN_NAME AS c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME LIKE ?', ['zzzzsys\_%']) as $r) {
+			$cols[strtolower((string)$r['t'])][strtolower((string)$r['c'])] = true;
+		}
+		$out = [];
+		foreach (self::tables49() as $t => $defs) {
+			if (!isset($cols[$t])) continue;
+			foreach (array_keys($defs) as $c) if (!isset($cols[$t][strtolower($c)])) $out[] = $t . '.' . $c;
+		}
+		return $out;
+	}
+
+	/**
+	 * An existing nuBuilder Forte database of a version before 4.9 brought to 4.9's structure (upgradeTo49), then the tables of
+	 * nuBuilder Next's install scripts that are still missing (CREATE TABLE IF NOT EXISTS / INSERT IGNORE – existing rows stay).
+	 * @return array{tables: int, columns: int, changed: int, statements: int}
+	 */
+	public static function upgradeExisting(NuDB $db): array
+	{
+		$up = self::upgradeTo49($db);
+		$n = 0;
+		foreach (self::schemaFiles('nunext', $db->type, null) as $f) $n += self::importFile($db, $f);
+		return $up + ['statements' => $n];
 	}
 
 	/** Column definitions of nuBuilder 4.9 (install/nubuilder49_tables.sql): [table => [column => definition]], in table order. */

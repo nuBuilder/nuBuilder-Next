@@ -794,3 +794,15 @@ T.api_records = async (s) => {
 	}
 	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
 };
+
+T.sample_tile_icons = async (s) => {                   // 0.8.1416: every tile of the sample start page has an icon (Excel tiles too)
+	const p = s.ga;
+	const home = sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_code = 'sample_home'");
+	if (!home) { s.skip = 'no sample data'; return; }
+	if (!sql("SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id = '" + home + "' AND sfo_style LIKE '%home_xlsx_pss::before%'") * 1) { s.skip = 'sample data older than version 26'; return; }
+	await open(p, 'index.php?p=form&f=' + home + '&r=-1');
+	const no = await p.evaluate(() => [...document.querySelectorAll('.btn.nuRunButton.sampleTile')]
+		.filter((b) => !b.querySelector('i') && !/["'].+["']/.test(getComputedStyle(b, '::before').content)).map((b) => b.id));
+	expect(no.length === 0, 'tiles without an icon: ' + no.join(', '));
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};

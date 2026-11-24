@@ -3,6 +3,48 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.1420 – Release gate
+- Release gate: smoke, end-to-end, compatibility, installer wizard (also an existing database of nuBuilder Forte 4.5) and
+  security scan.
+
+## 0.8.1419 – Width 0 hides a list column
+- Design mode → Browse list: typing 0 as the width of a column hides it (as the eye button does) – the 0 became 100 before.
+- Installer test: also an existing database of an older nuBuilder Forte (OLD_DUMP); FEATURES.md and TODO.md brought up to date.
+
+## 0.8.1418 – Older nuBuilder Forte databases brought to 4.9
+- Existing databases of an older nuBuilder Forte (before 4.9, e.g. 4.5): the installer accepted such a database, and after the
+  sign-in "Create missing tables" stopped with an SQL error (a column of 4.9 was missing) and left the database half set up.
+  Now the installer's content step says the database is older than 4.9 and offers to bring it to the structure of 4.9 (tick
+  "Bring the database to nuBuilder Forte 4.9", after the backup tick); Install does it as nuBuilder Forte's own update does –
+  missing tables and columns are added, the old views of 4.5 are replaced, no data is deleted – then adds the missing tables of
+  nuBuilder Next. "Set up the database" (a hand-written nuconfig.php) offers the same with the button "Bring to nuBuilder
+  Forte 4.9" instead of only explaining. The integrity check no longer lists 4.5's own views as a problem on such a database.
+- Code of nuBuilder Forte's system forms that reads $GLOBALS['nuSetup'] (the setup row) gets it, as in nuBuilder Forte.
+- Tested with the database of nuBuilder Forte 4.5.1 both ways (installer on the existing database, uploaded SQL dump): every
+  page of nuBuilder Next and every form of the database open without errors. Four of Forte 4.5's own system forms (run list,
+  table list of the report builder, CSV transfer, authentication) still need nuBuilder Forte's own update to 4.9.
+
+## 0.8.1417 – Audit columns switch in design mode
+- Design mode → Form settings → Data: new switch "Audit columns". It shows whether the server fills created_at /
+  created_by (new records) and updated_at / updated_by (changes) of the form's table on every save – so far this was an
+  invisible mark the New form wizard set for a new table. It can now be turned off, and turned on for an existing table
+  that has these columns. The (i) tip says which of the four columns the table has; without any of them the switch stays
+  off and greyed.
+
+## 0.8.1416 – Icons on the Excel tiles of the sample
+- Sample application, version 26: the start page tiles "Orders to Excel" and "Excel with chart" have icons like the other
+  tiles (an Excel file, a file with a bar chart). Refresh the sample on Settings → Sample data to get them.
+
+## 0.8.1415 – Menus without text selection
+- Menus no longer select their text on a long press: a long tap on an entry or the heading of a menu on a phone (the
+  start page's tile menu, the user menu, the ⋮ menus, the right-click menus of forms) used to mark its text and open the
+  phone's copy bar; fields inside a menu and the form info panel stay selectable.
+
+## 0.8.1414 – Browse list workspace stays open while editing
+- Design mode, Browse list of a list: changing a column's title, width, alignment or a list setting no longer reloads the
+  page after every field and throws you back to the list. The changes go into the draft right away; the list behind the
+  workspace is drawn again when you go back to the form. The focus stays on the field you moved to.
+
 ## 0.8.1413 – Release gate
 - Release gate: full test run (smoke, end-to-end, compatibility with nuBuilder Forte, installer wizard, security scan).
 - Documentation: Shown as in the New form wizard (tutorial), the debug icon (tutorial), points to verify.

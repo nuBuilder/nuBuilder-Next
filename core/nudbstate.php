@@ -62,17 +62,11 @@ final class NuDbState
 				: array_column($db->all("SELECT TABLE_NAME AS t FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE IN ('BASE TABLE', 'VIEW')"), 't')));
 			$out['missing'] = array_values(array_diff(self::required($db->type), $have));
 			if (!array_intersect(self::CORE, $have)) $out['state'] = 'empty';
-			elseif ($out['missing']) $out['state'] = 'partial';
-			elseif ($db->type === 'mysql') {
-				$cols = [];
-				foreach ($db->all('SELECT TABLE_NAME AS t, COLUMN_NAME AS c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME LIKE ?', ['zzzzsys\_%']) as $r) {
-					$cols[strtolower((string)$r['t'])][strtolower((string)$r['c'])] = true;
-				}
-				foreach (NuInstall::tables49() as $t => $defs) {
-					if (!isset($cols[$t])) continue;
-					foreach (array_keys($defs) as $c) if (!isset($cols[$t][strtolower($c)])) $out['columns'][] = $t . '.' . $c;
-				}
+			else {
+				// older than nuBuilder Forte 4.9 first: the install scripts of "partial" need 4.9's columns
+				$out['columns'] = NuInstall::missing49($db);
 				if ($out['columns']) $out['state'] = 'old';
+				elseif ($out['missing']) $out['state'] = 'partial';
 			}
 		} catch (Throwable $e) {
 			$out['error'] = $e->getMessage();          // no connection: index.php's error handling as before
@@ -90,9 +84,13 @@ final class NuDbState
 		nu_time_limit(600);
 		$db = nu_db();
 		$st = self::check();
-		if ($st['state'] === 'ok' || $st['state'] === 'old') throw new RuntimeException(t('dbs_err_not_needed'));
+		if ($st['state'] === 'ok' || ($st['state'] === 'old') !== ($choice === 'upgrade')) throw new RuntimeException(t('dbs_err_not_needed'));
 		$out = ['imported' => 0, 'upgraded' => null, 'steps' => []];
-		if ($choice === 'upload') {
+		if ($choice === 'upgrade') {                                   // an existing database of nuBuilder Forte before 4.9
+			$up = NuInstall::upgradeExisting($db);
+			$out['imported'] = $up['statements'];
+			$out['upgraded'] = $up;
+		} elseif ($choice === 'upload') {
 			if ($st['state'] !== 'empty' || $db->type !== 'mysql') throw new RuntimeException(t('dbs_err_not_needed'));
 			$ok = $dumpFile !== null && is_file($dumpFile) && filesize($dumpFile) > 0;
 			$chk = $ok ? NuInstall::checkDump(NuSqlImport::statements($dumpFile), true) : ['ok' => false, 'error' => t('ins_dump_err_none')];
@@ -106,7 +104,7 @@ final class NuDbState
 		$new = !NuSchema::present();
 		NuSchema::allow();
 		NuSchema::create();
-		NuInstall::setOrigin('nunext');
+		NuInstall::setOrigin($st['state'] === 'empty' ? 'nunext' : 'nubuilder');   // kept when it is set already
 		if ($new || $st['state'] === 'empty') NuSecurity::save(['record_check' => true, 'protect_fields' => true]);   // defaults of new installations
 		$out['steps'] = NuMigrate::run();
 		NuLog::write('db_setup', '', '', ['state' => $st['state'], 'choice' => $choice, 'statements' => $out['imported']]);

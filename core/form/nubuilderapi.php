@@ -281,7 +281,8 @@ final class NuBuilderApi
 						?? null) ? $in['fields'] : []) + NuUserHelp::formKeysIn(is_array($in['fields']
 						?? null) ? $in['fields'] : []) + NuRowDetails::keysIn(is_array($in['fields']
 						?? null) ? $in['fields'] : []) + NuCalendar::keysIn(is_array($in['fields'] ?? null) ? $in['fields'] : []) + NuRecycle::keysIn(is_array($in['fields']
-						?? null) ? $in['fields'] : []) + NuRecordView::keysIn(is_array($in['fields'] ?? null) ? $in['fields'] : []));
+						?? null) ? $in['fields'] : []) + NuRecordView::keysIn(is_array($in['fields'] ?? null) ? $in['fields'] : [])
+					+ NuFormMeta::auditIn(is_array($in['fields'] ?? null) ? $in['fields'] : []));
 				$store->commit('form.save');
 				$out();
 

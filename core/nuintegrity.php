@@ -83,8 +83,11 @@ final class NuIntegrity
 		self::check('tables', 'error', static function () use ($tables): array {
 			return array_values(array_filter(self::CORE, static fn($t) => !isset($tables[$t])));
 		});
-		self::check('views', 'error', static function () use ($tables, $pks): array {
-			return array_values(array_map(static fn($x) => $x['name'], array_filter($tables, static fn($x, $k) => $x['view'] && isset($pks[$k]), ARRAY_FILTER_USE_BOTH)));
+		// nuBuilder Forte 4.5's own views are no problem while the database is older than 4.9: the upgrade to 4.9 replaces them
+		$legacy = NuInstall::missing49($db) ? NuInstall::LEGACY_VIEWS : [];
+		self::check('views', 'error', static function () use ($tables, $pks, $legacy): array {
+			return array_values(array_map(static fn($x) => $x['name'], array_filter($tables, static fn($x, $k) => $x['view'] && isset($pks[$k]) && !in_array($k, $legacy, true),
+				ARRAY_FILTER_USE_BOTH)));
 		});
 		$readable = [];
 		self::check('unreadable', 'error', static function () use ($db, $tables, &$readable): array {

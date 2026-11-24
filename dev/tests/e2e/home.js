@@ -2794,3 +2794,19 @@ T.getting_ready_find_bad = async (s) => {               // 0.8.1405: red / amber
 	expect(reds < 2 || new Set(seen.map((x) => x)).size > 1, 'always the same point: ' + seen.join(','));
 	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
 };
+
+T.menu_no_select = async (s) => {                      // 0.8.1415: menus never select their text on a long press (fields in them still can)
+	const p = s.ga;
+	await open(p, 'index.php?p=home');
+	await p.click('[data-nu-tile="update"]', { button: 'right' });
+	await p.waitForTimeout(200);
+	const us = (sel) => p.$eval(sel, (a) => getComputedStyle(a).userSelect);
+	expect(await p.locator('.nuHomeCtx').count() === 1, 'no tile menu');
+	expect(await us('.nuHomeCtx .dropdown-item') === 'none', 'tile menu entry selectable');
+	if (await p.locator('.nuHomeCtxHead').count()) expect(await us('.nuHomeCtxHead') === 'none', 'tile menu head selectable');
+	await p.keyboard.press('Escape');
+	expect(await us('#nuUserMenu .dropdown-item, .nu-navbar .dropdown-menu .dropdown-item') === 'none', 'user menu entry selectable');
+	await p.fill('#nuHomeSearch', 'x');
+	expect(await us('#nuHomeSearch') !== 'none', 'search field not selectable');
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
