@@ -379,28 +379,46 @@
 		if (lang === 'JAVASCRIPT') lang = 'JS';
 		var ro = !!opt.readOnly;
 		if (PHRASES) cm.setOption('phrases', PHRASES);
+		// groups by purpose (option A of the canvas "Code editor toolbar"): write (Insert, #) · history · search · tidy & check · view (right)
 		var g = document.createElement('div');
-		g.className = 'btn-group nuCodeTools';
+		g.className = 'nuCodeTools';
 		g.setAttribute('role', 'toolbar');
+		var grp = function (cls) { var x = document.createElement('div'); x.className = 'btn-group nuCtGrp ' + cls; return x; };
+		var gWrite = document.createElement('div'); gWrite.className = 'nuCtGrp nuCtWrite';
+		var gHist = grp('nuCtHist'), gFindG = grp('nuCtSearch'), gTidy = grp('nuCtTidy'), gView = grp('nuCtView');
+		cm.nuCtWrite = gWrite;                                       // NuHashVars puts its # button here (next to Insert)
 		var bUndo = button('bi-arrow-counterclockwise', T.undo, 'nuCtUndo'), bRedo = button('bi-arrow-clockwise', T.redo, 'nuCtRedo');
 		var bFind = button('bi-search', T.find, 'nuCtFind'), bRepl = button('bi-arrow-left-right', T.replace, 'nuCtReplace');
 		var bComm = button('bi-chat-square-text', T.comment, 'nuCtComment'), bInv = button('bi-paragraph', T.invisibles, 'nuCtInvisibles');
 		var bFmt = button('bi-magic', T.format, 'nuCtFormat');
 		var bFull = button('bi-arrows-fullscreen', T.full, 'nuCtFull');
-		var items = (ro ? [bFind, bInv] : [bUndo, bRedo, bFind, bRepl, bComm, bInv].concat(LIBS[lang] ? [bFmt] : [])).concat(opt.noFull ? [] : [bFull]);
+		if (!ro) { gHist.appendChild(bUndo); gHist.appendChild(bRedo); }
+		gFindG.appendChild(bFind); if (!ro) gFindG.appendChild(bRepl);
+		if (!ro) { gTidy.appendChild(bComm); if (LIBS[lang]) gTidy.appendChild(bFmt); }
 		// Copy / Paste menu: on the editor's label, or – without one – a clipboard button in the toolbar
 		var ta = cm.getTextArea ? cm.getTextArea() : null;
 		var label = opt.label || (ta && ta.id ? document.querySelector('label[for="' + (window.CSS && CSS.escape ? CSS.escape(ta.id) : ta.id) + '"]') : null);
 		var bClip = label ? null : button('bi-clipboard', T.clip, 'nuCtClip');
-		if (bClip) items.splice(opt.noFull ? items.length : items.length - 1, 0, bClip);
-		items.forEach(function (b) { g.appendChild(b); });
+		if (bClip) gView.appendChild(bClip);
+		gView.appendChild(bInv);
+		if (!opt.noFull) gView.appendChild(bFull);
+		// ▶ Run (opt.run(cm), e.g. the browse SQL – nuruntime.js N.browseRun): its own group after tidy & check, Ctrl+Enter
+		var gRun = grp('nuCtRunG'), bRun = null;
+		if (typeof opt.run === 'function' && !ro) {
+			bRun = button('bi-play-fill', opt.runTitle || 'Run (Ctrl+Enter)', 'nuCtRun');
+			bRun.classList.add('nuCtRunBtn');
+			if (opt.runLabel) bRun.appendChild(elt('span', 'nuCtRunLabel ms-1', opt.runLabel));
+			bRun.addEventListener('click', function () { opt.run(cm); });
+			gRun.appendChild(bRun);
+		}
+		[gWrite, gHist, gFindG, gTidy, gRun, gView].forEach(function (x) { g.appendChild(x); });
 		host.appendChild(g);
 		clipMenu(cm, label || bClip, ro);
 		var fnLang = lang === 'PHP' || lang === 'JS' || lang === 'HTML';
 		var names = ro || opt.noNames ? null : nameHints(cm, lang, {formId: opt.formId, _fnHints: fnLang && !opt.noInsert});   // tables, columns, #
 		cm.nuNames = names;
-		var ins = ro || opt.noInsert ? null : insertTools(cm, host, lang, opt);   // Insert menu + suggestions while typing
-		var chk = CHECKS[lang] && !opt.noCheck ? checkTools(cm, g, lang, opt) : null;   // syntax check
+		var ins = ro || opt.noInsert ? null : insertTools(cm, gWrite, lang, opt);   // Insert menu + suggestions while typing
+		var chk = CHECKS[lang] && !opt.noCheck ? checkTools(cm, gTidy, lang, opt) : null;   // syntax check
 		if (!chk && cm.nuChk) cm.nuChk.off(lang);   // one CodeMirror, another language without a check (design mode: Browse SQL after JS)
 
 		var hist = function () { var h = cm.historySize(); bUndo.disabled = !h.undo; bRedo.disabled = !h.redo; };
@@ -463,6 +481,7 @@
 		if (!ro) {
 			keys['Ctrl-/'] = keys['Cmd-/'] = function () { if (cm.toggleComment) cm.toggleComment(); };
 			keys['Ctrl-H'] = function () { cm.execCommand('replace'); };
+			if (bRun) keys['Ctrl-Enter'] = keys['Cmd-Enter'] = function () { opt.run(cm); };
 			if (LIBS[lang]) keys['Shift-Alt-F'] = function () { applyFormat(cm, lang, opt.db, bFmt); };
 		}
 		if (opt.noFull) delete keys.F11;
@@ -1113,7 +1132,8 @@
 			var gut = (cm.getOption('gutters') || []).slice();
 			if (gut.indexOf('nuChkGutter') < 0) { gut.push('nuChkGutter'); cm.setOption('gutters', gut); }
 			cm.on('change', function () { clearTimeout(st.timer); st.timer = setTimeout(function () { run(false); }, st.lang === 'PHP' || st.lang === 'SQL' ? 1500 : 800); });
-			cm.on('swapDoc', function () { st.marks = []; run(false); });
+			// another document: its check runs once the caller has set its language (attach() right after swapDoc), never with the old one
+			cm.on('swapDoc', function () { st.marks = []; st.seq++; clearTimeout(st.timer); cm.clearGutter('nuChkGutter'); st.timer = setTimeout(function () { run(false); }, 0); });
 			cm.addKeyMap({'Shift-Alt-C': function () { run(true); }});
 		}
 		st.lang = lang;

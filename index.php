@@ -168,6 +168,7 @@ $routes = [
 	'sysinfo'     => ['json' => true],
 	'homeforms'   => ['json' => true],   // Home forms of the access levels, ▾ next to Home (NuHomeForms)   // System info dialog
 	'codecheck'   => ['json' => true],             // PHP syntax check of the code editors
+	'browserun'   => ['json' => true],             // run the browse SQL from its code editor (pages/nubrowserun.php)
 	'snippetlist' => ['json' => true],
 	'advsearch'   => ['json' => true],   // "My searches" of the advanced search of form lists (pages/nuadvsearch.php)   // code snippets of one code editor (pages/nusnippetlist.php)
 	'pivot'       => ['json' => true],   // pivot of a form list (pages/nupivot.php; GET fmt=xlsx|csv = file)
@@ -250,6 +251,7 @@ if (empty($routes[$p]['public'])) {
 		// back here after the login – for a form post or a background request: the page it came from
 		$next = nu_is_post() || !empty($routes[$p]['json']) || $pageJson ? NuAuth::nextFromReferer() : NuAuth::validNext('index.php?' . (string)($_SERVER['QUERY_STRING'] ?? ''));
 		if ($next !== null) NuAuth::setNext($next);
+		if (array_key_exists('redirect', $_GET) && !nu_is_post()) NuAuth::keepReturn((string)($_SERVER['HTTP_REFERER'] ?? ''));   // opened from another website: back there after the sign-in
 		if ($pageJson) NuPage::fail(401, 'login', t('login_session_timeout'), '', ['login' => NuAuth::loginUrl($next)]);
 		if (!empty($routes[$p]['json'])) {
 			http_response_code(401);

@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 define('NU_ROOT', dirname(__DIR__));
-define('NU_VERSION', '0.8.1420');
+define('NU_VERSION', '0.8.1437');
 // third-party code: vendor/bundled/ comes with nunext.zip (an update replaces it), vendor/packs/ = library packs (NuLibs,
 // an update never touches them). Bundled paths only through these constants.
 define('NU_VENDOR', 'vendor/bundled');
@@ -517,6 +517,15 @@ function nu_redirect(string $url): never
 		$fl = $_SESSION[NuSess::FLASH] ?? [];
 		$last = $fl ? end($fl) : null;
 		if ($last && $last[0] === 'success') $url = $then;
+	}
+	if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && preg_match('~^https?://~i', $url)) {
+		// another website after a form post (the sign-in with ?redirect): CSP form-action 'self' blocks a redirect there, so a page
+		// that moves on by itself (meta refresh) with a link as fallback
+		$e = htmlspecialchars($url, ENT_QUOTES, 'UTF-8');
+		header('Content-Type: text/html; charset=utf-8');
+		header('Cache-Control: no-store');
+		exit('<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=' . $e . '"><title>…</title></head>'
+			. '<body><p><a href="' . $e . '">' . $e . '</a></p></body></html>');
 	}
 	header('Location: ' . $url, true, 303);
 	exit;

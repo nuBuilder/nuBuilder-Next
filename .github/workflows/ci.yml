@@ -24,7 +24,7 @@ jobs:
       - run: npm install --no-save --prefix .. eslint@9.39.5 globals@15.14.0 && npx --prefix .. eslint -c dev/eslint.config.mjs assets/js
 
   # three MySQL-type servers × PHP 8.2 / 8.3: MySQL 8.4 differs from MariaDB in collation (utf8mb4_0900_ai_ci), SQL modes and the JSON
-  # type – the same installation, smoke test and self-test on each; the newer PHP versions 8.4 / 8.5 against MariaDB 11.4 only (they
+  # type – the same installation, smoke test and self-test on each; the newer PHP versions 8.4 / 8.5 / 8.6 against MariaDB 11.4 only (they
   # check PHP, the database differences are covered by the rows above)
   mysql:
     runs-on: ubuntu-latest
@@ -40,7 +40,10 @@ jobs:
           - { db: 'mysql:8.4', health: 'mysqladmin ping -h 127.0.0.1 -uroot -proot' }
           - { db: 'mariadb:11.4', php: '8.4', health: 'healthcheck.sh --connect' }
           - { db: 'mariadb:11.4', php: '8.5', health: 'healthcheck.sh --connect' }
+          # PHP 8.6: setup-php still installs a nightly build – a failure does not turn the run red until it lists 8.6 as Stable
+          - { db: 'mariadb:11.4', php: '8.6', health: 'healthcheck.sh --connect', nightly: true }
     name: mysql (${{ matrix.db }}, PHP ${{ matrix.php }})
+    continue-on-error: ${{ matrix.nightly == true }}
     services:
       database:
         image: ${{ matrix.db }}
@@ -52,6 +55,7 @@ jobs:
         with: { path: nunext }
       - uses: shivammathur/setup-php@v2
         with: { php-version: '${{ matrix.php }}', extensions: 'pdo_mysql, mbstring, zip, sodium, gd', coverage: none }
+      - run: php -v
       - run: git clone --depth 1 https://github.com/nuBuilder/nuBuilder.git nub && mv nunext nub/nunext
       # a new installation as the installer makes it: empty database → nuBuilder Forte's nubuilder4.sql through the database set-up
       # (NuDbState::setUp – brought to 4.9, own tables, origin 'nunext', database steps); the step fails unless the database is ready and

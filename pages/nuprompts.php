@@ -4,7 +4,7 @@ defined('NU_ROOT') || exit;
 
 /*
  * Prompt generator (zzzzsys_prompt_generator, nuBuilder's "Prompt Generator") – builds AI prompts with table schemas and
- * nuBuilder context for copying; nothing is sent to an AI. Rights of the form "nupromptgenerator" (globeadmin always).
+ * nuBuilder context for copying, or sent with "Ask AI" when an AI provider is set up. Rights of the form "nupromptgenerator" (globeadmin always).
  *   list · ?id=<id> | ?id=new edit (prefill: &table=…&scope=…&lang=…) · POST action=build → JSON {prompt, chars}
  */
 
@@ -87,8 +87,8 @@ nu_layout_start(t('pg_title'), 'forms', ['head' => $head]);
 	$err = static fn(string $k) => isset($errors[$k]) ? ' is-invalid' : '';
 	$fb  = static fn(string $k) => '<div class="invalid-feedback">' . h($errors[$k] ?? '') . '</div>';
 	$row = static function (string $k, string $label, string $control, bool $req = false): string {
-		return '<div class="row g-2 mb-3 align-items-start"><label class="col-sm-3 col-form-label text-sm-end" for="' . $k . '">' . h($label)
-			. ($req ? ' <span class="text-danger">*</span>' : '') . ($k === 'pge_code' ? nu_unique_mark($req) : '') . '</label><div class="col-sm-9">' . $control . '</div></div>';   // key: unique
+		return '<div class="mb-3"><label class="form-label" for="' . $k . '">' . h($label)
+			. ($req ? ' <span class="text-danger">*</span>' : '') . ($k === 'pge_code' ? nu_unique_mark($req) : '') . '</label>' . $control . '</div>';   // key: unique
 	};
 	$multi = static function (string $k, array $options, array $selected, string $extra = '') use ($err): string {
 		$h = '<select class="form-select pgMulti' . $err($k) . '" id="' . $k . '" name="' . $k . '[]" multiple placeholder="' . h(t('pg_select_ph')) . '"' . $extra . '>';
@@ -132,9 +132,9 @@ nu_layout_start(t('pg_title'), 'forms', ['head' => $head]);
 					<?= $row('pge_table', t('pg_tables'), $multi('pge_table', array_combine($tables, $tables) ?: [], NuPrompt::list($val['pge_table']), ' data-max="' . NuPrompt::MAX_TABLES . '"')
 						. '<div class="form-text">' . h(t('pg_tables_hint', NuPrompt::MAX_TABLES)) . '</div>') ?>
 					<hr class="mt-0">
-					<?= $row('pge_code', t('pg_code'), '<input class="form-control' . $err('pge_code') . '" id="pge_code" name="pge_code" maxlength="300" value="' . h((string)$val['pge_code']) . '" placeholder="' . h(t('pg_code_ph')) . '">' . $fb('pge_code'), true) ?>
-					<?= $row('pge_description', t('pg_description'), '<input class="form-control' . $err('pge_description') . '" id="pge_description" name="pge_description" maxlength="300" value="' . h((string)$val['pge_description']) . '">' . $fb('pge_description')) ?>
-					<?= $row('pge_template', t('pg_template'), '<div class="form-check form-switch mt-2"><input class="form-check-input" type="checkbox" role="switch" id="pge_template" name="pge_template" value="1"' . ((string)$val['pge_template'] === '1' ? ' checked' : '') . '>'
+					<div class="row g-3"><div class="col-sm-6"><?= $row('pge_code', t('pg_code'), '<input class="form-control' . $err('pge_code') . '" id="pge_code" name="pge_code" maxlength="300" value="' . h((string)$val['pge_code']) . '" placeholder="' . h(t('pg_code_ph')) . '">' . $fb('pge_code'), true) ?></div>
+					<div class="col-sm-6"><?= $row('pge_description', t('pg_description'), '<input class="form-control' . $err('pge_description') . '" id="pge_description" name="pge_description" maxlength="300" value="' . h((string)$val['pge_description']) . '">' . $fb('pge_description')) ?></div></div>
+					<?= $row('pge_template', t('pg_template'), '<div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" id="pge_template" name="pge_template" value="1"' . ((string)$val['pge_template'] === '1' ? ' checked' : '') . '>'
 						. '<label class="form-check-label small text-body-secondary" for="pge_template">' . h(t('pg_template_hint')) . '</label></div>') ?>
 				</fieldset>
 			</div>
@@ -149,11 +149,28 @@ nu_layout_start(t('pg_title'), 'forms', ['head' => $head]);
 						<div class="d-flex flex-wrap gap-2 align-items-center mt-2">
 							<button class="btn btn-primary" type="button" id="pgCopy"><i class="bi bi-clipboard me-1"></i><span><?= h(t('pg_copy')) ?></span></button>
 							<?= nu_ai_context_menu('pgCtx', 'pg_ctx_tip') ?>
-							<span class="small text-body-secondary w-100"><i class="bi bi-shield-lock me-1"></i><?= h(t('pg_result_hint')) ?></span>
-							<?php if (($pgAsk = NuAiProvider::host('prompt', 'pgAsk', 'w-100')) !== ''): ?><?= $pgAsk ?>
-								<div class="w-100" id="pgAnswerBox" hidden><label class="form-label small fw-semibold mb-1" for="pgAnswer"><?= h(t('aip_answer')) ?></label>
-									<textarea class="form-control font-monospace small" id="pgAnswer" rows="14" readonly></textarea>
-									<button class="btn btn-sm btn-outline-secondary mt-2" type="button" id="pgAnswerCopy" data-nu-copy="#pgAnswer"><i class="bi bi-clipboard me-1"></i><?= h(t('copy')) ?></button></div>
+							<?php $pgAsk = NuAiProvider::host('prompt', 'pgAsk', 'w-100'); ?>
+							<?php if ($pgAsk === ''): /* "sent nowhere" – only while Ask AI is not offered */ ?>
+								<span class="small text-body-secondary w-100"><i class="bi bi-shield-lock me-1"></i><?= h(t('pg_result_hint')) ?></span><?php endif; ?>
+							<?php if ($pgAsk !== ''): ?>
+								<div class="w-100 pgAskOpts d-flex flex-wrap align-items-center gap-2">
+									<div class="form-check mb-0"><input class="form-check-input" type="checkbox" id="pgAskCtx">
+										<label class="form-check-label small" for="pgAskCtx"><?= h(t('pg_ask_ctx')) ?></label></div><?= nu_info_tip(t('pg_ask_ctx_tip'), 'ms-0', true, '', 'prompts-ask') ?>
+									<span class="small text-body-secondary" id="pgAskCtxSize" aria-live="polite" data-size="<?= h(t('pg_ask_ctx_size')) ?>"
+										data-loading="<?= h(t('loading')) ?>"></span>
+								</div>
+								<?= $pgAsk ?>
+								<div class="w-100" id="pgAnswerBox" hidden>
+									<div class="d-flex align-items-center gap-2 mb-1"><span class="small fw-semibold me-auto"><?= h(t('aip_answer')) ?></span>
+										<button class="btn btn-sm btn-outline-secondary" type="button" id="pgAnswerCopy" data-nu-copy="#pgAnswer"><i class="bi bi-clipboard me-1"></i><?= h(t('pg_copy_all')) ?></button></div>
+									<div class="pgAnswerView" id="pgAnswerView" tabindex="0" aria-label="<?= h(t('aip_answer')) ?>" data-copy="<?= h(t('copy')) ?>" data-copied="<?= h(t('pg_copied')) ?>"></div>
+									<textarea class="d-none" id="pgAnswer" readonly aria-hidden="true" tabindex="-1"></textarea>
+								</div>
+							<?php elseif (NuAdmin::can('aiproviders', 'change')): ?>
+								<div class="w-100 d-flex flex-wrap align-items-center gap-2 small" id="pgAskSetup">
+									<button class="btn btn-sm btn-primary" type="button" disabled><i class="bi bi-stars me-1"></i><?= h(t('aip_ask')) ?></button>
+									<a href="<?= h(nu_url('aiproviders')) ?>"><?= h(t('pg_ai_setup')) ?></a>
+								</div>
 							<?php endif; ?>
 							<span class="small w-100" id="pgCtxMsg" aria-live="polite" data-done="<?= h(t('fai_ctx_done')) ?>" data-failed="<?= h(t('fai_ctx_failed')) ?>"></span>
 						</div>

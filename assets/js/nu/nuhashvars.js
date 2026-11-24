@@ -25,7 +25,8 @@
 			el('div', {'class': 'small text-body-secondary mb-1', text: cat.hint || ''}), search, list]);
 		wrap.appendChild(btn);
 		wrap.appendChild(menu);
-		host.appendChild(wrap);
+		// next to Insert in the editor's toolbar (nucodetools.js groups), else where the page asked
+		(cm && cm.nuCtWrite && document.contains(cm.nuCtWrite) ? cm.nuCtWrite : host).appendChild(wrap);
 		var dd = nuBs.dropdown(btn);
 
 		var groups = (cat.groups || []).slice();

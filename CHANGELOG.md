@@ -3,6 +3,92 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.1437 – Release gate
+- Release gate: full test run (smoke, end-to-end, compatibility with nuBuilder Forte, installer wizard, OWASP ZAP);
+  documentation brought up to date (features list, help on labels of record forms, verify list).
+
+## 0.8.1436 – Debug icon: Delete all
+- Debug icon of the top bar: "Delete all" in the panel (for users who may delete Debug results) asks once, then
+  empties the Debug results and hides the icon – no detour through Log → Debug.
+
+## 0.8.1435 – Prompt generator: Ask AI with context, formatted answer
+- Prompt generator, Ask AI: a tick box "Include the context file" sends the context file (functions, hash variables
+  and the chosen tables of this installation) in front of the prompt; its size and an estimate of the tokens show
+  next to it before you send. The choice is remembered in the browser.
+- The answer is shown formatted (headings, lists, tables, code) with a Copy button on every code block, and Copy all
+  for the whole answer. Nothing of the answer is stored.
+- Without an AI provider, administrators who may set one up see a greyed Ask AI with a link to AI providers; the
+  note "sends it nowhere" shows only while Ask AI is not offered.
+
+## 0.8.1434 – Labels on top
+- Prompt generator, files, permission items and translations: field labels sit above the fields, as on every
+  other page (they stood on the left). On the prompt generator Code and Description share one row; the item's
+  Active tick box has its label next to it.
+
+## 0.8.1433 – Lookups as one control
+- Lookups look like one field: code, search button and description share one border and its rounded corners, at the
+  height of the other fields (in grid layouts the lookup was smaller); the description keeps the light read-only fill,
+  and the focus ring goes around the whole lookup.
+
+## 0.8.1432 – Run the browse SQL
+- Browse SQL: ▶ Run in its code editor (design mode Code and the list's side pane, also Ctrl+Enter) runs the SQL as written –
+  saved or not – read only, with the hash variables filled as on the list. A window shows the rows with paging (10–100 per
+  page, at most 1,000 rows), the number of rows and the time, all columns or only the list's, Copy as CSV and the SQL as
+  run. An error is shown there and puts the cursor on its line. Only one SELECT / WITH; only for those who may design the form.
+
+## 0.8.1431 – Code editor toolbar in groups
+- Code editors: the toolbar buttons are grouped by purpose – Insert and # first, then undo / redo, search / replace,
+  comment / format / check, and copy, spaces and full screen at the end (at the right end where there is room).
+
+## 0.8.1430 – Code parts without flashing marks
+- Design mode, Code: switching between the code parts (e.g. CSS → PHP After Save) no longer flashes error marks for a
+  moment – the syntax check of the newly shown part ran once in the previous part's language.
+
+## 0.8.1429 – Column menu copies the column id
+- Lists: the head of a column title's right-click menu now shows and copies the column's id (as in nuBuilder Forte),
+  not the id of the title element. The title cell also carries nuBuilder Forte's attribute data-nu-title-id.
+
+## 0.8.1428 – Edit translations from the form table
+- Translations of one form: an existing translation in the table is now a link – click it to change the translation;
+  Save brings you back to the table. nuBuilder Forte's own translations open read-only with Override, as before.
+
+## 0.8.1427 – Section buttons only when needed
+- Design mode: the section buttons at the top of the properties panel are hidden while every section fits without
+  scrolling (e.g. a wide panel). When some sections are folded and everything fits, only the "unfold all" button stays.
+
+## 0.8.1426 – Resizable design panel
+- Design mode: the properties panel on the right can be made wider by dragging its left edge (also with ← / → on the edge;
+  a double-click gives the standard width back). The width is kept in this browser, 320 px up to 60 % of the window.
+  From about 620 px the panel's sections flow into two columns, so much more fits without scrolling.
+
+## 0.8.1425 – Labels not selectable
+- Labels of record forms can no longer be selected (as in nuBuilder Forte), so double clicks and drags do not mark them.
+  The globeadmin and users who may design the form can still select and copy them.
+
+## 0.8.1424 – Back to the referring website after sign-in
+- Back to another website after the sign-in: a link with `&redirect` (e.g. `index.php?p=home&redirect`) opened while not signed
+  in keeps the browser's Referer – the page the link was on – and opens it again after the sign-in (password, two-step login,
+  passkey, single sign-on). Only http / https addresses of another website count, kept for 30 minutes; each return is logged.
+  Browsers often name only the website, not the page. Users who are already signed in stay in nuBuilder Next.
+- A redirect to another website after a form post is now a page that moves on by itself – the page's security rules
+  (CSP form-action) stopped a direct redirect there.
+
+## 0.8.1423 – View mode without flicker
+- View mode: stepping to the next or previous record (and records that open in view mode by themselves) no longer shows the
+  edit form for a moment before the data sheet appears – the page stays hidden until the sheet covers it.
+
+## 0.8.1422 – View mode bar as wide as the sheet
+- View mode of records: the bar's controls line up with the edges of the data sheet instead of the window's – on a wide screen
+  the previous / next arrows and Edit no longer sit far away on the right. The badge and the "Always open in view mode" switch
+  are on the left; the arrows and the position form one group next to Edit, which is now the main (blue) button.
+
+## 0.8.1421 – PHP 8.6 in CI
+- CI tests PHP 8.6 too: a row MariaDB 11.4 × PHP 8.6. While the PHP set-up of the CI still installs a nightly build of 8.6,
+  a failure of this row is shown but does not fail the run; each job prints its PHP version (`php -v`).
+- The unit tests refuse the functions PHP 8.6 deprecates (is_double, is_integer, is_long, doubleval, strcoll, metaphone,
+  spl_classes, spl_object_hash, mysqli_get_charset, SORT_LOCALE_STRING, the CSV methods of SplFileObject, mysqli's
+  get_charset / stmt_init) – nuBuilder Next's own code uses none of them.
+
 ## 0.8.1420 – Release gate
 - Release gate: smoke, end-to-end, compatibility, installer wizard (also an existing database of nuBuilder Forte 4.5) and
   security scan.

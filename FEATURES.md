@@ -37,16 +37,16 @@ page) for how to use it.
 
 ## For building applications
 
-- **Debug icon** – a red bug with a count appears in the top bar as soon as new Debug results are written (form code errors, failing queries, nuDebug()); a click lists the newest, *Mark as read* hides it
+- **Debug icon** – a red bug with a count appears in the top bar as soon as new Debug results are written (form code errors, failing queries, nuDebug()); a click lists the newest, *Mark as read* hides it, *Delete all* empties the Debug results
 - **Form designer** – design a form where it runs: drag and arrange objects, a properties panel for every object type, the
   list's columns and settings right on the list, responsive layouts for phones (grid rows that always fit), tabs (with unique names), events and code in one place;
   *Properties…* in an object's right-click menu opens it selected in design mode; the properties panel has section chips that stay
   at the top (jump, fold / unfold all, one-line summaries of folded sections); *Set order by position* sorts the tab order by where
   the objects are (rows or columns, content boxes kept together); a selected content box keeps its objects visible and moves them
   along; *Discard* only while the draft holds changes; the switch *Audit columns* (Form settings → Data) shows and sets whether the server fills
-  created_at / created_by / updated_at / updated_by.
+  created_at / created_by / updated_at / updated_by; the properties panel can be dragged wider (two columns of sections from about 620 px).
 - **A list's design in a side pane** – browse SQL, PHP (Before Browse), JavaScript, columns with all their settings, row details and list settings next to the running list;
-  *As run* shows the SQL the list really ran, hash variables filled in and unset ones marked.
+  *As run* shows the SQL the list really ran, hash variables filled in and unset ones marked; *▶ Run* (Ctrl+Enter) runs the SQL in the editor, also unsaved, and shows the rows with paging.
 - **A form's code beside the record** – every JavaScript, CSS and PHP event of a form in a side pane on the record (Ctrl+Shift+B), grouped in cards, saved in one go;
   a label in the pane's title says where Save goes (Live, Draft, Not published yet, Live – draft open, Draft needed).
 - **Form info** – the form's details in section cards (form, data, list, record), description and code changed right in the panel.
@@ -76,7 +76,8 @@ page) for how to use it.
   with a query written by the AI; earlier layouts are kept and can be restored.
 - **AI providers** – configurations for Claude, OpenAI-compatible services (also local models) and Gemini; the AI dialogues then offer
   "Ask AI": prompt sent from the server, answer checked with one automatic correction round; per configuration access levels or a
-  password that also encrypts the API key, a monthly token limit and a usage list.
+  password that also encrypts the API key, a monthly token limit and a usage list. The prompt generator sends its prompt directly too –
+  optionally with the context file – and shows the answer formatted, with Copy on each code block.
 - **Help pages for your users** – write help in the browser (visual editor or Markdown), open it from a form, a tab or a
   field in a side panel (link a page to forms right from its editor); whole pages or parts of a page only for some access levels, translations, search, export / import;
   drafted with AI in any installed language.

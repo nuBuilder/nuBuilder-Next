@@ -112,6 +112,14 @@ final class NuRecordView
 			. '<i class="bi bi-eye me-1" aria-hidden="true"></i>' . h(t('view')) . '</button>';
 	}
 
+	/** Will the page open in view mode by itself (?view=1, or "Always open in view mode" of $key without ?view=0)? */
+	public static function pending(string $key): bool
+	{
+		$v = (string)($_GET['view'] ?? '');
+		if ($v === '1') return true;
+		return $v !== '0' && self::validKey($key) && self::first($key);
+	}
+
 	public static function script(): string
 	{
 		return '<script src="' . nu_asset('assets/js/nuview.js') . '"></script>';

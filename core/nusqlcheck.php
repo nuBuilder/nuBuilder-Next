@@ -92,7 +92,7 @@ final class NuSqlCheck
 	}
 
 	/** The database's own message without driver prefixes ("SQLSTATE[42000]: Syntax error or access violation: 1064 …"). */
-	private static function message(PDOException $e): string
+	public static function message(PDOException $e): string
 	{
 		$m = (string)($e->errorInfo[2] ?? '') !== '' ? (string)$e->errorInfo[2] : $e->getMessage();
 		$m = (string)preg_replace('/^(SQLSTATE\[\w+\]:?\s*)?(\[[^\]]*\]\s*)*/', '', $m);   // also "[Microsoft][ODBC Driver 17 for SQL Server][SQL Server]" alone

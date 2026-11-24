@@ -865,8 +865,9 @@ T.proc_tools_one_row_phone = async (s) => {
 	try {
 		await p.setViewportSize({ width: 360, height: 780 });
 		await open(p, 'index.php?p=procedures&id=new');
-		const tops = await p.evaluate(() => [...document.querySelector('.procCodeTools[data-for=sph_php]').children].map(c => Math.round(c.getBoundingClientRect().top)));
-		expect(tops.length === 3 && tops.every(t => t === tops[0]), 'tools wrap: ' + JSON.stringify(tops));
+		// every button of the toolbar (groups: Insert + #, history, search, tidy & check, view) in one row
+		const tops = await p.evaluate(() => [...document.querySelectorAll('.procCodeTools[data-for=sph_php] button')].filter(b => b.offsetParent).map(c => Math.round(c.getBoundingClientRect().top)));
+		expect(tops.length >= 10 && tops.every(t => Math.abs(t - tops[0]) <= 2), 'tools wrap: ' + JSON.stringify(tops));
 	} finally { await p.setViewportSize(vp); }
 };
 
@@ -960,4 +961,17 @@ T.code_replace_button = async (s) => {
 	} finally {
 		await p.setViewportSize(vp);
 	}
+};
+
+// code editor toolbar in groups by purpose: Insert + # · undo / redo · find / replace · comment / format / check · copy / invisibles / full screen
+T.code_toolbar_groups = async (s) => {
+	const p = s.ga;
+	await open(p, 'index.php?p=procedures&id=new');
+	const g = await p.evaluate(() => {
+		const tb = document.querySelector('.procCodeTools[data-for=sph_php] .nuCodeTools');
+		return tb ? [...tb.children].filter(x => x.offsetParent).map(x => [...x.querySelectorAll('button')].map(b => b.className.match(/nuCt\w+|nuHashVarsBtn/) ? b.className.match(/nuCt\w+|nuHashVarsBtn/)[0] : '?').join(' ')) : null;
+	});
+	expect(g && g[0] === 'nuCtInsert nuHashVarsBtn' && g[1] === 'nuCtUndo nuCtRedo' && g[2] === 'nuCtFind nuCtReplace'
+		&& /^nuCtComment nuCtFormat nuCtCheck$/.test(g[3]) && /nuCtInvisibles nuCtFull$/.test(g[4]), 'groups: ' + JSON.stringify(g));
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
 };

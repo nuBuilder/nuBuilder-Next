@@ -1,6 +1,7 @@
 # Run order of the e2e tests (code review L6: the order of e2e.js before the split). Tests not listed run after these, in file
 # order; logout always runs last. A new test needs no line here.
 login_refused
+login_redirect_referer
 form_insert
 form_required
 form_unique
@@ -111,6 +112,8 @@ design_live_gap_menu
 design_attr_editor_save
 design_rights_safe
 design_code_history
+design_code_switch_nomarks
+browse_sql_run
 design_props_tools
 design_list
 design_shortcuts
@@ -504,6 +507,7 @@ start_page_forte
 file_manager_edit_nokbd
 procedures_search_code
 proc_tools_one_row_phone
+code_toolbar_groups
 sample_changes
 edit_js_wait
 getting_ready
@@ -522,6 +526,7 @@ design_order_by_pos
 design_box_select
 design_discard_empty
 design_panel_chips
+design_panel_resize
 external_user
 phone_card_clamp
 nav_home_phone_pair
@@ -576,6 +581,9 @@ phone_table_head_first_col
 list_hscroll_keep
 record_view_mode
 record_view_first
+record_view_bar_aligned
+record_view_no_flicker
 runphp_page
 forum_compat
+labels_no_select
 logout

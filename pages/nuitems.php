@@ -96,8 +96,8 @@ nu_layout_start(t('item_title'), 'forms', ['head' => $head]);
 	$active = nu_is_post() ? nu_check('itm_active') === '1' : (($item ?? $src) ? (string)($item ?? $src)['itm_active'] !== '0' : true);
 	$dt = static fn($x) => $x ? date(nu_dfmt('d.m.Y H:i:s'), strtotime((string)$x)) : '';
 	$row = static function (string $k, string $label, string $control, bool $req = false) {
-		return '<div class="row g-2 mb-3 align-items-start"><label class="col-sm-3 col-form-label text-sm-end" for="' . $k . '">' . h($label)
-			. ($req ? ' <span class="text-danger">*</span>' : '') . '</label><div class="col-sm-9">' . $control . '</div></div>';
+		return '<div class="mb-3"><label class="form-label" for="' . $k . '">' . h($label)
+			. ($req ? ' <span class="text-danger">*</span>' : '') . '</label>' . $control . '</div>';
 	};
 	?>
 	<form method="post" data-nu-focus-first data-nu-guard id="itemForm"<?= $src ? ' data-nu-clone="' . h(t('form_clone_badge')) . '"' : '' ?> novalidate>
@@ -147,7 +147,7 @@ nu_layout_start(t('item_title'), 'forms', ['head' => $head]);
 					<?= $row('itm_additional1', t('item_additional1'), '<input class="form-control" id="itm_additional1" name="itm_additional1" value="' . h($v('itm_additional1')) . '">') ?>
 					<?= $row('itm_additional2', t('item_additional2'), '<textarea class="form-control' . $err('itm_additional2') . '" id="itm_additional2" name="itm_additional2" rows="6" maxlength="2000">' . h($v('itm_additional2')) . '</textarea>' . $fb('itm_additional2')) ?>
 					<?= $row('itm_notes', t('item_notes'), '<textarea class="form-control' . $err('itm_notes') . '" id="itm_notes" name="itm_notes" rows="3" maxlength="2000">' . h($v('itm_notes')) . '</textarea>' . $fb('itm_notes')) ?>
-					<?= $row('itm_active', t('item_active'), '<div class="form-check mt-2"><input class="form-check-input" type="checkbox" id="itm_active" name="itm_active" value="1"' . ($active ? ' checked' : '') . '></div>') ?>
+					<div class="form-check mb-3"><input class="form-check-input" type="checkbox" id="itm_active" name="itm_active" value="1"<?= $active ? ' checked' : '' ?>><label class="form-check-label" for="itm_active"><?= h(t('item_active')) ?></label></div>
 				</div>
 				<div class="tab-pane fade<?= $tab === 'additional' ? ' show active' : '' ?>" id="itemAdditional" role="tabpanel">
 					<?= $row('itm_css', t('item_css'), '<input class="form-control' . $err('itm_css') . '" id="itm_css" name="itm_css" maxlength="100" value="' . h($v('itm_css')) . '">' . $fb('itm_css')) ?>

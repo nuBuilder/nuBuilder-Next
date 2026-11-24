@@ -51,6 +51,14 @@
 		<li>The globeadmin can reset a user's two-step login (lost phone) in the user form.</li>
 		<li>With <a href="#ip-access">IP access</a> switched on, every method – password, passkey, auto-login link, one-time login link, single sign-on – is refused from an address the user's access levels do not allow, and a running session ends when its address is no longer allowed.</li>
 	</ul>
+	<h3 id="signin-redirect">Back to another website after the sign-in</h3>
+	<p>A link on another website (an intranet, a portal) can send users back there once they have signed in: add <code>&amp;redirect</code> to the address, for example <code>index.php?p=home&amp;redirect</code>. When the user is not signed in yet, nuBuilder Next keeps the address the browser names as the page the link was on (the Referer) and opens it after the sign-in – with every sign-in method.</p>
+	<ul>
+		<li>Only http / https addresses of another website count; a page of nuBuilder Next itself is ignored. The address is kept for 30 minutes.</li>
+		<li data-level="detail">Browsers usually name only the website, not the page (<code>https://intranet.example/</code>), and some name nothing (links with <code>rel="noreferrer"</code>, privacy settings) – then the sign-in ends on the start page as usual. The other website can send the full address with the header <code>Referrer-Policy: no-referrer-when-downgrade</code> or <code>unsafe-url</code>.</li>
+		<li data-level="detail">A user who is already signed in stays in nuBuilder Next. Each return is written to the log (event <em>Back to the referring website after sign-in</em>).</li>
+		<li>Any website can link this way, so users may be sent back to a site you do not know – keep it in mind before you hand out such links.</li>
+	</ul>
 	<p>Internals: <a href="#sessions-arch">Sessions and sign-in flow</a>. Checks of all these settings: <a href="#security-check">Security check</a>.</p>
 </div>
 	<p class="doc-see">See also: <a href="#sessions-arch">Sessions and sign-in flow</a> · <a href="#security">Your password and two-step login</a> · <a href="#password-policy">Password policy</a></p>

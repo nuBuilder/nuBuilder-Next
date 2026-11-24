@@ -856,6 +856,7 @@ html.nuPvOnly .nuPvDlg { background: var(--bs-body-bg); }
 }
 /* object menu on phones: a long press on a label opens the menu, not a text selection with the browser's search sheet */
 @media (pointer: coarse) { #nuEditForm label[id^="label_"] { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; } }
+body.nuLabelNoSelect #nuEditForm label[id^="label_"] { -webkit-user-select: none; user-select: none; }   /* pages/nuform.php: not for designers */
 
 /* read-only / disabled fields, "quiet surface" (the owner picked option A of the mockup): soft tinted fill, no border,
    the value in full contrast and a small lock at the right (calc fields: "="); a disabled select loses its arrow. Only real
@@ -1091,3 +1092,25 @@ html.nuPhoneCards #nuBrowseTable > tbody > tr.nuBrowseRow > td.nuCellTd:has(> .n
 .toast.nuPhpWarn { width: min(34rem, calc(100vw - 2rem)); }
 .toast.nuPhpWarn .toast-body { white-space: pre-line; overflow-wrap: anywhere; font-size: .8125rem; }
 .toast.nuPhpWarn .btn-close { filter: none; }
+
+/* result window of ▶ Run in the browse SQL editors (nuruntime.js N.browseRun) */
+.nuBrunTable td, .nuBrunTable th { white-space: nowrap; font-size: .8125rem; }
+.nuBrunTable td { font-family: var(--bs-font-monospace); max-width: 28rem; overflow: hidden; text-overflow: ellipsis; }
+.nuBrunTable td.nuBrunNull { color: var(--bs-secondary-color); font-style: italic; }
+.nuBrunWrap { max-height: min(60vh, 34rem); }
+.nuBrunBusy .modal-body { opacity: .55; pointer-events: none; }
+.nuBrunSql { white-space: pre-wrap; word-break: break-word; background: var(--bs-tertiary-bg); border-radius: .375rem; padding: .5rem .75rem; max-height: 12rem; overflow: auto; }
+
+/* lookups as ONE control (option A of the canvas "Lookup description field"): code · search · description share one border and
+   its rounded corners, same height; the description part keeps the quiet read-only fill; the focus ring goes around the whole */
+.nuEditForm .nuLookupGroup > :is(input.nuLookupCode, .nuLookupButton, input.nuLookupDescription) { border-color: var(--bs-border-color); }
+.nuEditForm .nuLookupGroup > input.nuLookupDescription { background-color: var(--nu-ro-bg); color: var(--bs-secondary-color); cursor: default; }
+.nuEditForm .nuLookupGroup > .nuLookupButton { --bs-btn-bg: var(--bs-body-bg); --bs-btn-color: var(--bs-secondary-color); --bs-btn-hover-bg: var(--bs-tertiary-bg);
+	--bs-btn-hover-color: var(--bs-body-color); --bs-btn-hover-border-color: var(--bs-border-color); }
+.nuEditForm .nuLookupGroup > .nuLookupButton:has(+ .nuLookupDescription.d-none) { border-top-right-radius: var(--bs-border-radius-sm); border-bottom-right-radius: var(--bs-border-radius-sm); }
+.nuEditForm .nuLookupGroup:focus-within { border-radius: var(--bs-border-radius-sm); box-shadow: 0 0 0 .2rem rgba(var(--bs-primary-rgb), .2); }
+.nuEditForm .nuLookupGroup > :is(input, .btn):focus { box-shadow: none; z-index: 3; }
+.nuEditForm .nuLookupGroup > input.nuLookupCode:focus { border-color: var(--bs-border-color); }
+/* grid / auto layouts: as tall as the other fields (input-group-sm made it smaller); absolute layouts keep their own heights */
+.nuEditForm .nuLookupGroup:not(.nuAbs .nuLookupGroup, .nuSubformTable .nuLookupGroup) > :is(input.form-control, .btn) { padding: .375rem .75rem; font-size: 1rem; line-height: 1.5; }
+.nuEditForm .nuLookupGroup:not(.nuAbs .nuLookupGroup, .nuSubformTable .nuLookupGroup) > .btn { padding-left: .65rem; padding-right: .65rem; }

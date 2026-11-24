@@ -177,6 +177,8 @@ $codePane = static function () use ($meta): array {
 		'error' => t('form_error'), 'resize' => t('bsq_resize'), 'code_has' => t('code_has'),
 		'groups' => ['js' => t('bsq_tab_js'), 'style' => t('ecp_grp_style'), 'php' => t('bsq_tab_php'), 'list' => t('ecp_grp_list')]]];
 };
+const NU_BRUN_TEXTS = ['title', 'ro', 'list_only', 'rows', 'prev', 'next', 'none', 'rows_of', 'rows_range', 'capped', 'n_rows', 'line', 'failed',
+	'csv', 'show_sql', 'copied', 'run', 'run_tip'];   // texts brun_* of the result window
 const NU_BSQ_TEXTS = ['ds_list_settings', 'builder_rows_per_page', 'ds_list_rowh', 'ds_list_rowh_tip', 'ds_list_target', 'ds_list_target_0',
 	'ds_list_target_1', 'ds_list_target_2', 'ds_list_target_3', 'builder_redirect', 'ds_list_multi', 'ds_list_autofit', 'builder_sec_columns', 'builder_col_title',
 	'builder_col_display', 'builder_col_width', 'builder_col_align', 'ds_col_hidden', 'ds_col_show', 'ds_col_left', 'ds_col_right', 'delete', 'ds_list_nocols',
@@ -225,6 +227,9 @@ $client = [
 		'm' => ['title' => t('builder_browse_sql'), 'hint' => t('bsq_hint'),
 		'save' => t('save'), 'close' => t('close'), 'unsaved' => t('bsq_unsaved'), 'pin' => t('bsq_pin'), 'error' => t('form_error'), 'resize' => t('bsq_resize')]
 		+ array_combine(NU_BSQ_TEXTS, array_map('t', NU_BSQ_TEXTS))] : null,
+	// ▶ Run of the browse SQL editors (pages/nubrowserun.php, nuruntime.js N.browseRun): those who may design the form
+	'browse_run' => ($browseSqlEdit || $design) && NuDesign::allowed($meta) ? ['url' => nu_url('browserun'),
+		'm' => array_combine(NU_BRUN_TEXTS, array_map(static fn($k) => t('brun_' . $k), NU_BRUN_TEXTS)) + ['close' => t('close')]] : null,
 	'save_target' => $codeEdit || $browseSqlEdit ? NuFormDraft::saveTarget($meta->id) : null,   // label in the title of the code side panels
 	'code_pane' => $codeEdit ? $codePane() : null,                            // Design ▾ → Code on edit forms
 	'base' => 'index.php', 'csrf' => nu_csrf_token(), 'bt' => $bt, 'mode' => $mode, 'iframe' => $iframe, 'rdv' => $rdView, 'lookup' => $lookupTo,
@@ -568,6 +573,12 @@ $foot = '<script>window.nuNext = ' . json_encode($client, JSON_HEX_TAG | JSON_HE
 		. '<script src="' . nu_asset('assets/js/nuaiask.js') . '"></script><script src="' . nu_asset('assets/js/nu/nudesign.js') . '"></script>' : '')
 	;
 
+// labels of the form cannot be selected, as in nuBuilder Forte – except for those who may design the form (copy an object's label)
+if ($mode === 'edit' && !NuDesign::allowed($meta)) nu_body_class('nuLabelNoSelect');
+// view mode that opens by itself: the page stays hidden until the sheet covers it (no glimpse of the edit form)
+if ($mode === 'edit' && !$client['is_new'] && $meta->type() !== 'launch' && !$bare && !$design && empty($printMode) && NuRecordView::pending($meta->id)) {
+	nu_body_class('nuRvPending');
+}
 nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategroy' ? 'notes' : 'forms',
 	['head' => $head, 'bare' => $bare, 'nu_form' => [$mode, (string)$meta->form['sfo_code']], 'container' => 'container-fluid nuFormContainer',
 		// nuLookupPage = the lookup's list only: a record opened from it (+) keeps its header with Save
@@ -866,7 +877,7 @@ if (!$bare && in_array($formStatus, [NuFormStatus::MAINT, NuFormStatus::ARCHIVED
 						$link = nu_url('form', ['sort' => $c['index'], 'dir' => $nextDir] + $keep);
 					?>
 						<th scope="col" id="nuBrowseTitle<?= (int)$c['index'] ?>" class="nuBrowseTitle text-<?= ['l' => 'start', 'c' => 'center', 'r' => 'end'][$c['align']] ?? 'start' ?>"
-							data-nu-col="<?= (int)$c['index'] ?>" data-nu-browse-id="<?= h($c['id']) ?>"
+							data-nu-col="<?= (int)$c['index'] ?>" data-nu-browse-id="<?= h($c['id']) ?>" data-nu-title-id="<?= h($c['id']) ?>"
 								style="<?= $hidden ? 'display:none;' : 'width:' . (int)($bw[$c['index']] ?? (int)$c['width'] + NU_BROWSE_CELL_PAD) . 'px;' ?>"<?= $isSort ? ' aria-sort="' . ($state['dir'] === 'asc' ? 'ascending' : 'descending') . '"' : '' ?>>
 							<a class="nu-sort" id="nusort_<?= (int)$c['index'] ?>"
 								href="<?= h($link) ?>"><?php /* id as nuBuilder Forte's title text (form code styles $('#nusort_2')) */ ?><?= NuHtmlClean::cell((string)$c['title']) ?><?= $isSort ? ' <i class="bi bi-caret-' . ($state['dir'] === 'asc' ? 'up' : 'down') . '-fill"></i>' : '' ?></a>

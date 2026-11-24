@@ -664,7 +664,7 @@ function nu_debug_bell(): void
 	}
 	$GLOBALS['nu_dbg_on'] = true;
 	$tx = [];
-	foreach (['dbg_bell', 'dbg_bell_n', 'dbg_new_n', 'dbg_nothing_new', 'dbg_mark_read', 'dbg_open', 'dbg_none'] as $k) $tx[$k] = t($k);
+	foreach (['dbg_bell', 'dbg_bell_n', 'dbg_new_n', 'dbg_nothing_new', 'dbg_mark_read', 'dbg_open', 'dbg_none', 'debug_delete_all_confirm', 'delete'] as $k) $tx[$k] = t($k);
 	$n = $s['n'];
 	$label = t('dbg_bell_n', $n);
 	?>
@@ -678,6 +678,8 @@ function nu_debug_bell(): void
 						<div class="nuDbgList" aria-live="polite"><div class="px-3 py-4 text-center small text-body-secondary">…</div></div>
 						<div class="d-flex align-items-center gap-3 px-3 py-2 border-top small">
 							<button type="button" class="btn btn-link btn-sm p-0 text-decoration-none nuDbgRead"><?= h(t('dbg_mark_read')) ?></button>
+							<?php if (NuAcl::can(NuAcl::FORM_DEBUG, 'delete')): ?><button type="button" class="btn btn-link btn-sm p-0 text-decoration-none text-danger nuDbgDelAll"
+								id="nuDbgDelAll"><i class="bi bi-trash me-1" aria-hidden="true"></i><?= h(t('debug_delete_all')) ?></button><?php endif; ?>
 							<a class="text-decoration-none ms-auto" id="nuDbgOpen" href="<?= h(nu_url('debug')) ?>"><?= h(t('dbg_open')) ?> <i class="bi bi-arrow-right"></i></a></div>
 					</div>
 				</div>

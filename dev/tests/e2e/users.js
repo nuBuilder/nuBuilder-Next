@@ -2714,3 +2714,32 @@ T.info_tip_long_tap = async (s) => {
 		}
 	} finally { await ctx.close(); }
 };
+
+// ?redirect: a link from another website (index.php?p=home&redirect) remembers the browser's Referer and returns there after the sign-in;
+// without ?redirect, or with a Referer of nuBuilder Next itself, the sign-in ends on the page as before
+T.login_redirect_referer = async () => {
+	const ctx = await browser.newContext(); const p = await ctx.newPage();
+	try {
+		await p.route('https://intranet.example/**', (r) => r.fulfill({ status: 200, contentType: 'text/html', body: '<title>intranet</title>back' }));
+		const signIn = async (to) => {
+			await p.fill('#username', GA[0]); await p.fill('#password', GA[1]);
+			await Promise.all([p.waitForURL(to, { timeout: 10000 }).catch(() => null), p.click('form button[type=submit]:not([name=demo_user])')]);
+		};
+		await p.goto(BASE + 'index.php?p=home&redirect', { referer: 'https://intranet.example/portal/page?id=7' });
+		expect(/p=login/.test(p.url()), 'sign-in page first: ' + p.url());
+		await signIn(/intranet\.example/);
+		expect(p.url() === 'https://intranet.example/portal/page?id=7', 'back to the referring page: ' + p.url());
+		expect(/login_return/.test(sql("SELECT event FROM zzzzsys_nunext_log WHERE event = 'login_return' ORDER BY 1 DESC LIMIT 1")), 'logged');
+		await ctx.clearCookies();
+		await p.goto(BASE + 'index.php?p=home', { referer: 'https://intranet.example/portal/' });   // no ?redirect
+		await signIn(/p=home/);
+		expect(/p=home/.test(p.url()), 'without ?redirect: the start page: ' + p.url());
+		await ctx.clearCookies();
+		await p.goto(BASE + 'index.php?p=home&redirect', { referer: BASE + 'index.php?p=users' });   // our own page: ignored
+		await signIn(/p=home/);
+		expect(/p=home/.test(p.url()), 'own page as Referer: the start page: ' + p.url());
+	} finally {
+		sql("DELETE FROM zzzzsys_nunext_log WHERE event = 'login_return'");
+		await ctx.close();
+	}
+};

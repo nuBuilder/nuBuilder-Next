@@ -19,6 +19,7 @@ final class NuSess
 	public const PASSKEY             = 'nu_passkey';   // open passkey ceremonies by kind, one use (NuPasskey)
 	public const REAUTH_NEXT         = 'nu_reauth_next';   // page to return to after the password was confirmed again (NuSecurity::requireRecentAuth)
 	public const LOGIN_NEXT          = 'nu_login_next';   // page to return to after the sign-in (NuAuth)
+	public const LOGIN_RETURN        = 'nu_login_return'; // [address of the referring website, time] – opened with ?redirect, back there after the sign-in (NuAuth)
 	public const AUTOLOGIN_PENDING   = 'nu_autologin_pending';   // nuBuilder Forte auto-login ?u=… waiting for the second factor (pages/nuautologin.php)
 	public const WEAK_ADMIN          = 'nu_weak_admin';   // the globeadmin signed in with a weak password – warning on every page (index.php)
 	public const PW_SOON             = 'nu_pw_soon';   // the password expires soon – one notice (NuPwPolicy)

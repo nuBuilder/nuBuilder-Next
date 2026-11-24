@@ -6,7 +6,7 @@
 (function () {
 	'use strict';
 	var btn = document.getElementById('nuViewButton');
-	if (!btn) return;
+	if (!btn) { if (document.body) document.body.classList.remove('nuRvPending'); return; }
 	var cfg = {};
 	try { cfg = JSON.parse(btn.getAttribute('data-nu-view') || '{}') || {}; } catch (e) { cfg = {}; }
 	var T = cfg.texts || {};
@@ -321,14 +321,15 @@
 		layer = el('div', 'nuRv');
 		layer.id = 'nuRecView';
 		layer.setAttribute('role', 'dialog'); layer.setAttribute('aria-modal', 'true'); layer.setAttribute('aria-labelledby', 'nuRvTitle'); layer.tabIndex = -1;
-		var bar = el('div', 'nuRvBar');
+		var outer = el('div', 'nuRvBar'), bar = el('div', 'nuRvBarIn');   // the inner row is as wide as the sheet
+		outer.appendChild(bar);
 		var badge = el('span', 'nuRvBadge');
 		badge.appendChild(svg('M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8ZM8 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z'));
 		badge.appendChild(el('span', 'nuRvTxt', t('rv_mode')));
 		bar.appendChild(badge);
 		var nb = neighbours();
 		if (nb && nb.n > 1) {
-			var nav = el('div', 'nuRvNav');
+			var nav = el('div', 'nuRvNav btn-group'); nav.setAttribute('role', 'group');
 			var pv = el('button', 'btn btn-outline-secondary nuRvPrev'); pv.type = 'button'; pv.setAttribute('aria-label', t('rv_prev')); pv.title = t('rv_prev') + ' (←)';
 			pv.appendChild(svg('M10 3 5 8l5 5')); pv.disabled = !nb.prev; pv.addEventListener('click', function () { go(nb.prev); });
 			var nx = el('button', 'btn btn-outline-secondary nuRvNext'); nx.type = 'button'; nx.setAttribute('aria-label', t('rv_next')); nx.title = t('rv_next') + ' (→)';
@@ -337,21 +338,22 @@
 			bar.appendChild(nav);
 			layer._nb = nb;
 		}
-		if (cfg.key && cfg.url) bar.insertBefore(firstSwitch(), badge.nextSibling);   // left of the arrows and Edit
-		var ed = el('button', 'btn btn-outline-secondary nuRvEdit'); ed.type = 'button';
+		if (cfg.key && cfg.url) bar.insertBefore(firstSwitch(), badge.nextSibling);   // next to the badge, left
+		var ed = el('button', 'btn ' + (cfg.edit === false ? 'btn-outline-secondary' : 'btn-primary') + ' nuRvEdit'); ed.type = 'button';
 		ed.appendChild(svg(cfg.edit === false ? 'm4 4 8 8M12 4l-8 8' : 'M11 2.5 13.5 5 5.5 13H3v-2.5Z'));
 		ed.appendChild(el('span', 'nuRvTxt', cfg.edit === false ? t('close') : t('edit')));
 		ed.setAttribute('aria-label', cfg.edit === false ? t('close') : t('edit'));
 		ed.title = 'Esc';
 		ed.addEventListener('click', close);
 		bar.appendChild(ed);
-		layer.appendChild(bar);
+		layer.appendChild(outer);
 		var scroll = el('div', 'nuRvScroll'), sheet = el('article', 'nuRvSheet');
 		scroll.appendChild(sheet); layer.appendChild(scroll);
 		render(sheet, sections, store(EMPTY_KEY) === '1');
 		document.body.appendChild(layer);
 		document.documentElement.classList.add('nuRvOpen');
 		btn.setAttribute('aria-pressed', 'true');
+		document.body.classList.remove('nuRvPending');   // the sheet covers the page now
 		layer.focus();
 	}
 
@@ -414,6 +416,7 @@
 		if (store.session(EDIT_KEY) === me) want = false;   // Edit was chosen for this record
 		else { store.session(EDIT_KEY, null); want = true; }
 	}
+	if (!want) document.body.classList.remove('nuRvPending');   // Edit was chosen for this record: show the page at once
 	if (want) {
 		if (isForm) {
 			var opened = false;

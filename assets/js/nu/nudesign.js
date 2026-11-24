@@ -1421,7 +1421,9 @@
 		if (!force && key === '') jumped = null;
 		if (!key) {
 			var lim = chipBar.getBoundingClientRect().bottom + 6;
-			panel.querySelectorAll('section[data-sec-key]').forEach(function (sec) { if (sec.getBoundingClientRect().top <= lim) key = sec.getAttribute('data-sec-key'); });
+			var left0 = null;   // two columns (wide panel): the left column decides
+			panel.querySelectorAll('section[data-sec-key]').forEach(function (sec) { var r = sec.getBoundingClientRect(); if (left0 === null) left0 = r.left;
+				if (Math.abs(r.left - left0) < 2 && r.top <= lim) key = sec.getAttribute('data-sec-key'); });
 			if (!key && sections[0]) key = sections[0].key;
 			if (panel.scrollHeight > panel.clientHeight + 2 && panel.scrollTop > 0
 				&& panel.scrollTop + panel.clientHeight >= panel.scrollHeight - 2) { var all = panel.querySelectorAll('section[data-sec-key]'); if (all.length) key = all[all.length - 1].getAttribute('data-sec-key'); }
@@ -1430,6 +1432,17 @@
 			on); if (on) c.setAttribute('aria-current', 'true'); else c.removeAttribute('aria-current'); });
 	}
 	panel.addEventListener('scroll', function () { if (!phone.matches) spy(); }, {passive: true});
+	// all sections open and in view without scrolling (a wide panel, a short selection): the chips are not needed – hidden until it scrolls again
+	function chipsFit() {
+		if (!chipBar || phone.matches) return;
+		var h = panel.classList.contains('nuDsChipsOff') ? 0 : chipBar.offsetHeight;
+		var fits = panel.scrollHeight - h <= panel.clientHeight + 1;
+		var allOpen = sections.every(function (x) { return open[x.key] !== false; });
+		panel.classList.toggle('nuDsChipsOff', fits && allOpen);
+		panel.classList.toggle('nuDsChipsMin', fits && !allOpen);   // folded sections: only "unfold all" stays
+	}
+	if (window.ResizeObserver) new ResizeObserver(function () { chipsFit(); }).observe(panel);
+	window.addEventListener('resize', chipsFit);
 	var fieldNo = 0;
 	/** A field of the panel: kind text | number | textarea | select | check | ro; save(value) is called on change. */
 	// department / team of the form and the datalist of the values already used on other forms
@@ -1596,8 +1609,12 @@
 		} else {
 			var chips = drawChips();
 			if (chips) panel.insertBefore(chips, panel.querySelector('.nuDsSec, section') || null);
-			sections.forEach(function (s) { panel.appendChild(drawSection(s, false)); });
+			// the sections in one wrapper: a wide panel (dragged wider by its edge) flows them into two columns (nudesign.css @container)
+			var cols = el('div', {'class': 'nuDsSecCols'});
+			sections.forEach(function (s) { cols.appendChild(drawSection(s, false)); });
+			panel.appendChild(cols);
 			spy();
+			chipsFit();
 		}
 		if (footEl) panel.appendChild(footEl);
 		if (phone.matches) panel.insertBefore(sheetHandle, panel.firstChild);
@@ -3015,15 +3032,17 @@
 			if (!it || !W.cm) { W.item = k; return; }
 			W.item = k;
 			if (!W.docs[k]) { W.docs[k] = window.CodeMirror.Doc(codeValue(k), modeOf(it[2])); W.docs[k].on('change', marks); }
+			if (W.cm.nuChk && W.cm.nuChk.off) W.cm.nuChk.off(it[2]);   // the marks of the part shown so far go with it; no check in the old language
 			W.cm.swapDoc(W.docs[k]);
 			name.textContent = t(it[1]);
 			lang.textContent = it[2];
 			list.querySelectorAll('.nuDsCodeItem').forEach(function (b) { var on = b.getAttribute('data-code') === k; b.classList.toggle('active',
 				on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
 			hash.innerHTML = '';
-			if (window.NuHashVars && N.hashCatalog && (it[2] === 'SQL' || it[2] === 'PHP')) window.NuHashVars.attach(W.cm, hash, {catalog: N.hashCatalog, globals: N.globals});
 			cmTools.innerHTML = '';
-			if (window.NuCodeTools) window.NuCodeTools.attach(W.cm, cmTools, {lang: it[2], db: N.db_type, codeKey: k});   // codeKey: a code search link jumps to its line
+			var runOpt = k === 'sfo_browse_sql' && N.browseRun && N.browse_run ? {run: function (ed) { N.browseRun(ed.getValue(), ed); }, runLabel: N.browse_run.m.run, runTitle: N.browse_run.m.run_tip} : {};   // ▶ Run the browse SQL
+			if (window.NuCodeTools) window.NuCodeTools.attach(W.cm, cmTools, Object.assign({lang: it[2], db: N.db_type, codeKey: k}, runOpt));   // codeKey: a code search link jumps to its line
+			if (window.NuHashVars && N.hashCatalog && (it[2] === 'SQL' || it[2] === 'PHP')) window.NuHashVars.attach(W.cm, hash, {catalog: N.hashCatalog, globals: N.globals});   // after the tools: # goes next to Insert
 			W.cm.refresh();
 			W.cm.focus();
 		}
@@ -3779,6 +3798,48 @@
 		document.querySelectorAll('#nuEditForm .nuWrap.nuHidden, #nuEditForm .nuWrap[style*="display: none"]').forEach(markHidden);
 	}
 
+	// width of the properties panel: drag its left edge (or ← / → on it), double-click / Home = standard width; stored per browser,
+	// 320 px … 60 % of the window. From about 620 px the sections flow into two columns (nudesign.css). Wide screens only.
+	var PW_KEY = 'nunext-ds-panel-w', PW_DEF = 340;
+	function panelW(w, save) {
+		w = Math.round(Math.max(320, Math.min(w, Math.max(320, window.innerWidth * 0.6))));
+		document.body.style.setProperty('--nu-ds-panel', w + 'px');
+		var sp = document.getElementById('nuDsSplit'); if (sp) sp.setAttribute('aria-valuenow', String(w));
+		if (save) nuStore.set(PW_KEY, w === PW_DEF ? null : String(w));
+		window.dispatchEvent(new Event('resize'));              // the selection marks of the objects follow the narrower form
+		return w;
+	}
+	function panelSplitter() {
+		var sp = el('div', {'class': 'nuDsSplit', id: 'nuDsSplit', role: 'separator', 'aria-orientation': 'vertical', tabindex: '0',
+			'aria-valuemin': '320', 'aria-label': t('ds_panel_resize'), title: t('ds_panel_resize')});
+		document.body.appendChild(sp);
+		var saved = parseInt(nuStore.get(PW_KEY) || '0', 10) || 0;
+		if (saved && !phone.matches) panelW(saved, false);
+		sp.addEventListener('pointerdown', function (e) {
+			if (e.button !== 0) return;
+			e.preventDefault();
+			try { sp.setPointerCapture(e.pointerId); } catch (x) { /* ignore */ }
+			document.documentElement.classList.add('nuDsResizing');
+			var vw = function () { return document.documentElement.clientWidth; };
+			var off = vw() - e.clientX - panel.getBoundingClientRect().width;   // where on the edge it was grabbed
+			var raf = 0, last = 0;
+			var move = function (ev) { last = vw() - ev.clientX - off; if (!raf) raf = requestAnimationFrame(function () { raf = 0; panelW(last, false); }); };
+			var up = function (ev) {
+				sp.removeEventListener('pointermove', move); sp.removeEventListener('pointerup', up); sp.removeEventListener('pointercancel', up);
+				document.documentElement.classList.remove('nuDsResizing');
+				panelW(vw() - ev.clientX - off, true);
+			};
+			sp.addEventListener('pointermove', move); sp.addEventListener('pointerup', up); sp.addEventListener('pointercancel', up);
+		});
+		sp.addEventListener('dblclick', function () { panelW(PW_DEF, true); });
+		sp.addEventListener('keydown', function (e) {
+			var w = panel.getBoundingClientRect().width;
+			if (e.key === 'ArrowLeft') { e.preventDefault(); panelW(w + 20, true); }
+			else if (e.key === 'ArrowRight') { e.preventDefault(); panelW(w - 20, true); }
+			else if (e.key === 'Home') { e.preventDefault(); panelW(PW_DEF, true); }
+		});
+	}
+
 	// ------------------------------------------------------------------ start
 	function place() {
 		var c = document.querySelector('.nuFormContainer') || document.body;
@@ -3786,6 +3847,7 @@
 		document.body.appendChild(rail);
 		document.body.appendChild(fly);
 		document.body.appendChild(panel);
+		panelSplitter();
 		document.body.appendChild(work);
 		document.body.appendChild(quick);
 		var sheetH = function () { document.documentElement.style.setProperty('--nu-ds-sheet-h', (phone.matches ? panel.offsetHeight : 0) + 'px'); placeQuick(); };

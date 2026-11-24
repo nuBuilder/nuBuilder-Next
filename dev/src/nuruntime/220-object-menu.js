@@ -431,7 +431,7 @@
 			close();
 			var bid = th.getAttribute('data-nu-browse-id'), rows = colRows(), i = rows.map(function (r) { return r.id; }).indexOf(bid);
 			if (i < 0) return;
-			var c = rows[i], oid = th.id || ('nuBrowseTitle' + th.getAttribute('data-nu-col'));
+			var c = rows[i], oid = bid;   // the column's id (zzzzsys_browse_id) – copied as nuBuilder Forte's menu does (data-nu-title-id)
 			var set = function (part) { saveCols(colRows().map(function (r) { return r.id === bid ? $.extend(r, part) : r; })); };
 			var move = function (d) { var r = colRows(), x0 = r.splice(i, 1)[0]; r.splice(i + d, 0, x0); saveCols(r); };
 			var name = $('<div>').html(c.title).text() || c.display;

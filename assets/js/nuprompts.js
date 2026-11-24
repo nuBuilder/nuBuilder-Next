@@ -51,9 +51,82 @@
 
 	// ------------------------------------------------------------------ "Ask AI" with a configured AI service (nuaiask.js)
 	var askHost = document.getElementById('pgAsk');
+	var askCtx = document.getElementById('pgAskCtx'), ctxSize = document.getElementById('pgAskCtxSize'), ctxCache = {};
+	function pagePost(data) {
+		var csrf = form.querySelector('input[name="_csrf"]'), body = new URLSearchParams();
+		body.set('_csrf', csrf ? csrf.value : '');
+		Object.keys(data).forEach(function (k) { if (Array.isArray(data[k])) data[k].forEach(function (v) { body.append(k + '[]', v); }); else body.set(k, data[k]); });
+		return fetch(form.getAttribute('action') || window.location.href, {method: 'POST', body: body, credentials: 'same-origin'}).then(function (r) {
+			if (!r.ok) throw new Error('HTTP ' + r.status);
+			return r;
+		});
+	}
+	function chosenTables() {
+		var tsel = document.getElementById('pge_table');
+		return tsel ? Array.prototype.map.call(tsel.selectedOptions, function (o) { return o.value; }) : [];
+	}
+	// the context file of the chosen tables – fetched once per choice of tables
+	function contextText() {
+		var tables = chosenTables(), key = tables.join('|');
+		if (!ctxCache[key]) ctxCache[key] = pagePost({action: 'context', fmt: 'md', full: '0', tables: tables}).then(function (r) { return r.text(); })
+			.catch(function (x) { delete ctxCache[key]; throw x; });
+		return ctxCache[key];
+	}
+	function showCtxSize() {
+		if (!ctxSize) return;
+		if (!askCtx || !askCtx.checked) { ctxSize.textContent = ''; return; }
+		ctxSize.textContent = ctxSize.getAttribute('data-loading') || '';
+		contextText().then(function (t) {
+			if (!askCtx.checked) return;
+			var fmt = function (v) { return Number(v).toLocaleString(); };
+			ctxSize.textContent = (ctxSize.getAttribute('data-size') || '%s %s').replace('%s', fmt(t.length)).replace('%s', fmt(Math.round(t.length / 4)));
+		}).catch(function (x) { ctxSize.textContent = x.message; });
+	}
+	if (askCtx) {
+		askCtx.checked = nuStore.get('nunext-pg-ask-ctx') === '1';
+		askCtx.addEventListener('change', function () { nuStore.set('nunext-pg-ask-ctx', askCtx.checked ? '1' : '0'); showCtxSize(); });
+		var tselC = document.getElementById('pge_table');
+		if (tselC) tselC.addEventListener('change', showCtxSize);
+		showCtxSize();
+	}
+	// the answer: Markdown shown formatted (server: NuMarkdown, escaped first), a Copy button on every code block
+	function showAnswer(text) {
+		var box = document.getElementById('pgAnswerBox'), view = document.getElementById('pgAnswerView');
+		document.getElementById('pgAnswer').value = text;
+		box.hidden = false;
+		view.textContent = text;
+		pagePost({action: 'md', text: text}).then(function (r) { return r.json(); }).then(function (d) {
+			if (!d || !d.ok) return;
+			view.innerHTML = d.html;
+			view.querySelectorAll('pre').forEach(function (pre) {
+				var wrap = document.createElement('div'), btn = document.createElement('button');
+				wrap.className = 'pgCodeWrap';
+				btn.type = 'button'; btn.className = 'btn btn-sm btn-outline-secondary pgCodeCopy';
+				btn.textContent = view.getAttribute('data-copy') || 'Copy';
+				pre.parentNode.insertBefore(wrap, pre);
+				wrap.appendChild(pre); wrap.appendChild(btn);
+				btn.addEventListener('click', function () {
+					var done = function () {
+						btn.textContent = view.getAttribute('data-copied') || 'Copied';
+						setTimeout(function () { btn.textContent = view.getAttribute('data-copy') || 'Copy'; }, 1600);
+					};
+					if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(pre.textContent).then(done, function () {});
+					else {
+						var ta = document.createElement('textarea');
+						ta.value = pre.textContent; document.body.appendChild(ta); ta.select();
+						try { document.execCommand('copy'); done(); } catch (x) { /* expected: no clipboard */ }
+						ta.remove();
+					}
+				});
+			});
+		}).catch(function () { /* expected: the plain text stays */ });
+	}
 	if (window.NuAiAsk && askHost) window.NuAiAsk.mount(askHost, {
-		prompt: function () { return result.value; },
-		answer: function (text) { document.getElementById('pgAnswer').value = text; document.getElementById('pgAnswerBox').hidden = false; }
+		prompt: function () {
+			if (!askCtx || !askCtx.checked) return result.value;
+			return contextText().then(function (t) { return t + '\n\n---\n\n' + result.value; });
+		},
+		answer: showAnswer
 	});
 
 	// ------------------------------------------------------------------ copy

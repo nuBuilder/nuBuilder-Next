@@ -1952,6 +1952,56 @@ T.record_view_first = async (s) => {
 	}
 };
 
+// view mode: the bar's row is as wide as the sheet – ‹ n of m › and Edit stay at the sheet's right edge on a wide window
+T.record_view_bar_aligned = async (s) => {
+	const p = s.ga;
+	await p.setViewportSize({width: 1900, height: 900});
+	try {
+		await open(p, 'index.php?p=form&f=sampleorder');
+		const id = await p.$eval('#nuBrowseTable tr.nuBrowseRow', (r) => r.dataset.nuPrimaryKey);
+		await open(p, 'index.php?p=form&f=sampleorder&r=' + encodeURIComponent(id) + '&view=1');
+		await p.waitForSelector('#nuRecView .nuRvEdit', {timeout: 8000});
+		const g = await p.evaluate(() => {
+			const r = (sel) => document.querySelector(sel).getBoundingClientRect();
+			const sh = r('.nuRvSheet'), ed = r('.nuRvEdit'), bd = r('.nuRvBadge'), nav = document.querySelector('.nuRvNav');
+			return {shL: sh.left, shR: sh.right, edR: ed.right, bdL: bd.left, primary: document.querySelector('.nuRvEdit').classList.contains('btn-primary'),
+				navGap: nav ? Math.round(r('.nuRvEdit').left - nav.getBoundingClientRect().right) : null};
+		});
+		expect(Math.abs(g.edR - g.shR) <= 2 && Math.abs(g.bdL - g.shL) <= 2, 'bar row lines up with the sheet: ' + JSON.stringify(g));
+		expect(g.primary, 'Edit is the main button');
+		expect(g.navGap === null || g.navGap <= 12, 'arrows next to Edit: ' + g.navGap);
+	} finally {
+		await p.setViewportSize({width: 1280, height: 900});
+	}
+};
+
+// view mode: the next record (→) never shows its edit form for a moment before the sheet covers it (body.nuRvPending)
+T.record_view_no_flicker = async (s) => {
+	const ctx = await browser.newContext({viewport: {width: 1300, height: 900}, storageState: await s.ga.context().storageState()});
+	const p = await ctx.newPage();
+	try {
+		await p.addInitScript(() => {
+			window.__flash = 0;
+			(function tick() {
+				const f = document.getElementById('nuEditForm');
+				if (f && !document.getElementById('nuRecView') && getComputedStyle(f).visibility === 'visible' && f.getBoundingClientRect().height > 0) window.__flash++;
+				if (document.readyState !== 'complete' || !document.getElementById('nuRecView')) requestAnimationFrame(tick);
+			})();
+		});
+		await p.goto(BASE + 'index.php?p=form&f=sampleorder');
+		const ids = await p.$$eval('#nuBrowseTable tr.nuBrowseRow', (rs) => rs.map((r) => r.dataset.nuPrimaryKey));
+		await p.goto(BASE + 'index.php?p=form&f=sampleorder&r=' + encodeURIComponent(ids[0]) + '&view=1');
+		await p.waitForSelector('#nuRecView', {timeout: 8000});
+		expect(await p.evaluate(() => window.__flash) === 0, 'first record: no frame with the edit form');
+		await Promise.all([p.waitForNavigation(), p.keyboard.press('ArrowRight')]);
+		await p.waitForSelector('#nuRecView', {timeout: 8000});
+		const n = await p.evaluate(() => [window.__flash, document.body.classList.contains('nuRvPending')]);
+		expect(n[0] === 0 && !n[1], 'next record: no frame with the edit form, class removed: ' + n);
+	} finally {
+		await ctx.close();
+	}
+};
+
 T.lookup_no_flash = async (s) => {                    // 0.8.1411: the lookup dialog shows its list only once it is fitted – no first look at another size
 	const p = s.ga;
 	await open(p, 'index.php?p=form&f=sampleorder&r=sample_ord_1');
@@ -1978,4 +2028,51 @@ T.lookup_no_flash = async (s) => {                    // 0.8.1411: the lookup di
 		await p.keyboard.press('Escape'); await p.waitForTimeout(700);
 	}
 	} finally { await p.unroute(/[?&]lookup=/, slow); }
+};
+
+// labels of a record form cannot be selected (nuBuilder Forte) – the globeadmin and users who may design the form still can
+T.labels_no_select = async (s) => {
+	const sel = (p) => p.evaluate(() => { const l = document.querySelector('#nuEditForm label[id^="label_"]'); return l ? getComputedStyle(l).userSelect : 'none-found'; });
+	await open(s.ga, 'index.php?p=form&f=samplecustomer&r=-1');
+	expect(await sel(s.ga) !== 'none', 'globeadmin can select a label: ' + await sel(s.ga));
+	const u = await login('sample_ben', UPW);
+	try {
+		await open(u, 'index.php?p=form&f=samplecustomer&r=-1');
+		expect(await sel(u) === 'none', 'user without design right: label not selectable: ' + await sel(u));
+	} finally {
+		await u.context().close();
+	}
+};
+
+// lookups as one control: code, search button and description with the same border and height as the other fields
+T.lookup_one_control = async (s) => {
+	const p = s.ga;
+	for (const u of ['index.php?p=form&f=sampleorder&r=sample_ord_1', 'index.php?p=form&f=sampleorder&r=sample_ord_1&layout=absolute']) {
+		await open(p, u);
+		const g = await p.evaluate(() => {
+			const grp = document.querySelector('#nuEditForm .nuLookupGroup');
+			const kids = [...grp.children].filter((c) => c.offsetParent);
+			const other = [...document.querySelectorAll('#nuEditForm input.form-control, #nuEditForm select')].find((x) => x.offsetParent && !x.closest('.nuLookupGroup') && !x.closest('table'));
+			return {h: kids.map((c) => Math.round(c.getBoundingClientRect().height)), other: other ? Math.round(other.getBoundingClientRect().height) : 0,
+				borders: [...new Set(kids.map((c) => getComputedStyle(c).borderTopColor))].length, descBg: getComputedStyle(grp.querySelector('.nuLookupDescription')).backgroundColor};
+		});
+		expect(g.h.length === 3 && g.h.every((x) => x === g.h[0]) && Math.abs(g.h[0] - g.other) <= 1 && g.borders === 1 && g.descBg !== 'rgba(0, 0, 0, 0)',
+			u + ': ' + JSON.stringify(g));
+	}
+};
+
+// record pages of prompts, files, items and translations: labels on top (as every other page); prompt Code + Description side by side
+T.labels_on_top = async (s) => {
+	const p = s.ga;
+	for (const r of ['prompts', 'files', 'items', 'translations']) {
+		await open(p, 'index.php?p=' + r + '&id=new');
+		const n = await p.evaluate(() => document.querySelectorAll('main label.col-form-label').length);
+		expect(n === 0, r + ': ' + n + ' side labels');
+	}
+	await open(p, 'index.php?p=prompts&id=new');
+	const g = await p.evaluate(() => ['pge_code', 'pge_description', 'pge_prompt'].map((id) => {
+		const i = document.getElementById(id).getBoundingClientRect(), l = document.querySelector('label[for="' + id + '"]').getBoundingClientRect();
+		return {top: Math.round(i.top), labelAbove: l.bottom <= i.top + 1, left: Math.round(i.left), right: Math.round(i.right)};
+	}));
+	expect(g.every((x) => x.labelAbove) && g[0].top === g[1].top && g[1].left > g[0].right, JSON.stringify(g));
 };

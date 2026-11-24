@@ -3370,8 +3370,11 @@ T.design_panel_chips = async (s) => {                 // 0.8.1305: properties pa
 	expect(folded.every((x) => !x[1]), 'fold all: ' + JSON.stringify(folded));
 	const lay = folded.find((x) => x[0] === 'layout');
 	expect(lay && /\d/.test(lay[2]), 'folded Layout without a summary: ' + JSON.stringify(lay));
-	await p.click('#nuDsChips [data-chip=behaviour]'); await p.waitForTimeout(300);
-	expect(await p.locator('#nuDsPanel section[data-sec-key=behaviour] .nuDsSecBody').count() === 1, 'a chip opens a folded section');
+	// all folded fits the panel: the chips are hidden, only "unfold all" stays (chipsFit)
+	const min = await p.evaluate(() => ({min: document.getElementById('nuDsPanel').classList.contains('nuDsChipsMin'), all: document.getElementById('nuDsFoldAll').offsetHeight > 0}));
+	expect(min.min && min.all, 'all folded and in view: only unfold-all: ' + JSON.stringify(min));
+	await p.click(min.min ? '#nuDsPanel .nuDsSecHead[data-sec=behaviour]' : '#nuDsChips [data-chip=behaviour]'); await p.waitForTimeout(300);
+	expect(await p.locator('#nuDsPanel section[data-sec-key=behaviour] .nuDsSecBody').count() === 1, 'a folded section opens');
 	await p.click('#nuDsFoldAll'); await p.waitForTimeout(300);           // one open: the button folds all …
 	await p.click('#nuDsFoldAll'); await p.waitForTimeout(300);           // … all folded: it unfolds all
 	expect(await p.locator('#nuDsPanel section[data-sec-key] .nuDsSecBody').count() >= 4, 'unfold all');
@@ -3647,5 +3650,116 @@ T.design_list_width_zero = async (s) => {               // 0.8.1419: Browse list
 	} finally {
 		sql(`DELETE FROM zzzzsys_nunext_form_draft WHERE form_id = '${f}'`);
 	}
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
+// design mode: the properties panel gets wider by dragging its left edge (stored per browser, double-click = standard width);
+// from 620 px its sections flow into two columns
+T.design_panel_resize = async (s) => {
+	const p = s.ga, F = 'samplecustomer';
+	if (sql(`SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id = '${F}'`) !== '1') { s.skip = 'no sample data'; return; }
+	await p.setViewportSize({width: 1600, height: 900});
+	try {
+		await p.evaluate(() => { try { localStorage.removeItem('nunext-ds-panel-w'); } catch (e) { /* none */ } });
+		await open(p, 'index.php?p=form&f=' + F + '&r=-1&design=1'); await p.waitForSelector('#nuDsSplit');
+		const info = () => p.evaluate(() => { const pn = document.getElementById('nuDsPanel'), c = pn.querySelector('.nuDsSecCols');
+			return {w: Math.round(pn.getBoundingClientRect().width), cols: c ? getComputedStyle(c).columnCount : 'none',
+				form: Math.round(document.querySelector('.nuFormContainer').getBoundingClientRect().right)}; });
+		const a = await info();
+		expect(a.w === 340 && a.cols !== '2', 'standard: one column: ' + JSON.stringify(a));
+		const b0 = await p.$eval('#nuDsSplit', (x) => { const r = x.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; });
+		await p.mouse.move(b0[0], b0[1]); await p.mouse.down(); await p.mouse.move(b0[0] - 200, b0[1], {steps: 6}); await p.mouse.move(b0[0] - 380, b0[1], {steps: 6}); await p.mouse.up();
+		await p.waitForTimeout(300);
+		const b = await info();
+		expect(Math.abs(b.w - 720) <= 4 && b.cols === '2' && b.form <= 1600 - 720 + 2, 'dragged wider: two columns, form makes room: ' + JSON.stringify(b));
+		await open(p, 'index.php?p=form&f=' + F + '&r=-1&design=1'); await p.waitForSelector('#nuDsSplit');
+		const c = await info();
+		expect(Math.abs(c.w - 720) <= 4, 'width kept after a reload: ' + JSON.stringify(c));
+		await p.click('#nuw_cus_name .nuDesignOverlay', {position: {x: 6, y: 6}}); await p.waitForTimeout(500);
+		const chipsShown = () => p.evaluate(() => { const ch = document.querySelector('#nuDsChips .nuDsChip'); return !!ch && ch.offsetHeight > 0; });
+		const fits = await p.evaluate(() => { const pn = document.getElementById('nuDsPanel'); return pn.scrollHeight <= pn.clientHeight + 1; });
+		expect(fits && !(await chipsShown()), 'everything fits: no section chips (fits ' + fits + ')');
+		await p.dblclick('#nuDsSplit'); await p.waitForTimeout(200);
+		const d = await info();
+		expect(d.w === 340 && d.cols !== '2', 'double-click: standard width: ' + JSON.stringify(d));
+		expect(await chipsShown(), 'narrow panel scrolls: chips back');
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		await p.evaluate(() => { try { localStorage.removeItem('nunext-ds-panel-w'); } catch (e) { /* none */ } });
+		await p.setViewportSize({width: 1300, height: 900});
+	}
+};
+
+// design mode Code workspace: switching parts never shows the marks of a check in the previous part's language
+// (swapDoc ran the JavaScript check on the PHP text for a moment – a red line that vanished again)
+T.design_code_switch_nomarks = async (s) => {
+	const p = s.ga, F = 'samplecustomer';
+	const rec = sql('SELECT sample_customer_id FROM sample_customer ORDER BY sample_customer_id LIMIT 1');
+	if (!rec) { s.skip = 'no sample data'; return; }
+	await open(p, 'index.php?p=form&f=' + F + '&r=' + rec + '&design=1'); await p.waitForSelector('#nuDsRail'); await p.waitForTimeout(700);
+	await p.click('#nuDsRailCode'); await p.waitForSelector('#nuDsWork .CodeMirror'); await p.waitForTimeout(300);
+	const cmSet = (v) => p.evaluate((x) => { document.querySelector('#nuDsWork .CodeMirror').CodeMirror.setValue(x); }, v);
+	await p.click('.nuDsCodeItem[data-code="php:AS"]'); await p.waitForTimeout(200);
+	await cmSet("$a = ['k' => 1];\necho \"#x#\" . $a['k'];\n");          // valid PHP, invalid JavaScript
+	await p.click('.nuDsCodeItem[data-code="sfo_javascript"]'); await p.waitForTimeout(200);
+	await cmSet('var ok = 1;\n');
+	await p.waitForTimeout(1200);                                     // checks settle
+	await p.evaluate(() => {
+		window.__marks = 0;
+		new MutationObserver(() => { if (document.querySelector('#nuDsWork .nuChkMark.nuChk-error')) window.__marks++; })
+			.observe(document.getElementById('nuDsWork'), {subtree: true, childList: true});
+	});
+	for (let i = 0; i < 3; i++) {
+		await p.click('.nuDsCodeItem[data-code="php:AS"]'); await p.waitForTimeout(400);
+		await p.click('.nuDsCodeItem[data-code="sfo_javascript"]'); await p.waitForTimeout(400);
+	}
+	await p.click('.nuDsCodeItem[data-code="php:AS"]'); await p.waitForTimeout(2500);   // the PHP check (server) has answered
+	const n = await p.evaluate(() => [window.__marks, document.querySelectorAll('#nuDsWork .nuChkMark.nuChk-error').length]);
+	expect(n[0] === 0 && n[1] === 0, 'no error marks while switching (seen ' + n[0] + ', now ' + n[1] + ')');
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
+// ▶ Run in the browse SQL editors: the SQL as written runs read only, a window shows the rows with paging; errors with their line;
+// only a SELECT; only for those who may design the form (pages/nubrowserun.php)
+T.browse_sql_run = async (s) => {
+	const p = s.ga, F = 'samplecustomer';
+	if (sql(`SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id = '${F}'`) !== '1') { s.skip = 'no sample data'; return; }
+	const n = +sql('SELECT COUNT(*) FROM sample_customer');
+	await open(p, 'index.php?p=form&f=' + F + '&r=-1&design=1'); await p.waitForSelector('#nuDsRail');
+	await p.click('#nuDsRailCode'); await p.waitForSelector('#nuDsWork .CodeMirror');
+	await p.click('.nuDsCodeItem[data-code="sfo_browse_sql"]'); await p.waitForTimeout(300);
+	const setSql = (v) => p.evaluate((x) => document.querySelector('#nuDsWork .CodeMirror').CodeMirror.setValue(x), v);
+	await setSql('SELECT * FROM sample_customer ORDER BY cus_code');
+	await p.click('#nuDsWork .nuCtRun');
+	await p.waitForFunction(() => /\d/.test((document.getElementById('nuBrunInfo') || {}).textContent || ''), null, {timeout: 8000});
+	const a = await p.evaluate(() => ({rows: document.querySelectorAll('#nuBrunTable tbody tr').length, count: document.getElementById('nuBrunCount').textContent,
+		first: (document.querySelector('#nuBrunTable tbody td:nth-child(2)') || {}).textContent}));
+	expect(a.rows === Math.min(10, n) && a.count.includes(String(n)), 'rows and count: ' + JSON.stringify(a) + ' of ' + n);
+	if (n > 10) {
+		await p.click('#nuBrunNext'); await p.waitForTimeout(800);
+		expect(await p.locator('#nuBrunTable tbody tr').count() === Math.min(10, n - 10), 'second page');
+	}
+	await p.click('#nuBrunDlg .btn-close'); await p.waitForTimeout(500);
+	expect(await p.locator('#nuDsWork .CodeMirror').isVisible(), 'the Code workspace stays open after closing the result');
+	// an error names its line; Ctrl+Enter runs too
+	await setSql('SELECT *\nFROM sample_customer\nWHERE no_such_column = 1');
+	await p.click('#nuDsWork .CodeMirror'); await p.keyboard.press('Control+Enter');
+	await p.waitForSelector('#nuBrunErr:not([hidden])', {timeout: 8000});
+	expect(/no_such_column/.test(await p.textContent('#nuBrunErr')), 'error text: ' + await p.textContent('#nuBrunErr'));
+	await p.click('#nuBrunDlg .btn-close'); await p.waitForTimeout(500);
+	// only a SELECT: nothing is changed
+	const before = sql("SELECT cus_name FROM sample_customer ORDER BY sample_customer_id LIMIT 1");
+	const r = await p.evaluate(async (f) => {
+		const b = new URLSearchParams({f, sql: "UPDATE sample_customer SET cus_name = 'x'", page: '1', per: '10', props: '{}'});
+		return (await NuUtil.post('index.php?p=browserun', b));
+	}, F);
+	expect(r && r.ok === false && sql("SELECT cus_name FROM sample_customer ORDER BY sample_customer_id LIMIT 1") === before, 'UPDATE refused: ' + JSON.stringify(r));
+	// a user who may not design the form
+	const u = await login('sample_ben', UPW);
+	try {
+		await open(u, 'index.php?p=form&f=' + F);
+		const st = await u.evaluate(async (f) => (await fetch('index.php?p=browserun', {method: 'POST', body: new URLSearchParams({f, sql: 'SELECT 1', _csrf: (window.nuNext || {}).csrf || ''})})).status, F);
+		expect(st === 403, 'user without design right: ' + st);
+	} finally { await u.context().close(); }
 	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
 };

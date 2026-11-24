@@ -1365,6 +1365,13 @@ T.browse_col_menu = async (s) => {
 		await th.click({button: 'right'}); await p.waitForSelector('.nuColMenu');
 		const txt = await p.locator('.nuColMenu').innerText();
 		expect(/Rename/.test(txt) && /Filter/.test(txt) && /Delete/.test(txt), 'menu entries: ' + txt.replace(/\n/g, ' | '));
+		// the head shows and copies the column's id, as nuBuilder Forte's menu (data-nu-title-id)
+		expect((await p.locator('.nuColMenu .nuOmHead').innerText()).includes(bid) && await th.getAttribute('data-nu-title-id') === bid, 'head with the column id');
+		await p.context().grantPermissions(['clipboard-read', 'clipboard-write']).catch(() => null);
+		await p.click('.nuColMenu .nuOmHead');
+		const clip = await p.evaluate(() => navigator.clipboard.readText().catch(() => ''));
+		expect(clip === bid || clip === '', 'copied the column id: ' + clip);
+		await th.click({button: 'right'}); await p.waitForSelector('.nuColMenu');
 		await p.fill('.nuColMenu .nuOmColWidth', '177');
 		await Promise.all([p.waitForNavigation(), p.press('.nuColMenu .nuOmColWidth', 'Enter')]);
 		expect(sql(`SELECT sbr_width FROM zzzzsys_browse WHERE zzzzsys_browse_id = '${bid}'`) === '177', 'width saved');

@@ -156,6 +156,15 @@ check('validNext own app (nuexternal.php)', NuAuth::validNext('tools/perno/app.p
 	&& NuAuth::validNext('tools/x.php?u=https://evil.example') === null && NuAuth::validNext('https://evil.example/x.php') === null);
 check('validNext no other host', NuAuth::validNext('https://evil.example/') === null && NuAuth::validNext('index.php?p=login') === null
 	&& NuAuth::validNext('index.php?p=x&u=a') === null && NuAuth::validNext('index.php?p=reauth') === null);
+// ?redirect: the referring website is kept for after the sign-in – http(s) addresses of other sites only
+$rrSrv = $_SERVER; $_SERVER['HTTP_HOST'] = 'app.example'; $_SERVER['SCRIPT_NAME'] = '/nunext/index.php';
+check('validReturn', NuAuth::validReturn('https://intranet.example/page?a=1') === 'https://intranet.example/page?a=1'
+	&& NuAuth::validReturn('http://app.example/') === 'http://app.example/'                         // same host, outside nuBuilder Next's folder
+	&& NuAuth::validReturn('http://app.example/nunext/index.php?p=login') === null                   // our own page
+	&& NuAuth::validReturn('javascript:alert(1)') === null && NuAuth::validReturn('//evil.example/') === null
+	&& NuAuth::validReturn('https://user:pw@evil.example/') === null && NuAuth::validReturn("https://a.example/\r\nX: y") === null
+	&& NuAuth::validReturn('') === null && NuAuth::validReturn('https://a.example/' . str_repeat('x', 2001)) === null);
+$_SERVER = $rrSrv;
 
 // ---------------------------------------------------------------- protected folders
 $tmp = sys_get_temp_dir() . '/nunext-test-' . bin2hex(random_bytes(4));
@@ -256,23 +265,28 @@ check('PHP comments: a version number only for data / links of older versions (c
 check('no line of plain PHP code over 200 characters (code review L5)', !$longCode, implode(', ', array_slice($longCode, 0, 8)));
 check('nu_ignored() is quiet without developer mode and never throws', (static function () { try { nu_ignored(new RuntimeException('x'), 'test'); return true; } catch (Throwable) { return false; } })());
 
-// ---------------------------------------------------------------- PHP 8.5 deprecations (0.8.1317): calls that print "Deprecated" on PHP 8.5
+// ---------------------------------------------------------------- PHP 8.5 / 8.6 deprecations: calls that print "Deprecated" on PHP 8.5 / 8.6
 $dep85 = [];
 $dep85Files = array_merge(glob(NU_ROOT . '/*.php'), glob(NU_ROOT . '/core/*.php'), glob(NU_ROOT . '/core/form/*.php'), glob(NU_ROOT . '/pages/*.php'),
 	glob(NU_ROOT . '/apps/*/*.php') ?: [], glob(NU_ROOT . '/apps/*/lib/*.php') ?: [], glob(NU_ROOT . '/dev/tests/*.php'));
 foreach ($dep85Files as $f) {
 	$src = (string)file_get_contents($f);
+	$dep86Prev = 0;
 	foreach (token_get_all($src) as $i => $tk) {
-		if (!is_array($tk)) continue;
+		if (!is_array($tk)) { $dep86Prev = 0; continue; }
 		if ($tk[0] === T_STRING && in_array(strtolower($tk[1]), ['curl_close', 'curl_share_close', 'finfo_close', 'xml_parser_free', 'imagedestroy', 'mhash', 'socket_set_timeout', 'setaccessible'], true)) $dep85[] = basename($f) . ':' . $tk[2] . ' ' . $tk[1];
 		if ($tk[0] === T_STRING && preg_match('/^(MYSQL|PGSQL|SQLITE|FIREBIRD|ODBC|DBLIB)_ATTR_|^MYSQL_/', $tk[1]) && basename($f) !== 'nuapp.php') $dep85[] = basename($f) . ':' . $tk[2] . ' PDO::' . $tk[1];
 		if ($tk[0] === T_VARIABLE && $tk[1] === '$http_response_header') $dep85[] = basename($f) . ':' . $tk[2] . ' $http_response_header';
 		// PHP 8.4 (Q5): session settings that are deprecated when changed – use_only_cookies off, use_trans_sid on, sid_length, sid_bits_per_character
 		if ($tk[0] === T_CONSTANT_ENCAPSED_STRING && preg_match('/^.(session\\.)?(use_only_cookies|sid_length|sid_bits_per_character|trans_sid_tags|trans_sid_hosts|referer_check).$/', $tk[1])) $dep85[] = basename($f) . ':' . $tk[2] . ' ' . $tk[1];
 		if (in_array($tk[0], [T_BOOL_CAST, T_INT_CAST, T_DOUBLE_CAST, T_STRING_CAST], true) && preg_match('/\((boolean|integer|double|binary)\)/i', $tk[1])) $dep85[] = basename($f) . ':' . $tk[2] . ' ' . $tk[1];
+		// PHP 8.6: deprecated functions, the locale sort flag and SplFileObject's CSV methods (fgetcsv / fputcsv as functions stay fine)
+		if ($tk[0] === T_STRING && in_array(strtolower($tk[1]), ['is_double', 'is_integer', 'is_long', 'doubleval', 'strcoll', 'metaphone', 'spl_classes', 'spl_object_hash', 'mysqli_get_charset', 'sort_locale_string', 'setcsvcontrol', 'getcsvcontrol'], true)) $dep85[] = basename($f) . ':' . $tk[2] . ' ' . $tk[1];
+		if ($tk[0] === T_STRING && in_array(strtolower($tk[1]), ['fgetcsv', 'fputcsv', 'get_charset', 'stmt_init'], true) && $dep86Prev === T_OBJECT_OPERATOR) $dep85[] = basename($f) . ':' . $tk[2] . ' ->' . $tk[1];
+		if (!in_array($tk[0], [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT], true)) $dep86Prev = $tk[0];
 	}
 }
-check('no functions / constants / casts / session settings deprecated in PHP 8.4 / 8.5', !$dep85, implode(', ', array_slice($dep85, 0, 8)));
+check('no functions / constants / casts / session settings deprecated in PHP 8.4 / 8.5 / 8.6', !$dep85, implode(', ', array_slice($dep85, 0, 8)));
 
 // ---------------------------------------------------------------- include guards and class loading
 foreach (array_merge(glob(NU_ROOT . '/core/*.php'), glob(NU_ROOT . '/core/form/*.php'), glob(NU_ROOT . '/core/lists/*.php'), glob(NU_ROOT . '/pages/*.php'), glob(NU_ROOT . '/lang/*.php')) as $f) {

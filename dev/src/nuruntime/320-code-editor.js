@@ -145,7 +145,8 @@
 				c.cm = CodeMirror.fromTextArea(ta, {mode: c.mode, lineNumbers: true, lineWrapping: true, indentWithTabs: true, tabSize: 4,
 					theme: document.documentElement.getAttribute('data-bs-theme') === 'dark' ? 'default nuCmDark' : 'default'});
 				if (k !== 'sql') c.cm.on('change', codeMarks);
-				if (window.NuCodeTools) NuCodeTools.attach(c.cm, pane.querySelector('.nuBsqTools[data-code="' + k + '"]'), {lang: c.lang, db: N.db_type});
+				if (window.NuCodeTools) NuCodeTools.attach(c.cm, pane.querySelector('.nuBsqTools[data-code="' + k + '"]'), $.extend({lang: c.lang, db: N.db_type},
+					k === 'sql' && N.browseRun ? {run: function (ed) { N.browseRun(ed.getValue(), ed); }, runLabel: N.browse_run.m.run, runTitle: N.browse_run.m.run_tip} : {}));   // ▶ Run the browse SQL
 				size();
 				if (focus) c.cm.focus();
 			});

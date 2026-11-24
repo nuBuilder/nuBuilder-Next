@@ -191,7 +191,9 @@ nu_layout_start(t('trl_title'), 'forms', ['head' => $view === 'missing' && $id =
 								<td class="small text-body-secondary"><?= h(implode(', ', $r['where'])) ?></td>
 								<?php foreach ($targets as $l): $v = $r['tr'][$l]; ?>
 									<td class="small<?= $v === null ? ' trlGap' : '' ?>"
-										data-lang="<?= h($l) ?>"><?php if ($v !== null): ?><?= h(mb_strimwidth($v, 0, 80, '…')) ?><?php elseif ($rights['create']): ?><a class="btn btn-sm btn-outline-warning py-0 px-1 trlGapBtn"
+										data-lang="<?= h($l) ?>"><?php if ($v !== null): $tid = NuTranslate::rowIds($l)[$text] ?? NuTranslate::rowIds($l)[trim($text)] ?? '';   // a click edits it
+										if ($tid !== ''): ?><a class="trlCellEdit" href="<?= h(nu_url('translations', ['id' => $tid, 'back' => 'missing', 'f' => $aiForm])) ?>"
+										title="<?= h(t('edit') . ' · ' . $l) ?>"><?= h(mb_strimwidth($v, 0, 80, '…')) ?><i class="bi bi-pencil ms-1" aria-hidden="true"></i></a><?php else: ?><?= h(mb_strimwidth($v, 0, 80, '…')) ?><?php endif; ?><?php elseif ($rights['create']): ?><a class="btn btn-sm btn-outline-warning py-0 px-1 trlGapBtn"
 										href="<?= h(nu_url('translations', ['id' => 'new', 'lang' => $l, 'en' => $text, 'back' => 'missing', 'f' => $aiForm])) ?>"
 										title="<?= h(t('trl_translate') . ' · ' . $l) ?>"
 										aria-label="<?= h(t('trl_translate') . ' · ' . $l) ?>"><i class="bi bi-plus-lg"></i></a><?php else: ?><span class="badge text-bg-warning"><?= h(t('trl_missing_cell')) ?></span><?php endif; ?></td>
@@ -266,24 +268,24 @@ nu_layout_start(t('trl_title'), 'forms', ['head' => $view === 'missing' && $id =
 		</div>
 		<?php if ($isNu): ?><div class="alert alert-info py-2 small"><?= h(t('trl_nu_locked')) ?></div><?php endif; ?>
 		<fieldset class="card card-body shadow-sm"<?= $locked ? ' disabled' : '' ?>>
-			<div class="row g-2 mb-3">
-				<label class="col-sm-3 col-form-label text-sm-end" for="trl_language"><?= h(t('trl_language')) ?> <span class="text-danger">*</span></label>
-				<div class="col-sm-9 col-md-5">
+			<div class="mb-3">
+				<label class="form-label" for="trl_language"><?= h(t('trl_language')) ?> <span class="text-danger">*</span></label>
+				<div class="nuTrlLang">
 					<input class="form-control<?= $err('trl_language') ?>" id="trl_language" name="trl_language" maxlength="20" list="trlLangs" required value="<?= h($curLang) ?>">
 					<datalist id="trlLangs"><?php foreach ($langs as $l): ?><option value="<?= h($l) ?>"><?php endforeach; ?></datalist><?= $fb('trl_language') ?>
 				</div>
 			</div>
-			<div class="row g-2 mb-3">
-				<label class="col-sm-3 col-form-label text-sm-end" for="trl_english"><?= h(t('trl_english')) ?> <span class="text-danger">*</span></label>
-				<div class="col-sm-9">
+			<div class="mb-3">
+				<label class="form-label" for="trl_english"><?= h(t('trl_english')) ?> <span class="text-danger">*</span></label>
+				<div>
 					<textarea class="form-control font-monospace<?= $err('trl_english') ?>" id="trl_english" name="trl_english" rows="2" maxlength="500"
 						required<?= $row ? '' : ' autofocus' ?>><?= h($v('trl_english', 'en')) ?></textarea><?= $fb('trl_english') ?>
 					<div class="form-text"><?= h(t('trl_english_hint')) ?></div>
 				</div>
 			</div>
-			<div class="row g-2">
-				<label class="col-sm-3 col-form-label text-sm-end" for="trl_translation"><?= h(t('trl_translation')) ?> <span class="text-danger">*</span></label>
-				<div class="col-sm-9">
+			<div>
+				<label class="form-label" for="trl_translation"><?= h(t('trl_translation')) ?> <span class="text-danger">*</span></label>
+				<div>
 					<textarea class="form-control<?= $err('trl_translation') ?>" id="trl_translation" name="trl_translation" rows="2" maxlength="500"
 						required<?= $row || $v('trl_english', 'en') === '' ? '' : ' autofocus' ?>><?= h($v('trl_translation', 'tr')) ?></textarea><?= $fb('trl_translation') ?>
 				</div>

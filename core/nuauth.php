@@ -324,7 +324,46 @@ final class NuAuth
 	{
 		$n = (string)($_SESSION[NuSess::LOGIN_NEXT] ?? '');
 		unset($_SESSION[NuSess::LOGIN_NEXT]);
+		$back = self::takeReturn();
+		if ($back !== null) return $back;               // opened from another website with ?redirect: back there
 		return $n !== '' ? $n : nu_url('home');
+	}
+
+	/** How long a kept return address waits for the sign-in. */
+	private const RETURN_SECONDS = 1800;
+
+	/**
+	 * A page opened with ?redirect while not signed in: keep the browser's Referer (the website the link was on) to go back
+	 * there after the sign-in. Only a full http(s) address of another website – no user name / password part, no control
+	 * characters, not a page of this installation. Browsers often send only the site's address without the page.
+	 */
+	public static function keepReturn(string $referer): void
+	{
+		$url = self::validReturn($referer);
+		if ($url !== null) $_SESSION[NuSess::LOGIN_RETURN] = [$url, time()];
+	}
+
+	public static function validReturn(string $url): ?string
+	{
+		if ($url === '' || strlen($url) > 2000 || preg_match('/[\x00-\x20\x7f\\\\]/', $url)) return null;
+		$u = parse_url($url);
+		if (!is_array($u) || !in_array(strtolower((string)($u['scheme'] ?? '')), ['http', 'https'], true) || empty($u['host'])) return null;
+		if (isset($u['user']) || isset($u['pass'])) return null;
+		$own = parse_url(nu_base_url());
+		if (is_array($own) && strcasecmp((string)($own['host'] ?? ''), (string)$u['host']) === 0
+			&& (int)($own['port'] ?? 0) === (int)($u['port'] ?? 0)
+			&& str_starts_with((string)($u['path'] ?? '/'), rtrim((string)($own['path'] ?? '/'), '/') . '/')) return null;   // our own page
+		return $url;
+	}
+
+	private static function takeReturn(): ?string
+	{
+		$r = $_SESSION[NuSess::LOGIN_RETURN] ?? null;
+		unset($_SESSION[NuSess::LOGIN_RETURN]);
+		if (!is_array($r) || !is_string($r[0] ?? null) || time() - (int)($r[1] ?? 0) > self::RETURN_SECONDS) return null;
+		$url = self::validReturn($r[0]);
+		if ($url !== null) NuLog::write('login_return', '', '', ['to' => $url]);
+		return $url;
 	}
 
 	private static bool $byUrl = false;

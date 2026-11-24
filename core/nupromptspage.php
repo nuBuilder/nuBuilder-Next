@@ -39,6 +39,8 @@ final class NuPromptsPage
 				echo $body;
 				exit;
 			}
+			// an AI answer in Markdown → HTML for the answer box (escaped first, nothing runs; nothing stored)
+			if ($action === 'md') nu_json(['ok' => true, 'html' => NuHtmlClean::doc(NuMarkdown::toWeb(mb_substr((string)($_POST['text'] ?? ''), 0, 400000)))]);
 			if ($action === 'save') {
 				NuAcl::require(NuAcl::FORM_PROMPT, $rec ? 'save' : ($src ? 'clone' : 'create'));
 				$row = NuPrompt::fromInput($_POST);

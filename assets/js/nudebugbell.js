@@ -63,6 +63,18 @@
 			set(0); box.hidden = true; shown = false;
 		});
 	});
+	var delAll = document.getElementById('nuDbgDelAll');
+	if (delAll) delAll.addEventListener('click', function () {
+		var go = function () {
+			NuUtil.post(url, {action: 'delete_all'}).then(function (d) {
+				if (!d || !d.ok) return;
+				if (window.nuBs && nuBs.ready()) nuBs.dropdown(btn).hide();
+				draw([]); set(0); box.hidden = true; shown = false;
+			});
+		};
+		if (typeof window.nuConfirmAsk === 'function') window.nuConfirmAsk(t('debug_delete_all_confirm'), go, t('delete'), 'btn btn-danger', {cancelFirst: true});
+		else go();
+	});
 	document.addEventListener('nu:formapi', function () { window.clearTimeout(soon); soon = window.setTimeout(function () { check(false); }, 400); });
 	document.addEventListener('visibilitychange', function () { if (!document.hidden) check(false); });
 	window.setInterval(function () { check(false); }, 60000);

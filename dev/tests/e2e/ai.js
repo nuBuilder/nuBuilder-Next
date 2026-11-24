@@ -382,6 +382,11 @@ T.ai_providers = async (s) => {
 	const idle = (host) => ga.waitForFunction((h) => { const m = document.querySelector(h + ' .nuAiAskMsg'); return m && m.textContent.trim() !== '' && !document.querySelector(h).classList.contains('nuAiAskBusy'); }, host, { timeout: 20000 });
 	try {
 		await new Promise(r => setTimeout(r, 700));
+		if (sql('SELECT COUNT(*) FROM zzzzsys_nunext_ai_provider').trim() === '0') {   // no provider yet: a greyed Ask AI with the way to set one up
+			await open(ga, 'index.php?p=prompts&id=new');
+			expect(await ga.locator('#pgAskSetup button[disabled]').count() === 1 && await ga.locator('#pgAskSetup a[href*="p=aiproviders"]').count() === 1 && await ga.locator('#pgAsk').count() === 0,
+				'prompt generator without a provider: setup hint');
+		}
 		await open(ga, 'index.php?p=aiproviders'); await reauth('index.php?p=aiproviders');
 		expect(await ga.locator('#aipNew').count() === 1, 'the list with Add');
 		if (!(await ga.isChecked('#aipAllowPrivate'))) await Promise.all([ga.waitForNavigation(), ga.check('#aipAllowPrivate')]);
@@ -441,6 +446,23 @@ T.ai_providers = async (s) => {
 		await ga.click('#pgAsk .nuAiAskBtn');
 		await idle('#pgAsk');
 		expect(await ga.locator('#pgAnswerBox').isVisible() && await ga.inputValue('#pgAnswer') === 'e2e prompt answer', 'the answer is shown below the prompt');
+		// with the context file, an answer in Markdown: formatted, a Copy button on the code block
+		fs.writeFileSync(answers, JSON.stringify(['## Result\n\nUse **this**:\n\n```php\necho nuHash()[\'RECORD_ID\'];\n```']));
+		await ga.fill('#pge_prompt', 'e2e ask with context');
+		await ga.check('#pgAskCtx');
+		await ga.waitForFunction(() => /\d/.test(document.getElementById('pgAskCtxSize').textContent), null, { timeout: 20000 });
+		const nPg = lines().filter(x => x.path.endsWith('/messages')).length;
+		await ga.waitForTimeout(500);
+		await ga.click('#pgAsk .nuAiAskBtn');
+		await idle('#pgAsk');
+		const lp = lines().filter(x => x.path.endsWith('/messages'));
+		const sent = JSON.parse(lp[lp.length - 1].body).messages[0].content;
+		expect(lp.length === nPg + 1 && sent.includes('e2e ask with context') && sent.indexOf('---') > 0 && sent.length > 5000 && sent.indexOf('e2e ask with context') > sent.indexOf('---'),
+			'the context file goes in front of the prompt (' + sent.length + ' chars)');
+		await ga.waitForSelector('#pgAnswerView .pgCodeCopy');
+		const av = await ga.evaluate(() => { const v = document.getElementById('pgAnswerView'); return {h: !!v.querySelector('h2'), b: !!v.querySelector('strong'), pre: v.querySelector('pre').textContent}; });
+		expect(av.h && av.b && av.pre.includes("echo nuHash()['RECORD_ID'];"), 'answer formatted: ' + JSON.stringify(av));
+		await ga.uncheck('#pgAskCtx');
 		const hp = sql("SELECT code FROM zzzzsys_nunext_help WHERE lang = '' LIMIT 1").trim();
 		if (hp) { await open(ga, 'index.php?p=helppages&c=' + encodeURIComponent(hp)); expect(await ga.locator('#uhAiAsk').count() <= 1, 'help page editor opens'); }
 		const sf = sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_code = 'sample_customer' OR zzzzsys_form_id = 'samplecustomer' LIMIT 1").trim();

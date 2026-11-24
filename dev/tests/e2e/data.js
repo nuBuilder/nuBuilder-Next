@@ -301,6 +301,16 @@ T.translations_form = async (s) => {                     // 0.8.754: missing tra
 		expect(+sql("SELECT COUNT(*) FROM zzzzsys_nunext_log WHERE event = 'translations_ai'") === 1, 'not logged');
 		const cell = await p.locator('#trlMatrix tr[data-text="Australia"] td[data-lang="German"]').innerText();
 		expect(/E2E Australien/.test(cell), 'matrix cell after saving: ' + cell);
+		// a translation in the matrix is a link to its record: change it there, Save returns to the matrix
+		const link = p.locator('#trlMatrix tr[data-text="Australia"] td[data-lang="German"] a.trlCellEdit');
+		expect(await link.count() === 1, 'translation cell is no edit link');
+		await Promise.all([p.waitForNavigation(), link.click()]);
+		expect(/id=/.test(p.url()), 'edit page: ' + p.url());
+		await p.fill('[name=trl_translation]', 'E2E Australien neu');
+		await Promise.all([p.waitForNavigation(), p.click('[data-nu-save]')]);
+		expect(/view=missing/.test(p.url()) && /f=samplecustomer/.test(p.url()), 'back to the matrix after saving: ' + p.url());
+		expect(/E2E Australien neu/.test(await p.locator('#trlMatrix tr[data-text="Australia"] td[data-lang="German"]').innerText()), 'changed translation shown');
+		sql("UPDATE zzzzsys_translate SET trl_translation = 'E2E Australien' WHERE trl_translation = 'E2E Australien neu'");
 		// a broken answer
 		await p.fill('#trlAiAnswer', 'no json here');
 		await Promise.all([p.waitForNavigation(), p.click('#trlAiCheck')]);

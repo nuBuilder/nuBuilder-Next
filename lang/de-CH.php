@@ -278,6 +278,7 @@ Oder von Hand aktualisieren: die Dateien aus nunext.zip über die alten hochlade
 	'imp_check_errors' => '%s Zeilen haben Probleme (siehe unten). Es wurde noch nichts geschrieben – Datei oder Zuordnung korrigieren oder «Fehlerhafte Zeilen überspringen» wählen.',
 	'imp_working' => 'Wird verarbeitet … grosse Dateien brauchen einen Moment.',
 	'imp_err_size' => 'Die Datei ist zu gross (höchstens %d MB).',
+	'pg_ask_ctx_tip' => 'Sendet die Kontextdatei (Funktionen, Hash-Variablen und die gewählten Tabellen dieser Installation) vor dem Prompt mit. Bessere Antworten, aber eine viel grössere Anfrage – mehr Tokens.',
 	'pwg_upper' => 'Grossbuchstaben (A–Z)',
 	'builder_run_pivot_tip' => 'Ein gespeichertes Pivot einer Formularliste (Export ▾ → Pivot… → Meine Pivots). Als gemeinsames Pivot speichern – Einträge mit «nur du» sieht nur du. Die Schaltfläche öffnet nur das Pivot, als iframe, Popup oder neuen Tab; Benutzer brauchen Lese- und Druckrechte auf diese Liste.',
 	'file_size' => 'Grösse',

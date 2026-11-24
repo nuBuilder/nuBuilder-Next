@@ -71,6 +71,24 @@ final class NuTranslate
 		return self::$dict[$lang] = $d;
 	}
 
+	/** [english => row id] of a language – the row dictionary() takes the translation from (own rows before nuBuilder Forte's). */
+	public static function rowIds(string $lang): array
+	{
+		return NuMemo::get('trlids:' . $lang, [self::TABLE], static function () use ($lang): array {
+			$out = [];
+			try {
+				$db = nu_db();
+				if (!$db->tableExists(self::TABLE)) return [];
+				foreach ($db->all("SELECT zzzzsys_translate_id, trl_english, trl_translation FROM zzzzsys_translate WHERE trl_language = ?
+					ORDER BY CASE WHEN zzzzsys_translate_id LIKE 'nu%' THEN 1 ELSE 0 END, zzzzsys_translate_id", [$lang]) as $r) {
+					$e = (string)$r['trl_english'];
+					if ($e !== '' && !isset($out[$e]) && (string)$r['trl_translation'] !== '') $out[$e] = (string)$r['zzzzsys_translate_id'];
+				}
+			} catch (Throwable $ig) { nu_ignored($ig, 'translation ids'); }
+			return $out;
+		});
+	}
+
 	/** Translates one text ("|text" stays as "text"). */
 	public static function text(?string $s, ?string $lang = null): string
 	{

@@ -185,6 +185,7 @@ $input = static function (string $col, string $type = 'text', array $attr = []) 
 };
 
 nu_body_class('nuRecPage');
+if (!$isNew && NuRecordView::pending('user')) nu_body_class('nuRvPending');   // view mode opens by itself: no glimpse of the form
 nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu_asset(NU_TOMSELECT . '/tom-select.bootstrap5.min.css') . '">']);   // access level: searchable
 ?>
 <nav aria-label="breadcrumb">

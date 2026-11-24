@@ -1140,3 +1140,30 @@ T.debug_bell = async (s) => {                         // 0.8.1409: red bug in th
 		gone();
 	}
 };
+
+// debug icon: "Delete all" in the panel (with the delete right) asks, then empties the Debug results
+T.debug_bell_delete_all = async (s) => {
+	const p = s.ga;
+	const dump = path.join(os.tmpdir(), 'nunext-e2e-dbgdel.sql');
+	execSync(`mysqldump ${DB} zzzzsys_debug > ${dump}`);
+	try {
+		await open(p, 'index.php?p=home');
+		await p.evaluate((u) => NuUtil.post(u, {action: 'read'}), await p.getAttribute('#nuDbg', 'data-url'));
+		await p.waitForTimeout(1100);
+		for (const id of ['e2e_dbd1', 'e2e_dbd2']) sql("INSERT INTO zzzzsys_debug (zzzzsys_debug_id, deb_message, deb_added) VALUES ('" + id + "', 'e2e delete all', UNIX_TIMESTAMP())");
+		await open(p, 'index.php?p=home');
+		await p.click('#nuDbgBtn');
+		await p.waitForSelector('#nuDbg .nuDbgItem');
+		await p.click('#nuDbgDelAll');
+		await p.waitForSelector('.modal.show .btn-danger');
+		await p.click('.modal.show .btn-danger');
+		await p.waitForFunction(() => document.getElementById('nuDbg').hidden, null, {timeout: 5000});
+		expect(sql('SELECT COUNT(*) FROM zzzzsys_debug').trim() === '0', 'Debug results not emptied');
+		const u = await login('sample_anna', UPW);
+		const st = await u.evaluate(() => fetch('index.php?p=debugbell', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{"action":"delete_all"}'}).then((r) => r.status));
+		expect(st === 403 || st === 400, 'a user without the right could call it: ' + st);
+		await u.close();
+	} finally {
+		execSync(`mysql ${DB}`, {input: fs.readFileSync(dump)});
+	}
+};

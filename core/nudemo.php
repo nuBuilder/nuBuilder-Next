@@ -39,7 +39,7 @@ final class NuDemo
 		'user'           => ['effective', 'perm_of'],   // user form: effective rights of the levels entered, another user's permission items
 		'notifications'  => ['state', 'readall', 'count'],
 			// own read / hidden state (the session only), number of recipients          // runs a procedure: only with "Demo access", and it cannot write (NuPhp::procedure, NuDB)
-		'prompts'        => ['build', 'context'],   // prompt generator: builds the text, the AI context file, saves nothing
+		'prompts'        => ['build', 'context', 'md'],   // prompt generator: builds the text, the AI context file, saves nothing
 		'builder'        => ['prompt'],
 		'formai'         => ['prompt', 'check', 'context'],   // form with AI: copy the prompt, check an answer       // page forms: "Copy AI prompt" only reads
 		'emailtemplates' => ['preview'],      // renders a template with a record
