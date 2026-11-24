@@ -2076,3 +2076,25 @@ T.labels_on_top = async (s) => {
 	}));
 	expect(g.every((x) => x.labelAbove) && g[0].top === g[1].top && g[1].left > g[0].right, JSON.stringify(g));
 };
+
+T.toolbar_same_look = async (s) => {
+	// every button of a record / list toolbar has the background of Save / Clone / Delete (View, Design, (i), ⋮, Export, Add …),
+	// and the phone's "‹ parent" link of the next page names the user, not the texts of the "Act as user" menu in the heading
+	const p = s.ga;
+	const bgs = async (sel) => p.$$eval(sel, (bs) => [...new Set(bs.filter((b) => b.offsetParent && !b.closest('.dropdown-menu'))
+		.map((b) => b.id + '=' + getComputedStyle(b).backgroundColor))]);
+	for (const [u, sel] of [['index.php?p=form&f=samplecustomer&r=sample_cus_01', '#nuActionHolder .btn'], ['index.php?p=form&f=samplecustomer', '#nuActionHolder .btn'],
+		['index.php?p=accesslevel&id=sample_editor', '.nuTitleBar .btn'], ['index.php?p=users', '.nuListHead .btn']]) {
+		await open(p, u); await p.waitForTimeout(400);
+		const list = await bgs(sel);
+		const colours = [...new Set(list.map((x) => x.split('=')[1]))];
+		expect(list.length > 1 && colours.length === 1, 'toolbar buttons differ on ' + u + ': ' + list.join(', '));
+	}
+	const uid = sql("SELECT zzzzsys_user_id FROM zzzzsys_user WHERE sus_login_name = 'sample_ben'");
+	if (uid) {
+		await open(p, 'index.php?p=user&id=' + uid);
+		const t = await p.evaluate(() => { try { const a = JSON.parse(sessionStorage.getItem('nunext-trail') || '[]'); return a.length ? a[a.length - 1].t : ''; } catch (e) { return ''; } });
+		expect(t === 'sample_ben', 'trail title of the user page: ' + t);
+	}
+	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};

@@ -23,7 +23,7 @@ final class NuBuilderPagePage
 				nu_redirect(nu_url('builder', ['f' => $formId]));
 			}
 			// draft and versions of the page files (NuPageVersion)
-			$verAct = ['draft_create' => 'createDraft', 'draft_publish' => 'publish', 'draft_discard' => 'discard'];
+			$verAct = ['draft_create' => 'createDraft', 'draft_publish' => 'publish', 'draft_discard' => 'discard', 'draft_data_reset' => 'resetData'];
 			if (isset($verAct[$action]) || $action === 'version_restore') {
 				$r = $action === 'version_restore' ? NuPageVersion::restore($meta->code(), nu_post('version')) : NuPageVersion::{$verAct[$action]}($meta->code());
 				nu_flash($r['ok'] ? 'success' : 'warning', $r['message']);

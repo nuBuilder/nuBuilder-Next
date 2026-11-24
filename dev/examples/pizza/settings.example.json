@@ -1,0 +1,11 @@
+{
+  "shop_name": "Pizzeria Forno",
+  "currency": "$",
+  "clock": "12h",
+  "hours": { "from": "11:00", "to": "22:00" },
+  "closed_weekdays": [1],
+  "delivery_fee": 5,
+  "min_order": 20,
+  "poll_seconds": 15,
+  "extras": { "Extra mozzarella": 2, "Olives": 1.5, "Chili": 1, "Rocket": 2, "Gluten-free base": 3 }
+}

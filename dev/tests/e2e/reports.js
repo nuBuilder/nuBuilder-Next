@@ -280,3 +280,18 @@ T.report_xlsx = async (s) => {
 	expect(/\.xlsx$/.test(dl2.suggestedFilename()), 'nuRunReportXlsx download: ' + dl2.suggestedFilename());
 	s.result = { sheets: x.sheets, total };
 };
+
+// a report whose launch form is nuBuilder Forte's empty nublank: the PDF right away (run iframe / button), as in Forte
+T.report_nublank_launch = async (s) => {
+	const p = s.ga;
+	if (sql("SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id = 'nublank'") !== '1') { s.skip = 'no nublank form'; return; }
+	const was = sql("SELECT sre_zzzzsys_form_id FROM zzzzsys_report WHERE zzzzsys_report_id = 'sample_rpt_customers'");
+	try {
+		sql("UPDATE zzzzsys_report SET sre_zzzzsys_form_id = 'nublank' WHERE zzzzsys_report_id = 'sample_rpt_customers'");
+		const r = await p.request.get(BASE + 'index.php?p=report&c=sample_rpt_customers&iframe=1', { maxRedirects: 0 });
+		const loc = r.headers()['location'] || '';
+		expect(r.status() === 303 && /p=reportpdf/.test(loc) && !/f=nublank/.test(loc), 'nublank launch form: ' + r.status() + ' ' + loc);
+	} finally {
+		sql('UPDATE zzzzsys_report SET sre_zzzzsys_form_id = ' + (was === 'NULL' ? 'NULL' : "'" + was.replace(/'/g, "''") + "'") + " WHERE zzzzsys_report_id = 'sample_rpt_customers'");
+	}
+};

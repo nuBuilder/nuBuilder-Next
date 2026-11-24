@@ -1185,6 +1185,23 @@
 		var on = e.target.closest && e.target.closest('[data-bs-toggle="tooltip"]');
 		if (!on) hideOthers(null);
 	}, true);
+	// touch screens: a second tap on an (i) closes its tip. The tap shows it through focus / mouseenter and the element keeps the
+	// focus, so Bootstrap leaves it open; whether it was open is read at pointerdown – the first tap opens it before the click
+	var openAtTap = null;
+	document.addEventListener('pointerdown', function (e) {
+		openAtTap = null;
+		if (e.pointerType === 'mouse') return;
+		var on = e.target.closest && e.target.closest('[data-bs-toggle="tooltip"]');
+		if (on && on.getAttribute('aria-describedby') && !/click/.test(on.getAttribute('data-bs-trigger') || '')) openAtTap = on;
+	}, true);
+	document.addEventListener('click', function (e) {
+		var on = e.target.closest && e.target.closest('[data-bs-toggle="tooltip"]');
+		if (!on || on !== openAtTap) return;
+		openAtTap = null;
+		var t = nuBs.tooltipOf(on);
+		if (t) t.hide();
+		if (document.activeElement === on) on.blur();
+	}, true);
 })();
 
 // Update page: change history – open / close all on this page; clearing the search (×) shows everything again
@@ -1634,6 +1651,8 @@
 			if (!b.classList.contains('nuFormHeader') && !b.querySelector(KEY)) return;
 			if (b.parentElement && b.parentElement.closest('.nuStickyBar')) return;
 			b.classList.add('nuStickyBar');
+			// a title bar without Save (Back only: check and overview pages) scrolls away on phones (nuapp.css) – there it is mostly a big title
+			if (!b.classList.contains('nuFormHeader') && !b.querySelector('[data-nu-save], .nuBtnSave')) b.classList.add('nuStickyBackOnly');
 			bars.push(b);
 			if (window.ResizeObserver) new ResizeObserver(measure).observe(b);
 		});
@@ -1656,19 +1675,22 @@
 			if (inline ? parseFloat(inline) === px : parseFloat(cs.getPropertyValue(name)) === px) return;
 			root.style.setProperty(name, px + 'px');
 		};
+		bars.forEach(function (b) { b.nuSticks = getComputedStyle(b).position === 'sticky'; });
 		stickTop = nav + (banner ? banner.offsetHeight : 0);
-		var room = bars.length ? bars[0].offsetHeight + 8 : 0;
+		var room = bars.length && sticks(bars[0]) ? bars[0].offsetHeight + 8 : 0;
 		put('--nu-sticky-top', stickTop);
 		put('--nu-sticky-h', room);
 		check();
 	}
+	// read in measure() (load, resize) and kept – not on every scroll frame
+	function sticks(b) { return b.nuSticks; }
 	var queued = false;
 	function check() {
 		queued = false;
 		var top = stickTop + 8;
 		if (document.body.classList.contains('nu-bare')) top = 8;
 		bars.forEach(function (b) {
-			var y = b.getBoundingClientRect().top, stuck = window.scrollY > 0 && y <= top + 1 && y >= top - 1;
+			var y = b.getBoundingClientRect().top, stuck = sticks(b) && window.scrollY > 0 && y <= top + 1 && y >= top - 1;
 			b.classList.toggle('nuStuck', stuck);
 		});
 	}
@@ -2016,9 +2038,11 @@ window.nuPageNoGo = function (value) {
 		if (el.querySelector('.nuLvMenuBtn')) return true;                                   // the view menu
 		return /(?:New|Add)$/.test(el.id || '');
 	}
-	function label(el) {
-		var t = el.getAttribute('title') || el.getAttribute('aria-label') || '';
-		if (!t) { var c = el.cloneNode(true); c.querySelectorAll('.visually-hidden, .badge').forEach(function (x) { x.remove(); }); t = c.textContent; }
+	// textFirst: entries of a menu show their own text (their title is a longer tooltip); bar buttons may be icons, so their title wins
+	function label(el, textFirst) {
+		var c = el.cloneNode(true); c.querySelectorAll('.visually-hidden, .badge').forEach(function (x) { x.remove(); });
+		var txt = (c.textContent || '').replace(/\s+/g, ' ').trim();
+		var t = textFirst && txt ? txt : (el.getAttribute('title') || el.getAttribute('aria-label') || txt);
 		return (t || '').replace(/\s+/g, ' ').trim();
 	}
 	function item(src, text) {
@@ -2029,6 +2053,7 @@ window.nuPageNoGo = function (value) {
 		var ics = src.querySelectorAll(':scope > .bi'); if (!ics.length) ics = [].slice.call(src.querySelectorAll('.bi'), 0, 1);
 		[].forEach.call(ics, function (ic) { var i = document.createElement('i'); i.className = ic.className; i.classList.remove('me-1', 'me-2'); i.setAttribute('aria-hidden', 'true'); a.appendChild(i); });
 		var sp = document.createElement('span'); sp.textContent = text; a.appendChild(sp);
+		var tip = src.getAttribute('title'); if (tip && tip !== text) a.title = tip;
 		if (a.tagName !== 'A') a.addEventListener('click', function () { src.click(); });
 		var li = document.createElement('li'); li.appendChild(a); return li;
 	}
@@ -2057,7 +2082,7 @@ window.nuPageNoGo = function (value) {
 				if (sub.length) {
 					var h = document.createElement('li'); var h6 = document.createElement('h6'); h6.className = 'dropdown-header'; h6.textContent = label(el.querySelector('[data-bs-toggle="dropdown"]')
 						|| el); h.appendChild(h6); menu.appendChild(h);
-					[].forEach.call(sub, function (x) { menu.appendChild(item(x, label(x))); });
+					[].forEach.call(sub, function (x) { menu.appendChild(item(x, label(x, true))); });
 				} else {
 					var btn = el.matches('a, button') ? el : el.querySelector('a.btn, button.btn');
 					if (btn && btn.hasAttribute('data-lv-phone-toggle')) {                  // card / table switch first in ⋮
@@ -2122,6 +2147,8 @@ window.nuPageNoGo = function (value) {
 	}
 	function title() {
 		var h = document.querySelector('.nuPhTitle, main h1, h1');
+		// only the heading's own words – not a button, menu or badge inside it (the user form's "Act as user" menu)
+		if (h) { h = h.cloneNode(true); h.querySelectorAll('.dropdown, .dropdown-menu, .btn, .badge, button, [aria-hidden="true"]').forEach(function (x) { x.remove(); }); }
 		var t = h ? (h.textContent || '').replace(/\s+/g, ' ').trim() : '';
 		return (t || document.title || '').slice(0, 80);
 	}

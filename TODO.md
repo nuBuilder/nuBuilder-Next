@@ -17,8 +17,6 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       `nucron.php app export / import` with a real git repository between two installations. Also (0.8.1379) the "Only here" rows: kept by default,
       Delete per row / Delete all listed, blocked while still used, --delete / --keep on the command line, deleted parts in the restore
       point. Not built: a page for the folder sync, imports by admin roles other than the globeadmin.
-- [ ] **Custom pages: "Test copy"** – besides the draft (0.8.599) a clone of the custom page + its folder, published back (option A, not
-      built); a page's draft shares _data, secrets.php and the database with the live version.
 - [ ] **Test of the function reference examples** (proposed 2 Nov 2026): run.php only checks that every PHP / JS function has a complete
       entry in docs/nunext-functions.json; the examples `e` / sample results `x` are never executed. Proposal: an e2e test that runs every
       example – PHP against the test database, JavaScript on a test form – and compares with `x`; functions with side effects (mail,
@@ -28,6 +26,8 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       value (stacking, keyboard Tab order) – align exactly if wanted (0.8.567 fixed the z-index).
 
 ## SQL Server
+
+- [ ] **Reset database, clean installation** (0.8.1438) – please verify on SQL Server: Settings → Reset database offers only "nuBuilder Next: clean installation"; Check lists the tables, the run deletes them (foreign keys first), builds the database from install/schema_mssql.sql, you stay signed in, the sample application installs when ticked; `php nucron.php reset --clean --yes` likewise.
 - [ ] **Row details child tables** (0.8.1316) – NuRowDetails::candidates finds child tables by column name only (no foreign key query on SQL Server); rows read with OFFSET / FETCH, names in [brackets]; untested there
 - [ ] **Pivot date groups on SQL Server** (0.8.1151) – NuPivot::dimExpr (DATEPART / FORMAT / iso_week, weekday via @@DATEFIRST) untested; open a pivot with a date by month / week / weekday
 - [ ] **Column totals of form lists** (0.8.1127) – SUM / AVG use TRY_CONVERT(DECIMAL(38, 10), column) on SQL Server; untested there. A failing
@@ -125,6 +125,7 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       protect_fields is off.
 
 ## Forms and design mode
+- [ ] **Please verify 0.8.1438–0.8.1450** – Reset database with a dump holding procedures / triggers on a shared host: skipped ones listed (0.8.1439); a nuBuilder Forte form whose code calls nuSelectTab($('.nuTabSelected').next()[0]) (0.8.1440); a run button / iframe of a report whose launch form is nublank opens the PDF at once (0.8.1441); toolbar buttons of lists and record pages in one look (0.8.1445); on a phone: a second tap closes an (i) hint (0.8.1446), the title bar of a page without Save scrolls away (0.8.1447), the ⋮ menu of the forms list shows Maintenance… (0.8.1450); application package with access levels and settings from a test to a live installation – check that nothing of the live installation's own settings changes (0.8.1448); a custom page draft works on its own _data, Reset draft data, a page moved with the application package (0.8.1449).
 - [ ] **Please verify 0.8.1414–0.8.1417** – design mode Browse list workspace on a list page: editing a column keeps the workspace open and the focus (0.8.1414); long press on a menu entry / heading on a phone selects no text (0.8.1415); sample start page Excel tiles with icons after a sample refresh (0.8.1416); Form settings → Data switch *Audit columns* on a form whose table has the four columns (0.8.1417).
 - [ ] **Please verify 0.8.1421–0.8.1436** – the CI row PHP 8.6 (nightly, may fail – remove `nightly` once setup-php has 8.6) (0.8.1421); view mode: the bar lines up with the sheet, ← / → shows no edit form in between (0.8.1422 / 0.8.1423); `index.php?p=home&redirect` from another website returns there after the sign-in (0.8.1424); design panel wider by dragging, two columns of sections (0.8.1426 / 0.8.1427); ▶ Run of the browse SQL on a list with nuSetProperty filters (0.8.1432); lookups as one control in absolute and grid layouts (0.8.1433); prompt generator *Ask AI* with a real provider and the context file ticked (0.8.1435); debug icon *Delete all* (0.8.1436).
 - [ ] **Shown as in the New form wizard** (0.8.1412) – please verify: a new table with a select (options), a lookup and a Yes / No select; an existing table's column list with a changed type – the objects in design mode match
@@ -559,8 +560,8 @@ Checked against what nuBuilder Next already has (October 2026) – only real gap
       a Docker SQL Server in CI would settle it (see Docker below).
 - [ ] **9 · Scheduled automatic backups** – today only "Back up now" and the backup before an update. Daily / weekly by nucron.php with the
       database, a keep rule, optional copy to another folder / server (SFTP, S3) and a warning on the start page when the last backup is too old.
-- [ ] **9 · Deploy changes from a test to the live system** – export forms, procedures, reports, access levels, settings as one versioned
-      package (JSON), show a diff on the target and apply selected parts.
+- [x] **9 · Deploy changes from a test to the live system** – done with project / application packages (0.8.1378) plus access levels and
+      settings (0.8.1448).
 - [x] **8 · Single sign-on with OpenID Connect** – built in 0.8.863.
 - [x] **8 · Passkeys (WebAuthn)** – built in 0.8.877.
 - [ ] **8 · OpenAPI description of the REST API** – generated from forms and rights, Swagger-style view in the API playground.

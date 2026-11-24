@@ -8,8 +8,10 @@ defined('NU_ROOT') || exit;
  * remembered in the session; other users always get the live files). Publish moves the live files into <folder>/_versions/<stamp>/
  * and the draft's files into the folder; Restore copies a version back (the current files become a version first, so a restore can
  * be undone too). KEEP versions are kept.
- * Never moved or copied: _data (the page's data – shared by draft and live), _draft, _versions, secrets.php (the draft reads the live
- * one) and names starting with a dot (.git, .htaccess). Built-in pages in apps/ have no draft (an own copy in custom/pages/ has).
+ * Never moved or copied with the code: _data, _draft, _versions, secrets.php and names starting with a dot (.git, .htaccess).
+ * The draft has its own data: _draft/_data is a copy of the live _data made with the draft (resetData() copies it again) and is never
+ * published; a _draft/secrets.php (optional) wins over the live one while the draft is shown. The database is shared – the page asks
+ * $nu->isDraft() where it must not write live tables. Built-in pages in apps/ have no draft (an own copy in custom/pages/ has).
  */
 final class NuPageVersion
 {
@@ -114,9 +116,48 @@ final class NuPageVersion
 		if (!self::writable($code)) return ['ok' => false, 'message' => t('page_tpl_not_writable', NuPage::shownFolder($code))];
 		$dir = self::draftDir($code);
 		if (is_dir($dir)) self::remove($dir);                 // a left-over without index.php
-		if (!self::copyEntries(NuPage::folder($code), $dir)) { self::remove($dir); return ['ok' => false, 'message' => t('page_tpl_not_writable', NuPage::shownFolder($code))]; }
+		if (!self::copyEntries(NuPage::folder($code), $dir) || !self::copyData($code)) {
+			self::remove($dir);
+			return ['ok' => false, 'message' => t('page_tpl_not_writable', NuPage::shownFolder($code))];
+		}
 		NuLog::write('page_draft_created', NuPage::TABLE, $code, ['folder' => NuPage::shownFolder($code) . self::DRAFT . '/']);
 		return ['ok' => true, 'message' => t('page_draft_created', NuPage::shownFolder($code) . self::DRAFT . '/')];
+	}
+
+	/** The draft's own data folder (made from the live data when missing – drafts made before it existed). */
+	public static function draftData(string $code): string
+	{
+		$d = self::draftDir($code) . '/_data';
+		if (!is_dir($d) && self::hasDraft($code)) self::copyData($code);
+		NuSecurity::protectDir($d);
+		return $d;
+	}
+
+	/** Copies the live _data into _draft/_data (the old draft data goes). */
+	private static function copyData(string $code): bool
+	{
+		$to = self::draftDir($code) . '/_data';
+		self::remove($to);
+		$from = NuPage::folder($code) . '/_data';
+		if (!@mkdir($to, 0755, true) && !is_dir($to)) return false;
+		if (!is_dir($from)) return true;
+		$it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($from, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::SELF_FIRST);
+		foreach ($it as $f) {
+			if ($f->isLink()) continue;
+			$dst = $to . '/' . substr($f->getPathname(), strlen($from) + 1);
+			if ($f->isDir()) { if (!is_dir($dst) && !@mkdir($dst, 0755)) return false; }
+			elseif ($f->isFile() && !@copy($f->getPathname(), $dst)) return false;
+		}
+		return true;
+	}
+
+	/** The draft's data starts again as a copy of the live data. */
+	public static function resetData(string $code): array
+	{
+		if (!self::hasDraft($code)) return ['ok' => false, 'message' => t('page_draft_none')];
+		if (!self::copyData($code)) return ['ok' => false, 'message' => t('page_tpl_not_writable', NuPage::shownFolder($code))];
+		NuLog::write('page_draft_data_reset', NuPage::TABLE, $code, []);
+		return ['ok' => true, 'message' => t('page_draft_data_done')];
 	}
 
 	/** Deletes the draft. */
@@ -185,6 +226,98 @@ final class NuPageVersion
 	public static function label(string $id): string
 	{
 		return preg_match('/^(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})/', $id, $m) ? "$m[1]-$m[2]-$m[3] $m[4]:$m[5]:$m[6]" : $id;
+	}
+
+	// ------------------------------------------------------------------ packages (deploying a page to another installation)
+
+	/** Most bytes of a page's code in a package. */
+	public const PACK_MAX = 20_000_000;
+
+	/**
+	 * The live code files of a page for a project package: {code, files: {path: {t: text} | {b64: …}}}; null for a page without its
+	 * own folder (built-in) or one too large (PACK_MAX). Never _data, _draft, _versions, secrets.php or dot names.
+	 */
+	public static function pack(string $code): ?array
+	{
+		if (!self::available($code)) return null;
+		$folder = NuPage::folder($code);
+		$out = [];
+		$size = 0;
+		foreach (array_keys(self::files($folder)) as $rel) {
+			$b = (string)@file_get_contents($folder . '/' . $rel);
+			$size += strlen($b);
+			if ($size > self::PACK_MAX) return null;
+			$out[$rel] = mb_check_encoding($b, 'UTF-8') && !str_contains($b, "\0") ? ['t' => $b] : ['b64' => base64_encode($b)];
+		}
+		return ['code' => $code, 'files' => $out];
+	}
+
+	/** A path of a package file that may be written (relative, no .., not a reserved name, no dot names). */
+	public static function safePath(string $rel): bool
+	{
+		if ($rel === '' || strlen($rel) > 400 || str_contains($rel, '\\') || str_starts_with($rel, '/') || preg_match('/[\x00-\x1f:]/', $rel)) return false;
+		foreach (explode('/', $rel) as $i => $part) {
+			if ($part === '' || $part === '.' || $part === '..' || str_starts_with($part, '.')) return false;
+			if ($i === 0 && in_array($part, self::SKIP, true)) return false;
+		}
+		return true;
+	}
+
+	/** Bytes of a package file. */
+	public static function bytes(array $f): string
+	{
+		return isset($f['b64']) ? (string)base64_decode((string)$f['b64'], true) : (string)($f['t'] ?? '');
+	}
+
+	/** Differences package ↔ the live files here. @return array{added: list<string>, changed: list<string>, removed: list<string>}|null null = no folder */
+	public static function packDiff(string $code, array $files): ?array
+	{
+		$folder = NuPage::folder($code);
+		if ($folder === '' || $folder !== NuPage::dir() . '/' . $code) return null;
+		$here = is_dir($folder) ? self::files($folder) : [];
+		$out = ['added' => [], 'changed' => [], 'removed' => []];
+		foreach ($files as $rel => $f) {
+			if (!self::safePath((string)$rel) || !is_array($f)) continue;
+			if (!isset($here[$rel])) $out['added'][] = (string)$rel;
+			elseif ($here[$rel] !== sha1(self::bytes($f))) $out['changed'][] = (string)$rel;
+		}
+		foreach (array_keys($here) as $rel) if (!isset($files[$rel])) $out['removed'][] = $rel;
+		return $out;
+	}
+
+	/**
+	 * Puts the files of a package live: the current files become a version first (as a publish does), the page's data, draft and
+	 * secrets.php stay. A page without a folder here gets one.
+	 */
+	public static function installPack(string $code, array $files): array
+	{
+		if (!NuPage::validCode($code)) return ['ok' => false, 'message' => t('err_invalid')];
+		$folder = NuPage::dir() . '/' . $code;
+		if (!is_dir($folder) && !@mkdir($folder, 0755, true)) return ['ok' => false, 'message' => t('page_tpl_not_writable', NuPage::shownFolder($code))];
+		if (!is_writable($folder)) return ['ok' => false, 'message' => t('page_tpl_not_writable', NuPage::shownFolder($code))];
+		$tmp = $folder . '/.nuimport-' . bin2hex(random_bytes(4));      // a dot name: never taken for a code entry
+		foreach ($files as $rel => $f) {
+			if (!self::safePath((string)$rel) || !is_array($f)) continue;
+			$dst = $tmp . '/' . $rel;
+			if ((!is_dir(dirname($dst)) && !@mkdir(dirname($dst), 0755, true)) || @file_put_contents($dst, self::bytes($f)) === false) {
+				self::remove($tmp);
+				return ['ok' => false, 'message' => t('page_tpl_not_writable', NuPage::shownFolder($code))];
+			}
+		}
+		$stamp = self::entries($folder) ? self::backup($code, 'import') : '';
+		if ($stamp === null) { self::remove($tmp); return ['ok' => false, 'message' => t('page_tpl_not_writable', NuPage::shownFolder($code))]; }
+		foreach (self::entries($tmp) as $n) {
+			if (!@rename($tmp . '/' . $n, $folder . '/' . $n)) {
+				if ($stamp !== '') self::restoreFrom($code, $folder . '/' . self::VERSIONS . '/' . $stamp);
+				self::remove($tmp);
+				return ['ok' => false, 'message' => t('page_tpl_not_writable', NuPage::shownFolder($code))];
+			}
+		}
+		self::remove($tmp);
+		self::flush($folder);
+		self::prune($code);
+		NuLog::write('page_imported', NuPage::TABLE, $code, ['version' => $stamp, 'files' => count($files)]);
+		return ['ok' => true, 'message' => ''];
 	}
 
 	// ------------------------------------------------------------------ helpers

@@ -34,6 +34,7 @@ final class NuProject
 		'file'          => ['zzzzsys_file', 'zzzzsys_file_id', 'sfi_description', 'sfi_code', 'bi-file-earmark-image'],
 		'dataexport'    => ['zzzzsys_nunext_export', 'zzzzsys_nunext_export_id', 'name', 'code', 'bi-box-arrow-up'],
 		'webhook'       => ['zzzzsys_nunext_webhook', 'zzzzsys_nunext_webhook_id', 'name', 'name', 'bi-broadcast'],
+		'accesslevel'   => ['zzzzsys_access', 'zzzzsys_access_id', 'sal_description', 'sal_code', 'bi-person-badge'],
 	];
 	public const CODE_RE = '/^[A-Za-z0-9_.-]{1,60}$/';
 	private const SESSION = NuSess::PROJECT;
@@ -214,6 +215,7 @@ final class NuProject
 			'file' => nu_url('files', ['id' => $ref]),
 			'dataexport' => nu_url('dataexport', ['id' => $ref]),
 			'webhook' => nu_url('webhooks', ['id' => $ref]),
+			'accesslevel' => nu_url('accesslevel', ['id' => $ref]),
 			default => '',
 		};
 	}

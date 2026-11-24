@@ -1296,3 +1296,45 @@ out.close()" ${JSON.stringify(pkg)} ${JSON.stringify(out)} ${extraTop ? '1' : '0
 		for (const f of fs.readdirSync(path.join(SITE || '.', '_update')).filter(f => /^(main|two)\.zip$/.test(f))) fs.rmSync(path.join(SITE, '_update', f), { force: true });
 	}
 };
+
+// Reset database: clean installation (nuBuilder Next's install scripts, no file – the only choice on SQL Server; tested here on MySQL)
+T.db_reset_clean = async (s) => {
+	const p = s.ga;
+	const r = await open(p, 'index.php?p=dbreset');
+	if (r.status() === 404) { s.skip = 'developer mode off'; return; }
+	const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'nudbrc-')), dump = path.join(tmp, 'e2e-full.sql');
+	execSync('mysqldump ' + DB + ' > ' + dump);
+	try {
+		sql('CREATE TABLE e2e_dbr_clean (id INT PRIMARY KEY)');
+		await open(p, 'index.php?p=dbreset');
+		const first = await p.$eval('#dbrSource option', (o) => o.value);
+		expect(/clean/i.test(first), 'clean installation not the first source: ' + first);
+		await p.selectOption('#dbrSource', first);
+		await p.uncheck('#dbrBackup0');
+		await Promise.all([p.waitForNavigation(), p.click('#dbrCheckBtn')]);
+		expect(await p.locator('#dbrCheck[data-kind="clean"]').count() === 1 && await p.locator('#dbrCleanCreates').count() === 1,
+			'check of the clean installation: ' + (await p.locator('.alert').allTextContents()).join(' | '));
+		expect(await p.locator('#dbrTables code', { hasText: 'e2e_dbr_clean' }).count() === 1, 'marker not listed as deleted');
+		await p.fill('#dbrConfirm', sql('SELECT DATABASE()'));
+		await Promise.all([p.waitForNavigation({ timeout: 120000 }), p.click('#dbrRun')]);
+		if (/p=reauth/.test(p.url())) {
+			await p.fill('#reauthPassword', GA[1]);
+			await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]);
+			await open(p, 'index.php?p=dbreset');
+			await p.fill('#dbrConfirm', sql('SELECT DATABASE()'));
+			await Promise.all([p.waitForNavigation({ timeout: 120000 }), p.click('#dbrRun')]);
+		}
+		expect(await p.locator('#dbrDone').count() === 1, 'no result: ' + (await p.locator('.alert').allTextContents()).join(' | '));
+		expect(sql("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'e2e_dbr_clean'") === '0', 'marker table still there');
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_form WHERE zzzzsys_form_id LIKE 'sample%'") === '0', 'sample forms still there');
+		expect(sql("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('zzzzsys_form', 'zzzzsys_user', 'zzzzsys_nunext_setting')") === '3', 'tables of the install scripts missing');
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_nunext_log WHERE event = 'database_reset'") !== '0', 'reset not logged');
+		const u = await open(p, 'index.php?p=users');
+		expect(u.status() === 200 && /p=users/.test(p.url()), 'signed out after the reset: ' + p.url());
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		execSync('mysql ' + DB, { input: fs.readFileSync(dump) });
+		sql('DROP TABLE IF EXISTS e2e_dbr_clean');
+		fs.rmSync(tmp, { recursive: true, force: true });
+	}
+};

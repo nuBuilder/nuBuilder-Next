@@ -13,25 +13,44 @@ defined('NU_ROOT') || exit;
  * (NuUpdate::install, backup first), library packs replaced by the package's own (_install/), ALL tables deleted and the database built
  * from the package's install scripts; the database steps and the sample application run on the next request with the new code
  * (finishFresh(), ?p=dbreset&fresh=1). nuconfig.php, custom/ and the backups stay.
+ * Clean installation (source CLEAN, MySQL and SQL Server – on SQL Server the only one: a MySQL dump cannot be read there): ALL tables
+ * deleted, nuBuilder Next's install scripts of the database type imported, then as after a file (own tables, steps, sample).
  */
 final class NuDbReset
 {
-	/** Developer mode and MySQL – the globeadmin check is the caller's (page) or the shell's (nucron.php). */
+	/** Source of a clean installation (nuBuilder Next's install scripts) – not a file. */
+	public const CLEAN = '@clean';
+
+	/** Developer mode and MySQL or SQL Server – the globeadmin check is the caller's (page) or the shell's (nucron.php). */
 	public static function available(): bool
 	{
 		$dev = nu_cfg('nuConfigDevMode');
 		$on = $dev === true || $dev === 1 || (is_string($dev) && in_array(strtolower(trim($dev)), ['1', 'true', 'yes', 'on'], true));
 		try {
-			return $on && nu_db()->type === 'mysql';
+			return $on && in_array(nu_db()->type, ['mysql', 'sqlsrv'], true);
 		} catch (Throwable) {
 			return false;
 		}
 	}
 
+	/** SQL files (dumps, packages) can be imported: MySQL / MariaDB only. */
+	public static function filesAllowed(): bool
+	{
+		return nu_db()->type === 'mysql';
+	}
+
+	/** Name of the database. */
+	public static function dbName(): string
+	{
+		$db = nu_db();
+		return (string)$db->value($db->type === 'sqlsrv' ? 'SELECT DB_NAME()' : 'SELECT DATABASE()');
+	}
+
 	/** SQL files offered: nubuilder4.sql of the nuBuilder Forte folder, .sql / .sql.gz / .zip with SQL in _install/ and _update/. @return array<string, string> label => path */
 	public static function sources(): array
 	{
-		$out = [];
+		$out = [t('dbr_src_clean') => self::CLEAN];
+		if (!self::filesAllowed()) return $out;
 		$nub = NuInstall::nuBuilderPath();
 		if ($nub && is_file($nub . '/nubuilder4.sql')) $out['nuBuilder Forte: nubuilder4.sql'] = $nub . '/nubuilder4.sql';
 		foreach (['_install' => NU_ROOT . '/_install', '_update' => NuUpdate::folderDir()] as $label => $dir) {
@@ -106,6 +125,13 @@ final class NuDbReset
 	/** Tables and views of the database now: [[name, type, rows]] (rows: estimate of information_schema). */
 	public static function currentTables(): array
 	{
+		$db = nu_db();
+		if ($db->type === 'sqlsrv') {
+			$rows = $db->all("SELECT o.name AS t, CASE o.type WHEN 'V' THEN 'VIEW' ELSE 'BASE TABLE' END AS k, "
+				. "(SELECT SUM(p.rows) FROM sys.partitions p WHERE p.object_id = o.object_id AND p.index_id IN (0, 1)) AS r "
+				. "FROM sys.objects o WHERE o.type IN ('U', 'V') AND o.is_ms_shipped = 0 AND o.schema_id = SCHEMA_ID() ORDER BY o.name");
+			return array_map(static fn($r) => [(string)$r['t'], (string)$r['k'], $r['r'] === null ? null : (int)$r['r']], $rows);
+		}
 		return array_map(static fn($r) => [(string)$r['t'], (string)$r['k'], $r['r'] === null ? null : (int)$r['r']],
 			nu_db()->all('SELECT TABLE_NAME AS t, TABLE_TYPE AS k, TABLE_ROWS AS r FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() ORDER BY TABLE_NAME'));
 	}
@@ -114,13 +140,92 @@ final class NuDbReset
 	public static function check(string $path): array
 	{
 		nu_time_limit(0);   // a large file takes longer than max_execution_time to read through
+		if ($path === self::CLEAN) return self::checkClean();
+		if (!self::filesAllowed()) return ['ok' => false, 'error' => t('dbr_err_mysql_only')];
 		if (self::isPackage($path)) return self::checkPackage($path);
 		// read line by line: no size limit, routines / triggers between DELIMITER lines
 		try { $chk = NuInstall::checkDump(NuSqlImport::statements($path), true); } catch (RuntimeException $e) { return ['ok' => false, 'error' => $e->getMessage()]; }
 		$tables = self::currentTables();
 		clearstatcache();
 		return $chk + ['file' => basename($path), 'bytes' => NuSqlImport::size($path), 'fsize' => (int)@filesize($path), 'mtime' => (int)@filemtime($path),
-			'current' => $tables, 'database' => (string)nu_db()->value('SELECT DATABASE()')];
+			'current' => $tables, 'database' => self::dbName()];
+	}
+
+	/** Dry run of a clean installation: the install scripts of the database type, what would be deleted. */
+	public static function checkClean(): array
+	{
+		$files = array_filter(NuInstall::schemaFiles('nunext', nu_db()->type, null), 'is_file');
+		if (!$files) return ['ok' => false, 'error' => t('dbr_err_noscripts')];
+		$n = 0;
+		foreach ($files as $f) $n += preg_match_all('/\bCREATE\s+TABLE\b/i', (string)file_get_contents($f));
+		return ['ok' => true, 'kind' => 'clean', 'file' => t('dbr_src_clean'), 'bytes' => 0, 'tables' => $n, 'app' => 0, 'forms' => 0, 'users' => 0,
+			'current' => self::currentTables(), 'database' => self::dbName()];
+	}
+
+	/** Deletes every table and view of the database (SQL Server: foreign keys first). @return int objects dropped */
+	public static function dropAll(NuDB $db): int
+	{
+		$n = 0;
+		if ($db->type === 'sqlsrv') {
+			$q = static fn(string $x) => '[' . str_replace(']', ']]', $x) . ']';
+			foreach ($db->all('SELECT OBJECT_NAME(f.parent_object_id) AS t, f.name AS f FROM sys.foreign_keys f WHERE OBJECT_SCHEMA_NAME(f.parent_object_id) = SCHEMA_NAME()') as $r) {
+				$db->exec('ALTER TABLE ' . $q((string)$r['t']) . ' DROP CONSTRAINT ' . $q((string)$r['f']));
+			}
+			foreach (self::currentTables() as [$t, $kind]) {
+				$db->exec(($kind === 'VIEW' ? 'DROP VIEW ' : 'DROP TABLE ') . $q($t));
+				$n++;
+			}
+			return $n;
+		}
+		$db->exec('SET FOREIGN_KEY_CHECKS = 0');
+		try {
+			foreach (self::currentTables() as [$t, $kind]) {
+				$db->exec(($kind === 'VIEW' ? 'DROP VIEW IF EXISTS ' : 'DROP TABLE IF EXISTS ') . '`' . str_replace('`', '``', $t) . '`');
+				$n++;
+			}
+		} finally {
+			$db->exec('SET FOREIGN_KEY_CHECKS = 1');
+		}
+		return $n;
+	}
+
+	/**
+	 * Clean installation: everything dropped, nuBuilder Next's install scripts of the database type imported, own tables, steps,
+	 * optionally the sample application. One request – the scripts are small.
+	 * @return array{backup: string, dropped: int, statements: int, upgraded: array, steps: array, sample: string}
+	 */
+	public static function runClean(bool $backup, bool $sample, string $via = 'page'): array
+	{
+		if (!self::available()) throw new RuntimeException(t('dbr_err_unavailable'));
+		nu_time_limit(0);
+		nu_ignore_abort();
+		$chk = self::checkClean();
+		if (!$chk['ok']) throw new RuntimeException($chk['error']);
+		$out = ['backup' => '', 'dropped' => 0, 'statements' => 0, 'upgraded' => [], 'steps' => [], 'sample' => ''];
+		if ($backup) $out['backup'] = NuUpdate::backup('dbreset', 'all', false);
+		$db = nu_db();
+		$dbName = self::dbName();
+		error_log('nuBuilder Next: clean installation of database ' . $dbName . ' (' . $via . ')');
+		$out['dropped'] = self::dropAll($db);
+		foreach (NuInstall::schemaFiles('nunext', $db->type, null) as $f) if (is_file($f)) $out['statements'] += NuInstall::importFile($db, $f);
+		NuDB::forgetColumns('');
+		try { NuSettings::create($db); } catch (Throwable $e) { error_log('nuBuilder Next clean installation, settings table: ' . $e->getMessage()); }
+		NuSchema::allow();
+		NuSchema::create();
+		NuInstall::setOrigin('nunext');
+		NuSecurity::save(['record_check' => true, 'protect_fields' => true]);
+		$out['steps'] = NuMigrate::run();
+		if ($sample) {
+			try { NuSample::install(); $out['sample'] = 'ok'; } catch (Throwable $e) { $out['sample'] = $e->getMessage(); }
+		}
+		if (PHP_SAPI !== 'cli' && session_status() === PHP_SESSION_ACTIVE && ($u = NuAuth::user())) {
+			unset($_SESSION[NuSess::SESS]);
+			try { NuSessions::touch($u); } catch (Throwable $ig) { nu_ignored($ig); }
+		}
+		unset($_SESSION[NuSess::SCHEMA], $_SESSION[NuSess::DB_READY]);
+		NuLog::write('database_reset', $dbName, '', ['file' => 'clean', 'dropped' => $out['dropped'], 'statements' => $out['statements'],
+			'backup' => $out['backup'], 'sample' => $out['sample'], 'via' => $via]);
+		return $out;
 	}
 
 	/**
@@ -129,7 +234,8 @@ final class NuDbReset
 	 */
 	public static function run(string $path, bool $backup, bool $sample, string $via = 'page', ?callable $progress = null): array
 	{
-		if (!self::available()) throw new RuntimeException(t('dbr_err_unavailable'));
+		if ($path === self::CLEAN) return self::runClean($backup, $sample, $via);
+		if (!self::available() || !self::filesAllowed()) throw new RuntimeException(t('dbr_err_unavailable'));
 		nu_time_limit(0);
 		nu_ignore_abort();   // a closed tab / dropped connection must not stop the reset half way
 		$chk = NuInstall::checkDump(NuSqlImport::statements($path), true);
@@ -137,15 +243,13 @@ final class NuDbReset
 		$out = ['backup' => '', 'dropped' => 0, 'statements' => 0, 'upgraded' => [], 'steps' => [], 'sample' => ''];
 		if ($backup) $out['backup'] = NuUpdate::backup('dbreset', 'all', false);
 		$db = nu_db();
-		$dbName = (string)$db->value('SELECT DATABASE()');
+		$dbName = self::dbName();
 		error_log('nuBuilder Next: reset database ' . $dbName . ' from ' . basename($path) . ' (' . $via . ')');
+		$out['dropped'] = self::dropAll($db);
 		$db->exec('SET FOREIGN_KEY_CHECKS = 0');
 		try {
-			foreach (self::currentTables() as [$t, $kind]) {
-				$db->exec(($kind === 'VIEW' ? 'DROP VIEW IF EXISTS ' : 'DROP TABLE IF EXISTS ') . '`' . str_replace('`', '``', $t) . '`');
-				$out['dropped']++;
-			}
 			$out['statements'] = NuSqlImport::run($db, $path, $progress, true);
+			$out['skipped'] = NuSqlImport::$skipped;
 		} finally {
 			$db->exec('SET FOREIGN_KEY_CHECKS = 1');
 		}
@@ -345,7 +449,7 @@ final class NuDbReset
 	{
 		NuDB::forgetColumns('');
 		$out = ['backup' => (string)($j['result']['backup'] ?? ''), 'dropped' => (int)($j['result']['dropped'] ?? 0), 'statements' => (int)$j['st']['n'],
-			'upgraded' => NuInstall::upgradeTo49($db), 'steps' => [], 'sample' => ''];
+			'upgraded' => NuInstall::upgradeTo49($db), 'steps' => [], 'sample' => '', 'skipped' => array_values((array)($j['st']['skipped'] ?? []))];
 		try { NuSettings::create($db); } catch (Throwable $e) { error_log('nuBuilder Next reset, settings table: ' . $e->getMessage()); }
 		NuSchema::allow();
 		NuSchema::create();
@@ -356,7 +460,7 @@ final class NuDbReset
 			try { NuSample::install(); $out['sample'] = 'ok'; } catch (Throwable $e) { $out['sample'] = $e->getMessage(); }
 		}
 		$u = is_array($j['user'] ?? null) ? $j['user'] : null;
-		NuLog::write('database_reset', (string)$j['database'], '', ['file' => basename((string)$j['path']), 'dropped' => $out['dropped'], 'statements' => $out['statements'],
+		NuLog::write('database_reset', (string)$j['database'], '', ['file' => basename((string)$j['path']), 'dropped' => $out['dropped'], 'statements' => $out['statements'], 'skipped' => $out['skipped'],
 			'backup' => $out['backup'], 'sample' => $out['sample'], 'via' => 'page'], $u && $u['id'] !== '' ? $u : null);
 		return $out;
 	}
@@ -382,7 +486,7 @@ final class NuDbReset
 		$i = NuUpdate::inspect($path);
 		$out = ['kind' => 'package', 'file' => basename($path), 'bytes' => (int)@filesize($path), 'version' => $i['version'],
 			'signature' => (string)($i['signature'] ?? ''), 'packs' => self::packageLibs($path, $i['prefix'] ?? ''), 'current' => self::currentTables(),
-			'database' => (string)nu_db()->value('SELECT DATABASE()'), 'installed_packs' => self::installedPacks()];
+			'database' => self::dbName(), 'installed_packs' => self::installedPacks()];
 		if (!$i['ok']) return $out + ['ok' => false, 'error' => implode(' ', $i['errors'])];
 		if ($out['signature'] !== 'valid') return $out + ['ok' => false, 'error' => t('dbr_err_unsigned')];
 		if (!is_file(NU_ROOT . '/install/schema_mysql.sql') && !isset($i['manifest']['files']['install/schema_mysql.sql'])) return $out + ['ok' => false, 'error' => t('dbr_err_noscripts')];
@@ -418,7 +522,7 @@ final class NuDbReset
 	 */
 	public static function runPackage(string $path, bool $backup, bool $sample, string $via = 'page'): array
 	{
-		if (!self::available()) throw new RuntimeException(t('dbr_err_unavailable'));
+		if (!self::available() || !self::filesAllowed()) throw new RuntimeException(t('dbr_err_unavailable'));
 		nu_time_limit(0);
 		nu_ignore_abort();   // a closed tab / dropped connection must not stop the reset half way
 		$chk = self::checkPackage($path);
@@ -427,7 +531,7 @@ final class NuDbReset
 		// load every class this request still needs before the files change under it (no mixing of versions in one request)
 		foreach (['NuLibs', 'NuInstall', 'NuSettings', 'NuSessions', 'NuSecurity', 'NuLog', 'NuDB', 'NuSchema'] as $cls) class_exists($cls);
 		$db = nu_db();
-		$dbName = (string)$db->value('SELECT DATABASE()');
+		$dbName = self::dbName();
 		$from = NU_VERSION;
 		error_log('nuBuilder Next: fresh installation of ' . $info['version'] . ' on ' . $dbName . ' (' . $via . ')');
 		$out = ['version' => $info['version'], 'from' => $from, 'backup' => '', 'dropped' => 0, 'statements' => 0, 'packs' => []];

@@ -46,7 +46,7 @@ final class NuProjectPackage
 		'report' => ['zzzzsys_access_report', 'sre_zzzzsys_access_id', 'sre_zzzzsys_report_id']];
 	/** Every list of a package (read() checks them). */
 	public const LISTS = ['items', 'forms', 'procedure', 'report', 'select', 'emailtemplate', 'snippet', 'permission', 'formats', 'file', 'dataexport',
-		'webhook', 'help', 'tables', 'notes', 'tasks', 'rights', 'translations'];
+		'webhook', 'help', 'tables', 'notes', 'tasks', 'rights', 'translations', 'levels', 'settings', 'pages'];
 
 	// ------------------------------------------------------------------ export
 
@@ -69,7 +69,9 @@ final class NuProjectPackage
 	/** The whole application as a package – every form, procedure, report … of the application (not nuBuilder Forte's own), tables without data. */
 	public static function exportAll(bool $withData = false): array
 	{
-		return self::build(self::ownItems(), $withData, ['code' => self::APP, 'name' => 'Application', 'description' => '']);
+		$pkg = self::build(self::ownItems(), $withData, ['code' => self::APP, 'name' => 'Application', 'description' => '']);
+		$pkg['settings'] = NuPackageParts::settings();      // only the whole application carries the settings
+		return $pkg;
 	}
 
 	/** Every part of the application that is not nuBuilder Forte's or nuBuilder Next's own, plus the tables. @return list<array{0: string, 1: string}> */
@@ -78,7 +80,7 @@ final class NuProjectPackage
 		$db = nu_db();
 		$items = [];
 		// nuBuilder Forte's own rows (ids nu…) and nuBuilder Next's (nx_…) are left out below, form event code goes with its form
-		$q = ['form' => "SELECT zzzzsys_form_id FROM zzzzsys_form WHERE COALESCE(sfo_type, '') <> 'page'",
+		$q = ['form' => 'SELECT zzzzsys_form_id FROM zzzzsys_form',
 			'procedure' => "SELECT zzzzsys_php_id FROM zzzzsys_php WHERE COALESCE(sph_system, '') <> '1'",
 			'report' => 'SELECT zzzzsys_report_id FROM zzzzsys_report',
 			'select' => "SELECT zzzzsys_select_id FROM zzzzsys_select WHERE COALESCE(sse_system, '') = ''",
@@ -89,7 +91,8 @@ final class NuProjectPackage
 			'format' => 'SELECT zzzzsys_format_id FROM zzzzsys_format',
 			'file' => "SELECT zzzzsys_file_id FROM zzzzsys_file WHERE COALESCE(sfi_system, '') <> '1'",
 			'dataexport' => 'SELECT zzzzsys_nunext_export_id FROM zzzzsys_nunext_export',
-			'webhook' => 'SELECT zzzzsys_nunext_webhook_id FROM zzzzsys_nunext_webhook'];
+			'webhook' => 'SELECT zzzzsys_nunext_webhook_id FROM zzzzsys_nunext_webhook',
+			'accesslevel' => 'SELECT zzzzsys_access_id FROM zzzzsys_access'];
 		foreach ($q as $kind => $sql) {
 			$tab = NuProject::KINDS[$kind][0];
 			if (!$db->tableExists($tab)) continue;
@@ -115,12 +118,23 @@ final class NuProjectPackage
 		$pkg = ['format' => self::FORMAT, 'version' => NU_VERSION, 'exported' => date('c'), 'db' => $db->type, 'by' => (string)(NuAuth::currentRaw()['login'] ?? ''),
 			'project' => $project, 'notes' => [], 'tasks' => [], 'items' => [], 'forms' => [], 'procedure' => [], 'report' => [], 'select' => [], 'emailtemplate' => [],
 			'snippet' => [], 'permission' => [], 'formats' => [], 'file' => [], 'dataexport' => [], 'webhook' => [], 'help' => [], 'help_ids' => [], 'tables' => [],
-			'rights' => [], 'translations' => [], 'left_out' => []];
+			'rights' => [], 'translations' => [], 'levels' => [], 'settings' => [], 'pages' => [], 'left_out' => []];
+		$levelIds = [];
 		$helpCodes = [];
 		$formIds = [];
 		foreach ($items as [$k, $ref]) {
 			$pkg['items'][] = [$k, $ref];
-			if ($k === 'form') { if ($s = NuFormSnapshot::capture($ref)) { $pkg['forms'][] = $s; $formIds[] = $ref; } }
+			if ($k === 'form') {
+				if ($s = NuFormSnapshot::capture($ref)) {
+					$pkg['forms'][] = $s;
+					$formIds[] = $ref;
+					if ((string)($s['form']['sfo_type'] ?? '') === 'page') {         // a custom page: its code files travel with it
+						$code = (string)($s['form']['sfo_code'] ?? '');
+						if ($pf = NuPageVersion::pack($code)) $pkg['pages'][] = $pf;
+						elseif (NuPageVersion::available($code)) $pkg['left_out'][] = ['page', $code];
+					}
+				}
+			}
 			elseif (isset(self::ROWS[$k])) {
 				if (!$db->tableExists(self::ROWS[$k][0])) continue;
 				if ($r = $db->one('SELECT * FROM ' . self::ROWS[$k][0] . ' WHERE ' . self::ROWS[$k][1] . ' = ?', [$ref])) {
@@ -133,6 +147,8 @@ final class NuProjectPackage
 					'clauses' => $db->all('SELECT * FROM zzzzsys_select_clause WHERE ssc_zzzzsys_select_id = ?', [$ref])];
 			} elseif ($k === 'helppage') {
 				if ($c = $db->value('SELECT code FROM ' . NuUserHelp::T . ' WHERE zzzzsys_nunext_help_id = ?', [$ref])) { $helpCodes[(string)$c] = true; $pkg['help_ids'][$ref] = (string)$c; }
+			} elseif ($k === 'accesslevel') {
+				$levelIds[$ref] = true;
 			} elseif ($k === 'table') {
 				$t = self::tableExport($ref, $withData);
 				if ($t) $pkg['tables'][] = $t; else $pkg['left_out'][] = ['table', $ref];
@@ -154,6 +170,11 @@ final class NuProjectPackage
 				}
 			}
 		}
+		// access levels: the chosen ones and those the rights name (by code – ids differ between installations)
+		foreach ($pkg['rights'] as $x) { $id = NuPackageParts::levelId((string)$x['level']); if ($id !== '') $levelIds[$id] = true; }
+		foreach (array_keys($levelIds) as $id) if ($l = NuPackageParts::level((string)$id)) $pkg['levels'][$l['code']] = $l;
+		ksort($pkg['levels'], SORT_STRING);
+		$pkg['levels'] = array_values($pkg['levels']);
 		// translations of the forms' texts
 		if ($formIds && $db->tableExists('zzzzsys_translate')) {
 			$texts = [];
@@ -261,6 +282,17 @@ final class NuProjectPackage
 			$clash = $db->value('SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_code = ?', [(string)($f['sfo_code'] ?? '')]);
 			$row('form', $id, $label, $clash ? 'conflict' : 'new', $clash ? t('prj_imp_code_used') : '');
 		}
+		foreach ($pkg['pages'] ?? [] as $pf) {
+			$code = (string)($pf['code'] ?? '');
+			if (!NuPage::validCode($code) || !is_array($pf['files'] ?? null)) continue;
+			$d = NuPageVersion::packDiff($code, (array)$pf['files']);
+			$label = t('prj_kind_pagefiles') . ' ' . $code;
+			if ($d === null) { $row('pagefiles', $code, $label, 'unsupported', t('prj_page_builtin')); continue; }
+			$n = count($d['added']) + count($d['changed']) + count($d['removed']);
+			$fresh = !is_file(NuPage::dir() . '/' . $code . '/index.php');
+			$row('pagefiles', $code, $label, $fresh ? 'new' : ($n ? 'different' : 'same'),
+				$fresh ? t('prj_page_files_n', count((array)$pf['files'])) : ($n ? t('prj_page_diff', count($d['added']), count($d['changed']), count($d['removed'])) : ''));
+		}
 		foreach (self::ROWS as $kind => [$tab, $idc, $codec]) {
 			foreach ($pkg[self::key($kind)] ?? [] as $r) self::checkRow($row, $kind, $tab, $idc, $codec, (array)$r);
 		}
@@ -281,9 +313,27 @@ final class NuProjectPackage
 			$state = !isset($here[$code]) ? 'new' : ($norm($here[$code]) === $norm($their[$code] ?? []) ? 'same' : 'different');
 			$row('helppage', $code, $title . ' (' . $code . ')', $state, '');
 		}
+		// access levels (by code) and settings (one line per part)
+		$adds = [];
+		foreach ($pkg['levels'] ?? [] as $l) {
+			$code = (string)($l['code'] ?? '');
+			if ($code === '' || !is_array($l)) continue;
+			$diff = NuPackageParts::levelDiff($l);
+			$label = trim((string)($l['row']['sal_description'] ?? '')) . ' (' . $code . ')';
+			$home = (string)($l['row']['sal_zzzzsys_form_id'] ?? '');
+			$homeNote = $home !== '' && !nu_form_exists($home) && !isset(self::pkgRefs($pkg)['form'][$home]) ? t('prj_level_home_missing') : '';
+			if ($diff === ['new']) { $adds[$code] = true; $row('accesslevel', $code, $label, 'new', $homeNote); }
+			else $row('accesslevel', $code, $label, $diff ? 'different' : 'same', implode(' · ', array_filter([$diff ? t('prj_imp_values', implode(', ', array_map(self::levelField(...), $diff))) : '', $homeNote])));
+		}
+		foreach ($pkg['settings'] ?? [] as $x) {
+			$part = (string)($x['part'] ?? '');
+			if (!in_array($part, NuPackageParts::PARTS, true)) continue;
+			$diff = NuPackageParts::diff($part, $x['value'] ?? null);
+			$row('setting', $part, t('prj_set_' . $part), $diff ? 'different' : 'same', $diff ? t('prj_imp_values', implode(', ', array_slice($diff, 0, 8)) . (count($diff) > 8 ? ' …' : '')) : '');
+		}
 		// access rights (by access level code) and translations: one line each
 		if ($pkg['rights'] ?? []) {
-			[$todo, $missing] = self::rightsPlan((array)$pkg['rights']);
+			[$todo, $missing] = self::rightsPlan((array)$pkg['rights'], $adds);
 			$note = t('prj_imp_rights_n', count((array)$pkg['rights'])) . ($missing ? ' · ' . t('prj_imp_levels_missing', implode(', ', $missing)) : '');
 			$row('rights', 'all', t('prj_kind_rights'), $todo ? 'different' : 'same', $note);
 		}
@@ -303,6 +353,7 @@ final class NuProjectPackage
 		foreach ($only as [$kind, $ref]) {
 			$label = self::partLabel($kind, $ref);
 			if ($kind === 'table') { $row('table', $ref, $label, 'only', t('prj_only_table'), true); continue; }
+			if ($kind === 'accesslevel') { $row('accesslevel', $ref, $label, 'only', t('prj_only_level'), true); continue; }
 			$users = self::usedBy($kind, $ref, $gone);
 			$row($kind, $ref, $label, 'only', $users ? t('prj_only_used', implode(', ', array_slice($users, 0, 5))) : '', (bool)$users);
 		}
@@ -347,7 +398,7 @@ final class NuProjectPackage
 	}
 
 	/** Access rights still to write and the level codes this installation lacks. @return array{0: int, 1: list<string>} */
-	private static function rightsPlan(array $rights): array
+	private static function rightsPlan(array $rights, array $adds = []): array
 	{
 		$db = nu_db();
 		$byCode = array_flip(NuAcl::levelCodes());
@@ -357,7 +408,7 @@ final class NuProjectPackage
 			if (!isset(self::RIGHTS[$kind])) continue;
 			[$tab, $lc, $oc] = self::RIGHTS[$kind];
 			$lv = (string)($x['level'] ?? '');
-			if (!isset($byCode[$lv])) { $missing[$lv] = true; continue; }
+			if (!isset($byCode[$lv])) { if (isset($adds[$lv])) $todo++; else $missing[$lv] = true; continue; }
 			$cur = $db->tableExists($tab) ? $db->one("SELECT * FROM $tab WHERE $lc = ? AND $oc = ?", [$byCode[$lv], (string)($x['ref'] ?? '')]) : null;
 			$want = (array)($x['row'] ?? []);
 			unset($want[$tab . '_id'], $want[$lc]);
@@ -377,6 +428,13 @@ final class NuProjectPackage
 			if ($cur === null || $cur === false || (string)$cur !== (string)($x['translation'] ?? '')) $n++;
 		}
 		return $n;
+	}
+
+	/** Name of a changed value of an access level, as the access level form shows it. */
+	private static function levelField(string $c): string
+	{
+		return match ($c) { 'sal_description' => t('access_description'), 'sal_group' => t('access_group'), 'sal_zzzzsys_form_id' => t('home_form'),
+			'sal_use_2fa' => t('access_2fa'), 'start' => t('acc_start_page'), default => $c };
 	}
 
 	private static function labelCol(string $kind): string
@@ -478,6 +536,13 @@ final class NuProjectPackage
 				$res['errors'][] = t('prj_kind_form') . ' ' . ($s['form']['sfo_code'] ?? $id) . ': ' . $e->getMessage();
 			}
 		}
+		// 2b. the code files of custom pages (the replaced files become a version of the page, its data stays)
+		foreach ($pkg['pages'] ?? [] as $pf) {
+			$code = (string)($pf['code'] ?? '');
+			if (!in_array($want('pagefiles', $code), ['add', 'replace'], true)) continue;
+			$r = NuPageVersion::installPack($code, (array)($pf['files'] ?? []));
+			if ($r['ok']) $ok('pagefiles'); else $res['errors'][] = t('prj_kind_pagefiles') . ' ' . $code . ': ' . $r['message'];
+		}
 		// 3. rows: procedures, reports, e-mail templates, snippets; SQL builder queries with their clauses
 		foreach (self::ROWS as $kind => [$tab, $idc]) {
 			foreach ($pkg[self::key($kind)] ?? [] as $r) {
@@ -523,16 +588,30 @@ final class NuProjectPackage
 			$res['done']['helppage'] = count($codes);
 			foreach ($hr['errors'] as $e) $res['errors'][] = t('prj_kind_helppage') . ': ' . $e;
 		}
-		// 5. access rights (levels found by code) and translations
+		// 5. access levels (by code) – before the rights, which find them by code
+		foreach ($pkg['levels'] ?? [] as $l) {
+			$code = (string)($l['code'] ?? '');
+			if (!in_array($want('accesslevel', $code), ['add', 'replace'], true)) { if ($code !== '') $res['skipped']++; continue; }
+			try { NuPackageParts::writeLevel($db, (array)$l); $ok('accesslevel'); }
+			catch (Throwable $e) { $res['errors'][] = t('prj_kind_accesslevel') . ' ' . $code . ': ' . $e->getMessage(); }
+		}
+		// 6. access rights (levels found by code) and translations
 		if (($pkg['rights'] ?? []) && $want('rights', 'all') !== 'skip') {
 			try { $res['done']['rights'] = self::writeRights((array)$pkg['rights']); } catch (Throwable $e) { $res['errors'][] = t('prj_kind_rights') . ': ' . $e->getMessage(); }
 		}
 		if (($pkg['translations'] ?? []) && $want('translations', 'all') !== 'skip') {
 			try { $res['done']['translations'] = self::writeTranslations((array)$pkg['translations']); } catch (Throwable $e) { $res['errors'][] = t('prj_kind_translations') . ': ' . $e->getMessage(); }
 		}
-		// 6. parts that exist only here and were chosen "Delete" (after the forms of the package are in: they may use them)
+		// 7. settings, one part each (after the levels: themes of levels name them by code)
+		foreach ($pkg['settings'] ?? [] as $x) {
+			$part = (string)($x['part'] ?? '');
+			if ($want('setting', $part) !== 'replace') continue;
+			try { NuPackageParts::apply($part, $x['value'] ?? null); $ok('setting'); }
+			catch (Throwable $e) { $res['errors'][] = t('prj_kind_setting') . ' ' . t('prj_set_' . $part) . ': ' . $e->getMessage(); }
+		}
+		// 8. parts that exist only here and were chosen "Delete" (after the forms of the package are in: they may use them)
 		self::deleteParts($pkg, $plan, $res);
-		// 7. the project: created (with notes and to-dos) or the items added to the existing one (not for the whole application)
+		// 9. the project: created (with notes and to-dos) or the items added to the existing one (not for the whole application)
 		$code = (string)$pkg['project']['code'];
 		$p = NuProject::byCode($code);
 		$new = !$p;
@@ -612,16 +691,20 @@ final class NuProjectPackage
 		foreach ($plan as $key => $a) {
 			if ($a !== 'replace' && $a !== 'delete') continue;
 			[$kind, $ref] = explode('|', $key, 2) + [1 => ''];
-			if ($kind === 'rights' || $kind === 'translations') continue;
+			if ($kind === 'rights' || $kind === 'translations' || $kind === 'setting') continue;
+			if ($kind === 'accesslevel') { $id = NuPackageParts::levelId($ref); if ($id !== '') $items[] = ['accesslevel', $id]; continue; }
 			if ($kind === 'helppage') { $id = nu_db()->value('SELECT zzzzsys_nunext_help_id FROM ' . NuUserHelp::T . " WHERE code = ? AND lang = ''", [$ref]); if ($id) $items[] = ['helppage', (string)$id]; }
 			elseif (isset(NuProject::KINDS[$kind]) && $kind !== 'table') $items[] = [$kind, $ref];
 		}
 		$rightsTouched = ($plan['rights|all'] ?? '') === 'replace' || ($plan['rights|extra'] ?? '') === 'delete';
-		if (!$items && !$rightsTouched && ($plan['translations|all'] ?? '') !== 'replace') return '';
+		$parts = [];
+		foreach ($plan as $key => $a) if ($a === 'replace' && str_starts_with($key, 'setting|')) $parts[] = substr($key, 8);
+		if (!$items && !$parts && !$rightsTouched && ($plan['translations|all'] ?? '') !== 'replace') return '';
 		try {
 			$code = (string)($pkg['project']['code'] ?? 'project');
 			$back = self::build($items, false, ['code' => $code, 'name' => (string)($pkg['project']['name'] ?? $code), 'description' => '']);
 			$back['restore_point'] = true;               // its import puts parts back – it never lists the others as "only here"
+			if ($parts) $back['settings'] = NuPackageParts::settings($parts);
 			// the rights / translations as they are here now, for the same objects and texts
 			if ($rightsTouched) {
 				$refs = self::pkgRefs($pkg);
@@ -676,6 +759,7 @@ final class NuProjectPackage
 		foreach ($pkg['help'] ?? [] as $h) $out['helppage'][(string)($h['code'] ?? '')] = true;
 		foreach ($pkg['tables'] ?? [] as $t) $out['table'][(string)($t['name'] ?? '')] = true;
 		foreach ($pkg['left_out'] ?? [] as $l) if (is_array($l) && ($l[0] ?? '') === 'table') $out['table'][(string)($l[1] ?? '')] = true;
+		foreach ($pkg['levels'] ?? [] as $l) { $id = NuPackageParts::levelId((string)($l['code'] ?? '')); if ($id !== '') $out['accesslevel'][$id] = true; }
 		return $out;
 	}
 

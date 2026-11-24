@@ -62,7 +62,9 @@ API version: 1 (`$nu->apiVersion()`, `NuPage.version`). Declare it in every page
     custom/lib/                            optional shared PHP of the installation
 
 Reserved names in the page folder: `_data/` ($nu->dataDir()), `_draft/` (the draft of the page) and `_versions/` (previous versions).
-A draft runs from `_draft/`: use `__DIR__` / `$nu->dir()` for paths, never the folder name, and `$nu->dataDir()` for data.
+A draft runs from `_draft/`: use `__DIR__` / `$nu->dir()` for paths, never the folder name, and `$nu->dataDir()` for data – the draft
+gets its own copy of `_data/` (`_draft/_data/`), and a `_draft/secrets.php` wins over the live one. The database is shared: ask
+`$nu->isDraft()` where the draft must not write live tables.
 
 The current directory is the page folder while the page runs.
 
@@ -153,7 +155,8 @@ Table and column names of insert / update / delete must match `^[A-Za-z0-9_]+$` 
 | `vendor(string $lib, string $file): string` | URL of a file of a library nuBuilder Next ships, with a version stamp: `bootstrap`, `bootstrap-icons`, `codemirror`, `jquery`, `jquery4` (0.8.741), `tom-select`, `apexcharts` – `vendor('bootstrap', 'css/bootstrap.min.css')` (0.8.479) |
 | `recentAuth(): bool` | the password was confirmed (or typed at the login) within the Security setting *reauth_minutes* (0.8.479) |
 | `reauthUrl(string $back = ''): string` | URL of the password confirmation; afterwards it returns to `$back` (this page when empty) – open it in a window or redirect to it (0.8.479) |
-| `dataDir(): string` | a private folder of the page, `<page folder>/_data`, closed to the web (deny-all `.htaccess`; on nginx the `custom/` rule) – trash, caches, temporary files (0.8.479) |
+| `dataDir(): string` | a private folder of the page, `<page folder>/_data`, closed to the web (deny-all `.htaccess`; on nginx the `custom/` rule) – trash, caches, temporary files (0.8.479); while the draft is shown `_draft/_data` |
+| `isDraft(): bool` | this request runs the draft of the page (a designer switched to it) – use it where the draft must not touch live tables (0.8.1449) |
 | `dangerousName(string $name): bool` | true for names a web server could run or obey (`.php`, `.phtml`, `.htaccess`, `x.php.pdf` …) – the rule of uploads (0.8.479) |
 | `sdk(): string` | the `<script>` tag of the JavaScript helpers (below) |
 | `json(mixed $data, int $status = 200): never` | sends JSON and ends |

@@ -1839,3 +1839,27 @@ T.forum_compat = async (s) => {
 		sql("DELETE FROM zzzzsys_php WHERE zzzzsys_php_id = 'e2e_fc'; DELETE FROM zzzzsys_debug WHERE deb_message LIKE '%e2e_no_such_table%'");
 	}
 };
+
+// Forte's tabs are siblings: nuSelectTab($('.nuTabSelected').next()[0]) selects the next tab (here each tab sits in its own <li>)
+T.forte_tab_next = async (s) => {
+	const p = s.ga;
+	const id = sql("SELECT sample_customer_id FROM sample_customer LIMIT 1").trim();
+	if (!id) { s.skip = 'no sample customer'; return; }
+	await open(p, 'index.php?p=form&f=samplecustomer&r=' + id);
+	await p.waitForSelector('#nuTab0.active');
+	const r = await p.evaluate(async () => {
+		const wait = () => new Promise((res) => setTimeout(res, 300));
+		const out = {};
+		out.n0 = $('.nuTabSelected').next()[0] && $('.nuTabSelected').next()[0].id;
+		nuSelectTab($('.nuTabSelected').next()[0]);
+		await wait();
+		out.a1 = $('.nuTabSelected')[0].id;
+		nuSelectTab($('.nuTabSelected').prev()[0]);
+		await wait();
+		out.a0 = $('.nuTabSelected')[0].id;
+		out.other = $('#nuTab0').parent().next().length === 1 && $('#nuTab0').parent().next()[0].tagName === 'LI';   // non-tab elements unchanged
+		out.filtered = $('#nuTab0').next('.nope').length;
+		return out;
+	});
+	expect(r.n0 === 'nuTab1' && r.a1 === 'nuTab1' && r.a0 === 'nuTab0' && r.other && r.filtered === 0, JSON.stringify(r));
+};

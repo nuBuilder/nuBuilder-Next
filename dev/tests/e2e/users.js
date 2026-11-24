@@ -2743,3 +2743,24 @@ T.login_redirect_referer = async () => {
 		await ctx.close();
 	}
 };
+
+T.info_tip_tap_close = async (s) => {
+	// touch screens: the first tap on an (i) opens its tip, a second tap on the same (i) closes it (it kept the focus and stayed open)
+	const ctx = await s.ga.context().browser().newContext({ locale: 'en-GB', hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 }, storageState: await s.ga.context().storageState() });
+	const p = await ctx.newPage();
+	try {
+		const uid = sql("SELECT zzzzsys_user_id FROM zzzzsys_user WHERE sus_login_name = 'sample_ben'");
+		await p.goto(BASE + 'index.php?p=user&id=' + encodeURIComponent(uid));
+		const tip = p.locator('label[for="sus_code"] + .nuInfoTip');
+		await tip.scrollIntoViewIfNeeded();
+		const shown = () => p.evaluate(() => !!document.querySelector('.tooltip.show'));
+		await tip.tap(); await p.waitForTimeout(600);
+		expect(await shown(), 'first tap did not open the tip');
+		await tip.tap(); await p.waitForTimeout(600);
+		expect(!(await shown()), 'second tap left the tip open');
+		await tip.tap(); await p.waitForTimeout(600);
+		expect(await shown(), 'third tap did not open it again');
+		await p.locator('h1').first().tap(); await p.waitForTimeout(600);
+		expect(!(await shown()), 'a tap elsewhere left the tip open');
+	} finally { await ctx.close(); }
+};

@@ -658,6 +658,7 @@ T.design_live_gap_menu = async (s) => {
 		await p.keyboard.press('Escape');
 		await p.click('#nuw_cus_phone .nuDesignOverlay', { button: 'right', position: { x: 5, y: 5 } }); await p.waitForTimeout(300);
 		expect(await p.locator('.nuObjMenu').count() === 1, 'object menu');
+		expect(await p.locator('.nuObjMenu #nuOmSettings, .nuObjMenu .bi-sliders').count() === 0, 'Properties / Button settings in design mode (the panel shows them)');
 		await p.locator('.nuObjMenu > li > button.nuOmHasSub').nth(1).click(); await p.waitForTimeout(200);
 		await p.locator('.nuObjMenu .nuOmSubWrap.nuOmOpen .nuOmSub button').nth(1).click();
 		await p.waitForSelector('#nuDsBar'); await p.waitForTimeout(1500);
@@ -1600,7 +1601,8 @@ T.page_draft = async (s) => {
 		await Promise.all([p.waitForNavigation(), p.click('#pgDraftCreate')]);
 		const d = path.join(dir, '_draft');
 		expect(fs.existsSync(path.join(d, 'index.php')) && fs.existsSync(path.join(d, 'assets', 'a.css')), 'draft copy');
-		expect(!fs.existsSync(path.join(d, 'secrets.php')) && !fs.existsSync(path.join(d, '_data')), 'secrets / _data copied');
+		expect(!fs.existsSync(path.join(d, 'secrets.php')), 'secrets.php copied');
+		expect(fs.readFileSync(path.join(d, '_data', 'keep.txt'), 'utf8') === 'data', 'the draft gets its own copy of _data');
 		expect(await p.locator('#pgDraftSame').count() === 1, 'no differences yet');
 		fs.writeFileSync(path.join(d, 'index.php'), body('draft'));
 		fs.writeFileSync(path.join(d, 'assets', 'b.css'), 'b{}');
@@ -1645,6 +1647,91 @@ T.page_draft = async (s) => {
 		sql(`DELETE FROM zzzzsys_form WHERE zzzzsys_form_id = '${id}'; DELETE FROM zzzzsys_nunext_page WHERE zzzzsys_nunext_page_id = '${id}'; DELETE FROM zzzzsys_access_form WHERE slf_zzzzsys_form_id = '${id}'`);
 		await anna.context().close();
 		fs.rmSync(dir, { recursive: true, force: true });
+	}
+};
+
+T.page_draft_data = async (s) => {
+	// the draft works on its own copy of _data, its own secrets.php wins, $nu->isDraft(); Reset draft data copies live data again
+	if (!SITE) { s.skip = 'needs SITE'; return; }
+	const p = s.ga;
+	const F = 'e2edd' + Date.now().toString(36), dir = path.join(SITE, 'custom', 'pages', F), id = 'e2edd' + Date.now().toString(36).slice(-6);
+	const body = `<?php\ndefined('NU_PAGE') || exit;\n$f = $nu->dataDir() . '/n.txt';\n$n = (int)@file_get_contents($f) + 1;\nfile_put_contents($f, (string)$n);\n`
+		+ `echo '<!doctype html><title>d</title><body><p id="v">' . ($nu->isDraft() ? 'draft' : 'live') . '|' . $n . '|' . $nu->h((string)$nu->secret('k')) . '</p></body>';\n`;
+	fs.mkdirSync(path.join(dir, '_data'), { recursive: true });
+	fs.writeFileSync(path.join(dir, 'index.php'), body);
+	fs.writeFileSync(path.join(dir, 'secrets.php'), "<?php\ndefined('NU_PAGE') || exit;\nreturn ['k' => 'LIVE'];\n");
+	fs.writeFileSync(path.join(dir, '_data', 'n.txt'), '10');
+	sql(`INSERT INTO zzzzsys_form (zzzzsys_form_id, sfo_type, sfo_code, sfo_description, sfo_status) VALUES ('${id}', 'page', '${F}', 'E2E draft data', '1');
+		INSERT INTO zzzzsys_nunext_page (zzzzsys_nunext_page_id, open_mode, iframe_height, settings) VALUES ('${id}', 'tab', 'auto', '{}')`);
+	const v = async (q) => { await p.goto(BASE + 'index.php?p=page&f=' + F + q); return (await p.textContent('#v').catch(() => '')).trim(); };
+	const ok = async () => { await p.waitForTimeout(400); await p.click('#nuConfirm.show .js-confirm-ok'); await p.waitForLoadState('networkidle'); };
+	try {
+		await open(p, 'index.php?p=builder&f=' + id);
+		await Promise.all([p.waitForNavigation(), p.click('#pgDraftCreate')]);
+		const d = path.join(dir, '_draft');
+		expect(await v('&nudraft=0') === 'live|11|LIVE', 'live counts in the live data');
+		const dv = await v('&nudraft=1');
+		expect(dv === 'draft|11|LIVE', 'draft starts from a copy and reads the live secrets: ' + dv);
+		expect(await v('') === 'draft|12|LIVE' && fs.readFileSync(path.join(dir, '_data', 'n.txt'), 'utf8') === '11', 'live data untouched');
+		fs.writeFileSync(path.join(d, 'secrets.php'), "<?php\ndefined('NU_PAGE') || exit;\nreturn ['k' => 'TEST'];\n");
+		expect(await v('') === 'draft|13|TEST', 'own secrets.php of the draft wins');
+		await open(p, 'index.php?p=builder&f=' + id + '#pgDraft');
+		await p.click('#pgDraftDataReset'); await ok();
+		expect(fs.readFileSync(path.join(d, '_data', 'n.txt'), 'utf8') === '11', 'reset copies the live data again');
+		expect(await v('') === 'draft|12|TEST', 'draft goes on from the fresh copy');
+		await open(p, 'index.php?p=builder&f=' + id);
+		await p.click('#pgDraftPublish'); await ok();
+		expect(fs.readFileSync(path.join(dir, '_data', 'n.txt'), 'utf8') === '11' && !fs.existsSync(d), 'publish keeps the live data');
+		expect(await v('') === 'live|12|LIVE', 'live after publish');
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		sql(`DELETE FROM zzzzsys_form WHERE zzzzsys_form_id = '${id}'; DELETE FROM zzzzsys_nunext_page WHERE zzzzsys_nunext_page_id = '${id}'`);
+		fs.rmSync(dir, { recursive: true, force: true });
+	}
+};
+
+T.page_package = async (s) => {
+	// the code files of a custom page travel in the application package / folder; the page's data, draft and secrets stay
+	if (!SITE) { s.skip = 'needs SITE'; return; }
+	const F = 'e2epk' + Date.now().toString(36), dir = path.join(SITE, 'custom', 'pages', F), id = 'e2epk' + Date.now().toString(36).slice(-6);
+	const out = fs.mkdtempSync(path.join(os.tmpdir(), 'nunext-e2e-pgpk-'));
+	const cron = (a) => execSync('php nucron.php ' + a, {cwd: SITE, encoding: 'utf8'});
+	fs.mkdirSync(path.join(dir, 'assets'), { recursive: true });
+	fs.mkdirSync(path.join(dir, '_data'), { recursive: true });
+	fs.writeFileSync(path.join(dir, 'index.php'), "<?php\ndefined('NU_PAGE') || exit;\necho 'v1';\n");
+	fs.writeFileSync(path.join(dir, 'assets', 'app.css'), 'a{}');
+	fs.writeFileSync(path.join(dir, 'assets', 'logo.png'), Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 1, 2, 255]));
+	fs.writeFileSync(path.join(dir, 'secrets.php'), "<?php\nreturn ['k' => 'S'];\n");
+	fs.writeFileSync(path.join(dir, '_data', 'd.txt'), 'data');
+	sql(`INSERT INTO zzzzsys_form (zzzzsys_form_id, sfo_type, sfo_code, sfo_description, sfo_status) VALUES ('${id}', 'page', '${F}', 'E2E page package', '1');
+		INSERT INTO zzzzsys_nunext_page (zzzzsys_nunext_page_id, open_mode, iframe_height, settings) VALUES ('${id}', 'tab', 'auto', '{}')`);
+	try {
+		cron('app export --dir=' + out);
+		const pf = path.join(out, 'pages', F, 'files');
+		expect(fs.readFileSync(path.join(pf, 'index.php'), 'utf8').includes('v1') && fs.readFileSync(path.join(pf, 'assets', 'logo.png'))[7] === 255, 'files in the folder, binary as is');
+		expect(!fs.existsSync(path.join(pf, 'secrets.php')) && !fs.existsSync(path.join(pf, '_data')), 'secrets / data not exported');
+		// change here: the folder's version comes back, a new file goes, the replaced files become a version
+		fs.writeFileSync(path.join(dir, 'index.php'), "<?php\ndefined('NU_PAGE') || exit;\necho 'v2';\n");
+		fs.writeFileSync(path.join(dir, 'assets', 'extra.js'), '1;');
+		const rows = JSON.parse(cron('app import --dir=' + out + ' --json'));
+		const r = rows.find((x) => x.key === 'pagefiles|' + F) || {};
+		expect(r.state === 'different' && /^0 \D+, 1 \D+, 1 /.test(r.note), 'diff of the page files: ' + JSON.stringify(r));
+		cron('app import --dir=' + out + ' --yes');
+		expect(fs.readFileSync(path.join(dir, 'index.php'), 'utf8').includes('v1') && !fs.existsSync(path.join(dir, 'assets', 'extra.js')), 'files of the package live');
+		expect(fs.readFileSync(path.join(dir, '_data', 'd.txt'), 'utf8') === 'data' && fs.existsSync(path.join(dir, 'secrets.php')), 'data / secrets kept');
+		const vers = fs.readdirSync(path.join(dir, '_versions')).filter((n) => /^\d{8}-/.test(n));
+		expect(vers.length === 1 && fs.readFileSync(path.join(dir, '_versions', vers[0], 'index.php'), 'utf8').includes('v2'), 'replaced files kept as a version');
+		// a new installation: page folder missing → added
+		fs.rmSync(dir, { recursive: true, force: true });
+		const r2 = JSON.parse(cron('app import --dir=' + out + ' --json')).find((x) => x.key === 'pagefiles|' + F) || {};
+		expect(r2.state === 'new', 'missing folder = new: ' + r2.state);
+		cron('app import --dir=' + out + ' --yes');
+		expect(fs.readFileSync(path.join(dir, 'index.php'), 'utf8').includes('v1'), 'page folder created');
+	} finally {
+		sql(`DELETE FROM zzzzsys_form WHERE zzzzsys_form_id = '${id}'; DELETE FROM zzzzsys_nunext_page WHERE zzzzsys_nunext_page_id = '${id}'`);
+		fs.rmSync(dir, { recursive: true, force: true });
+		fs.rmSync(out, { recursive: true, force: true });
+		for (const b of fs.readdirSync(path.join(SITE, '_backup')).filter((n) => n.startsWith('project-restore-'))) fs.rmSync(path.join(SITE, '_backup', b));
 	}
 };
 

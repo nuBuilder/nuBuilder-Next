@@ -1099,6 +1099,7 @@ class NuPageContext
 	/** A private folder of the page that is never served: <page folder>/_data (deny-all .htaccess, empty index.html). */
 	public function dataDir(): string
 	{
+		if ($this->isDraft()) return NuPageVersion::draftData($this->meta->code());   // the draft works on its own copy
 		$d = NuPage::dir() . '/' . $this->meta->code() . '/_data';             // built-in pages too: in custom/pages/, never touched by updates
 		NuSecurity::protectDir($d);
 		return $d;
@@ -1240,7 +1241,13 @@ class NuPageContext
 		NuPage::noteDeprecated($this->meta->code(), '$nu->' . $method . '()');
 	}
 
-	/** A value of secrets.php in the page folder (read once per request). */
+	/** Is this request the draft of the page (a designer switched to it)? Use it where the draft must not touch live tables. */
+	public function isDraft(): bool
+	{
+		return basename($this->dir) === NuPageVersion::DRAFT;
+	}
+
+	/** A value of secrets.php in the page folder (read once per request; the draft's own secrets.php wins over the live one). */
 	public function secret(string $key, mixed $default = null): mixed
 	{
 		if ($this->secrets === null) {

@@ -14,6 +14,7 @@ final class NuDbresetPage
 			if ($action === 'check') {
 				try {
 					if (!empty($S['path'])) NuDbReset::forgetUpload((string)$S['path']);   // an earlier check's upload
+					if (!empty($_FILES['upload']['name']) && !NuDbReset::filesAllowed()) throw new RuntimeException(t('dbr_err_mysql_only'));
 					if (!empty($_FILES['upload']['name'])) $path = NuDbReset::storeUpload($_FILES['upload']);
 					else {
 						$src = NuDbReset::sources();
@@ -32,6 +33,10 @@ final class NuDbresetPage
 					nu_flash('danger', t('dbr_err_confirm'));
 				} else {
 					try {
+						if (($S['check']['kind'] ?? '') === 'clean') {   // install scripts: small, one request
+							$S = ['done' => NuDbReset::runClean(nu_post('backup') === '1', nu_post('sample') === '1')];
+							nu_redirect(nu_url('dbreset'));
+						}
 						if (($S['check']['kind'] ?? '') === 'package') {
 							NuDbReset::runPackage((string)$S['path'], nu_post('backup') === '1', nu_post('sample') === '1');
 							NuDbReset::forgetUpload((string)$S['path']);

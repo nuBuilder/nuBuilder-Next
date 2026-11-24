@@ -8,6 +8,7 @@
 <ol>
 <li><em>Forms → Add</em> → <em>Custom page</em>, or <em>Add</em> in the list <em>Custom pages</em> (Forms → Tools → Custom pages, the ▾ of the start page tile Forms; it is the forms list showing only custom pages). A short dialogue asks for the description, the code and how the page opens. The <strong>code is the folder name</strong>: letters, digits, <code>_</code> and <code>-</code>, starting with a letter or digit, at most 64 characters (names starting with <code>_</code> are reserved).</li>
 <li>The editor of a custom page shows the folder <code>custom/pages/&lt;code&gt;/</code> and whether <code>index.php</code> is there. <strong>Create from template</strong> copies <code>custom/pages/_template/</code> there (when the folder is writable; otherwise copy it by FTP).</li>
+<li>A complete example – a pizza shop with a menu, a cart, live order status, a kitchen board, menu management, charts and an Excel export – is in <code>dev/examples/pizza/</code> of the developer package (its README lists the steps to install it). It uses permission items for the back office, its own tables, the settings JSON, <code>NuPage.fetch()</code> with polling and <code>$nu-&gt;notify()</code>.</li>
 <li>Give access levels the right on the custom page, as for any form (<em>view</em> = may open it; the other rights can be read by the page with <code>$nu-&gt;rights()</code> and used as the app's roles).</li>
 <li>Write the app in <code>index.php</code> (more files, <code>assets/</code> for css / js / images). <strong>Copy AI prompt</strong> puts the guide, this page and the list of your tables into the clipboard – paste it into any AI together with a description of the app.</li>
 </ol>
@@ -53,6 +54,7 @@
 <li>Direct requests of files in <code>custom/</code> are blocked three ways: the guard line <code>defined('NU_PAGE') || exit;</code> at the top of every PHP file (the page editor warns when <code>index.php</code> lacks it), <code>custom/.htaccess</code> (Apache) and the nginx rule in <a href="#security-nginx">Web server rules</a>. <em>Security check</em> tests that the folder cannot be reached.</li>
 <li>Renaming the code of a custom page: rename its folder by FTP too (the page editor says so). Deleting a custom page keeps its files.</li>
 <li>The cloner copies a custom page with its settings, not its files (it shows the folders to copy). The App cloner copies the folders with the files of the installation, but never <code>secrets.php</code>.</li>
+<li>To move a page to a test or production installation, export the application or a project that holds the page (<a href="#projects-environments">Development, test and production</a>): the package carries the page's code files, never <code>_data</code>, <code>_draft</code>, <code>_versions</code> or <code>secrets.php</code>. On import the files it replaces are kept as a version of the page, like a publish. In the folder of <code>nucron.php app export</code> the files are plain files below <code>pages/&lt;code&gt;/files/</code>.</li>
 </ul>
 </div>
 	<div class="doc-sub" data-acl="nuform">
@@ -64,7 +66,9 @@
 <li><strong>Publish draft</strong> makes the draft live. The files it replaces are kept as a version in <code>_versions/</code>.</li>
 <li><strong>Restore</strong> next to a previous version copies it back; the current files become a version first, so a restore can be undone the same way. The newest ten versions are kept.</li>
 <li><strong>Discard draft</strong> deletes the draft.</li>
-<li>Shared by the draft and the live version: the page's data (<code>_data/</code>, <code>$nu-&gt;dataDir()</code>), <code>secrets.php</code> (a draft without its own reads the live one), the page settings and the database. A draft that needs new columns should add them so the live code keeps working.</li>
+<li>The draft works on its own data: <em>Create draft</em> copies <code>_data/</code> into <code>_draft/_data/</code>, and <code>$nu-&gt;dataDir()</code> points there while the draft is shown. <em>Reset draft data</em> copies the live data again. The draft's data is never published.</li>
+<li>A <code>secrets.php</code> in <code>_draft/</code> (for example test API keys) wins over the live one; without it the draft reads the live file.</li>
+<li>Shared by the draft and the live version: the page settings and the database. Where the draft must not write live tables, ask <code>$nu-&gt;isDraft()</code> – for example <code>$table = $nu-&gt;isDraft() ? 'orders_test' : 'orders';</code>. For real tests against another database, move the page to a test installation (below). A draft that needs new columns should add them so the live code keeps working.</li>
 <li>Files and folders starting with a dot (<code>.git</code>, <code>.htaccess</code>) stay in the page folder and are never moved. Built-in pages have no draft unless you made your own copy of them in <code>custom/pages/</code>.</li>
 <li>Every step is written to the log (<em>Page draft created / published / discarded</em>, <em>Page version restored</em>).</li>
 </ul>

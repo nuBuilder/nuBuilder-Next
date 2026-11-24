@@ -1084,3 +1084,38 @@ T.code_review_l4_d5 = async (s) => {                     // user import split in
 		sql("DELETE FROM zzzzsys_user WHERE sus_login_name LIKE 'e2e_l4%'");
 	}
 };
+
+T.title_bar_scrolls_phone = async (s) => {
+	// phones: a title bar with Back only (check and overview pages) scrolls away; record pages keep Save in view
+	const ctx = await s.ga.context().browser().newContext({ locale: 'en-GB', hasTouch: true, isMobile: true, viewport: { width: 390, height: 700 }, storageState: await s.ga.context().storageState() });
+	const p = await ctx.newPage();
+	try {
+		const pos = async (u, sel) => {
+			await p.goto(BASE + u); await p.waitForSelector(sel);
+			await p.evaluate(() => window.scrollTo(0, 600)); await p.waitForTimeout(300);
+			return p.evaluate((q) => { const b = document.querySelector(q); return { pos: getComputedStyle(b).position, top: Math.round(b.getBoundingClientRect().top), stuck: b.classList.contains('nuStuck') }; }, sel);
+		};
+		const c = await pos('index.php?p=compat', 'main .nuTitleBar');
+		expect(c.pos === 'static' && c.top < 0 && !c.stuck, 'compatibility check title bar still sticks: ' + JSON.stringify(c));
+		const a = await pos('index.php?p=accesslevel&id=sample_editor', 'main .nuTitleBar');
+		expect(a.pos === 'sticky', 'record page title bar no longer sticks: ' + JSON.stringify(a));
+		await p.setViewportSize({ width: 1300, height: 700 });
+		const d = await pos('index.php?p=compat', 'main .nuTitleBar');
+		expect(d.pos === 'sticky', 'wide screens: compatibility check title bar should stick: ' + JSON.stringify(d));
+	} finally { await ctx.close(); }
+};
+
+T.phone_more_menu_fits = async (s) => {
+	// list title bar ⋮ on phones: entries of a menu show their own text (not their long tooltip), and none runs out of the screen
+	const ctx = await browser.newContext({locale: 'en-GB', viewport: {width: 390, height: 844}, isMobile: true, hasTouch: true, storageState: await s.ga.context().storageState()});
+	const p = await ctx.newPage();
+	try {
+		await p.goto(BASE + 'index.php?p=forms', {waitUntil: 'networkidle'});
+		await p.click('.nuPhMore > button');
+		await p.waitForTimeout(300);
+		const items = await p.$$eval('.nuPhMore .dropdown-menu .nuPhMoreItem', (xs) => xs.map((x) => ({t: x.textContent.trim(), r: x.getBoundingClientRect().right})));
+		const maint = items.find((x) => /…$/.test(x.t) && x.t.length < 30);
+		expect(!!maint, 'Maintenance… shown with its own text: ' + items.map((x) => x.t).join(' | '));
+		expect(items.every((x) => x.r <= 390), 'an entry runs out of the screen: ' + JSON.stringify(items.filter((x) => x.r > 390)));
+	} finally { await ctx.close(); }
+};

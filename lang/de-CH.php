@@ -334,6 +334,7 @@ Oder von Hand aktualisieren: die Dateien aus nunext.zip über die alten hochlade
 	'form_apex_off' => 'Dieses Formular verwendet ApexCharts, die Bibliothek wird aber nicht geladen: $nuConfigIncludeApexCharts ist aus (wie in nuBuilder Forte, wo es standardmässig aus ist).',
 	'key_err_set' => '$nuConfigSecretKey ist bereits gesetzt – nur im nuconfig.php-Editor ändern, wenn es wirklich sein muss (verschlüsselte 2FA-Secrets liessen sich nicht mehr öffnen).',
 	'twofa_on_confirm' => '$nuConfig2FAUser = true; in nuconfig.php setzen? Ab der nächsten Anmeldung müssen Benutzer von Zugriffsstufen mit «Zwei-Faktor-Authentifizierung verwenden» mit einer Authenticator-App oder einem E-Mail-Code bestätigen (E-Mail muss eingerichtet sein). Die aktuelle nuconfig.php wird gesichert.',
+	'dbr_done_skipped' => '%d Datenbankroutine(n) ausgelassen – der Datenbankbenutzer darf sie auf diesem Server nicht anlegen: %s. Die Anwendung funktioniert ohne sie, ausser ihr Code ruft sie auf.',
 	'dbr_warn_title' => 'Alle Tabellen der Datenbank «%s» werden gelöscht',
 	'dbr_warn' => '%d Tabelle(n) und View(s) mit allen Daten – die von nuBuilder Forte, nuBuilder Next und der Anwendung. Das lässt sich nicht rückgängig machen (ausser mit einer Sicherung).',
 	'dbr_confirm' => 'Zur Bestätigung den Datenbanknamen «%s» eingeben',

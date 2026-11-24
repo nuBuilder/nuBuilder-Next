@@ -74,9 +74,26 @@ final class NuSqlImport
 	 * Runs every statement of a file on $db. $engines: MyISAM tables become InnoDB (imports of nuBuilder Forte dumps – NuInstall::importSql).
 	 * An error names the file and the statement. @return int statements run
 	 */
+	/** Routines / triggers / events left out by the last run(): the database user may not create them. @var list<string> */
+	public static array $skipped = [];
+
+	/**
+	 * A stored procedure, function, trigger or event the database user may not create (shared hosts give no CREATE ROUTINE /
+	 * TRIGGER / SUPER, also no DROP of them): the name to report, else null – then the error stops the import.
+	 */
+	public static function skippable(PDOException $e, string $stmt): ?string
+	{
+		$code = (int)($e->errorInfo[1] ?? 0);
+		if (!in_array($code, [1044, 1142, 1227, 1370, 1419, 1449], true)) return null;
+		$t = (string)preg_replace('#^(/\*!\d+\s*)+#', '', ltrim($stmt));
+		if (!preg_match('/^(CREATE|DROP)\s+(?:OR\s+REPLACE\s+)?(?:DEFINER\s*=\s*\S+\s+)?(?:IF\s+(?:NOT\s+)?EXISTS\s+)?(PROCEDURE|FUNCTION|TRIGGER|EVENT)\s+(?:IF\s+(?:NOT\s+)?EXISTS\s+)?([`"\w.$]+)/i', $t, $m)) return null;
+		return strtoupper($m[2]) . ' ' . trim($m[3], '`"');
+	}
+
 	public static function run(NuDB $db, string $path, ?callable $progress = null, bool $engines = false): int
 	{
 		$n = 0;
+		self::$skipped = [];
 		nu_time_limit(0);
 		// a dump changes the session (sql_mode, time zone, autocommit): put back afterwards – the request goes on with this connection
 		$saved = $db->type === 'mysql' ? $db->pdo()->query('SELECT @@SESSION.sql_mode, @@SESSION.time_zone, @@SESSION.autocommit')->fetch(PDO::FETCH_NUM) : null;
@@ -86,7 +103,9 @@ final class NuSqlImport
 				try {
 					$db->exec($stmt);
 				} catch (PDOException $e) {
-					throw new RuntimeException(basename($path) . ', ' . t('ins_err_statement', $n + 1) . ': ' . $e->getMessage() . ' — ' . mb_substr(trim($stmt), 0, 160), 0, $e);
+					$skip = self::skippable($e, $stmt);
+					if ($skip === null) throw new RuntimeException(basename($path) . ', ' . t('ins_err_statement', $n + 1) . ': ' . $e->getMessage() . ' — ' . mb_substr(trim($stmt), 0, 160), 0, $e);
+					if (!in_array($skip, self::$skipped, true)) self::$skipped[] = $skip;
 				}
 				$n++;
 			}
@@ -123,7 +142,9 @@ final class NuSqlImport
 			try {
 				$db->exec($stmt);
 			} catch (PDOException $e) {
-				throw new RuntimeException(basename($file) . ', ' . t('ins_err_statement', $st['n'] + 1) . ': ' . $e->getMessage() . ' — ' . mb_substr(trim($stmt), 0, 160), 0, $e);
+				$skip = self::skippable($e, $stmt);
+				if ($skip === null) throw new RuntimeException(basename($file) . ', ' . t('ins_err_statement', $st['n'] + 1) . ': ' . $e->getMessage() . ' — ' . mb_substr(trim($stmt), 0, 160), 0, $e);
+				$st['skipped'] = array_values(array_unique(array_merge((array)($st['skipped'] ?? []), [$skip])));
 			}
 			$st['n']++;
 			if (preg_match('#^(/\*!\d+\s*)?SET\s#i', $stmt)) {

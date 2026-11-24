@@ -3776,12 +3776,24 @@
     "k": "method",
     "n": "$nu->dataDir",
     "s": "$nu->dataDir(): string",
-    "d": "A private folder of the page – <page folder>/_data, created with a deny-all .htaccess – for trash, caches and temporary files. Never served (nginx: the custom/ rule).",
+    "d": "A private folder of the page – <page folder>/_data, created with a deny-all .htaccess – for trash, caches and temporary files. Never served (nginx: the custom/ rule). While the draft runs: its own copy, <page folder>/_draft/_data.",
     "r": "string",
     "o": "next",
     "v": "0.8.479",
     "e": "file_put_contents($nu->dataDir() . '/cache.json', $json);",
     "x": "'/var/www/nunext/custom/pages/nufiles/_data'"
+   },
+   {
+    "g": "page",
+    "k": "method",
+    "n": "$nu->isDraft",
+    "s": "$nu->isDraft(): bool",
+    "d": "True while the request runs the draft of the page (a designer switched to it). The draft has its own data folder, but the database is shared – use it where the draft must not write live tables.",
+    "r": "bool",
+    "o": "next",
+    "v": "0.8.1449",
+    "e": "$table = $nu->isDraft() ? 'orders_test' : 'orders';",
+    "x": "false"
    },
    {
     "g": "page",

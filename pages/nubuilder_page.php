@@ -244,6 +244,9 @@ nu_layout_start($meta->description() . ' · ' . t('builder_title'), 'forms', ['h
 							<form method="post" data-confirm="<?= h(t('page_draft_publish_confirm')) ?>" data-confirm-ok="<?= h(t('page_draft_publish')) ?>">
 								<?= nu_csrf_field() ?><input type="hidden" name="action" value="draft_publish">
 								<button class="btn btn-primary" type="submit" id="pgDraftPublish"><i class="bi bi-upload me-1"></i><?= h(t('page_draft_publish')) ?></button></form>
+							<form method="post" data-confirm="<?= h(t('page_draft_data_confirm')) ?>" data-confirm-ok="<?= h(t('page_draft_data_reset')) ?>">
+								<?= nu_csrf_field() ?><input type="hidden" name="action" value="draft_data_reset">
+								<button class="btn nuBtnAct" type="submit" id="pgDraftDataReset"><i class="bi bi-arrow-counterclockwise me-1"></i><?= h(t('page_draft_data_reset')) ?></button></form>
 							<form method="post" data-confirm="<?= h(t('page_draft_discard_confirm')) ?>" data-confirm-ok="<?= h(t('page_draft_discard')) ?>" data-confirm-class="btn btn-danger">
 								<?= nu_csrf_field() ?><input type="hidden" name="action" value="draft_discard">
 								<button class="btn nuBtnAct nuBtnDel" type="submit" id="pgDraftDiscard"><i class="bi bi-trash me-1"></i><?= h(t('page_draft_discard')) ?></button></form>

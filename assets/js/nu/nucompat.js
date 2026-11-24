@@ -86,6 +86,24 @@
 		};
 		$.fn.clone.nuNext = true;
 	}
+	// $(tab).next() / .prev() of a tab: in Forte the tabs are siblings ($('.nuTabSelected').next()[0] = the next tab); here each tab sits in
+	// its own <li> of the Bootstrap tab bar, so the plain sibling would be nothing – answer the tab of the next / previous <li> instead
+	['next', 'prev'].forEach(function (fn) {
+		if (!$.fn[fn] || $.fn[fn].nuNext) return;
+		var orig = $.fn[fn], side = fn === 'next' ? 'nextElementSibling' : 'previousElementSibling';
+		$.fn[fn] = function (sel) {
+			var els = this.get();
+			var tabs = els.length && els.every(function (e) { return e && e.classList && e.classList.contains('nuTab') && e.parentNode && e.parentNode.tagName === 'LI'; });
+			if (!tabs) return orig.apply(this, arguments);
+			var out = [];
+			els.forEach(function (e) {
+				var li = e.parentNode[side], t = li && li.querySelector('.nuTab');
+				if (t && out.indexOf(t) < 0) out.push(t);
+			});
+			return this.pushStack(sel ? $(out).filter(sel).get() : out);
+		};
+		$.fn[fn].nuNext = true;
+	});
 	api('nuAddSlashes', function (s) { return String(s).replace(/[\\"']/g, '\\$&').replace(/\u0000/g, '\\0'); });
 	api('nuAddThousandSpaces', function (s, d) { return String(s).replace(/\B(?=(\d{3})+(?!\d))/g, d); });
 	api('nuPad', function (id, length, pad) { return String(id).padStart(length, pad === undefined || pad === null ? '0' : String(pad)); });

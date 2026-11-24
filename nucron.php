@@ -80,7 +80,7 @@ declare(strict_types=1);
  *
  * Reset database (only with $nuConfigDevMode = true, MySQL / MariaDB): deletes ALL tables of the database, imports a nuBuilder
  * Forte (4.x) SQL file (nubuilder4.sql or a complete dump, .sql / .sql.gz / .zip) and creates nuBuilder Next's tables:
- *     php nucron.php reset --sql=<file> [--check] [--backup] [--sample] --yes
+ *     php nucron.php reset --sql=<file>|--clean [--check] [--backup] [--sample] --yes
  *   --check  read and check the file only, list the tables that would be deleted – nothing changes (no --yes needed)
  *   --backup a backup with the whole database first (Update → Backups)      --sample  install the sample application afterwards
  */
@@ -105,14 +105,16 @@ $args = array_slice($argv, 1);
 if (($args[0] ?? '') === 'reset') {
 	$ro = [];
 	foreach (array_slice($args, 1) as $a) if (preg_match('/^--([a-z]+)(?:=(.*))?$/s', $a, $m)) $ro[$m[1]] = $m[2] ?? true;
-	$usage = "Usage: php nucron.php reset --sql=<file> [--check] [--backup] [--sample] --yes\n";
-	if (!NuDbReset::available()) { fwrite(STDERR, "Reset database needs \$nuConfigDevMode = true in nuconfig.php and a MySQL / MariaDB database.\n"); exit(2); }
-	$file = is_string($ro['sql'] ?? null) ? (string)$ro['sql'] : '';
-	if ($file === '' || !is_file($file)) { fwrite(STDERR, ($file === '' ? 'No --sql=<file>.' : 'File not found: ' . $file) . "\n" . $usage); exit(2); }
+	$usage = "Usage: php nucron.php reset --sql=<file>|--clean [--check] [--backup] [--sample] --yes\n";
+	if (!NuDbReset::available()) { fwrite(STDERR, "Reset database needs \$nuConfigDevMode = true in nuconfig.php and a MySQL / MariaDB or SQL Server database.\n"); exit(2); }
+	$file = !empty($ro['clean']) ? NuDbReset::CLEAN : (is_string($ro['sql'] ?? null) ? (string)$ro['sql'] : '');
+	if ($file !== NuDbReset::CLEAN && !NuDbReset::filesAllowed()) { fwrite(STDERR, "SQL Server: only --clean (a clean installation from nuBuilder Next's install scripts).\n" . $usage); exit(2); }
+	if ($file !== NuDbReset::CLEAN && ($file === '' || !is_file($file))) { fwrite(STDERR, ($file === '' ? 'No --sql=<file>.' : 'File not found: ' . $file) . "\n" . $usage); exit(2); }
 	$chk = NuDbReset::check($file);
-	echo str_pad('database', 14) . ($chk['database'] ?? '') . "\n" . str_pad('file', 14) . basename($file) . "\n";
+	echo str_pad('database', 14) . ($chk['database'] ?? '') . "\n" . str_pad('file', 14) . ($file === NuDbReset::CLEAN ? 'clean installation' : basename($file)) . "\n";
 	if (!$chk['ok']) { fwrite(STDERR, 'The file cannot be imported: ' . $chk['error'] . "\n"); exit(1); }
-	echo str_pad('creates', 14) . $chk['tables'] . ' table(s), ' . $chk['app'] . ' of the application, ' . $chk['forms'] . ' form(s), ' . $chk['users'] . " user(s)\n";
+	if ($file === NuDbReset::CLEAN) echo str_pad('creates', 14) . $chk['tables'] . " table(s) of nuBuilder Next's install scripts\n";
+	else echo str_pad('creates', 14) . $chk['tables'] . ' table(s), ' . $chk['app'] . ' of the application, ' . $chk['forms'] . ' form(s), ' . $chk['users'] . " user(s)\n";
 	echo str_pad('deletes', 14) . count($chk['current']) . ' table(s) / view(s) now in the database' . "\n";
 	if (!empty($ro['check'])) exit(0);
 	if (empty($ro['yes'])) { fwrite(STDERR, "Nothing done: add --yes to delete all tables and import the file.\n" . $usage); exit(2); }

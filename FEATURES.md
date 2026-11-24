@@ -82,7 +82,7 @@ page) for how to use it.
   field in a side panel (link a page to forms right from its editor); whole pages or parts of a page only for some access levels, translations, search, export / import;
   drafted with AI in any installed language.
 - **Dashboards** – KPI tiles, charts and tables built from SQL, on the start page or on any form.
-- **Custom pages** – your own PHP apps inside nuBuilder Next, with its sign-in, rights, a stable page API, drafts and
+- **Custom pages** – your own PHP apps inside nuBuilder Next, with its sign-in, rights, a stable page API, drafts (with their own data folder) and
   versions.
 - **Sign-in for own PHP apps** – plain PHP apps in a sub-folder include `nuexternal.php` and get the signed-in user,
   permissions, teams and access levels of nuBuilder Next (no custom page needed).
@@ -109,7 +109,7 @@ page) for how to use it.
 - **Projects** – group the forms, procedures, reports, tables and other parts of one piece of work, with "Suggest related",
   Markdown notes, to-dos with notifications, lists narrowed to the project, and export / import as one package (with access
   rights, translations, new table columns and a restore point before anything is replaced).
-- **Development, test and production** – export the whole application as one package, or as a folder for git on the command line
+- **Development, test and production** – export the whole application (with access levels, settings and the files of custom pages – never secrets) as one package, or as a folder for git on the command line
   (one folder per form / procedure / report, code in files of its own, the same database gives the same files) and import it on
   another installation – parts that exist only on the target are listed and deleted only when chosen; the environment label tells
   the installations apart.
@@ -132,7 +132,7 @@ page) for how to use it.
 - **Start pages at a glance** – the globeadmin lists every Home form and every tile page with their access levels from the button right of
   Customise on the start page (or a right-click / long press on Home): tabs Home forms / Tile pages, search, Open and Design on one line, User Home in the head
 - **Maintenance in the browser** – signed updates with backup, rollback and a preview of database changes; restore the
-  database from a backup (MySQL / MariaDB); in developer mode, reset the database from a SQL dump of any size (runs in short steps with a progress window); a `nuconfig.php`
+  database from a backup (MySQL / MariaDB); in developer mode, reset the database from a SQL dump of any size (runs in short steps with a progress window; routines the host does not allow are skipped and listed) or to a clean installation (also on SQL Server); a `nuconfig.php`
   editor; global JavaScript / CSS; system status; logged-in users; phpMyAdmin, Adminer and a file manager (recycle bin,
   versions, code editor, tiles with picture thumbnails; made for phones too).
 - **Plugins** – extensions of other developers in `plugins/<id>/`: pages, start page tiles, menu entries, admin rights, settings, events (save, delete, sign-in, e-mail), REST routes and cron tasks through a versioned plugin API; signed packages, upload only when switched on, switched off by themselves after an error, safe mode, checked before every update.

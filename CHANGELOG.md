@@ -3,6 +3,91 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.1451 – Release gate
+- Release gate: full test run (smoke, end-to-end, compatibility with nuBuilder Forte, installer wizard, OWASP ZAP) and documentation
+  brought up to date (feature list, help on tooltips and on Reset database, tutorial note on moving work between installations).
+
+## 0.8.1450 – Phone list menu entries fit the screen
+- Phones: in the ⋮ menu of a list's title bar, entries taken from a menu (such as Tools of the forms list) show their own
+  text instead of their longer tooltip. The forms list showed "Put forms into maintenance or end it – several at once"
+  instead of "Maintenance…", running off the screen. The menu is never wider than the screen, and long entries wrap.
+
+## 0.8.1449 – Custom page drafts with own data, pages in packages
+- Custom pages: a draft now works on its own copy of the page's data. Create draft copies `_data/` into
+  `_draft/_data/`, and `$nu->dataDir()` points there while a designer looks at the draft. The live data is no longer
+  changed by testing, and the draft's data is never published. Reset draft data (Draft and versions card) copies the live
+  data again. A `secrets.php` in the draft folder (for example test API keys) wins over the live one.
+- New in the page API: `$nu->isDraft()`. The database stays shared, so a page can use it to keep its draft away from live
+  tables.
+- Custom pages travel to other installations: the application package and project packages carry the page's code files.
+  The `_data` folder, the draft, the versions and `secrets.php` never travel. The import check shows new, changed and
+  removed files; on import the replaced files are kept as a version of the page, like a publish. In the folder of
+  `nucron.php app export` the files are plain files below `pages/<code>/files/`.
+
+## 0.8.1448 – Access levels and settings in packages
+- Deploying from test to production: the application package (Projects → Export application, and the folder of
+  `nucron.php app export`) now also carries the access levels and the settings. Access levels travel by their code: missing
+  levels are added, existing ones take description, group, Home form, two-factor switch and start page; their rights follow by
+  code. A level that exists only on the target is listed but never deleted. Settings travel part by part – shared settings,
+  Global code, branding and logos, themes, languages, security settings, password policy, audit trail settings, custom page
+  settings – each with its own line, diff and choice on import, and in the restore point. Secrets and what belongs to one
+  installation never travel (secret key, e-mail, single sign-on, IP access, health key, API clients, webhook secrets,
+  environment label, passwords, demo mode, debugging, backup folder).
+- Projects can hold access levels as items; a project package carries the levels its rights name.
+
+## 0.8.1447 – Phones: title bars without Save scroll away
+- Phones: the title bar of pages without Save (Compatibility check, Security check and other overview pages – title, hint, Back and
+  switches) scrolls away with the page instead of staying under the top bar and covering the content. Record pages keep their
+  button row in view; wide screens are unchanged.
+
+## 0.8.1446 – Second tap closes an (i) hint
+- Touch screens: a second tap on an (i) closes its hint. The first tap opens it and the (i) keeps the focus, so the hint
+  stayed open until a tap somewhere else.
+
+## 0.8.1445 – Toolbars: one look for every button
+- Toolbars: every button of a record or list toolbar now has the same background – View, New, Design, the (i) form info, ⋮,
+  Export and Add used an outline (transparent) look next to the filled Back / Save / Clone / Delete. Buttons inside menus and
+  dialogues of the toolbar keep their own look.
+- Phones: the "‹ back" link of the page after a user record named the texts of the "Act as user" menu in the heading; the
+  trail now takes only the heading's own words.
+
+## 0.8.1444 – Pizza example: US defaults
+- Example custom page "pizza shop": US defaults – the currency is a setting with a symbol ("$", or a code such as "USD"), sizes in
+  inches, times in 12-hour form (setting "clock": "24h" switches back), order times and chart hours in the page's language.
+
+## 0.8.1443 – Example custom page: pizza shop
+- Example custom page "pizza shop" in dev/examples/pizza/ of the developer package: customers order from a menu with sizes
+  and extras and follow the status of their orders live; a permission item opens the kitchen board, the menu management
+  (prices, sold out today, order of the menu, a preview drawn from the toppings) and the day's numbers with charts and an
+  Excel export. Plain PHP through $nu – own tables, settings JSON, transactions, audit trail, notifications,
+  NuPage.fetch() with polling. The README of the folder lists the steps to install it; docs 11-01 point to it.
+
+## 0.8.1442 – Design mode object menu without duplicate entries
+- Design mode: the right-click menu of an object no longer offers "Button settings…" and "Properties…" – the
+  object is already selected and its properties panel shows the same settings. Outside design mode both stay.
+
+## 0.8.1441 – Reports with the empty launch form run at once
+- Reports whose launch form is nuBuilder Forte's empty launch form (nublank) run right away, as in Forte: a run object
+  with method iFrame shows the PDF inside the form, a run button opens the PDF – instead of an empty launch page.
+
+## 0.8.1440 – Next / previous tab as in Forte
+- Form code of nuBuilder Forte: $(tab).next() / .prev() of a tab give the next / previous tab again, so
+  nuSelectTab($('.nuTabSelected').next()[0]) selects the next tab as in Forte (each tab sits in its own list item of the
+  tab bar; a selector argument filters as usual, other elements are unchanged).
+
+## 0.8.1439 – Dumps with routines on shared hosts
+- Importing a database dump (Reset database, installer, database set-up): stored procedures, functions, triggers and events
+  that the database user may not create on this server – shared hosts give no CREATE ROUTINE / TRIGGER right – are left
+  out instead of stopping the import (access-denied errors only; any other error still stops it). Reset database names
+  them in its result and in the log; the application works without them unless its code calls them.
+
+## 0.8.1438 – Reset database on SQL Server
+- Reset database also on SQL Server: the new first choice "nuBuilder Next: clean installation" needs no file – all tables
+  and views are deleted (on SQL Server foreign keys first) and the database is built again from nuBuilder Next's install
+  scripts of the database type, then the own tables, the database steps and optionally the sample application, as after a
+  file. On SQL Server it is the only choice (SQL files of nuBuilder Forte are MySQL dumps; no upload there). On MySQL it is
+  offered next to the files. Command line: php nucron.php reset --clean [--backup] [--sample] --yes.
+
 ## 0.8.1437 – Release gate
 - Release gate: full test run (smoke, end-to-end, compatibility with nuBuilder Forte, installer wizard, OWASP ZAP);
   documentation brought up to date (features list, help on labels of record forms, verify list).

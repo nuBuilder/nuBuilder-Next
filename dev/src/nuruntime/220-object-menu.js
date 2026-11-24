@@ -318,9 +318,10 @@
 
 			menu = $('<ul class="dropdown-menu show nuObjMenu shadow" role="menu"></ul>').append(
 				head, divider(),
-				isButton(o) ? (function () { var li = item('bi-gear', T.settings, function () { settings(id); }); li.find('button').attr({title: T.settings_tip, id: 'nuOmSettings'}); return li; })() : $(),
-				item('bi-sliders', T.properties,
-					function () { if (N.objMenuHook) { N.objMenuHook('properties', o); return; } window.open(N.base + '?p=builder&f=' + encodeURIComponent(N.form.id) + '&obj=' + encodeURIComponent(o.object_id) + '&fid=' + encodeURIComponent(id) + (N.record_id && N.record_id !== '-1' ? '&r=' + encodeURIComponent(N.record_id) : ''), '_blank'); }),
+				// design mode: the object is selected and its properties panel is open – both entries would only select it again
+				isButton(o) && !N.objMenuHook ? (function () { var li = item('bi-gear', T.settings, function () { settings(id); }); li.find('button').attr({title: T.settings_tip, id: 'nuOmSettings'}); return li; })() : $(),
+				N.objMenuHook ? $() : item('bi-sliders', T.properties,
+					function () { window.open(N.base + '?p=builder&f=' + encodeURIComponent(N.form.id) + '&obj=' + encodeURIComponent(o.object_id) + '&fid=' + encodeURIComponent(id) + (N.record_id && N.record_id !== '-1' ? '&r=' + encodeURIComponent(N.record_id) : ''), '_blank'); }),
 				item('bi-input-cursor-text', T.rename, function () {
 					var cur = labelText(id) || o.label || '';            // words / images have no separate label
 					var v = window.prompt(T.rename_prompt.replace('%s', id), cur);

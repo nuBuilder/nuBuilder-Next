@@ -577,6 +577,13 @@ $mdView = "/*!50001 CREATE ALGORITHM=UNDEFINED */\n/*!50013 DEFINER=`root`@`loca
 	. "DELIMITER ;;\n/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`%`*/ /*!50003 TRIGGER `t2` BEFORE INSERT ON `customers` FOR EACH ROW SET NEW.id = 1 */;;\nDELIMITER ;\n";
 $sp = NuSqlImport::split($mdView);
 check('split: mysqldump view / trigger without DEFINER', count($sp) === 2 && !preg_match('/DEFINER\s*=|\/\*!/', implode(' ', $sp)) && str_starts_with($sp[0], 'CREATE ALGORITHM=UNDEFINED') && str_contains($sp[0], 'VIEW `v_abs` AS select'), json_encode($sp));
+// routines the database user may not create (shared hosts): left out and named, other errors still stop the import
+$pe = static function (int $code): PDOException { $e = new PDOException('denied'); $e->errorInfo = ['42000', $code, 'denied']; return $e; };
+check('import: CREATE PROCEDURE without the right is skipped', NuSqlImport::skippable($pe(1044), "CREATE PROCEDURE `IP_Add_Bad` (IN ip INT) BEGIN SELECT 1; END") === 'PROCEDURE IP_Add_Bad');
+check('import: trigger / function / DROP … IF EXISTS skipped', NuSqlImport::skippable($pe(1419), 'CREATE TRIGGER `t2` BEFORE INSERT ON x FOR EACH ROW SET NEW.id = 1') === 'TRIGGER t2'
+	&& NuSqlImport::skippable($pe(1227), 'DROP FUNCTION IF EXISTS `f`') === 'FUNCTION f');
+check('import: other statements / errors not skipped', NuSqlImport::skippable($pe(1044), 'CREATE TABLE t (id INT)') === null
+	&& NuSqlImport::skippable($pe(1064), 'CREATE PROCEDURE p() BEGIN END') === null);
 $r = NuInstall::checkDump(NuSqlImport::split($full . $mdView), true);
 check('dump (any table): mysqldump view / trigger accepted', $r['ok'], json_encode($r));
 $sp = NuSqlImport::split("CREATE TABLE [a;b] (x int)\nGO\nINSERT INTO #t VALUES (N'C:\\', 'x;y')\nGO\n", 'sqlsrv');

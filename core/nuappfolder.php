@@ -27,6 +27,9 @@ final class NuAppFolder
 		'webhook'       => ['webhooks', 'name'],
 		'help'          => ['help', 'code'],
 		'tables'        => ['tables', 'name'],
+		'levels'        => ['accesslevels', 'code'],
+		'settings'      => ['settings', 'part'],
+		'pages'         => ['pages', 'code'],
 	];
 	/** A text this long with a line break goes into a file of its own. */
 	private const CODE_MIN = 60;
@@ -54,6 +57,16 @@ final class NuAppFolder
 				$edir = $dir . '/' . $sub . '/' . $n;
 				if (!@mkdir($edir, 0775, true) && !is_dir($edir)) throw new RuntimeException('Cannot create ' . $edir);
 				$codeFiles = [];
+				if ($list === 'pages') {                       // a custom page: its files as they are, below files/
+					foreach ((array)($r['files'] ?? []) as $rel => $f) {
+						if (!NuPageVersion::safePath((string)$rel) || !is_array($f)) continue;
+						$dst = $edir . '/files/' . $rel;
+						if (!is_dir(dirname($dst)) && !@mkdir(dirname($dst), 0775, true)) throw new RuntimeException('Cannot create ' . dirname($dst));
+						if (@file_put_contents($dst, NuPageVersion::bytes($f)) === false) throw new RuntimeException('Cannot write ' . $dst);
+						$files++;
+					}
+					$r = ['code' => (string)($r['code'] ?? ''), 'files' => '$folder files'];
+				}
 				$item = self::extract($r, '', $codeFiles);
 				foreach ($codeFiles as $fn => $text) { self::put($edir . '/' . $fn, $text); $files++; }
 				self::put($edir . '/item.json', self::json($item));
@@ -87,6 +100,7 @@ final class NuAppFolder
 			foreach ($entries as $f) {
 				$item = json_decode((string)file_get_contents($f), true);
 				if (!is_array($item)) throw new RuntimeException('Not valid JSON: ' . $f);
+				if ($list === 'pages') { $pkg[$list][] = self::readPage($item, dirname($f) . '/files'); continue; }
 				$pkg[$list][] = self::resolve($item, dirname($f));
 			}
 		}
@@ -96,6 +110,24 @@ final class NuAppFolder
 	}
 
 	// ------------------------------------------------------------------ helpers
+
+	/** A custom page of the folder: the files below files/ as the package keeps them. */
+	private static function readPage(array $item, string $dir): array
+	{
+		$files = [];
+		if (is_dir($dir)) {
+			$it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS));
+			foreach ($it as $f) {
+				if (!$f->isFile() || $f->isLink()) continue;
+				$rel = str_replace('\\', '/', substr($f->getPathname(), strlen($dir) + 1));
+				if (!NuPageVersion::safePath($rel)) continue;
+				$b = (string)file_get_contents($f->getPathname());
+				$files[$rel] = mb_check_encoding($b, 'UTF-8') && !str_contains($b, "\0") ? ['t' => $b] : ['b64' => base64_encode($b)];
+			}
+		}
+		ksort($files, SORT_STRING);
+		return ['code' => (string)($item['code'] ?? ''), 'files' => $files];
+	}
 
 	/** Folder name of an entry: the value of its name field, reduced to safe characters. */
 	private static function entryName(array $r, string $key, string $list): string

@@ -1095,6 +1095,54 @@ T.app_folder_delete = async (s) => {
 	}
 };
 
+T.app_levels_settings = async (s) => {
+	// access levels (by code) and settings travel in the application package; secrets and settings of one installation stay
+	if (!SITE) { s.skip = 'needs SITE'; return; }
+	if (!sql("SELECT COUNT(*) FROM zzzzsys_access WHERE sal_code = 'sample_viewer'").startsWith('1')) { s.skip = 'no sample data'; return; }
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nunext-e2e-applv-'));
+	const keep = path.join(os.tmpdir(), 'nunext-e2e-applv.sql');
+	execSync('mysqldump ' + DB + ' zzzzsys_access zzzzsys_access_form zzzzsys_access_php zzzzsys_access_report zzzzsys_config zzzzsys_nunext_setting > ' + keep, {shell: '/bin/bash'});
+	const cron = (a) => execSync('php nucron.php ' + a, {cwd: SITE, encoding: 'utf8', env: Object.assign({}, process.env, {LANG: 'C'})});
+	const cfg = (k) => sql(`SELECT cfg_value FROM zzzzsys_config WHERE cfg_setting = '${k}'`);
+	try {
+		cron('app export --dir=' + dir);
+		expect(fs.existsSync(path.join(dir, 'accesslevels', 'sample_viewer', 'item.json')), 'levels in the folder');
+		expect(fs.existsSync(path.join(dir, 'settings', 'shared', 'item.json')), 'settings in the folder');
+		const shared = fs.readFileSync(path.join(dir, 'settings', 'shared', 'item.json'), 'utf8');
+		expect(!/DemoDBGlobeadminPassword|nuDebugMode|\$nuConfigIsDemo/.test(shared), 'secrets and settings of one installation left out');
+		const before = cfg('nuPHPIcon');
+		sql("UPDATE zzzzsys_access SET sal_description = 'e2e changed' WHERE sal_code = 'sample_viewer'");
+		sql("DELETE FROM zzzzsys_access WHERE sal_code = 'sample_secure'");
+		sql("INSERT INTO zzzzsys_access (zzzzsys_access_id, sal_code, sal_description) VALUES ('e2e_lvonly', 'e2e_lvonly', 'E2E only here')");
+		sql(`UPDATE zzzzsys_config SET cfg_value = '${before === 'true' ? 'false' : 'true'}' WHERE cfg_setting = 'nuPHPIcon'`);
+		const dbg = cfg('nuDebugMode');
+		sql(`UPDATE zzzzsys_config SET cfg_value = '${dbg === 'true' ? 'false' : 'true'}' WHERE cfg_setting = 'nuDebugMode'`);
+		const plan = cron('app import --dir=' + dir + ' --json');
+		const rows = JSON.parse(plan);
+		const st = (k) => (rows.find((r) => r.key === k) || {}).state;
+		expect(st('accesslevel|sample_viewer') === 'different', 'changed level: ' + st('accesslevel|sample_viewer'));
+		expect(st('accesslevel|sample_secure') === 'new', 'removed level comes back as new');
+		expect(st('setting|shared') === 'different' && st('setting|audit') === 'same', 'settings compared per part');
+		const only = rows.find((r) => r.key === 'accesslevel|e2e_lvonly') || {};
+		expect(only.state === 'only' && only.actions.join() === 'skip', 'a level only here is never deleted');
+		const out = cron('app import --dir=' + dir + ' --yes --delete');
+		expect(sql("SELECT sal_description FROM zzzzsys_access WHERE sal_code = 'sample_viewer'") !== 'e2e changed', 'level updated');
+		expect(sql("SELECT zzzzsys_access_id FROM zzzzsys_access WHERE sal_code = 'sample_secure'") === 'sample_secure', 'level added with its id');
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_access_form a JOIN zzzzsys_access l ON l.zzzzsys_access_id = a.slf_zzzzsys_access_id WHERE l.sal_code = 'sample_secure'") !== '0', 'rights of the added level written');
+		expect(sql("SELECT COUNT(*) FROM zzzzsys_access WHERE sal_code = 'e2e_lvonly'") === '1', 'level only here kept with --delete');
+		expect(cfg('nuPHPIcon') === before, 'shared setting taken over');
+		expect(cfg('nuDebugMode') !== dbg, 'setting of this installation kept');
+		const rp = (out.match(/project-restore-[A-Za-z0-9_.-]+\.json/) || [''])[0];
+		const back = rp ? JSON.parse(fs.readFileSync(path.join(SITE, '_backup', rp), 'utf8')) : {};
+		expect((back.levels || []).some((l) => l.code === 'sample_viewer') && (back.settings || []).some((x) => x.part === 'shared'), 'restore point holds level and setting');
+	} finally {
+		execSync('mysql ' + DB + ' < ' + keep, {shell: '/bin/bash'});
+		sql("DELETE FROM zzzzsys_access WHERE sal_code = 'e2e_lvonly'");
+		fs.rmSync(dir, {recursive: true, force: true});
+		for (const b of fs.readdirSync(path.join(SITE, '_backup')).filter((n) => n.startsWith('project-restore-'))) fs.rmSync(path.join(SITE, '_backup', b));
+	}
+};
+
 T.debug_bell = async (s) => {                         // 0.8.1409: red bug in the top bar while there are new Debug results
 	const p = s.ga;
 	const row = (id) => sql("INSERT INTO zzzzsys_debug (zzzzsys_debug_id, deb_message, deb_added) VALUES ('" + id + "', "

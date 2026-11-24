@@ -3,7 +3,8 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Reset database (core/nudbreset.php): only in developer mode (globeadmin + $nuConfigDevMode) on MySQL / MariaDB.
+ * Reset database (core/nudbreset.php): only in developer mode (globeadmin + $nuConfigDevMode) on MySQL / MariaDB or SQL Server
+ * (SQL Server: clean installation only – nuBuilder Next's install scripts).
  * 1. action=check: a file chosen (nubuilder4.sql of nuBuilder Forte, _install/, _update/) or uploaded – read and checked, nothing changes.
  * 2. action=run: the database name typed, password confirmed recently – all tables deleted, the file imported, nuBuilder Next's tables
  *    created (optionally a backup first and the sample application afterwards). Then: the setup wizard.
@@ -36,7 +37,7 @@ $chk = $S['check'] ?? null;
 $done = $S['done'] ?? null;
 $fresh = $S['fresh'] ?? null;
 if ($done || $fresh) $S = [];                                       // the result is shown once
-$dbName = (string)nu_db()->value('SELECT DATABASE()');
+$dbName = NuDbReset::dbName();
 nu_layout_start(t('dbr_title'), 'dbreset');
 ?>
 <div class="card shadow-sm nuListCard">
@@ -86,6 +87,7 @@ nu_layout_start(t('dbr_title'), 'dbreset');
 			<p class="fw-semibold mb-1"><?= h(t('dbr_done')) ?></p>
 			<ul class="mb-0 small">
 				<li><?= h(t('dbr_done_counts', $done['dropped'], $done['statements'], count($done['steps']))) ?></li>
+				<?php if (!empty($done['skipped'])): ?><li class="text-warning-emphasis" id="dbrSkipped"><?= h(t('dbr_done_skipped', count($done['skipped']), implode(', ', $done['skipped']))) ?></li><?php endif; ?>
 				<?php if ($done['backup'] !== ''): ?><li><?= h(t('dbr_done_backup', $done['backup'])) ?></li><?php endif; ?>
 				<?php if ($done['sample'] === 'ok'): ?><li><?= h(t('dbr_done_sample')) ?></li>
 				<?php elseif ($done['sample'] !== ''): ?><li class="text-danger"><?= h(t('dbr_done_sample_err', $done['sample'])) ?></li><?php endif; ?>
@@ -97,14 +99,17 @@ nu_layout_start(t('dbr_title'), 'dbreset');
 		</div>
 	<?php elseif ($chk && $chk['ok']):
 		$cur = $chk['current'];
-		$pkg = ($chk['kind'] ?? '') === 'package'; ?>
+		$pkg = ($chk['kind'] ?? '') === 'package';
+		$clean = ($chk['kind'] ?? '') === 'clean'; ?>
 		<div class="alert alert-danger" id="dbrWarn">
 			<p class="fw-semibold mb-1"><i class="bi bi-exclamation-triangle-fill me-1"></i><?= h(t('dbr_warn_title', $chk['database'])) ?></p>
 			<p class="mb-0 small"><?= h(t('dbr_warn', count($cur))) ?><?= $pkg ? ' ' . h(t('dbr_fresh_warn', $chk['version'])) : '' ?></p>
 		</div>
-		<dl class="row small mb-3" id="dbrCheck"<?= $pkg ? ' data-kind="package"' : '' ?>>
-			<dt class="col-sm-3"><?= h(t('dbr_file')) ?></dt><dd class="col-sm-9 text-break"><?= h($chk['file']) ?> (<?= h(number_format($chk['bytes'] / 1048576, 1) . ' MB') ?>)</dd>
-			<?php if ($pkg): ?>
+		<dl class="row small mb-3" id="dbrCheck"<?= $pkg ? ' data-kind="package"' : ($clean ? ' data-kind="clean"' : '') ?>>
+			<dt class="col-sm-3"><?= h(t('dbr_file')) ?></dt><dd class="col-sm-9 text-break"><?= h($chk['file']) ?><?= $clean ? '' : ' (' . h(number_format($chk['bytes'] / 1048576, 1) . ' MB') . ')' ?></dd>
+			<?php if ($clean): ?>
+			<dt class="col-sm-3"><?= h(t('dbr_creates')) ?></dt><dd class="col-sm-9" id="dbrCleanCreates"><?= h(t('dbr_clean_creates', $chk['tables'])) ?></dd>
+			<?php elseif ($pkg): ?>
 			<dt class="col-sm-3"><?= h(t('dbr_fresh_version')) ?></dt><dd class="col-sm-9"
 				id="dbrPkgVersion"><?= h(t('dbr_fresh_from', NU_VERSION, $chk['version'])) ?> <span class="badge text-bg-success"><?= h(t('dbr_fresh_signed')) ?></span></dd>
 			<dt class="col-sm-3"><?= h(t('dbr_creates')) ?></dt><dd class="col-sm-9"><?= h(t('dbr_fresh_creates')) ?></dd>
@@ -158,16 +163,20 @@ nu_layout_start(t('dbr_title'), 'dbreset');
 				<?php if (!$src): ?><option value=""><?= h(t('dbr_source_none')) ?></option><?php endif; ?>
 				<?php foreach ($src as $label => $p): ?><option value="<?= h($label) ?>"><?= h($label) ?></option><?php endforeach; ?>
 			</select>
+			<?php if (NuDbReset::filesAllowed()): ?>
 			<label class="form-label" for="dbrUpload"><?= h(t('dbr_upload', NuUpdate::uploadLimitText())) ?></label>
 			<input class="form-control mb-1 dbrWide" type="file" name="upload" id="dbrUpload" accept=".sql,.gz,.zip">
 			<div class="form-text mb-3" id="dbrFreshHint"><?= h(t('dbr_fresh_hint')) ?></div>
+			<?php else: ?>
+			<div class="form-text mb-3" id="dbrMssqlHint"><?= h(t('dbr_mssql_hint')) ?></div>
+			<?php endif; ?>
 			<div class="form-check mb-1"><input class="form-check-input" type="checkbox" name="backup" value="1" id="dbrBackup0" checked>
 				<label class="form-check-label" for="dbrBackup0"><?= h(t('dbr_opt_backup')) ?></label></div>
 			<div class="form-check mb-3"><input class="form-check-input" type="checkbox" name="sample" value="1" id="dbrSample0">
 				<label class="form-check-label" for="dbrSample0"><?= h(t('dbr_opt_sample')) ?></label></div>
 			<button type="submit" class="btn btn-primary" id="dbrCheckBtn" data-nu-busy="<?= h(t('dbr_checking')) ?>"><i class="bi bi-search me-1"></i><?= h(t('dbr_check')) ?></button>
 		</form>
-		<p class="small text-body-secondary mt-3 mb-0"><?= h(t('dbr_cli')) ?> <code>php nucron.php reset --sql=&lt;file&gt; [--backup] [--sample] --yes</code></p>
+		<p class="small text-body-secondary mt-3 mb-0"><?= h(t('dbr_cli')) ?> <code>php nucron.php reset --sql=&lt;file&gt;|--clean [--backup] [--sample] --yes</code></p>
 	<?php endif; ?>
 	</div>
 </div>
