@@ -467,7 +467,9 @@
 			bFull.setAttribute('aria-pressed', full ? 'true' : 'false');
 			cm.refresh();
 			setTimeout(function () { fit(); cm.refresh(); }, 60);       // after the layout settled (gutter height)
-			cm.focus();
+			// back to typing only with a real keyboard: on phones / tablets focusing the editor opens the on-screen keyboard
+			if (hasKeyboard()) cm.focus();
+			else if (cm.hasFocus && cm.hasFocus() && cm.getInputField) cm.getInputField().blur();
 		}
 		bFull.setAttribute('aria-pressed', 'false');
 		bFull.addEventListener('click', function () { setFull(!full); });
@@ -590,6 +592,10 @@
 			cm.setSelection(cm.posFromIndex(base + c.sel[0]), cm.posFromIndex(base + c.sel[1]));
 		}
 		cm.focus();
+	}
+	/** A real keyboard (not a touch screen): nuapp.js's test, else a fine pointer that can hover. */
+	function hasKeyboard() {
+		return window.nuHasKeyboard ? window.nuHasKeyboard() : matchMedia('(hover: hover) and (pointer: fine)').matches;
 	}
 	function insertText(cm, text) { cm.replaceSelection(text, 'end', '+insert'); cm.focus(); }
 	function elt(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined && text !== null) e.textContent = text; return e; }

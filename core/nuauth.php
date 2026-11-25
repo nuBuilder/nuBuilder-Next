@@ -894,10 +894,22 @@ final class NuAuth
 		$v = NuPwPolicy::violations($new, $ctx);
 		if ($v) return NuPwPolicy::message($v);
 		NuPhp::reset();
-		$hash = ['USER_ID' => $userId, 'RECORD_ID' => $userId, 'FORM_ID' => 'nuuser'];
+		// the fields of nuBuilder Forte's change-password form: its template reads #new_password# / #old_password#
+		$old  = (string)($ctx['old'] ?? '');
+		$hash = ['USER_ID' => $userId, 'RECORD_ID' => $userId, 'FORM_ID' => 'nuuser',
+			'new_password' => $new, 'confirm_password' => $new, 'old_password' => $old];
 		$ok = NuProcedure::hook('nu_check_password_policy', $hash, ['newPassword' => $new, 'newPasswordCheck' => $new, 'will' => $new, 'userId' => $userId, 'check' => true]);
 		if ($ok && (NuPhp::$vars['check'] ?? true) !== false) return null;
-		return (string)(NuPhp::$errors[0]['message'] ?? (NuPhp::$error !== '' ? NuPhp::$error : t('pw_err_policy')));
+		return self::policyText((string)(NuPhp::$errors[0]['message'] ?? (NuPhp::$error !== '' ? NuPhp::$error : t('pw_err_policy'))));
+	}
+
+	/** The hook's message as plain text: nuBuilder Forte's procedures write HTML (<br>, icons) for nuDisplayError. */
+	public static function policyText(string $msg): string
+	{
+		$msg = (string)preg_replace('~<br\s*/?>|</p>|</li>|</div>~i', "\n", $msg);
+		$msg = html_entity_decode(strip_tags($msg), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+		$lines = array_values(array_filter(array_map('trim', explode("\n", $msg)), fn($l) => $l !== ''));
+		return $lines ? implode(' ', $lines) : t('pw_err_policy');
 	}
 
 	/** Own password change (also clears sus_change_password). */
@@ -911,7 +923,7 @@ final class NuAuth
 		[$ok] = self::verifyPassword($current, $hash);
 		if (!$ok) return 'pw_err_current';
 		if (hash_equals($current, $new)) return 'pw_err_same';
-		if (($policy = self::passwordPolicy($new, (string)$u['id'])) !== null) return $policy;   // nu_check_password_policy
+		if (($policy = self::passwordPolicy($new, (string)$u['id'], ['old' => $current])) !== null) return $policy;   // nu_check_password_policy
 
 		$newHash = self::hash($new);
 		$db->update('zzzzsys_user', ['sus_login_password' => $newHash, 'sus_change_password' => '0'], 'zzzzsys_user_id', $u['id']);

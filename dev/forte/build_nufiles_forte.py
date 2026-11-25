@@ -216,6 +216,7 @@ SHIM = r'''/* nuFiles for nuBuilder Forte: fetch with the CSRF token, and Ace (t
 			getCursor: function () { var p = ed.getCursorPosition(); return {line: p.row, ch: p.column}; },
 			setCursor: function (p) { ed.gotoLine(p.line + 1, p.ch || 0, false); },
 			scrollIntoView: function () { ed.renderer.scrollCursorIntoView(null, 0.5); },
+			scrollTo: function (x, y) { if (y != null) ed.session.setScrollTop(y); if (x != null) ed.session.setScrollLeft(x); },
 			ace: ed
 		};
 	}};

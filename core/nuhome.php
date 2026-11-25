@@ -63,8 +63,8 @@ final class NuHome
 				['g_code', 'home_pf_g_code', 't_build', ['procedures', 's_proc_new', 'reports', 's_report_new', 's_sqlbuilder', 'prompts', 'projects', 'codesearch']],
 				// the pages Debug and Log – not the tile "Log" (it opens Debug; next to the page Log there would be two tiles called "Log")
 				['g_debug', 'home_pf_g_debugging', 't_debug', ['s_debug', 's_log', 's_audit', 'sessions']],
-				['g_data', 'home_group_data', 't_debug', ['pma', 'tfm', 'import', 'dataexport', 'appcloner', 'sample']],
-				['g_devmode', 'home_pf_g_devmode', 't_debug', ['todo', 'selftest', 'dbreset']],
+				['g_data', 'home_group_data', 't_debug', ['pma', 'tfm', 'import', 'dataexport', 'appcloner', 'sample', 'dbreset']],
+				['g_devmode', 'home_pf_g_devmode', 't_debug', ['todo', 'selftest']],
 				['g_int', 'home_group_integration', 't_int', ['apiclients', 's_api_playground', 'webhooks', 'aiproviders', 'compat', 's_mail_test']],
 			],
 			'fav' => ['forms', 'procedures', 's_debug', 'pma']],
@@ -187,7 +187,7 @@ final class NuHome
 		$c['tutorial'] = ['tutorial', 'bi-mortarboard', t('tut_title'), t('tut_card_hint'), self::tutorialBadge()];
 		if (NuHash::devMode()) $c['todo'] = ['todo', 'bi-list-check', t('todo_title'), t('todo_card_hint'), ['Dev', 'secondary']];
 		if (NuHash::devMode()) $c['selftest'] = ['selftest', 'bi-clipboard2-pulse', t('st_title'), t('st_card_hint'), ['Dev', 'secondary']];
-		if (NuHash::devMode() && NuDbReset::available()) $c['dbreset'] = ['dbreset', 'bi-database-x', t('dbr_title'), t('dbr_card_hint'), ['Dev', 'secondary']];
+		if (NuDbReset::allowed()) $c['dbreset'] = ['dbreset', 'bi-database-x', t('dbr_title'), t('dbr_card_hint'), [t('dbr_badge'), 'danger']];
 		try {
 			$c += NuPlugin::tiles();                                 // tiles of the switched-on plugins
 		} catch (Throwable $ig) { nu_ignored($ig, 'plugin tiles'); }
@@ -661,11 +661,16 @@ final class NuHome
 			0, self::MINE_MAX);
 		$fav = array_key_exists('fav', $in) && is_array($in['fav']) ? $keys($in['fav']) : null;
 		$hide = $keys($in['hide'] ?? []);
-		if (!$view && !$sizes && $fav === null && !$hide) return [];
+		$order = [];                                              // own order of the tiles within a group: group id => tile keys
+		foreach (array_slice(is_array($in['order'] ?? null) ? $in['order'] : [], 0, 40, true) as $gid => $l) {
+			if (is_string($gid) && preg_match('/^[a-z][a-z0-9_]{0,39}$/', $gid) && ($l = $keys($l)) !== []) $order[$gid] = $l;
+		}
+		if (!$view && !$sizes && $fav === null && !$hide && !$order) return [];
 		$at = (string)($in['at'] ?? '');
 		$out = ['view' => $view, 'sizes' => $sizes, 'at' => preg_match('/^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d$/', $at) ? $at : date('Y-m-d H:i:s')];
 		if ($fav !== null) $out['fav'] = $fav;
 		if ($hide) $out['hide'] = $hide;
+		if ($order) $out['order'] = $order;
 		return $out;
 	}
 
@@ -673,11 +678,21 @@ final class NuHome
 	 * Own favourites and hidden tiles of a user start page – the view of the overlay stays. $fav null = the layout's
 	 * favourites again. @return bool false = too large
 	 */
-	public static function setMine(string $layoutId, ?array $fav, array $hide): bool
+	/** The tiles of a group in the user's own order (Personalise): ordered keys first, the rest – also tiles added later – after them as before. */
+	public static function mineOrder(array $tiles, array $order): array
+	{
+		if (!$order) return $tiles;
+		$in = array_values(array_filter($order, static fn($k) => in_array($k, $tiles, true)));
+		return array_merge($in, array_values(array_diff($tiles, $in)));
+	}
+
+	public static function setMine(string $layoutId, ?array $fav, array $hide, ?array $order = null): bool
 	{
 		$cur = self::overlay($layoutId) ?? [];
 		$ov = ['view' => $cur['view'] ?? [], 'sizes' => $cur['sizes'] ?? [], 'hide' => $hide];
 		if ($fav !== null) $ov['fav'] = $fav;
+		$order ??= $fav === null && $hide === [] ? [] : (array)($cur['order'] ?? []);   // null = keep the own order (Back to the standard drops it)
+		if ($order) $ov['order'] = $order;
 		return self::setOverlay($layoutId, $ov, false);
 	}
 
@@ -691,7 +706,7 @@ final class NuHome
 		unset($all[$layoutId]);
 		if ($keepMine && $old) {                                  // a change of the view (View panel) keeps the tiles a user chose
 			$ov ??= [];
-			foreach (['fav', 'hide'] as $k) if (array_key_exists($k, $old) && !array_key_exists($k, $ov)) $ov[$k] = $old[$k];
+			foreach (['fav', 'hide', 'order'] as $k) if (array_key_exists($k, $old) && !array_key_exists($k, $ov)) $ov[$k] = $old[$k];
 		}
 		if ($ov !== null) {
 			if (strlen((string)json_encode($ov)) > self::VIEW_OVERLAY_BYTES * 2) return false;   // raw payload: refused before cleaning

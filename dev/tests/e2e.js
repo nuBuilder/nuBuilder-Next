@@ -9,7 +9,7 @@
  * nuBuilder 4.9 compatibility (nub49_app, nub49_js), notifications, list views, start page favourites and list in 2 columns, CSV import, update package check, the self-test (developer mode), CSRF and the
  * include guards. Exit code 1 when a test fails. Never run it against a database with real data.
  */
-const { chromium } = require('playwright');
+const { chromium, devices } = require('playwright');
 const { execSync } = require('child_process');
 const fs = require('fs'), os = require('os'), path = require('path');
 
@@ -101,9 +101,9 @@ async function homeTab(pg, tab) {
 	if (await pg.locator('#nuHomeVpTab-' + tab).count()) { await pg.click('#nuHomeVpTab-' + tab); await pg.waitForTimeout(200); }
 }
 
-async function homeEdit(pg) { await homeTab(pg, 'content'); await pg.click('#nuHomeVpEdit'); }
+async function homeEdit(pg) { await homeTab(pg, 'content'); await pg.waitForSelector('body.nuHomeEditing'); }
 
-async function homeMine(pg) { await homeTab(pg, 'content'); await pg.click('#nuHomeVpMine'); }
+async function homeMine(pg) { await homeTab(pg, 'content'); await pg.waitForSelector('body.nuHomeMineOn'); }
 
 async function pssPack(p) {
 	const key = process.env.NUNEXT_SIGNING_KEY && fs.existsSync(process.env.NUNEXT_SIGNING_KEY) ? process.env.NUNEXT_SIGNING_KEY : path.resolve(__dirname, '../../../nunext-signing.key');

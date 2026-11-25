@@ -300,8 +300,8 @@ final class NuSidebar
 				'color' => (string)$r['color'] !== '' ? (string)$r['color'] : ($placed[$key] ?? ''), 'newtab' => (bool)$r['newtab'],
 				'fav' => in_array($key, $favList, true), 'current' => $key === $cur, 'canFav' => $canFav && isset($placed[$key]), 'badge' => $r['badge'] ?? null];
 		};
-		$fav = [];
-		foreach (array_keys($placed) as $k) if (in_array($k, $favList, true) && ($it = $item($k)) !== null) $fav[] = $it;
+		$fav = [];                                             // in the order of the favourites list (the user can arrange it)
+		foreach ($favList as $k) if (isset($placed[(string)$k]) && ($it = $item((string)$k)) !== null) $fav[] = $it;
 		$recent = [];
 		foreach (self::recentKeys() as $k) {
 			if (count($recent) >= $recentMax) break;
@@ -329,6 +329,25 @@ final class NuSidebar
 		$layout['fav'] = $on ? array_merge($fav, [$key]) : array_values(array_diff($fav, [$key]));
 		$errors = NuHome::save($layout, (string)NuAuth::user()['login'], 'home_layout_saved', ['favourite' => $key, 'on' => $on, 'via' => 'side bar']);
 		return $errors ? null : $on;
+	}
+
+	/**
+	 * Order of the favourites (the row on top of the start page and the side bar): the keys in the new order. Keys that are not
+	 * favourites are dropped, favourites missing from the list stay at the end – a stale page never loses one. Same rights as the ☆.
+	 * @param list<string> $keys @return bool|null null = not possible here
+	 */
+	public static function favOrder(array $keys): ?bool
+	{
+		[$layout, $userPage, $mine] = self::startPage();
+		if (!self::canFav()) return null;
+		$cur = $userPage && array_key_exists('fav', $mine) ? array_values((array)$mine['fav']) : array_values((array)($layout['fav'] ?? []));
+		$new = [];
+		foreach ($keys as $k) if (in_array($k, $cur, true) && !in_array($k, $new, true)) $new[] = $k;
+		foreach ($cur as $k) if (!in_array($k, $new, true)) $new[] = $k;
+		if ($new === $cur) return true;
+		if ($userPage) return NuHome::setMine((string)NuHome::current()['id'], $new, (array)($mine['hide'] ?? [])) ? true : null;
+		$layout['fav'] = $new;
+		return NuHome::save($layout, (string)NuAuth::user()['login'], 'home_layout_saved', ['favourites' => 'order']) ? null : true;
 	}
 
 	/** Session key of the last tile hidden with the start page's tile menu: what Undo needs and whether its message is still to show. */

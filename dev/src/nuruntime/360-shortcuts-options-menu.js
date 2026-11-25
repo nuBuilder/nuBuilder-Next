@@ -187,6 +187,13 @@
 			.attr({title: S.options || 'Options', 'aria-label': S.options || 'Options'});
 		var ul = $('<ul class="dropdown-menu nuOptionsList"></ul>');
 		phoneDesignItems(ul);
+		// nothing but entries the user menu of the top bar has too (Documentation, Change password): no ⋮ at all – the keys
+		// stay; form code that fills the list itself (nuOnOptionsListLoadedGlobal) keeps it
+		var inUserMenu = function (a) {
+			return (a[1] === 'help' && g('nuMenuDocs')) || (a[1] === 'password' && document.querySelector('.nu-navbar .dropdown-menu a[href*="p=password"]'));
+		};
+		if (!N.iframe && !N.audit && !N.nulog && !ul.children().length && typeof window.nuOnOptionsListLoadedGlobal !== 'function'
+			&& acts.every(inUserMenu)) return;
 		ul.append($('<li><h6 class="dropdown-header"></h6></li>').find('h6').text(S.options || 'Options').end());
 		var last = null;
 		acts.forEach(function (a) {

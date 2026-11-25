@@ -70,7 +70,8 @@ final class NuHomePage
 					if (!$userPage || $editorPage) { http_response_code(400); exit(json_encode(['ok' => false, 'message' => t('err_forbidden')])); }
 					$curId = (string)NuHome::current()['id'];
 					$ok = NuDemo::permitted(static fn() => $act === 'mine'
-						? NuHome::setMine($curId, is_array($in['fav'] ?? null) ? $in['fav'] : null, is_array($in['hide'] ?? null) ? $in['hide'] : [])
+						? NuHome::setMine($curId, is_array($in['fav'] ?? null) ? $in['fav'] : null, is_array($in['hide'] ?? null) ? $in['hide'] : [],
+							is_array($in['order'] ?? null) ? $in['order'] : null)
 						: NuHome::setMine($curId, null, []));
 					if (!$ok) { http_response_code(400); exit(json_encode(['ok' => false, 'message' => t('home_v_too_large')], JSON_UNESCAPED_UNICODE)); }
 					exit(json_encode(['ok' => true]));

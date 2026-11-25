@@ -705,7 +705,7 @@ T.print_columns = async (s) => {                        // 0.8.397: print view o
 	await p.click('#nuPrintUndo');
 	expect(await vis() === n - 1, 'undo');
 	await p.click('#nuPrintReset');
-	expect(await vis() === n && await p.isDisabled('#nuPrintUndo'), 'reset view');
+	expect(await vis() === n && await p.isDisabled('#nuPrintReset'), 'reset view');
 };
 
 T.list_reset = async (s) => {                           // 0.8.395: the × of a filtered list sits right of the funnel, same size
@@ -2015,4 +2015,122 @@ T.list_hscroll_keep = async (s) => {
 		});
 		expect(await pos() > 0 && inView, 'after sorting: still scrolled (' + await pos() + ') and the sorted column in view');
 	} finally { await ctx.close(); }
+};
+
+T.print_columns_form = async (s) => {
+	// print view of a form list: × hides a column, Undo / Reset view, remembered per form; Export Excel / CSV take the visible columns
+	const p = s.ga, url = 'index.php?p=form&f=samplecustomer&print=1';
+	await open(p, url);
+	await p.evaluate(() => { try { localStorage.removeItem('nunext-print-cols:form:samplecustomer'); } catch (e) {} });
+	await open(p, url);
+	const vis = async () => p.locator('#nuBrowseTable thead th:not(.nuColHidden)').count();
+	const n = await vis();
+	expect(n > 2 && await p.isDisabled('#nuPrintUndo') && await p.isDisabled('#nuPrintReset'), 'start state: ' + n);
+	const second = await p.locator('#nuBrowseTable thead th a.nu-sort').nth(1).textContent();
+	await p.locator('#nuBrowseTable thead th .nuColHide').nth(1).click();
+	const cells = await p.evaluate(() => document.querySelector('#nuBrowseTable tbody tr.nuBrowseRow').querySelectorAll('td:not(.nuColHidden)').length);
+	expect(await vis() === n - 1 && cells === n - 1 && /1/.test(await p.textContent('#nuPrintHiddenInfo')), 'hide a column');
+	const xl = await p.getAttribute('#nuXlsxButton', 'href');
+	expect(/cols=0(%2C|,)2/.test(xl), 'Excel link without the visible columns: ' + xl);
+	// the CSV of the visible columns has no hidden column title
+	const csvUrl = await p.evaluate(() => { const f = document.querySelector('.js-csv-form'); const u = new URL(f.getAttribute('action'), location.href); new FormData(f).forEach((v, k) => u.searchParams.set(k, v)); return u.toString(); });
+	const csv = await p.evaluate(async (u) => (await fetch(u, { credentials: 'same-origin' })).text(), csvUrl);
+	const head = csv.replace(/^﻿/, '').split(/\r?\n/)[0];
+	expect(!head.includes(second.trim()) && head.split(/[;,]/).length === n - 1, 'CSV head: ' + head);
+	await open(p, url);
+	expect(await vis() === n - 1, 'hidden column not remembered');
+	await p.click('#nuPrintUndo');
+	expect(await vis() === n, 'undo');
+	await p.locator('#nuBrowseTable thead th .nuColHide').nth(0).click();
+	await p.click('#nuPrintReset');
+	expect(await vis() === n && await p.isDisabled('#nuPrintReset'), 'reset view');
+	expect(!/cols=/.test(await p.getAttribute('#nuXlsxButton', 'href')), 'Excel link keeps cols after reset');
+};
+
+T.print_columns_move = async (s) => {
+	// print view (form list + system list): a column title dragged onto another moves the column; Alt+→ moves it with the keyboard;
+	// remembered, Undo / Reset view, Excel / CSV take the shown order
+	const p = s.ga;
+	for (const [url, key, sel] of [['index.php?p=form&f=samplecustomer&print=1', 'nunext-print-cols:form:samplecustomer', '#nuBrowseTable'],
+		['index.php?p=forms&export=print', 'nunext-print-cols:forms', '.nu-print-table']]) {
+		await open(p, url);
+		await p.evaluate((k) => { try { localStorage.removeItem(k); } catch (e) {} }, key);
+		await open(p, url);
+		const titles = async () => p.$$eval(sel + ' thead th:not(.nuColHidden)', l => l.map(th => (th.querySelector('.nuPrintColTitle, a.nu-sort') || th).textContent.trim()));
+		const t0 = await titles();
+		// drag the first title onto the right half of the third
+		{   // the drag events of the browser by hand (Playwright's dragAndDrop lands on a spot that depends on the column widths)
+			await p.evaluate((q) => {
+				const ths = document.querySelectorAll(q + ' thead th'), dt = new DataTransfer(), r = ths[2].getBoundingClientRect();
+				ths[0].dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: dt }));
+				ths[2].dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt, clientX: r.right - 2 }));
+				ths[2].dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt, clientX: r.right - 2 }));
+				ths[0].dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer: dt }));
+			}, sel);
+		}
+		const t1 = await titles();
+		expect(JSON.stringify(t1.slice(0, 3)) === JSON.stringify([t0[1], t0[2], t0[0]]), url + ': drag did not move: ' + t1.slice(0, 3).join(','));
+		const cellsMoved = await p.evaluate((q) => { const head = [...document.querySelectorAll(q + ' thead th')]; const tr = document.querySelector(q + ' tbody tr'); return head.length === tr.children.length; }, sel);
+		expect(cellsMoved && !(await p.isDisabled('#nuPrintReset')), url + ': rows / reset');
+		const xl = await p.getAttribute('#nuXlsxButton', 'href');
+		expect(/cols=1(%2C|,)2(%2C|,)0/.test(xl), url + ': Excel order: ' + xl);
+		// keyboard: Alt+→ on the (now) first title
+		await p.focus(sel + ' thead th:nth-child(1) a, ' + sel + ' thead th:nth-child(1) button');
+		await p.keyboard.press('Alt+ArrowRight');
+		const t2 = await titles();
+		expect(t2[0] === t0[2] && t2[1] === t0[1], url + ': Alt+→: ' + t2.slice(0, 3).join(','));
+		await open(p, url);
+		expect(JSON.stringify((await titles()).slice(0, 3)) === JSON.stringify(t2.slice(0, 3)), url + ': order not remembered');
+		await p.click('#nuPrintReset');
+		expect(JSON.stringify(await titles()) === JSON.stringify(t0) && !/cols=/.test(await p.getAttribute('#nuXlsxButton', 'href')), url + ': reset');
+		await p.click('#nuPrintUndo');
+		expect(JSON.stringify((await titles()).slice(0, 3)) === JSON.stringify(t2.slice(0, 3)), url + ': undo of reset');
+		await p.click('#nuPrintReset');
+	}
+};
+
+T.print_sort_stays = async (s) => {
+	// a click on a column title of the print view sorts and stays in the print view
+	const p = s.ga;
+	await open(p, 'index.php?p=form&f=samplecustomer&print=1');
+	await Promise.all([p.waitForNavigation(), p.locator('#nuBrowseTable thead th a.nu-sort').nth(1).click()]);
+	const u = new URL(p.url());
+	expect(u.searchParams.get('print') === '1' && u.searchParams.get('sort') !== null && await p.locator('body.nuPrintView #nuPrintUndo').count() === 1, 'sorting left the print view: ' + p.url());
+};
+
+T.print_no_flicker = async (s) => {
+	// print view of a form list: the table is shown once, already with the remembered hidden columns, and the widths dragged in the
+	// normal list do not resize it after loading (it showed one set of widths, then another)
+	const ctx = await browser.newContext({ locale: 'en-GB', viewport: { width: 1300, height: 900 }, storageState: await s.ga.context().storageState() });
+	const p = await ctx.newPage();
+	try {
+		await p.goto(BASE + 'index.php?p=form&f=samplecustomer');
+		const second = await p.locator('#nuBrowseTable thead th.nuBrowseTitle a.nu-sort').nth(1).textContent();
+		await p.evaluate((t) => { sessionStorage.setItem('nunext-browse-w:samplecustomer', JSON.stringify({ 0: 300, 1: 90 })); localStorage.setItem('nunext-print-cols:form:samplecustomer', JSON.stringify({ hidden: [t.trim()], order: [] })); }, second);
+		await p.addInitScript(() => {
+			window.__w = [];
+			const rec = () => {
+				const t = document.querySelector('#nuBrowseTable');
+				if (t && getComputedStyle(t).visibility === 'visible') {
+					const w = [...t.querySelectorAll('thead th')].filter(th => th.offsetParent).map(th => Math.round(th.getBoundingClientRect().width)).join(',');
+					if (!window.__w.length || window.__w[window.__w.length - 1] !== w) window.__w.push(w);
+				}
+				requestAnimationFrame(rec);
+			};
+			requestAnimationFrame(rec);
+		});
+		for (const sort of [1, 2]) {
+			await p.goto(BASE + 'index.php?p=form&f=samplecustomer&print=1&sort=' + sort + '&dir=asc');
+			await p.waitForTimeout(1200);
+			const w = await p.evaluate(() => window.__w);
+			const cols = await p.locator('#nuBrowseTable thead th:not(.nuColHidden)').count();
+			// a few px when the icon font arrives are fine; the dragged widths of the list (90 / 300 px) or the hidden column are not
+			const last = w[w.length - 1].split(',').map(Number);
+			const steady = w.every(x => { const a = x.split(',').map(Number); return a.length === last.length && a.every((v, i) => Math.abs(v - last[i]) <= 8); });
+			expect(w.length >= 1 && steady && last.length === cols, 'sort ' + sort + ': widths changed after showing: ' + JSON.stringify(w));
+		}
+	} finally {
+		await p.evaluate(() => { try { localStorage.removeItem('nunext-print-cols:form:samplecustomer'); } catch (e) {} }).catch(() => {});
+		await ctx.close();
+	}
 };

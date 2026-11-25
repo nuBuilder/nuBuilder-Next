@@ -55,7 +55,12 @@
 				: (toolbar
 					|| 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | forecolor backcolor removeformat | alignleft aligncenter alignright alignjustify | outdent indent | numlist bullist | link image table charmap emoticons | fullscreen preview code'),
 			toolbar_groups: toolbarGroups || {}, menubar: menubar || 'file edit view insert format tools table help', contextmenu: contextmenu || 'link image table',
-			mobile: mobile || {menubar: false}, toolbar_mode: 'sliding', resize: true, elementpath: false, image_advtab: true,
+			// phones (TinyMCE's own detection – tablets keep the desktop set): no menu bar, ONE toolbar row that scrolls sideways
+			// (a drawer of more rows took most of the editor's height), the most used buttons first.
+			// A toolbar or mobile set of the form's code is kept as given
+			mobile: mobile || $.extend({menubar: false, toolbar_mode: 'scrolling'}, !toolbar || toolbar === 'minimal'
+				? {toolbar: 'fullscreen | undo redo | bold italic underline | bullist numlist | blocks | link image | forecolor backcolor removeformat | alignleft aligncenter alignright'} : {}),
+			toolbar_mode: 'sliding', resize: true, elementpath: false, image_advtab: true,
 			height: edH, width: '100%',
 			skin: dark ? 'oxide-dark' : 'oxide', content_css: dark ? 'dark' : 'default', content_style: 'p { margin: 0; }',
 			autosave_ask_before_unload: false, readonly: ro, disabled: ro,
@@ -65,6 +70,18 @@
 				editor.on('init', function (e) {
 					editor.setContent(ta.value);
 					if (window.nuTinyMCEOnInit) { try { window.nuTinyMCEOnInit(e, editor, id); } catch (x) { reportError(x.message, 'nuTinyMCEOnInit'); } }
+				});
+				// full screen on / off: TinyMCE puts the cursor into the text – on phones / tablets (no real keyboard) that opens the
+				// on-screen keyboard, so the focus is taken away again
+				editor.on('FullscreenStateChanged', function () {
+					var kb = window.nuHasKeyboard ? window.nuHasKeyboard() : matchMedia('(hover: hover) and (pointer: fine)').matches;
+					if (kb) return;
+					var off = function () {
+						try { var b = editor.getBody(); if (b) b.blur(); var w = editor.getWin(); if (w) w.blur(); } catch (x) { /* editor gone */ }
+						var a = document.activeElement;
+						if (a && a !== document.body && a.blur) a.blur();
+					};
+					off(); setTimeout(off, 0); setTimeout(off, 120);
 				});
 				editor.on('SetContent', function (e) { if (window.nuTinyMCEOnSetContent) window.nuTinyMCEOnSetContent(e, editor, id); });
 				editor.on('input change undo redo', function () {

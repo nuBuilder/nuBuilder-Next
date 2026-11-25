@@ -539,6 +539,10 @@ final class NuFormMeta
 			$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($fields['sob_all_json'] ?? $existing['sob_all_json'] ?? null, ['phone' => !empty($fields['nunext_phone_table']) ? 'table' : null]);
 			unset($fields['nunext_phone_table']);
 		}
+		if (array_key_exists('nunext_phone_fold', $fields)) {      // phones: folded into the summary row of a saved record (sob_all_json nunext.phone_fold)
+			$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($fields['sob_all_json'] ?? $existing['sob_all_json'] ?? null, ['phone_fold' => !empty($fields['nunext_phone_fold'])]);
+			unset($fields['nunext_phone_fold']);
+		}
 		if (array_key_exists('nunext_run_pivot', $fields)) {       // run object that shows a saved pivot
 			$pv = NuRender::cleanRunPivot($fields['nunext_run_pivot']);
 			$fields['sob_all_json'] = NuFormMeta::mergeNunextJson($fields['sob_all_json'] ?? $existing['sob_all_json'] ?? null, ['pivot' => $pv]);

@@ -306,7 +306,7 @@ T.ui_review_n = async (s) => {
 		const tabs = await p.evaluate(() => { const u = document.querySelector('.nuTabsScroll'); return u ? [u.scrollHeight <= 60, getComputedStyle(u).flexWrap] : null; });
 		expect(tabs && tabs[0] && tabs[1] === 'nowrap', 'N2: tool tabs on one line ' + JSON.stringify(tabs));
 		await open(p, 'index.php?p=setupwizard');
-		expect(await p.locator('.nuWizSteps .nuWizCur').isVisible(), 'N3: current step named on phones');
+		expect(await p.locator('#wizStepBtn').isVisible(), 'N3: current step named on phones');
 		await open(p, 'index.php?p=configfile');
 		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForNavigation(), p.click('button[type=submit]')]); await open(p, 'index.php?p=configfile'); }
 		expect(await p.locator('#cfgPathCopy[data-nu-copy="#cfgPathFull"]').count() === 1 && (await p.inputValue('#cfgPathFull')).endsWith('nuconfig.php'), 'N5: copy button with the full path');

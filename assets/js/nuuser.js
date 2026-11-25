@@ -538,8 +538,10 @@
 	}
 	if (add) add.addEventListener('click', function () {
 		rows.appendChild(tpl.content.cloneNode(true));
-		var sel = rows.lastElementChild && rows.lastElementChild.querySelector('select');
-		if (sel) sel.focus();
+		var row = rows.lastElementChild, sel = row && row.querySelector('select');
+		if (row && window.nuListSelects) window.nuListSelects(row);           // searchable like the main access level
+		var kb = window.nuHasKeyboard ? window.nuHasKeyboard() : true;
+		if (sel && kb) { if (sel.tomselect) sel.tomselect.focus(); else sel.focus(); }
 		changed();
 	});
 	rows.addEventListener('click', function (e) {
@@ -822,11 +824,25 @@
 	});
 })();
 
-/* Password reset by an administrator: passkeys only together with blocking; copy button of the link shown once. */
+/* Password reset by an administrator: passkeys only together with blocking; address / language of the e-mail; copy button of the link shown once. */
 (function () {
 	'use strict';
 	var block = document.getElementById('pwrBlock'), pk = document.getElementById('pwrPasskeys');
 	if (block && pk) block.addEventListener('change', function () { pk.disabled = !block.checked; if (!block.checked) pk.checked = false; });
+	// address and language of the e-mail: only while "by e-mail" is chosen; the preview shows the chosen language
+	var opts = document.getElementById('pwrMailOpts'), how = document.getElementById('pwrHowMail'), lang = document.getElementById('pwrLang'),
+		pv = document.getElementById('pwrPreview');
+	function mailOpts() {
+		if (!opts || !how) return;
+		opts.hidden = !how.checked;
+		Array.prototype.forEach.call(opts.querySelectorAll('input, select'), function (x) { x.disabled = !how.checked; });
+		if (pv) pv.hidden = !how.checked;
+	}
+	Array.prototype.forEach.call(document.querySelectorAll('#pwrForm input[name="how"]'), function (r) { r.addEventListener('change', mailOpts); });
+	mailOpts();
+	if (lang && pv) lang.addEventListener('change', function () {
+		pv.href = pv.getAttribute('data-base') + (lang.value ? '&lang=' + encodeURIComponent(lang.value) : '');
+	});
 	var b = document.getElementById('pwrLinkCopy'), f = document.getElementById('pwrLinkUrl');
 	if (!b || !f) return;
 	f.addEventListener('focus', function () { f.select(); });

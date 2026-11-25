@@ -49,6 +49,22 @@ final class NuPwReset
 		}
 	}
 
+	/**
+	 * The user as this one e-mail sees him: another address and / or another language (a code of nu_lang_choices(), variants like
+	 * en-US included) chosen in the dialog – nothing of it is saved on the user. Empty values keep the user's own.
+	 */
+	public static function withMailOptions(array $user, string $email, string $lang): array
+	{
+		$email = trim($email);
+		if ($email !== '') $user['sus_email'] = $email;
+		if ($lang !== '' && isset(nu_lang_choices()[$lang])) {
+			$base = (string)(NU_LANG_VARIANTS[$lang][0] ?? $lang);
+			$user['sus_language'] = nu_lang_to_db($base);
+			$user['NUNEXT_LANG_VARIANT'] = isset(NU_LANG_VARIANTS[$lang]) ? $lang : '';
+		}
+		return $user;
+	}
+
 	/** Can the link be e-mailed (mail set up, a valid address)? null = yes, else the reason. */
 	public static function mailProblem(array $user): ?string
 	{

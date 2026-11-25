@@ -1215,3 +1215,171 @@ T.debug_bell_delete_all = async (s) => {
 		execSync(`mysql ${DB}`, {input: fs.readFileSync(dump)});
 	}
 };
+
+T.debug_delete_undo = async (s) => {
+	// Debug results: × of a message, Delete selected (next to Delete all) and Delete all delete at once without a question; Undo writes them back
+	const p = s.ga;
+	const dump = path.join(os.tmpdir(), 'nunext-e2e-dbgundo.sql');
+	execSync(`mysqldump ${DB} zzzzsys_debug > ${dump}`);
+	let dialogs = 0;
+	const onDlg = () => { dialogs++; };
+	p.on('dialog', onDlg);
+	const count = () => +sql('SELECT COUNT(*) FROM zzzzsys_debug').trim();
+	const undoToast = async () => { await p.waitForSelector('#nuToastStack .alert button', {timeout: 5000}); await Promise.all([p.waitForNavigation(), p.click('#nuToastStack .alert button')]); };
+	try {
+		sql('DELETE FROM zzzzsys_debug');
+		for (const id of ['e2e_du1', 'e2e_du2', 'e2e_du3']) sql("INSERT INTO zzzzsys_debug (zzzzsys_debug_id, deb_message, deb_added) VALUES ('" + id + "', 'e2e undo " + id + "', UNIX_TIMESTAMP())");
+		await open(p, 'index.php?p=debug');
+		// Delete selected sits in the title bar next to Delete all
+		const sameBar = await p.evaluate(() => { const a = document.getElementById('debugDeleteAll'), b = document.getElementById('debugDeleteSel'); return !!(a && b) && a.closest('.nuTitleBar') === b.closest('.nuTitleBar') && Math.abs(a.getBoundingClientRect().top - b.getBoundingClientRect().top) < 4; });
+		expect(sameBar, 'Delete selected not next to Delete all');
+		// copy and × right after the checkbox (desktop)
+		const nextTo = await p.evaluate(() => { const r = document.querySelector('.debugRow'), c = r.querySelector('.debugSel'), a = r.querySelector('.debugActs'); return !!(c && a) && c.nextElementSibling === a && a.getBoundingClientRect().left - c.getBoundingClientRect().right < 16 && Math.abs(a.getBoundingClientRect().top - c.getBoundingClientRect().top) < 8; });
+		expect(nextTo, 'copy / × not next to the checkbox');
+		// × of one message
+		await p.click('.debugDel[data-id="e2e_du2"]');
+		await p.waitForFunction(() => !document.querySelector('.debugDel[data-id="e2e_du2"]'));
+		expect(count() === 2 && await p.locator('.modal.show').count() === 0, 'one message: ' + count());
+		await undoToast();
+		expect(count() === 3 && await p.locator('.debugDel[data-id="e2e_du2"]').count() === 1, 'undo of one: ' + count());
+		// Delete selected
+		await p.check('.debugSel[value="e2e_du1"]'); await p.check('.debugSel[value="e2e_du3"]');
+		await p.click('#debugDeleteSel');
+		await p.waitForFunction(() => document.querySelectorAll('.debugRow').length === 1);
+		expect(count() === 1, 'selected: ' + count());
+		await undoToast();
+		expect(count() === 3, 'undo of selected: ' + count());
+		// Delete all
+		await p.click('#debugDeleteAll');
+		await p.waitForFunction(() => !document.querySelector('.debugRow'));
+		expect(count() === 0 && await p.locator('.modal.show').count() === 0, 'all: ' + count());
+		await undoToast();
+		expect(count() === 3 && dialogs === 0, 'undo of all: ' + count() + ' / dialogs ' + dialogs);
+	} finally {
+		p.off('dialog', onDlg);
+		execSync(`mysql ${DB}`, {input: fs.readFileSync(dump)});
+	}
+};
+
+T.file_manager_edit_scroll_top = async (s) => {
+	// File Manager editor: a file opened after another one that was scrolled down starts at its first line (scroll top 0)
+	if (!SITE) return 'skip';
+	const ga = s.ga;
+	let made = false;
+	const files = [];
+	try {
+		if (!sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_code = 'nufiles'")) {
+			await open(ga, 'index.php?p=filemanager');
+			await Promise.all([ga.waitForNavigation(), ga.click('#fmSetup')]);
+			made = true;
+		}
+		const fid = sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_code = 'nufiles' AND sfo_type = 'page'");
+		const set = JSON.parse(sql(`SELECT REPLACE(REPLACE(settings, CHAR(10), ' '), CHAR(9), ' ') FROM zzzzsys_nunext_page WHERE zzzzsys_nunext_page_id = '${fid}'`) || '{}');
+		const dir = set.shares.find(x => x.id === 'uploads').path;
+		fs.mkdirSync(dir, { recursive: true });
+		for (const n of ['e2e_scroll_a.txt', 'e2e_scroll_b.txt']) {
+			const f = path.join(dir, n); files.push(f);
+			fs.writeFileSync(f, Array.from({ length: 400 }, (_, i) => n + ' line ' + (i + 1)).join('\n') + '\n');
+		}
+		await open(ga, 'index.php?p=filemanager');
+		await ga.waitForSelector('#nufCrumbs', { state: 'attached' });
+		await ga.goto(ga.url().split('#')[0] + '#/uploads/');
+		await ga.reload(); await ga.waitForLoadState('networkidle');
+		const top = () => ga.evaluate(() => { const sc = document.querySelector('#nufEditor .CodeMirror-scroll, #nufEditor .cm-scroller'); return sc ? sc.scrollTop : -1; });
+		const openFile = async (name) => {
+			const row = ga.locator('tbody tr', { hasText: name }).first();
+			await row.waitFor();
+			await row.locator('.nuf-c-size').dblclick();
+			await ga.waitForSelector('#nufEditor.show');
+			await ga.waitForTimeout(600);
+		};
+		await openFile('e2e_scroll_a');
+		await ga.evaluate(() => { const sc = document.querySelector('#nufEditor .CodeMirror-scroll, #nufEditor .cm-scroller'); sc.scrollTop = 3000; });
+		await ga.waitForTimeout(300);
+		const scrolled = await top();
+		expect(scrolled > 1000, 'could not scroll the first file: ' + scrolled);
+		await ga.keyboard.press('Escape');
+		await ga.waitForSelector('#nufEditor.show', { state: 'detached' }).catch(() => {});
+		await ga.waitForFunction(() => !document.querySelector('#nufEditor.show'));
+		await openFile('e2e_scroll_b');
+		const after = await top();
+		expect(after === 0, 'second file did not start at the top: ' + after);
+		const first = await ga.evaluate(() => (document.querySelector('#nufEditor .CodeMirror') || {}).CodeMirror.getCursor());
+		expect(first.line === 0, 'cursor not on the first line: ' + JSON.stringify(first));
+		await ga.keyboard.press('Escape');
+		s.result = { scrolled, after };
+	} finally {
+		for (const f of files) fs.rmSync(f, { force: true });
+		if (made) {
+			const id = sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_code = 'nufiles'");
+			if (id) sql(`DELETE FROM zzzzsys_nunext_page WHERE zzzzsys_nunext_page_id = '${id}'; DELETE FROM zzzzsys_form WHERE zzzzsys_form_id = '${id}'; DROP TABLE IF EXISTS nufiles_log`);
+			fs.rmSync(path.join(SITE, 'custom/pages/nufiles/_data'), { recursive: true, force: true });
+		}
+	}
+};
+
+T.file_manager_edit_back = async (s) => {
+	// File Manager on a phone: Back closes the editor (and the preview) and stays in the File Manager; closing with ✕ leaves no extra
+	// history entry behind
+	if (!SITE) return 'skip';
+	const ga = s.ga;
+	let made = false, file = '', ctx = null;
+	try {
+		if (!sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_code = 'nufiles'")) {
+			await open(ga, 'index.php?p=filemanager');
+			await Promise.all([ga.waitForNavigation(), ga.click('#fmSetup')]);
+			made = true;
+		}
+		const fid = sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_code = 'nufiles' AND sfo_type = 'page'");
+		const set = JSON.parse(sql(`SELECT REPLACE(REPLACE(settings, CHAR(10), ' '), CHAR(9), ' ') FROM zzzzsys_nunext_page WHERE zzzzsys_nunext_page_id = '${fid}'`) || '{}');
+		const dir = set.shares.find(x => x.id === 'uploads').path;
+		fs.mkdirSync(dir, { recursive: true });
+		file = path.join(dir, 'e2e_edit_back.txt');
+		fs.writeFileSync(file, 'hello\n');
+		ctx = await ga.context().browser().newContext({ viewport: { width: 390, height: 800 }, hasTouch: true, isMobile: true, storageState: await ga.context().storageState() });
+		const ph = await ctx.newPage();
+		await open(ph, 'index.php?p=home');
+		await open(ph, 'index.php?p=filemanager');
+		await ph.waitForSelector('#nufCrumbs', { state: 'attached' });
+		await ph.evaluate(() => { location.hash = '#/uploads/'; });
+		const row = ph.locator('tbody tr', { hasText: 'e2e_edit_back' }).first();
+		await row.waitFor();
+		const fmUrl = ph.url();
+		const openIt = async () => { await row.locator('.nuf-c-size').dblclick(); await ph.waitForSelector('#nufEditor.show'); await ph.waitForTimeout(400); };
+		// Back closes the editor, the page stays
+		await openIt();
+		await ph.goBack();
+		await ph.waitForFunction(() => !document.querySelector('#nufEditor.show'));
+		await ph.waitForTimeout(400);
+		expect(ph.url() === fmUrl && await ph.locator('#nufCrumbs').count() === 1, 'Back left the File Manager: ' + ph.url());
+		// ✕ closes it and takes its history entry with it: Back afterwards leaves the File Manager as before
+		await openIt();
+		await ph.click('#nufEditorClose');
+		await ph.waitForFunction(() => !document.querySelector('#nufEditor.show'));
+		await ph.waitForTimeout(400);
+		expect(ph.url() === fmUrl, 'closing changed the address: ' + ph.url());
+		const st = await ph.evaluate(() => history.state);
+		expect(!(st && st.nufModal), 'history entry of the editor left behind: ' + JSON.stringify(st));
+		// unsaved changes: Back asks, Cancel keeps the editor open (and Back still works afterwards)
+		await openIt();
+		await ph.evaluate(() => { const cm = document.querySelector('#nufEditor .CodeMirror').CodeMirror; cm.replaceRange('x', {line: 0, ch: 0}); });
+		await ph.goBack();
+		await ph.waitForSelector('#nufDlg.show');
+		await ph.locator('#nufDlg.show .btn').filter({ hasNotText: /close|schliessen|schließen/i }).first().click();
+		await ph.waitForTimeout(500);
+		expect(await ph.locator('#nufEditor.show').count() === 1, 'editor closed although Cancel was chosen');
+		await ph.goBack();
+		await ph.waitForSelector('#nufDlg.show');
+		await ph.locator('#nufDlg.show .btn-danger, #nufDlg.show .btn-primary').last().click();
+		await ph.waitForFunction(() => !document.querySelector('#nufEditor.show'));
+		expect(ph.url() === fmUrl, 'second Back left the File Manager: ' + ph.url());
+	} finally {
+		if (ctx) await ctx.close();
+		if (file) fs.rmSync(file, { force: true });
+		if (made) {
+			const id = sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE sfo_code = 'nufiles'");
+			if (id) sql(`DELETE FROM zzzzsys_nunext_page WHERE zzzzsys_nunext_page_id = '${id}'; DELETE FROM zzzzsys_form WHERE zzzzsys_form_id = '${id}'; DROP TABLE IF EXISTS nufiles_log`);
+			fs.rmSync(path.join(SITE, 'custom/pages/nufiles/_data'), { recursive: true, force: true });
+		}
+	}
+};

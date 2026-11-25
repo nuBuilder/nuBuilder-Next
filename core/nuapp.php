@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 define('NU_ROOT', dirname(__DIR__));
-define('NU_VERSION', '0.8.1451');
+define('NU_VERSION', '0.8.1495');
 // third-party code: vendor/bundled/ comes with nunext.zip (an update replaces it), vendor/packs/ = library packs (NuLibs,
 // an update never touches them). Bundled paths only through these constants.
 define('NU_VENDOR', 'vendor/bundled');
@@ -921,7 +921,7 @@ function nu_lang(): string
 {
 	// only the installation's languages (NuLanguages): a session / browser language that is not installed → the fallback
 	if (isset($_SESSION[NuSess::LANG]) && isset(NU_LANGS[$_SESSION[NuSess::LANG]]) && NuLanguages::has($_SESSION[NuSess::LANG])) return $_SESSION[NuSess::LANG];
-	// browser languages in order of preference (q values), first supported one; none supported: German (as before)
+	// browser languages in order of preference (q values), first supported one; none supported: NuLanguages::fallback() (English)
 	$b = nu_lang_browser()[0] ?? null;
 	return $b !== null && NuLanguages::has($b) ? $b : NuLanguages::fallback();
 }

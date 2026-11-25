@@ -405,10 +405,12 @@ final class NuUserPage
 		if (NuPwReset::recent($id) >= NuPwReset::PER_HOUR) { nu_flash('danger', t('pwr_err_rate')); nu_redirect($back); }
 		$how = nu_post('how') === 'mail' ? 'mail' : 'link';
 		$block = nu_check('pwr_block') === '1';
-		$r = NuPwReset::start($existing, $how, $block, $block && nu_check('pwr_passkeys') === '1');
+		// the e-mail may go to another address and in another language – for this e-mail only, the user keeps his own
+		$to = $how === 'mail' ? NuPwReset::withMailOptions($existing, nu_post('pwr_email'), nu_post('pwr_lang')) : $existing;
+		$r = NuPwReset::start($to, $how, $block, $block && nu_check('pwr_passkeys') === '1');
 		if ($r['error'] !== null) nu_flash('danger', $r['error']);
 		else {
-			if ($how === 'mail') nu_flash('success', t('pwr_sent', trim((string)$existing['sus_email'])));
+			if ($how === 'mail') nu_flash('success', t('pwr_sent', trim((string)$to['sus_email'])));
 			else { $_SESSION[NuSess::PW_RESET_LINK] = ['id' => $id, 'link' => $r['link']]; nu_flash('success', t('pwr_created')); }
 			if ($r['blocked']) nu_flash('warning', t('pwr_blocked_msg'));
 		}

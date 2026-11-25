@@ -74,38 +74,73 @@ final class NuSqlImport
 	 * Runs every statement of a file on $db. $engines: MyISAM tables become InnoDB (imports of nuBuilder Forte dumps – NuInstall::importSql).
 	 * An error names the file and the statement. @return int statements run
 	 */
-	/** Routines / triggers / events left out by the last run(): the database user may not create them. @var list<string> */
+	/** Views / routines / triggers / events left out by the last run(): the database user may not create them. @var list<string> */
 	public static array $skipped = [];
 
+	/** The CREATE VIEW statements of the views left out by the last run(): view name => SQL (to create them later with more rights). @var array<string, string> */
+	public static array $skippedSql = [];
+
 	/**
-	 * A stored procedure, function, trigger or event the database user may not create (shared hosts give no CREATE ROUTINE /
-	 * TRIGGER / SUPER, also no DROP of them): the name to report, else null – then the error stops the import.
+	 * A view, stored procedure, function, trigger or event the database user may not create (shared hosts give no CREATE VIEW /
+	 * ROUTINE / TRIGGER / SUPER, also no DROP of them): the name to report, else null – then the error stops the import.
 	 */
 	public static function skippable(PDOException $e, string $stmt): ?string
 	{
 		$code = (int)($e->errorInfo[1] ?? 0);
 		if (!in_array($code, [1044, 1142, 1227, 1370, 1419, 1449], true)) return null;
 		$t = (string)preg_replace('#^(/\*!\d+\s*)+#', '', ltrim($stmt));
-		if (!preg_match('/^(CREATE|DROP)\s+(?:OR\s+REPLACE\s+)?(?:DEFINER\s*=\s*\S+\s+)?(?:IF\s+(?:NOT\s+)?EXISTS\s+)?(PROCEDURE|FUNCTION|TRIGGER|EVENT)\s+(?:IF\s+(?:NOT\s+)?EXISTS\s+)?([`"\w.$]+)/i', $t, $m)) return null;
+		if (!preg_match('/^(CREATE|DROP)\s+(?:OR\s+REPLACE\s+)?(?:ALGORITHM\s*=\s*\w+\s+)?(?:DEFINER\s*=\s*\S+\s+)?(?:SQL\s+SECURITY\s+\w+\s+)?'
+			. '(?:IF\s+(?:NOT\s+)?EXISTS\s+)?(PROCEDURE|FUNCTION|TRIGGER|EVENT|VIEW)\s+(?:IF\s+(?:NOT\s+)?EXISTS\s+)?([`"\w.$]+)/i', $t, $m)) return null;
 		return strtoupper($m[2]) . ' ' . trim($m[3], '`"');
+	}
+
+	/**
+	 * A CREATE VIEW (as split() gives it: plain, without DEFINER – plainCreate): its name and body, else null. stub: mysqldump's
+	 * stand-in "AS SELECT 1 AS `a`, …", created first and replaced by the real view at the end of the dump.
+	 * @return array{name: string, body: string, stub: bool}|null
+	 */
+	public static function viewStmt(string $stmt): ?array
+	{
+		$t = trim($stmt);
+		if (!preg_match('/^CREATE\s+(?:OR\s+REPLACE\s+)?(?:ALGORITHM\s*=\s*\w+\s+)?(?:SQL\s+SECURITY\s+(?:DEFINER|INVOKER)\s+)?VIEW\s+(`[^`]+`|\w+)\s+(?:\([^)]*\)\s*)?AS\s+/is', $t, $v)) return null;
+		$body = substr($t, strlen($v[0]));
+		return ['name' => trim($v[1], '`'), 'body' => $body, 'stub' => (bool)preg_match('/^SELECT\s+1\s+AS\s+[`\w]+(\s*,\s*1\s+AS\s+[`\w]+)*\s*$/is', trim($body))];
+	}
+
+	/** Whether the database user may create views here (a test view made and dropped again). */
+	public static function canCreateView(NuDB $db): bool
+	{
+		if ($db->type !== 'mysql') return true;
+		$n = 'nunext_viewcheck_' . bin2hex(random_bytes(4));
+		try { $db->exec('CREATE VIEW `' . $n . '` AS SELECT 1 AS `a`'); } catch (PDOException $e) { return false; }
+		try { $db->exec('DROP VIEW `' . $n . '`'); } catch (PDOException $ig) { nu_ignored($ig, 'test view'); }
+		return true;
+	}
+
+	/** A statement before it runs: MyISAM → InnoDB when asked. */
+	private static function prepare(NuDB $db, string $stmt, bool $engines): string
+	{
+		return $engines && $db->type === 'mysql' ? (string)preg_replace('/\bENGINE\s*=\s*MyISAM\b/i', 'ENGINE=InnoDB', $stmt) : $stmt;
 	}
 
 	public static function run(NuDB $db, string $path, ?callable $progress = null, bool $engines = false): int
 	{
 		$n = 0;
 		self::$skipped = [];
+		self::$skippedSql = [];
 		nu_time_limit(0);
 		// a dump changes the session (sql_mode, time zone, autocommit): put back afterwards – the request goes on with this connection
 		$saved = $db->type === 'mysql' ? $db->pdo()->query('SELECT @@SESSION.sql_mode, @@SESSION.time_zone, @@SESSION.autocommit')->fetch(PDO::FETCH_NUM) : null;
 		try {
 			foreach (self::statements($path, $db->type, $progress) as $stmt) {
-				if ($engines && $db->type === 'mysql') $stmt = (string)preg_replace('/\bENGINE\s*=\s*MyISAM\b/i', 'ENGINE=InnoDB', $stmt);
+				$stmt = self::prepare($db, $stmt, $engines);
 				try {
 					$db->exec($stmt);
 				} catch (PDOException $e) {
 					$skip = self::skippable($e, $stmt);
 					if ($skip === null) throw new RuntimeException(basename($path) . ', ' . t('ins_err_statement', $n + 1) . ': ' . $e->getMessage() . ' — ' . mb_substr(trim($stmt), 0, 160), 0, $e);
 					if (!in_array($skip, self::$skipped, true)) self::$skipped[] = $skip;
+					if (($v = self::viewStmt($stmt)) && !$v['stub']) self::$skippedSql[$v['name']] = $stmt;
 				}
 				$n++;
 			}
@@ -138,13 +173,14 @@ final class NuSqlImport
 		$s = new self($db->type);
 		$s->delim = (string)($st['delim'] ?? ';') ?: ';';
 		$run = function (string $stmt) use ($db, $file, &$st, &$sets, $engines): void {
-			if ($engines && $db->type === 'mysql') $stmt = (string)preg_replace('/\bENGINE\s*=\s*MyISAM\b/i', 'ENGINE=InnoDB', $stmt);
+			$stmt = self::prepare($db, $stmt, $engines);
 			try {
 				$db->exec($stmt);
 			} catch (PDOException $e) {
 				$skip = self::skippable($e, $stmt);
 				if ($skip === null) throw new RuntimeException(basename($file) . ', ' . t('ins_err_statement', $st['n'] + 1) . ': ' . $e->getMessage() . ' — ' . mb_substr(trim($stmt), 0, 160), 0, $e);
 				$st['skipped'] = array_values(array_unique(array_merge((array)($st['skipped'] ?? []), [$skip])));
+				if (($v = self::viewStmt($stmt)) && !$v['stub']) $st['skipped_sql'][$v['name']] = $stmt;
 			}
 			$st['n']++;
 			if (preg_match('#^(/\*!\d+\s*)?SET\s#i', $stmt)) {

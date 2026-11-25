@@ -427,6 +427,20 @@ T.gap_hooks = async (s) => {
 		await s.ga.fill('#password', 'Short#1x'); await s.ga.fill('#password_confirm', 'Short#1x');
 		await Promise.all([s.ga.waitForNavigation({ waitUntil: 'load' }), s.ga.click('[data-nu-save]')]);
 		expect(/At least 12 characters \(policy\)/.test(await s.ga.textContent('body')), 'password policy not applied');
+		// Forte's template reads #new_password# and writes HTML (<br>) for nuDisplayError
+		sql("UPDATE zzzzsys_php SET sph_php = '$newpw = ''#new_password#''; $m = ''''; if (!preg_match(\"#[0-9]+#\", $newpw)) $m .= ''Needs 1 Number!<br>''; if (!preg_match(\"#[A-Z]+#\", $newpw)) $m .= ''Needs 1 Capital Letter!<br>''; if ($m !== '''') { nuDisplayError($m); $check = false; }' WHERE zzzzsys_php_id = 'tt_pwpol'");
+		await open(s.ga, 'index.php?p=user&id=tt_user_lim');
+		await s.ga.fill('#password', 'lowercase#only'); await s.ga.fill('#password_confirm', 'lowercase#only');
+		await Promise.all([s.ga.waitForNavigation({ waitUntil: 'load' }), s.ga.click('[data-nu-save]')]);
+		let body = await s.ga.textContent('body');
+		expect(/Needs 1 Number! Needs 1 Capital Letter!/.test(body) && !/<br>/.test(body), 'policy message as text: ' + (body.match(/Needs[^\n]{0,80}/) || [''])[0]);
+		const limHash = sql("SELECT sus_login_password FROM zzzzsys_user WHERE zzzzsys_user_id = 'tt_user_lim'");
+		await open(s.ga, 'index.php?p=user&id=tt_user_lim');
+		await s.ga.fill('#password', 'Dezember2026!!'); await s.ga.fill('#password_confirm', 'Dezember2026!!');
+		await Promise.all([s.ga.waitForNavigation({ waitUntil: 'load' }), s.ga.click('[data-nu-save]')]);
+		body = await s.ga.textContent('body');
+		expect(!/Needs 1/.test(body), '#new_password# not filled – a good password was refused');
+		sql(`UPDATE zzzzsys_user SET sus_login_password = '${limHash}', sus_change_password = '0' WHERE zzzzsys_user_id = 'tt_user_lim'`);
 		// nu_startup with $error: the login is refused with that text
 		sql("UPDATE zzzzsys_php SET sph_php = CONCAT(sph_php, '\nif (''#LOGIN_NAME#'' === ''ttlim'') $error = ''Startup says no'';') WHERE sph_code = 'nu_startup' AND zzzzsys_php_id LIKE 'tt%'");
 		q = await login('ttlim', TT_PW);

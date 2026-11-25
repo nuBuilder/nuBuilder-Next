@@ -586,6 +586,19 @@ check('import: other statements / errors not skipped', NuSqlImport::skippable($p
 	&& NuSqlImport::skippable($pe(1064), 'CREATE PROCEDURE p() BEGIN END') === null);
 $r = NuInstall::checkDump(NuSqlImport::split($full . $mdView), true);
 check('dump (any table): mysqldump view / trigger accepted', $r['ok'], json_encode($r));
+// views the database user may not create: left out and named (with their SQL), the check lists them first
+check('import: CREATE VIEW without the right is skipped', NuSqlImport::skippable($pe(1142), 'CREATE ALGORITHM=UNDEFINED SQL SECURITY DEFINER VIEW `v_abs` AS select 1 AS `x`') === 'VIEW v_abs'
+	&& NuSqlImport::skippable($pe(1142), 'CREATE VIEW v2 AS SELECT 1') === 'VIEW v2');
+$vs = NuSqlImport::viewStmt('CREATE ALGORITHM=UNDEFINED SQL SECURITY DEFINER VIEW `v_abs` AS select `a`.`x` AS `x` from `customers` `a`');
+check('import: view statement read', $vs !== null && $vs['name'] === 'v_abs' && !$vs['stub'] && str_starts_with($vs['body'], 'select'), json_encode($vs));
+check('import: mysqldump stand-in view recognised', (NuSqlImport::viewStmt("CREATE VIEW `v_abs` AS SELECT\n 1 AS `a`,\n  1 AS `b`")['stub'] ?? false) === true
+	&& NuSqlImport::viewStmt('CREATE TABLE v (a int)') === null && NuSqlImport::viewStmt('CREATE DEFINER=`x`@`y` VIEW v AS SELECT 1') === null);
+$stand = "/*!50001 DROP VIEW IF EXISTS `v_abs`*/;\n/*!50001 CREATE VIEW `v_abs` AS SELECT\n 1 AS `x` */;\n";
+$r = NuInstall::checkDump(NuSqlImport::split($full . $stand . $mdView), true);
+check('dump: views listed (not the stand-in, not Forte 4.5\'s own)', $r['ok'] && $r['views'] === ['v_abs'], json_encode($r));
+$r = NuInstall::checkDump(NuSqlImport::split($okDump . "CREATE VIEW `zzzzsys_run_list` AS SELECT 1 AS a;\n"));
+check('dump: nuBuilder Forte 4.5 views not listed', $r['ok'] && $r['views'] === [], json_encode($r));
+check('dump: view with OUTFILE refused', !NuInstall::checkDump(NuSqlImport::split($full . "CREATE VIEW `v9` AS SELECT 1 INTO OUTFILE '/tmp/x';\n"), true)['ok']);
 $sp = NuSqlImport::split("CREATE TABLE [a;b] (x int)\nGO\nINSERT INTO #t VALUES (N'C:\\', 'x;y')\nGO\n", 'sqlsrv');
 check('split: SQL Server batches (GO, [names], no backslash escapes, #temp)', $sp === ['CREATE TABLE [a;b] (x int)', "INSERT INTO #t VALUES (N'C:\\', 'x;y')"], json_encode($sp));
 $tmpSql = sys_get_temp_dir() . '/nunext-split-' . bin2hex(random_bytes(4)) . '.sql.gz';
@@ -1160,6 +1173,7 @@ $slDir = sys_get_temp_dir() . '/nunext-sel-' . getmypid();
 foreach (['Slovak', 'Afrikaans', 'Portuguese (Brazil)'] as $f) file_put_contents($slDir . '/core/languages/' . $f . '.sql', '');
 check('select source: %LANGUAGES% = nuBuilder Forte\'s language files', NuSelectSource::languages($slDir) === ['Afrikaans', 'Portuguese (Brazil)', 'Slovak']);
 array_map('unlink', glob($slDir . '/core/languages/*.sql')); @rmdir($slDir . '/core/languages'); @rmdir($slDir . '/core'); @rmdir($slDir);
+check('languages: English when nothing else decides', NuLanguages::fallback() === 'en');
 $sl = NuSelectSource::languages($slDir);                       // NuLanguages::installed(): every language on the command line
 check('select source: %LANGUAGES% without nuBuilder Forte = installed languages by English name, no English', in_array('German', $sl, true) && in_array('French', $sl, true) && !in_array('English', $sl, true), implode(',', $sl));
 $pwD = NuPwPolicy::clean([]);

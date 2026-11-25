@@ -550,8 +550,14 @@
 		hideT = setTimeout(done, tip.classList.contains('nuHomeTipCard') ? 160 : 0);
 	}
 	function tileOf(e) { return e.closest ? e.closest('[data-nu-tile]') : null; }
+	// touch screens: no tooltip from the mouse events a tap fakes or from the focus a tap (or Back) leaves on a tile – a long press
+	// opens the tile menu with the full description; the tooltip stays for the ⓘ and for a long press where there is no menu
+	var touchAt = 0;
+	function touchy() { return Date.now() - touchAt < 1500 || (typeof window.nuHasKeyboard === 'function' && !window.nuHasKeyboard()); }
 	if (viewEl) {
+		viewEl.addEventListener('pointerdown', function (e) { if (e.pointerType === 'touch') touchAt = Date.now(); }, true);
 		viewEl.addEventListener('mouseover', function (e) {
+			if (Date.now() - touchAt < 1500) return;
 			var info = e.target.closest && e.target.closest('[data-nu-descinfo]');
 			if (info) { clearTimeout(showT); showTip(box(info).querySelector('[data-nu-tile]'), 'tip', info); return; }
 			if (e.target.closest && e.target.closest('.nuHomeAction')) return;
@@ -572,6 +578,7 @@
 			var info = e.target.closest && e.target.closest('[data-nu-descinfo]');
 			var a = info ? box(info).querySelector('[data-nu-tile]') : tileOf(e.target);
 			if (!a) return;
+			if (!info && touchy()) return;
 			var kind = info ? 'tip' : (hoverKind(a) || (eff(size).desc === 'info' ? 'tip' : null));
 			if (kind) showTip(a, kind, info || a);
 		});
@@ -651,6 +658,12 @@
 			var fav = tile.getAttribute('data-nu-fav') === '1' || src.hasAttribute('data-nu-chip');
 			label = tile.getAttribute('data-nu-label') || key; desc = tile.getAttribute('data-nu-desc') || '';
 			items.push(ctxItem(fav ? 'bi-star' : 'bi-star-fill text-warning', t(fav ? 'home_unfav' : 'home_fav_add'), function () { ctxPost(D.favUrl, {action: 'fav', key: key}); }));
+			// a chip of the row Favourites: move it one place left / right (touch screens and keyboard – the mouse drags)
+			var fi = favItemOf(src);
+			if (fi) {
+				if (fi.previousElementSibling) items.push(ctxItem('bi-arrow-left', t('home_fav_move_left'), function () { favMove(fi, -1); }));
+				if (fi.nextElementSibling) items.push(ctxItem('bi-arrow-right', t('home_fav_move_right'), function () { favMove(fi, 1); }));
+			}
 			// Hide: admin start pages – in the layout (as Edit tiles and groups), user start pages – for me (as Personalise);
 			// after the reload a message with Undo (pages/nuhome.php, NuSidebar::hideTile)
 			if (D.hideMode) items.push(ctxItem('bi-eye-slash', t(D.hideMode === 'me' ? 'home_u_mine_hide' : 'home_ctx_hide'), function () { ctxPost(D.favUrl, {action: 'hide', key: key, label: label}); }));
@@ -675,6 +688,98 @@
 		function (e) { if (tipFor && !tip.contains(e.target) && !(e.target.closest && e.target.closest('[data-nu-descinfo]')) && tileOf(e.target) !== tipFor) hideTip(true); });
 	window.addEventListener('scroll', function (e) { if (tipFor && !(e.target && e.target.nodeType === 1 && tip.contains(e.target))) hideTip(true); }, true);
 	window.addEventListener('resize', function () { if (tipFor) hideTip(true); });
+
+	// ---------------------------------------------------------------- the row Favourites: its order. The mouse drags a chip to its
+	// place (the others make room while dragging; the click that ends a drag does not open the chip), touch screens use Move left /
+	// Move right of the chip's menu, the keyboard Alt+← / Alt+→ on a chip. Saved at once: POST ?p=sidebar action fav_order (the side bar
+	// shows the same order). Only where the reader may change the favourites (D.favUrl) and not while customising.
+	// the click that ends a drag does not open the tile – only that one: when no click follows (the pointer ended elsewhere) the next real click must work
+	function swallowClick() {
+		var stop = function (ev) { ev.preventDefault(); ev.stopPropagation(); };
+		window.addEventListener('click', stop, {capture: true, once: true});
+		setTimeout(function () { window.removeEventListener('click', stop, true); }, 0);
+	}
+	var favRow = document.getElementById('nuHomeStripFav');
+	function favItemOf(node) {
+		if (!favRow || !node || !favRow.contains(node)) return null;
+		var n = node;
+		while (n && n.parentNode !== favRow) n = n.parentNode;
+		return n;
+	}
+	function favKeyOf(item) {
+		var c = item.hasAttribute('data-nu-chip') ? item : item.querySelector('[data-nu-chip]');
+		return c ? c.getAttribute('data-nu-chip') : '';
+	}
+	function favCanOrder() { return !!(favRow && D.favUrl) && !document.body.classList.contains('nuHomeEditing') && !document.body.classList.contains('nuHomeMineOn'); }
+	function favSave() {
+		var keys = Array.prototype.map.call(favRow.children, favKeyOf).filter(Boolean);
+		var fd = new FormData();
+		fd.append('_csrf', D.csrf); fd.append('action', 'fav_order'); fd.append('keys', JSON.stringify(keys));
+		fetch(D.favUrl, {method: 'POST', body: fd, credentials: 'same-origin'}).then(function (r) { return r.json(); }).then(function (j) {
+			if (!j || !j.ok) { toast((j && j.error) || t('sb_fav_not_possible'), false); setTimeout(function () { location.reload(); }, 1500); }
+		}, function () { location.reload(); });
+	}
+	function favMove(item, dir) {
+		var to = dir < 0 ? item.previousElementSibling : item.nextElementSibling;
+		if (!to) return;
+		favRow.insertBefore(item, dir < 0 ? to : to.nextElementSibling);
+		var f = item.matches('a, button') ? item : item.querySelector('a, button');
+		if (f) f.focus({preventScroll: true});
+		favSave();
+	}
+	if (favRow) {
+		var FD = null;
+		favRow.addEventListener('pointerdown', function (e) {
+			if (e.pointerType !== 'mouse' || e.button !== 0 || !favCanOrder()) return;
+			var it = favItemOf(e.target);
+			if (it) FD = {item: it, x: e.clientX, y: e.clientY, on: false, id: e.pointerId};
+		});
+		favRow.addEventListener('pointermove', function (e) {
+			if (!FD || e.pointerId !== FD.id) return;
+			if (!FD.on) {
+				if (Math.abs(e.clientX - FD.x) + Math.abs(e.clientY - FD.y) < 6) return;
+				FD.on = true;
+				FD.item.classList.add('nuHomeChipDragging');
+				favRow.classList.add('nuHomeChipsDragging');
+				document.documentElement.classList.add('nuHomeGrabbing');
+				try { favRow.setPointerCapture(e.pointerId); } catch (x) { /* expected when the pointer is gone */ }
+				hideTip(true);
+			}
+			e.preventDefault();
+			Array.prototype.some.call(favRow.children, function (o) {
+				if (o === FD.item) return false;
+				var r = o.getBoundingClientRect();
+				if (e.clientY < r.top || e.clientY > r.bottom || e.clientX < r.left || e.clientX > r.right) return false;
+				var before = e.clientX < r.left + r.width / 2;
+				if (before && o.previousElementSibling !== FD.item) favRow.insertBefore(FD.item, o);
+				else if (!before && o.nextElementSibling !== FD.item) favRow.insertBefore(FD.item, o.nextElementSibling);
+				return true;
+			});
+		});
+		var favEnd = function (e) {
+			if (!FD || e.pointerId !== FD.id) return;
+			var was = FD.on, it = FD.item;
+			FD = null;
+			if (!was) return;
+			it.classList.remove('nuHomeChipDragging');
+			favRow.classList.remove('nuHomeChipsDragging');
+			document.documentElement.classList.remove('nuHomeGrabbing');
+			// the click that ends a drag does not open the chip
+			swallowClick();
+			favSave();
+		};
+		favRow.addEventListener('pointerup', favEnd);
+		favRow.addEventListener('pointercancel', favEnd);
+		favRow.addEventListener('dragstart', function (e) { if (favCanOrder()) e.preventDefault(); });   // links: no native drag
+		favRow.addEventListener('keydown', function (e) {
+			if (!e.altKey || e.ctrlKey || e.metaKey || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') || !favCanOrder()) return;
+			var it = favItemOf(e.target);
+			if (!it) return;
+			e.preventDefault();
+			var rtl = document.documentElement.dir === 'rtl';
+			favMove(it, (e.key === 'ArrowLeft') !== rtl ? -1 : 1);
+		});
+	}
 
 	// ---------------------------------------------------------------- rows Favourites / Recently used: right-click / long press
 	// on a row → Edit favourites (edit mode / Personalise with the editor's favourites filter on) or Clear, and Hide this row = the
@@ -718,6 +823,7 @@
 	// "Start page layout" admins also the layout itself ("Everyone" – chosen anew each time the panel opens).
 	var vp = document.getElementById('nuHomeViewPanel'), viewBtn = document.getElementById('nuHomeViewBtn');
 	var VP = {open: false, everyone: false, scopeDev: 'all', scopeTab: 'all', more: false, snap: null, undone: false, saveT: 0, tab: store('nunext-home-cust-tab') || 'appearance'};
+	if (VP.tab === 'content') VP.tab = 'appearance';            // the content tab edits the page: never opened by itself
 	var STYLES = ['large', 'cards', 'compact', 'list', 'launcher', 'panels', 'table'];
 	var DESCS = [['auto', 'bi-magic'], ['inline', 'bi-text-paragraph'], ['tooltip', 'bi-chat-square-text'], ['hovercard', 'bi-window'], ['info', 'bi-info-circle'], ['off', 'bi-eye-slash']];
 	var NAVS = ['groups', 'tabs', 'sidebar', 'none'];
@@ -819,9 +925,12 @@
 		if (h) h.focus();
 		setTimeout(measure, 250);                                   // the page got narrower (drawer)
 	}
-	function closePanel() {
+	function closePanel(force) {
 		if (!vp || !VP.open) return;
-		VP.open = false;
+		var m = cmode();
+		if (force !== true && m && m.active()) { leaveContent(m, function () { closePanel(true); }); return; }
+		VP.open = false; VP.confirm = null;
+		if (VP.tab === 'content') VP.tab = store('nunext-home-cust-tab') || 'appearance';   // Content again only when chosen
 		vp.hidden = true;
 		document.body.classList.remove('nuHomeVpOpen');
 		if (viewBtn) { viewBtn.setAttribute('aria-expanded', 'false'); viewBtn.focus(); }
@@ -1078,20 +1187,45 @@
 		return el('section', {'class': 'nuHomeVpSec'}, look);
 	}
 
-	// content: the edit mode (tiles, groups, tabs of the layout) and a user's Personalise – the hidden page buttons start them
+	// content: the tab IS the editor – choosing it makes the page editable (the layout's edit mode, or a user's Personalise); the panel
+	// holds the tools and Save / Cancel. Each mode registers itself in CE: {active, start, stop, dirty, discard, save, panel, foot}
+	var CE = {edit: null, mine: null};
+	function cmode() { return CE.edit || CE.mine; }
 	function panelContent() {
-		var cont = [];
-		var editB = $('#nuHomeCustomize'), mineB = $('#nuHomeMine');
-		var start = function (b) { return function () { closePanel(); b.click(); }; };
-		if (editB) cont.push(el('section', {'class': 'nuHomeVpSec'}, [lbl('home_c_edit'), el('p', {'class': 'nuHomeVpHelp', text: t('home_c_edit_hint')}),
-			el('button', {type: 'button', 'class': 'btn btn-primary btn-sm', 'data-f': 'edit', id: 'nuHomeVpEdit', onclick: start(editB)}, [icon('bi-pencil me-1'), t('home_c_edit_btn')])]));
-		if (mineB) cont.push(el('section', {'class': 'nuHomeVpSec'}, [lbl('home_u_mine'), el('p', {'class': 'nuHomeVpHelp', text: t('home_c_mine_hint')}),
-			el('button', {type: 'button', 'class': 'btn btn-primary btn-sm', 'data-f': 'mine', id: 'nuHomeVpMine', onclick: start(mineB)}, [icon('bi-person-gear me-1'), t('home_u_mine')])]));
+		var m = cmode();
+		if (!m) return [];
+		var cont = m.active() ? m.panel() : [el('p', {'class': 'nuHomeVpHelp py-3', text: t('home_c_starting')})];
+		if (VP.confirm) cont.unshift(leaveBox(m));
 		return cont;
+	}
+	/** Leaving the content tab (another tab, ×, Esc, Cancel): without changes at once, else a question inside the panel. */
+	function leaveContent(m, then) {
+		if (!m.dirty()) { m.stop(); then(); return; }
+		VP.confirm = then;
+		drawPanel();
+		var k = $('#nuHomeLeaveKeep', vp);
+		if (k) k.focus();
+	}
+	function leaveBox(m) {
+		var then = VP.confirm;
+		return el('div', {'class': 'nuHomeVpLeave', role: 'alertdialog', 'aria-labelledby': 'nuHomeLeaveTitle'}, [
+			el('div', {'class': 'd-flex gap-2 align-items-start'}, [icon('bi-exclamation-triangle nuHomeVpLeaveIcon'),
+				el('div', {}, [el('div', {'class': 'fw-semibold', id: 'nuHomeLeaveTitle', text: t('home_c_leave_title')}),
+					el('div', {'class': 'nuHomeVpHelp mt-1', text: t('home_c_leave_text')})])]),
+			el('div', {'class': 'd-flex gap-2 align-items-center mt-3'}, [
+				el('button', {type: 'button', 'class': 'btn btn-sm btn-link text-danger px-0', id: 'nuHomeLeaveDiscard', 'data-f': 'leave:discard',
+					onclick: function () { VP.confirm = null; m.discard(then); }}, [t('home_c_discard')]),
+				el('span', {'class': 'flex-grow-1'}),
+				el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuHomeLeaveKeep', 'data-f': 'leave:keep',
+					onclick: function () { VP.confirm = null; drawPanel(); }}, [t('home_c_keep')]),
+				el('button', {type: 'button', 'class': 'btn btn-sm btn-primary', id: 'nuHomeLeaveSave', 'data-f': 'leave:save',
+					onclick: function () { VP.confirm = null; m.save(); }}, [icon('bi-check-lg me-1'), t('save')])])]);
 	}
 
 	function drawPanel() {
 		if (!vp || !VP.open) return;
+		var cm = cmode();
+		if (VP.tab === 'content' && cm && !cm.active() && !VP.starting) { VP.starting = true; try { cm.start(); } finally { VP.starting = false; } }
 		var focus = document.activeElement && vp.contains(document.activeElement) ? document.activeElement.getAttribute('data-f') : null;
 		var old = $('.nuHomeVpBody', vp), top = old ? old.scrollTop : 0;
 		var v = eff(size), tabbed = v.nav === 'tabs' || v.nav === 'sidebar', unit = panelUnit(), st = styleFor(unit, size, v), tg = target();
@@ -1118,13 +1252,17 @@
 			el('button', {type: 'button', 'class': 'btn-close', 'aria-label': t('close'), title: t('close'), 'data-f': 'close', onclick: closePanel})]));
 		if (tabs.length > 1) vp.appendChild(el('div', {'class': 'nav nav-tabs nuHomeVpTabs', role: 'tablist'}, tabs.map(function (x) {
 			return el('button', {type: 'button', 'class': 'nav-link' + (x[0] === VP.tab ? ' active' : ''), role: 'tab', 'aria-selected': x[0] === VP.tab ? 'true' : 'false',
-				'data-f': 'tab:' + x[0], id: 'nuHomeVpTab-' + x[0], onclick: function () { VP.tab = x[0]; store('nunext-home-cust-tab', x[0]); drawPanel(); }}, [x[1]]);
+				'data-f': 'tab:' + x[0], id: 'nuHomeVpTab-' + x[0], onclick: function () {
+					var go = function () { VP.tab = x[0]; if (x[0] !== 'content') store('nunext-home-cust-tab', x[0]); drawPanel(); };
+					if (VP.tab === 'content' && x[0] !== 'content' && cm && cm.active()) leaveContent(cm, go); else go();
+				}}, [x[1]]);
 		})));
 		var body = el('div', {'class': 'nuHomeVpBody', role: tabs.length > 1 ? 'tabpanel' : null, 'aria-labelledby': tabs.length > 1 ? 'nuHomeVpTab-' + VP.tab : null}, cur[2]);
 		vp.appendChild(body);
 		if (VP.tab === 'appearance') vp.appendChild(el('div', {'class': 'nuHomeVpFoot'}, [
 			el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', 'data-f': 'reset', onclick: resetView}, [icon('bi-arrow-counterclockwise me-1'), t('home_v_reset')]),
 			el('span', {'class': 'nuHomeVpSaved', role: 'status'}, [icon('bi-check2 me-1'), t('home_v_saved')])]));
+		else if (VP.tab === 'content' && cm && cm.active()) vp.appendChild(el('div', {'class': 'nuHomeVpFoot'}, cm.foot()));
 		if (old && old.getAttribute('aria-labelledby') !== body.getAttribute('aria-labelledby')) top = 0;   // another tab: from the top
 		body.scrollTop = top;
 		if (focus) { var f = vp.querySelector('[data-f="' + focus.replace(/["\\]/g, '') + '"]'); if (f) f.focus({preventScroll: true}); }
@@ -1163,7 +1301,7 @@
 	if (forSel) forSel.addEventListener('change', function () { var o = forSel.options[forSel.selectedIndex]; if (o && o.getAttribute('data-url')) window.location.href = o.getAttribute('data-url'); });
 	var mineBtn = document.getElementById('nuHomeMine');
 	if (mineBtn && D.mine && viewEl) (function () {
-		var M = null, bar = null, hiddenBox = document.getElementById('nuHomeMineHidden');
+		var M = null, hiddenBox = document.getElementById('nuHomeMineHidden');
 		function has(list, k) { return list.indexOf(k) >= 0; }
 		function toggle(list, k) { var i = list.indexOf(k); if (i >= 0) list.splice(i, 1); else list.push(k); }
 		function paint(w) {
@@ -1181,34 +1319,128 @@
 			var k = w.getAttribute('data-nu-wrap');
 			var star = el('button', {type: 'button', 'class': 'btn nuHomeMineStar'}, [icon('bi-star')]);
 			var eye = el('button', {type: 'button', 'class': 'btn nuHomeMineEye'}, [icon('bi-eye-slash')]);
-			star.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); toggle(M.fav, k); paint(w); });
-			eye.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); toggle(M.hide, k); paint(w); });
-			w.appendChild(el('div', {'class': 'nuHomeMineTools'}, [star, eye]));
+			star.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); toggle(M.fav, k); paint(w); sync(); });
+			eye.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); toggle(M.hide, k); paint(w); sync(); });
+			// own order within the group: drag the grip (mouse, pen, touch) or the tile itself with the mouse; ← / → on the grip
+			var grip = el('button', {type: 'button', 'class': 'btn nuHomeMineGrip', title: t('home_u_mine_move'), 'aria-label': t('home_u_mine_move')}, [icon('bi-grip-vertical')]);
+			grip.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); });
+			grip.addEventListener('keydown', function (e) {
+				var dir = e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : (e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : 0);
+				if (!dir || e.ctrlKey || e.metaKey) return;
+				e.preventDefault(); e.stopPropagation();
+				var to = dir < 0 ? w.previousElementSibling : w.nextElementSibling;
+				while (to && !to.hasAttribute('data-nu-wrap')) to = dir < 0 ? to.previousElementSibling : to.nextElementSibling;
+				if (!to) return;
+				w.parentNode.insertBefore(w, dir < 0 ? to : to.nextElementSibling);
+				moved(w); grip.focus({preventScroll: true});
+			});
+			w.appendChild(el('div', {'class': 'nuHomeMineTools'}, [grip, star, eye]));
 			paint(w);
 		}
+		function groupOf(w) { var g = w.closest('[data-nu-group]'); return g ? g.getAttribute('data-nu-group') : ''; }
+		function moved(w) {
+			var g = groupOf(w), box = w.parentNode;
+			if (!g || !box) return;
+			M.order[g] = Array.prototype.map.call(box.querySelectorAll(':scope > [data-nu-wrap]'), function (x) { return x.getAttribute('data-nu-wrap'); });
+			sync();
+		}
+		var base = '';
+		function mineDirty() { return !!M && JSON.stringify(M) !== base; }
+		function sync() {
+			var st = document.getElementById('nuHomeMineState');
+			if (st) { var d = mineDirty(); st.textContent = t(d ? 'home_c_unsaved' : 'home_c_nochange'); st.classList.toggle('nuHomeVpDirtyOn', d); }
+		}
+		// dragging a tile within its group (only while personalising)
+		var DR = null;
+		viewEl.addEventListener('pointerdown', function (e) {
+			if (!document.body.classList.contains('nuHomeMineOn') || e.button !== 0) return;
+			var onGrip = e.target.closest('.nuHomeMineGrip');
+			if (!onGrip && (e.pointerType !== 'mouse' || e.target.closest('.nuHomeMineTools'))) return;
+			var w = e.target.closest('[data-nu-wrap]');
+			if (!w || !w.parentNode || !viewEl.contains(w)) return;
+			DR = {w: w, box: w.parentNode, x: e.clientX, y: e.clientY, on: false, id: e.pointerId, grip: !!onGrip};
+			if (onGrip) e.preventDefault();
+		});
+		viewEl.addEventListener('pointermove', function (e) {
+			if (!DR || e.pointerId !== DR.id) return;
+			if (!DR.on) {
+				if (Math.abs(e.clientX - DR.x) + Math.abs(e.clientY - DR.y) < 6) return;
+				DR.on = true;
+				DR.w.classList.add('nuHomeMineDragging');
+				DR.box.classList.add('nuHomeMineSorting');
+				document.documentElement.classList.add('nuHomeGrabbing');
+				try { viewEl.setPointerCapture(e.pointerId); } catch (x) { /* expected when the pointer is gone */ }
+				hideTip(true);
+			}
+			e.preventDefault();
+			Array.prototype.some.call(DR.box.children, function (o) {
+				if (o === DR.w || !o.hasAttribute('data-nu-wrap')) return false;
+				var r = o.getBoundingClientRect();
+				if (e.clientY < r.top || e.clientY > r.bottom || e.clientX < r.left || e.clientX > r.right) return false;
+				var wide = r.width > r.height * 2.5;                // list style: rows, compare up / down
+				var before = wide ? e.clientY < r.top + r.height / 2 : e.clientX < r.left + r.width / 2;
+				if (before && o.previousElementSibling !== DR.w) DR.box.insertBefore(DR.w, o);
+				else if (!before && o.nextElementSibling !== DR.w) DR.box.insertBefore(DR.w, o.nextElementSibling);
+				return true;
+			});
+		});
+		function dragEnd(e) {
+			if (!DR || e.pointerId !== DR.id) return;
+			var d = DR; DR = null;
+			if (!d.on) return;
+			d.w.classList.remove('nuHomeMineDragging');
+			d.box.classList.remove('nuHomeMineSorting');
+			document.documentElement.classList.remove('nuHomeGrabbing');
+			swallowClick();
+			moved(d.w);
+		}
+		viewEl.addEventListener('pointerup', dragEnd);
+		viewEl.addEventListener('pointercancel', dragEnd);
+		viewEl.addEventListener('dragstart', function (e) { if (document.body.classList.contains('nuHomeMineOn')) e.preventDefault(); });
 		function open() {
-			M = {fav: D.mine.fav.slice(), hide: D.mine.hide.slice()};
-			closePanel();
+			M = {fav: D.mine.fav.slice(), hide: D.mine.hide.slice(), order: JSON.parse(JSON.stringify(D.mine.order || {}))};
+			base = JSON.stringify(M);
 			hideTip(true);
 			document.body.classList.add('nuHomeMineOn');
-			bar = el('div', {'class': 'alert alert-primary d-flex flex-wrap align-items-center gap-2 py-2 nuHomeMineBar', role: 'region', 'aria-label': t('home_u_mine')}, [
-				icon('bi-person-gear'), el('span', {'class': 'me-auto', text: t('home_u_mine_bar')}),
-				D.mine.own ? el('button', {type: 'button', 'class': 'btn btn-sm btn-link', id: 'nuHomeMineReset', onclick: reset}, [t('home_u_mine_reset')]) : null,
-				el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuHomeMineCancel', onclick: function () { window.location.reload(); }}, [t('cancel')]),
-				el('button', {type: 'button', 'class': 'btn btn-sm btn-primary', id: 'nuHomeMineDone', onclick: save}, [icon('bi-check-lg me-1'), t('home_done')])]);
 			var row = $('.nuHomeSearchRow');
-			row.parentNode.insertBefore(bar, row);
-			row.hidden = true;
+			if (row) row.hidden = true;
 			if (hiddenBox) hiddenBox.hidden = false;
 			$$('.nuHomeTileWrap', viewEl).forEach(tools);
 			$$('[data-nu-unhide]', hiddenBox || document).forEach(function (c) {
-				c.addEventListener('click', function () { toggle(M.hide, c.getAttribute('data-nu-unhide')); c.classList.toggle('nuHomeMineBack', !has(M.hide, c.getAttribute('data-nu-unhide'))); });
+				if (c.nuBound) return;
+				c.nuBound = true;
+				c.addEventListener('click', function () {
+					if (!M) return;
+					toggle(M.hide, c.getAttribute('data-nu-unhide')); c.classList.toggle('nuHomeMineBack', !has(M.hide, c.getAttribute('data-nu-unhide'))); sync();
+				});
 			});
-			if ($('.nuHomeMineStar', viewEl)) $('.nuHomeMineStar', viewEl).focus();
 		}
+		function stop() {                                       // nothing changed: the page as it was
+			M = null;
+			document.body.classList.remove('nuHomeMineOn');
+			$$('.nuHomeMineTools', viewEl).forEach(function (x) { x.remove(); });
+			$$('.nuHomeMineGone', viewEl).forEach(function (x) { x.classList.remove('nuHomeMineGone'); });
+			var row = $('.nuHomeSearchRow');
+			if (row) row.hidden = false;
+			if (hiddenBox) hiddenBox.hidden = true;
+		}
+		function panel() {
+			return [el('section', {'class': 'nuHomeVpSec'}, [lbl('home_u_mine'), el('p', {'class': 'nuHomeVpHelp', text: t('home_c_mine_help')}),
+				D.mine.own ? el('button', {type: 'button', 'class': 'btn btn-sm btn-link px-0 mt-2', id: 'nuHomeMineReset', 'data-f': 'minereset', onclick: reset},
+					[icon('bi-arrow-counterclockwise me-1'), t('home_u_mine_reset')]) : null])];
+		}
+		function foot() {
+			var d = mineDirty();
+			return [el('span', {'class': 'nuHomeVpDirty' + (d ? ' nuHomeVpDirtyOn' : ''), id: 'nuHomeMineState', role: 'status', text: t(d ? 'home_c_unsaved' : 'home_c_nochange')}),
+				el('span', {'class': 'd-inline-flex gap-2 ms-auto'}, [
+					el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuHomeMineCancel', 'data-f': 'cancel', onclick: function () { closePanel(); }}, [t('cancel')]),
+					el('button', {type: 'button', 'class': 'btn btn-sm btn-primary', id: 'nuHomeMineDone', 'data-f': 'save', onclick: save}, [icon('bi-check-lg me-1'), t('save')])])];
+		}
+		CE.mine = {active: function () { return !!M; }, start: open, stop: stop, dirty: mineDirty,
+			discard: function () { M = null; window.location.reload(); }, save: save, panel: panel, foot: foot};
 		function save() {
 			$('#nuHomeMineDone').disabled = true;
-			post({action: 'mine', fav: M.fav, hide: M.hide}).then(function (j) {
+			post({action: 'mine', fav: M.fav, hide: M.hide, order: M.order}).then(function (j) {
 				if (j.ok) { window.location.reload(); return; }
 				$('#nuHomeMineDone').disabled = false;
 				toast(j.message || t('home_saved_err'), false);
@@ -1223,7 +1455,7 @@
 			if (!document.body.classList.contains('nuHomeMineOn') || e.target.closest('.nuHomeMineTools')) return;
 			if (e.target.closest('.nuHomeTileWrap, .nuHomeChip')) { e.preventDefault(); e.stopPropagation(); }
 		}, true);
-		mineBtn.addEventListener('click', open);
+		mineBtn.addEventListener('click', function () { if (vp) openPanel('content'); else open(); });
 	})();
 
 	// ================================================================ edit mode: the start page itself is edited
@@ -1253,7 +1485,11 @@
 		L.groups.forEach(function (g) { drop(g.tiles); });
 		drop(L.hidden);
 	}
-	function changed() { dirty = true; }
+	function changed() {
+		dirty = true;
+		var s = document.getElementById('nuHomeEditState');
+		if (s) { s.textContent = t('home_c_unsaved'); s.classList.add('nuHomeVpDirtyOn'); }
+	}
 	function tabsOn() { return L.display === 'tabs' && L.tabs.length > 0; }
 	function groupsOfTab() { return tabsOn() ? L.groups.filter(function (g) { return g.tab === activeTab; }) : L.groups; }
 	/** The group new or shown tiles go to: the last group of the open tab (created when there is none). */
@@ -1275,8 +1511,8 @@
 		activeTab = L.tabs.some(function (tb) { return tb.id === id; }) ? id : (L.tabs[0] ? L.tabs[0].id : '');
 		editFav = editFavNext && L.fav.length > 0;   // opened by Edit of the row Favourites
 		editFavNext = false;
+		VP.addQ = '';
 		clearSearch();
-		closePanel();
 		hideTip(true);
 		view.hidden = true;
 		btnBox.hidden = true;
@@ -1297,7 +1533,18 @@
 		prevEdit = null; pfNote = null;
 		H.emit('customize', false);
 	}
-	if (btn) btn.addEventListener('click', open);
+	// the hidden page button (Edit of the row Favourites, the tile menu …) opens the panel on Content, which starts the edit mode
+	if (btn) btn.addEventListener('click', function () { if (vp) openPanel('content'); else open(); });
+	if (btn) CE.edit = {                                     // only where the layout may be changed (not on a user's own page)
+		active: function () { return !edit.hidden; },
+		start: open,
+		stop: close,
+		dirty: function () { return dirty; },
+		discard: function (then) { close(); then(); },
+		save: save,
+		panel: editPanel,
+		foot: editFoot
+	};
 	window.addEventListener('beforeunload', function (e) { if (dirty && !edit.hidden) { e.preventDefault(); e.returnValue = ''; } });
 
 
@@ -1444,8 +1691,16 @@
 			if (!first) first = go;
 			n++;
 		});
+		// a page that a shown tile already opens is listed once (the tile), e.g. Configuration file as tile and as settings page
+		var tileUrls = {};
+		var absUrl = function (u) { try { var x = new URL(u, location.href); x.hash = ''; return x.href; } catch (e) { return ''; } };
+		if (words.length && kindOn('tiles')) shownEls.forEach(function (a) { if (a.tagName === 'A' && a.getAttribute('href')) tileUrls[absUrl(a.getAttribute('href'))] = true; });
 		var more = words.length && P && palItems ? P.match(palItems, q).filter(function (it) {
-			return !onPage[it.id] && kindOn(KIND_OF[it.id.charAt(0)] || 'pages');
+			if (onPage[it.id] || !kindOn(KIND_OF[it.id.charAt(0)] || 'pages')) return false;
+			var u = it.url ? absUrl(it.url) : '';
+			if (u && tileUrls[u]) return false;               // also two entries of the palette that open the same page
+			if (u) tileUrls[u] = true;
+			return true;
 		}).slice(0, 12) : [];
 		more.forEach(function (it) {
 			var code = it.id.charAt(0) !== 't' ? (it.kw || '').split(' ')[0] : '';
@@ -1820,36 +2075,7 @@
 		displaySel.value = L.display;
 		displaySel.addEventListener('change', function () { L.display = displaySel.value; if (!activeTab && L.tabs[0]) activeTab = L.tabs[0].id; changed(); render(); });
 		if (editFav && !L.fav.length) editFav = false;
-		var favSel = el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary nuHomeFavBtn' + (editFav ? ' active' : ''), id: 'nuHomeEditFav',
-			'aria-pressed': editFav ? 'true' : 'false', disabled: L.fav.length ? null : 'disabled', title: L.fav.length ? t('home_fav_only') : t('home_fav_none_edit'),
-			'aria-label': t('home_fav_only'), onclick: function () { editFav = !editFav; render(); }},
-				[icon(editFav ? 'bi-star-fill me-sm-1' : 'bi-star me-sm-1'), el('span', {'class': 'd-none d-sm-inline', text: t('home_fav')})]);
-
 		edit.classList.toggle('nuHeFavOnly', editFav);
-		edit.appendChild(el('div', {'class': 'nuHeBar'}, [
-			el('div', {'class': 'nuHeBarRow'}, [
-				el('span', {'class': 'fw-semibold me-1 text-nowrap'}, [icon('bi-pencil-square me-2 text-primary'), el('span', {'class': 'd-none d-xxl-inline', text: t('home_editing')}),
-					el('span',
-						{'class': 'nuInfoTip ms-1 fw-normal', tabindex: '0', role: 'img', 'data-bs-toggle': 'tooltip', 'data-bs-custom-class': 'nuTipWide',
-							title: t('home_edit_hint'), 'aria-label': t('home_edit_hint')},
-						[icon('bi-info-circle')])]),
-				el('label', {'class': 'visually-hidden', 'for': 'nuHomeDisplay', text: t('home_display')}), displaySel,
-				favSel,                                                  // tile style: Customise → Appearance
-				el('span', {'class': 'flex-grow-1'}),
-				el('button',
-					{type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuHomeAddGroup', title: t('home_add_group'), 'aria-label': t('home_add_group'), onclick: addGroup},
-					[icon('bi-collection me-sm-1'), el('span', {'class': 'd-none d-sm-inline', text: t('home_add_group')})]),
-				el('button',
-					{type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuHomeAddTile', title: t('home_add_tile'), 'aria-label': t('home_add_tile'), onclick: function () { tileDialog(null); }},
-					[icon('bi-plus-square me-sm-1'), el('span', {'class': 'd-none d-sm-inline', text: t('home_add_tile')})]),
-				Object.keys(D.presets || {}).length ? startFromMenu() : null,    // Start from ▾ – profiles (replaces Reset); none on user start pages
-				el('span', {'class': 'd-inline-flex gap-2 ms-auto'}, [                   // Cancel and Done stay together
-					el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuHomeCancel', onclick: cancel}, [t('cancel')]),
-					el('button', {type: 'button', 'class': 'btn btn-sm btn-primary', id: 'nuHomeSave', 'data-nu-save': true, onclick: save}, [icon('bi-check-lg me-1'), t('home_done')])])
-			]),
-			pfNote ? pfNoteEl() : null
-		]));
-
 		if (L.display === 'tabs') {
 			edit.appendChild(tabBar());
 			if (!L.tabs.length) edit.appendChild(el('div', {'class': 'small text-body-secondary pt-2', text: t('home_tabs_hint')}));
@@ -1861,12 +2087,70 @@
 			edit.appendChild(groupsBox(''));
 		}
 
-		edit.appendChild(el('section', {'class': 'nuHeHidden mb-3'}, [
-			el('h2', {'class': 'nuHomeGroupTitle'}, [icon('bi-eye-slash me-2'), t('home_hidden')]),
-			tileList('__hidden', L.hidden, true)
-		]));
 		$$('[data-bs-toggle="tooltip"]', edit).forEach(function (e) { nuBs.tooltip(e); });
 		window.scrollTo(0, y);
+		drawPanel();                                             // the panel's list of tiles to add, the state
+	}
+
+	// ---------------------------------------------------------------- the panel while editing: tiles to add, structure, Start from, Save
+	function editPanel() {
+		var secs = [el('p', {'class': 'nuHomeVpHelp pt-3 mb-0', text: t('home_c_edit_help')})];
+		// tiles that are not on the page (hidden ones): search, + puts it into the first group of the open tab
+		var list = el('div', {'class': 'list-group nuHomeAddList', id: 'nuHomeAddList'});
+		L.hidden.forEach(function (k) {
+			var i = info(k);
+			if (!i) return;
+			list.appendChild(el('div', {'class': 'list-group-item d-flex align-items-center gap-2 nuHomeAddItem', 'data-key': k,
+				'data-q': (i.label + ' ' + i.hint).toLowerCase()}, [tileIcon(i, true),
+				el('span', {'class': 'flex-grow-1 min-w-0'}, [el('span', {'class': 'd-block text-truncate', text: i.label}),
+					el('span', {'class': 'd-block small text-body-secondary text-truncate', text: i.own ? t('home_c_own') : i.hint})]),
+				i.own ? el('button', {type: 'button', 'class': 'btn btn-sm nuHeToolBtn', 'data-f': 'edt:' + k, title: t('home_edit_tile'), 'aria-label': t('home_edit_tile'),
+					onclick: function () { tileDialog(k); }}, [icon('bi-pencil')]) : null,
+				el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-primary nuHomeAddBtn', 'data-f': 'add:' + k, title: tf('home_c_add_x', i.label),
+					'aria-label': tf('home_c_add_x', i.label), onclick: function () { show(k); var q = $('#nuHomeAddSearch', vp); if (q) q.focus(); }}, [icon('bi-plus-lg')])]));
+		});
+		var none = el('p', {'class': 'nuHomeVpHelp', id: 'nuHomeAddNone', text: t(list.children.length ? 'home_c_add_nomatch' : 'home_c_all_shown')});
+		var q = el('input', {type: 'search', 'class': 'form-control form-control-sm', id: 'nuHomeAddSearch', 'data-f': 'addq', placeholder: t('home_c_add_search'),
+			'aria-label': t('home_c_add_search'), value: VP.addQ || ''});
+		var filterAdd = function () {
+			var w = (VP.addQ || '').toLowerCase().split(/\s+/).filter(Boolean), n = 0;
+			Array.prototype.forEach.call(list.children, function (r) {
+				var on = w.every(function (x) { return r.getAttribute('data-q').indexOf(x) >= 0; });
+				r.hidden = !on;
+				if (on) n++;
+			});
+			list.hidden = !n; none.hidden = n > 0;
+		};
+		q.addEventListener('input', function () { VP.addQ = q.value; filterAdd(); });
+		filterAdd();
+		secs.push(el('section', {'class': 'nuHomeVpSec'}, [lbl('home_c_add_tiles'), q, el('div', {'class': 'mt-2'}, [list, none]),
+			el('p', {'class': 'nuHomeVpHelp', text: t('home_c_add_hint')}),
+			el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary mt-2', id: 'nuHomeAddTile', 'data-f': 'owntile', onclick: function () { tileDialog(null); }},
+				[icon('bi-plus-square me-1'), t('home_add_tile')])]));
+		// structure: groups or tabs, + group, + tab, the favourites filter
+		var displaySel = el('select', {'class': 'form-select form-select-sm', id: 'nuHomeDisplay', 'data-f': 'display'}, [
+			el('option', {value: 'groups', text: t('home_display_groups')}), el('option', {value: 'tabs', text: t('home_display_tabs')})]);
+		displaySel.value = L.display;
+		displaySel.addEventListener('change', function () { L.display = displaySel.value; if (!activeTab && L.tabs[0]) activeTab = L.tabs[0].id; changed(); render(); });
+		secs.push(el('section', {'class': 'nuHomeVpSec'}, [lbl('home_c_structure'),
+			el('label', {'class': 'form-label small mb-1', 'for': 'nuHomeDisplay', text: t('home_display')}), displaySel,
+			el('div', {'class': 'd-flex flex-wrap gap-2 mt-2'}, [
+				el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuHomeAddGroup', 'data-f': 'addgroup', onclick: addGroup},
+					[icon('bi-collection me-1'), t('home_add_group')]),
+				L.display === 'tabs' ? el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuHomeAddTabP', 'data-f': 'addtab', onclick: addTab},
+					[icon('bi-plus-lg me-1'), t('home_add_tab')]) : null,
+				el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary nuHomeFavBtn' + (editFav ? ' active' : ''), id: 'nuHomeEditFav', 'data-f': 'favonly',
+					'aria-pressed': editFav ? 'true' : 'false', disabled: L.fav.length ? null : 'disabled', title: L.fav.length ? t('home_fav_only') : t('home_fav_none_edit'),
+					onclick: function () { editFav = !editFav; render(); }}, [icon(editFav ? 'bi-star-fill me-1' : 'bi-star me-1'), t('home_fav')])])]));
+		if (Object.keys(D.presets || {}).length || pfNote) secs.push(el('section', {'class': 'nuHomeVpSec'}, [lbl('home_start_from'),
+			Object.keys(D.presets || {}).length ? startFromMenu() : null, pfNote ? pfNoteEl() : null]));
+		return secs;
+	}
+	function editFoot() {
+		return [el('span', {'class': 'nuHomeVpDirty' + (dirty ? ' nuHomeVpDirtyOn' : ''), id: 'nuHomeEditState', role: 'status', text: t(dirty ? 'home_c_unsaved' : 'home_c_nochange')}),
+			el('span', {'class': 'd-inline-flex gap-2 ms-auto'}, [
+				el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary', id: 'nuHomeCancel', 'data-f': 'cancel', onclick: function () { closePanel(); }}, [t('cancel')]),
+				el('button', {type: 'button', 'class': 'btn btn-sm btn-primary', id: 'nuHomeSave', 'data-f': 'save', 'data-nu-save': true, onclick: save}, [icon('bi-check-lg me-1'), t('save')])])];
 	}
 
 	// ---------------------------------------------------------------- moving with buttons
@@ -2087,10 +2371,6 @@
 			window.alert(t('home_saved_err') + '\n' + msgs.join('\n'));
 		}).catch(function (e) { b.disabled = false; window.alert(t('home_saved_err') + ' ' + e.message); });
 	}
-	function cancel() {
-		if (dirty && !window.confirm(t('home_discard_confirm'))) return;
-		close();
-	}
 	// ---------------------------------------------------------------- profiles: Start from (in place of Reset)
 	/** A profile of D.presets as an edit copy – own tiles of "from" along with keep (same rules as NuHome::presetLayout()). */
 	function presetLayout(id, from, keep) {
@@ -2128,8 +2408,8 @@
 	function startFromMenu() {
 		var names = ownNames(ownSource());
 		var toggle = el('button', {type: 'button', 'class': 'btn btn-sm btn-outline-secondary dropdown-toggle', id: 'nuHomeStartFrom', 'data-bs-toggle': 'dropdown',
-			'data-bs-auto-close': 'outside', 'aria-expanded': 'false', title: t('home_start_from_tip')},
-			[icon('bi-layers me-sm-1'), el('span', {'class': 'd-none d-sm-inline', text: t('home_start_from')})]);
+			'data-bs-auto-close': 'outside', 'aria-expanded': 'false', title: t('home_start_from_tip'), 'data-bs-popper-config': '{"strategy":"fixed"}', 'data-f': 'startfrom'},
+			[icon('bi-layers me-1'), t('home_start_from_pick')]);
 		var items = [el('li', {}, [el('h6', {'class': 'dropdown-header', text: t('home_pf_menu_head')})])];
 		Object.keys(D.presets || {}).forEach(function (id) {
 			var p = D.presets[id];
@@ -2149,7 +2429,7 @@
 			items.push(el('li', {'class': 'px-3 py-1'}, [el('div', {'class': 'form-check form-switch mb-0'}, [cb,
 				el('label', {'class': 'form-check-label small', 'for': 'nuHomeKeepOwn', text: tf('home_pf_keep_own', names)})])]));
 		}
-		return el('div', {'class': 'dropdown'}, [toggle, el('ul', {'class': 'dropdown-menu dropdown-menu-end shadow nuHeStartMenu'}, items)]);
+		return el('div', {'class': 'dropdown'}, [toggle, el('ul', {'class': 'dropdown-menu shadow nuHeStartMenu'}, items)]);
 	}
 	function applyPreset(id) {
 		var p = D.presets[id];

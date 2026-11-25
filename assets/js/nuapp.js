@@ -990,7 +990,7 @@
 		var syncColumnToggles = function () {
 			$$('.js-col-toggle').forEach(function (t) {
 				var col = t.getAttribute('data-col');
-				var boxes = $$('input[type=checkbox][data-col="' + col + '"]', body).filter(function (b) { return !removed(b); });
+				var boxes = $$('input[type=checkbox][data-col="' + col + '"]', body).filter(function (b) { return !removed(b) && !b.closest('tr').classList.contains('d-none'); });   // the rows shown
 				var on = boxes.filter(function (b) { return b.checked; }).length;
 				t.checked = boxes.length > 0 && on === boxes.length;
 				t.indeterminate = on > 0 && on < boxes.length;
@@ -1132,15 +1132,60 @@
 			});
 		});
 
-		var filter = $('.js-rights-filter');
-		if (filter) {
-			filter.addEventListener('input', function () {
-				var q = filter.value.trim().toLowerCase();
-				rows().forEach(function (r) {
-					var text = ($('.js-form-label', r).textContent + ' ' + r.getAttribute('data-form')).toLowerCase();
-					r.classList.toggle('d-none', q !== '' && text.indexOf(q) === -1);
+		// filter: the text field + chips (rights as ticked when chosen) + group / data mode / form type
+		var filter = $('.js-rights-filter'), flt = $('#accRightsFlt'), chip = '';
+		var ticked = function (r, c) { var b = $('input[type=checkbox][data-col="' + c + '"]', r); return !!(b && b.checked); };
+		var CHIPS = {
+			add: function (r) { return ticked(r, 'add'); },
+			save: function (r) { return ticked(r, 'save'); },
+			delete: function (r) { return ticked(r, 'delete'); },
+			print: function (r) { return ticked(r, 'print') && !ticked(r, 'add') && !ticked(r, 'save') && !ticked(r, 'delete'); },
+			none: function (r) { return !$$('input[type=checkbox][data-col]', r).some(function (b) { return b.checked; }); }
+		};
+		var applyFilter = function () {
+			var q = filter ? filter.value.trim().toLowerCase() : '', sel = {}, active = q !== '' || chip !== '';
+			if (flt) $$('.accFltSel', flt).forEach(function (s) { sel[s.getAttribute('data-flt')] = s.value; });
+			if ((sel.group || '') !== '' || (sel.dm || '*') !== '*' || (sel.ft || '*') !== '*') active = true;
+			var all = rows(), shown = 0;
+			all.forEach(function (r) {
+				var text = ($('.js-form-label', r).textContent + ' ' + r.getAttribute('data-form')).toLowerCase();
+				var ok = q === '' || text.indexOf(q) !== -1;
+				if (ok && chip !== '' && CHIPS[chip]) ok = CHIPS[chip](r);
+				if (ok && sel.group) ok = sel.group === '-' ? (r.getAttribute('data-group') || '') === '' : r.getAttribute('data-group') === sel.group;
+				['dm', 'ft'].forEach(function (k) {
+					if (!ok || sel[k] === undefined || sel[k] === '*') return;
+					var m = $('select.nuAccMode-' + k, r);
+					ok = !!m && m.value === sel[k];
 				});
+				r.classList.toggle('d-none', !ok);
+				if (ok) shown++;
 			});
+			var cnt = $('.js-rights-shown');
+			if (cnt) {
+				cnt.hidden = !active;
+				cnt.textContent = (cnt.getAttribute('data-fmt') || '%1$d / %2$d').replace('%1$d', shown).replace('%2$d', all.length);
+			}
+			var rs = flt && $('.accFltReset', flt);
+			if (rs) rs.hidden = !active || (chip === '' && (sel.group || '') === '' && (sel.dm || '*') === '*' && (sel.ft || '*') === '*');
+			syncColumnToggles();
+		};
+		if (filter) filter.addEventListener('input', applyFilter);
+		if (flt) {
+			flt.addEventListener('click', function (e) {
+				var c = e.target.closest('.accFltChip'), rs = e.target.closest('.accFltReset');
+				if (rs) {
+					chip = '';
+					$$('.accFltSel', flt).forEach(function (s) { s.selectedIndex = 0; });
+				} else if (c) {
+					chip = c.getAttribute('data-chip') || '';
+				} else return;
+				$$('.accFltChip', flt).forEach(function (b) {
+					var on = (b.getAttribute('data-chip') || '') === chip;
+					b.classList.toggle('active', on); b.setAttribute('aria-pressed', on ? 'true' : 'false');
+				});
+				applyFilter();
+			});
+			flt.addEventListener('change', function (e) { if (e.target.closest('.accFltSel')) applyFilter(); });
 		}
 
 		refresh();

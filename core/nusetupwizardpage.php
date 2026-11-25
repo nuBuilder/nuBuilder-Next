@@ -47,6 +47,8 @@ final class NuSetupwizardPage
 			$_SESSION[NuSess::SETUP_WIZARD] = $state;
 			if (!$errors) {
 				$to = $action === 'back' ? max(0, $i - 1) : min(count($steps) - 1, $i + 1);
+				$go = str_starts_with($action, 'go:') ? array_search(substr($action, 3), $steps, true) : false;
+				if ($go !== false && $go < $i) $to = (int)$go;               // a step already done, from the step bar (answers of this step kept)
 				nu_redirect(nu_url('setupwizard', ['step' => $steps[$to]]));
 			}
 		}

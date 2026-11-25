@@ -133,6 +133,31 @@
 		node.addEventListener('shown.bs.modal', function () { node.removeAttribute('data-nuf-showing'); });
 	});
 
+	// Back of the browser / phone closes the editor or the preview instead of leaving the File Manager: opening one adds a history
+	// entry (same address), Back takes it away again; closing the dialogue with its own buttons removes that entry
+	var back = {open: null, skip: false};
+	function backPush(id) {
+		back.open = id;
+		try { history.pushState({nufModal: id}, '', window.location.href); } catch (e) { /* none */ }
+	}
+	['nufPreview', 'nufEditor'].forEach(function (id) {
+		var node = $(id);
+		node.addEventListener('shown.bs.modal', function () { if (!back.open) backPush(id); });
+		node.addEventListener('hidden.bs.modal', function () {
+			if (back.open !== id) return;
+			back.open = null;
+			if (history.state && history.state.nufModal === id) { back.skip = true; history.back(); }
+		});
+	});
+	window.addEventListener('popstate', function () {
+		if (back.skip) { back.skip = false; return; }
+		var id = back.open;
+		if (!id) return;
+		back.open = null;                                   // its history entry is gone already
+		if (id === 'nufEditor') closeEditor(function () { backPush(id); });   // kept open (unsaved changes): the entry again
+		else if (previewModal) hideModal(previewModal, 'nufPreview');
+	});
+
 	var dlg = {modal: null, resolve: null, value: null};
 	function dialog(opt) {
 		// opt: {title, text, input (default value), buttons: [{label, value, cls}], validate(value) → error text|''}
@@ -1119,7 +1144,7 @@
 				});
 				ed.cm.on('changes', editorState);
 				ed.cm.on('cursorActivity', function () { var c = ed.cm.getCursor(); $('nufEditorPos').textContent = (c.line + 1) + ':' + (c.ch + 1); });
-				$('nufEditor').addEventListener('shown.bs.modal', function () { ed.cm.refresh(); if (hasKeyboard()) ed.cm.focus(); });
+				$('nufEditor').addEventListener('shown.bs.modal', function () { ed.cm.refresh(); if (ed.top) { ed.top = false; startPos(); } if (hasKeyboard()) ed.cm.focus(); });
 				try { $('nufWrap').checked = localStorage.getItem('nufWrap') === '1'; } catch (e) { /* none */ }
 				ed.cm.setOption('lineWrapping', $('nufWrap').checked);
 			}
@@ -1135,6 +1160,7 @@
 			ed.cm.setOption('readOnly', ed.readOnly);
 			ed.cm.setValue(d.content);
 			ed.cm.clearHistory();
+			toTop();   // a new file starts at its first line, not where the last one was scrolled to
 			ed.clean = ed.cm.changeGeneration();
 			$('nufEditorTitle').textContent = share.label + ' / ' + p;
 			$('nufEditorTitle').title = share.label + ' / ' + p;
@@ -1151,6 +1177,14 @@
 			editorState();
 			ed.modal.show();
 		}).catch(fail);
+	}
+
+	// cursor and scroll position to the start (again once the dialogue is shown: a hidden scroll box keeps its old position)
+	function toTop() { ed.top = true; startPos(); }
+	function startPos() {
+		ed.cm.setCursor({line: 0, ch: 0});
+		ed.cm.scrollTo(0, 0);
+		requestAnimationFrame(function () { ed.cm.scrollTo(0, 0); });   // after the editor's own scroll into view of the cursor
 	}
 
 	function dirty() { return ed.cm && !ed.cm.isClean(ed.clean); }
@@ -1190,9 +1224,12 @@
 		});
 	}
 
-	function closeEditor() {
+	function closeEditor(onStay) {
 		if (!dirty()) { hideModal(ed.modal, 'nufEditor'); return; }
-		confirmBox(t('close'), t('unsaved'), t('close'), true).then(function (ok) { if (ok) { ed.cm.markClean(); ed.clean = ed.cm.changeGeneration(); hideModal(ed.modal, 'nufEditor'); } });
+		confirmBox(t('close'), t('unsaved'), t('close'), true).then(function (ok) {
+			if (ok) { ed.cm.markClean(); ed.clean = ed.cm.changeGeneration(); hideModal(ed.modal, 'nufEditor'); }
+			else if (typeof onStay === 'function') onStay();
+		});
 	}
 
 	$('nufSaveBtn').addEventListener('click', function () { save(false, false); });

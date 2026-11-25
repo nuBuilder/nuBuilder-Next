@@ -164,6 +164,43 @@ function diffSnap(a, b, before) {
 }
 function dumpTables(tables, file) { execSync('mysqldump ' + DB + ' ' + tables.join(' ') + ' > ' + file); }
 function restore(file) { execSync('mysql ' + DB + ' < ' + file); }
+// One test row in an empty table, so the record view and the save without a change run too: the key and every NOT NULL column
+// without a default get a value of their type. Returns the key (null when the table cannot take one); unseed() removes it again.
+function seedRow(table, pk, form) {
+	const cols = sql('SELECT COLUMN_NAME, IS_NULLABLE, COALESCE(COLUMN_DEFAULT, \'~none~\'), DATA_TYPE, COALESCE(CHARACTER_MAXIMUM_LENGTH, 0), EXTRA'
+		+ ' FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = ' + q(table) + ' ORDER BY ORDINAL_POSITION')
+		.split('\n').filter(Boolean).map(l => l.split('\t'));
+	const key = cols.find(c => c[0] === pk);
+	if (!key) return null;
+	const val = (type, len) => /int|decimal|float|double|bit|year/.test(type) ? '0' : type === 'date' ? "'2026-01-01'"
+		: /datetime|timestamp/.test(type) ? "'2026-01-01 00:00:00'" : type === 'time' ? "'00:00:00'" : "''";
+	const names = [], vals = [];
+	const auto = /auto_increment/.test(key[5]);
+	let id = 'nucompat' + Date.now().toString(36);
+	if (!auto) { if (+key[4] && id.length > +key[4]) id = id.slice(0, +key[4]); names.push('`' + pk + '`'); vals.push(/int/.test(key[3]) ? '900000001' : q(id)); if (/int/.test(key[3])) id = '900000001'; }
+	const set = {};
+	for (const c of cols) {
+		if (c[0] === pk || c[1] !== 'NO' || c[2] !== '~none~' || /auto_increment|GENERATED/i.test(c[5])) continue;
+		set[c[0]] = val(c[3], +c[4]);
+	}
+	// fields the form requires (no blanks / no duplicates) get a value the form accepts, so the save is not refused
+	if (form) for (const l of sql("SELECT sob_all_id, sob_all_type, COALESCE(sob_select_sql, ''), COALESCE(sob_lookup_zzzzsys_form_id, '') FROM zzzzsys_object"
+		+ ' WHERE sob_all_zzzzsys_form_id = ' + q(form) + " AND sob_all_validate IN ('1','2','3')").split('\n').filter(Boolean)) {
+		const [oid, type, src, look] = l.split('\t'), c = cols.find(x => x[0] === oid);
+		if (!c || oid === pk) continue;
+		let v = null;
+		if (type === 'select') v = /^\s*select\b/i.test(src) ? sql(src + ' LIMIT 1').split('\t')[0] : src.replace(/\\n/g, '\n').split('|')[0].trim();
+		else if (type === 'lookup') { const li = look ? formInfo(look) : null; v = li && tableExists(li.table) ? sql('SELECT `' + li.pk + '` FROM `' + li.table + '` ORDER BY 1 LIMIT 1') : null; }
+		else if (/char|text/.test(c[3])) v = (oid + ' ' + id).slice(0, +c[4] || 60);
+		if (v !== null && v !== '') set[oid] = q(v);
+	}
+	for (const k of Object.keys(set)) { names.push('`' + k + '`'); vals.push(set[k]); }
+	try {
+		const out = sql('INSERT INTO `' + table + '` (' + names.join(', ') + ') VALUES (' + vals.join(', ') + ');' + (auto ? ' SELECT LAST_INSERT_ID();' : ''));
+		return auto ? out.trim() : id;
+	} catch (e) { return null; }
+}
+function unseed(table, pk, id) { if (id) sql('DELETE FROM `' + table + '` WHERE `' + pk + '` = ' + q(id)); }
 
 // ------------------------------------------------------------------ tests
 
@@ -199,17 +236,19 @@ for (const form of formsToTest()) {
 		s.rows[form] = a.rows;
 	}]);
 	T.push(['edit:' + form, async (s) => {
-		const recs = (s.rows[form] || sql('SELECT `' + info.pk + '` FROM `' + info.table + '` ORDER BY 1 LIMIT ' + RECORDS).split('\n')).filter(Boolean).slice(0, RECORDS);
+		let recs = (s.rows[form] || sql('SELECT `' + info.pk + '` FROM `' + info.table + '` ORDER BY 1 LIMIT ' + RECORDS).split('\n')).filter(Boolean).slice(0, RECORDS);
+		let seeded = null;
+		if (!recs.length && WRITE) { seeded = seedRow(info.table, info.pk, form); if (seeded) { recs = [seeded]; s.note = 'test row added to the empty table'; } }
 		if (!recs.length) { s.skip = 'no records'; return; }
 		const bad = [];
-		for (const r of recs) {
+		try { for (const r of recs) {
 			await nubOpen(form, r); const a = await nub.evaluate(grabFields, info.ids);
 			await nxOpen(form, r); const b = await nx.evaluate(grabFields, info.ids);
 			for (const k of new Set([...Object.keys(a), ...Object.keys(b)])) {
 				if (a[k] === undefined || b[k] === undefined) { if (!known('value', form, k, String(a[k]), String(b[k]))) bad.push(r + ' ' + k + (a[k] === undefined ? ' only in nuBuilder Next' : ' only in nuBuilder')); continue; }
 				if (norm(a[k]) !== norm(b[k]) && !known('value', form, k, norm(a[k]), norm(b[k]))) bad.push(r + ' ' + k + ' ' + JSON.stringify(norm(a[k])) + ' / ' + JSON.stringify(norm(b[k])));
 			}
-		}
+		} } finally { unseed(info.table, info.pk, seeded); }
 		expect(!bad.length, bad.length + ' difference(s): ' + bad.slice(0, 5).join(' · '));
 	}]);
 	if (WRITE && info.type !== 'browse') T.push(['save:' + form, async (s) => {
@@ -431,7 +470,10 @@ for (const form of sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE zzzzsys_f
 			expect(await nx.locator('#nuBrowseTable').count() === 1, 'no list');
 			expect(await nx.evaluate(() => typeof nuCurrentProperties().browse_filtered_rows === 'number'), 'browse_filtered_rows missing');
 		}
-		const r = info.type === 'browse' ? '' : sql('SELECT `' + info.pk + '` FROM `' + info.table + '` ORDER BY 1 LIMIT 1');
+		let r = info.type === 'browse' ? '' : sql('SELECT `' + info.pk + '` FROM `' + info.table + '` ORDER BY 1 LIMIT 1');
+		let seeded = null;          // an empty table gets one test row (removed again at the end of the test)
+		if (!r && info.type !== 'browse' && WRITE) { seeded = seedRow(info.table, info.pk, form); if (seeded) { r = seeded; s.note = 'test row added to the empty table'; } }
+		try {
 		if (!r) { expect(nx.errors.length === n0, 'list: ' + nx.errors.slice(n0).join(' | ')); s.skip = info.type === 'browse' ? 'list only' : 'list ok, no record'; return; }
 		// a form another form uses as a sub-form (nuaccessforms …) is not saved on its own: "no duplicates" then looks at the whole table
 		// instead of the parent's rows – nuBuilder Forte refuses such a save the same way
@@ -473,6 +515,7 @@ for (const form of sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE zzzzsys_f
 		const e0 = nub.errors.length;
 		await nubOpen(form, r);
 		expect(nub.errors.length === e0, 'nuBuilder: ' + nub.errors.slice(e0).join(' | '));
+		} finally { unseed(info.table, info.pk, seeded); }
 	}]);
 }
 

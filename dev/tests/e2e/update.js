@@ -1338,3 +1338,25 @@ T.db_reset_clean = async (s) => {
 		fs.rmSync(tmp, { recursive: true, force: true });
 	}
 };
+
+T.db_reset_no_devmode = async (s) => {
+	// Reset database also without developer mode: tile with the red Danger badge, the page opens with the Danger zone box
+	if (!SITE) { s.skip = 'needs SITE'; return; }
+	const p = s.ga, cfg = path.join(SITE, 'nuconfig.php'), orig = fs.readFileSync(cfg, 'utf8');
+	try {
+		fs.writeFileSync(cfg, orig.replace(/^(\$nuConfigDevMode\s*=\s*)true/m, '$1false'));
+		for (let n = 0; n < 8; n++) {                                // OPcache may keep the old nuconfig.php for a moment
+			await p.waitForTimeout(1000);
+			await open(p, 'index.php');
+			if (await p.locator('#nuPerf').count() === 0) break;
+		}
+		const tile = p.locator('a[data-nu-tile="dbreset"]');
+		expect(await tile.count() > 0, 'no Reset database tile without developer mode');
+		expect(await p.locator('#nuPerf').count() === 0, 'developer mode still on');
+		const r = await open(p, 'index.php?p=dbreset');
+		if (r.status() === 404) { s.skip = 'not MySQL / SQL Server'; return; }
+		expect(await p.locator('#dbrDanger').isVisible(), 'no Danger zone box');
+		expect((await p.locator('#dbrDanger').textContent()).includes('nutest'), 'Danger zone without the database name');
+		expect(await p.locator('.nuTitleBar .badge', {hasText: 'Dev'}).count() === 0, 'Dev badge still shown');
+	} finally { fs.writeFileSync(cfg, orig); await p.waitForTimeout(1500); }
+};

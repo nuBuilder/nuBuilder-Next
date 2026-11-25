@@ -141,6 +141,11 @@
 		phoneStack();
 		if (N.mode === 'edit') fitWide();   // wide fixed-layout forms: page margins away while the form would scroll sideways
 		if (N.mode === 'edit') growFrames();
+		// launch forms (as Forte): no title – and no header at all while it holds no visible button (form code may add some in nuOnLoad)
+		$('.nuFormHeader.nuLaunchHead').each(function () {
+			var any = Array.prototype.some.call(this.querySelectorAll('#nuActionHolder > *'), function (el) { return el.offsetWidth > 0 || el.offsetHeight > 0; });
+			this.classList.toggle('nuLaunchEmpty', !any);
+		});
 		$('#nuRECORD.nuEditJsWait').removeClass('nuEditJsWait');   // the record shown once the form's code and the layout ran (pages/nuform.php)
 		if (typeof window.nuHScrollScan === 'function') window.nuHScrollScan();   // usability review G5: tabs of three rows or more on phones
 		// first field gets the focus (mouse / trackpad only, see nuFocusFirst in assets/js/nuapp.js) – after nuOnLoad, which may set its own

@@ -975,3 +975,27 @@ T.code_toolbar_groups = async (s) => {
 		&& /^nuCtComment nuCtFormat nuCtCheck$/.test(g[3]) && /nuCtInvisibles nuCtFull$/.test(g[4]), 'groups: ' + JSON.stringify(g));
 	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
 };
+
+// full screen of a code editor on a phone: entering and leaving it does not focus the editor (no on-screen keyboard);
+// with a mouse and keyboard the editor keeps the focus as before
+T.code_full_no_keyboard = async (s) => {
+	const ctx = await browser.newContext({ storageState: await s.ga.context().storageState(), locale: 'en-GB', viewport: { width: 390, height: 780 }, hasTouch: true, isMobile: true });
+	const ph = await ctx.newPage();
+	try {
+		await open(ph, 'index.php?p=procedures&id=new');
+		const btn = '.procCodeTools[data-for=sph_php] .nuCtFull';
+		await ph.waitForSelector(btn, { timeout: 8000 });
+		const inEditor = () => ph.evaluate(() => { const a = document.activeElement; return !!(a && a.closest('.CodeMirror, .cm-editor')); });
+		await ph.tap(btn); await ph.waitForTimeout(300);
+		const full = await ph.evaluate(() => !!document.querySelector('.nuCodeFull'));
+		expect(full && !(await inEditor()), 'phone, full screen: editor focused ' + (await inEditor()) + ', full ' + full);
+		await ph.tap(btn); await ph.waitForTimeout(300);
+		expect(!(await inEditor()), 'phone, back to normal size: editor focused');
+	} finally { await ctx.close(); }
+	const p = s.ga;
+	await open(p, 'index.php?p=procedures&id=new');
+	await p.click('.procCodeTools[data-for=sph_php] .nuCtFull'); await p.waitForTimeout(300);
+	const f = await p.evaluate(() => { const a = document.activeElement; return !!(a && a.closest('.CodeMirror, .cm-editor')); });
+	await p.click('.procCodeTools[data-for=sph_php] .nuCtFull'); await p.waitForTimeout(200);
+	expect(f, 'desktop: the editor keeps the focus in full screen');
+};

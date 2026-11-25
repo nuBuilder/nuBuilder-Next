@@ -18,10 +18,22 @@ final class NuInstallPage
 		}
 	}
 
+	/**
+	 * Whether the dump's views would be refused: the database user may not create views (tried on the database when it exists already;
+	 * a database the installer creates is not tried – its views are then left out on import and named afterwards).
+	 * @param array<string, mixed> $db @param list<string> $views
+	 */
+	public static function viewsBlocked(array $db, array $views): bool
+	{
+		if (!$views || ($db['type'] ?? '') !== 'mysql') return false;
+		try { return !NuSqlImport::canCreateView(NuInstall::connect($db)); } catch (Throwable $e) { return false; }
+	}
+
 	/** After nuconfig.php exists: nuBuilder Next's tables and database steps, token removed. Returns the done data. */
 	public static function finish(?array &$S): array
 	{
-		$out = ['imported' => (int)($S['imported'] ?? 0), 'upgraded' => $S['upgraded'] ?? null, 'steps' => [], 'error' => ''];
+		$out = ['imported' => (int)($S['imported'] ?? 0), 'upgraded' => $S['upgraded'] ?? null, 'steps' => [], 'error' => '',
+			'skipped' => (array)($S['skipped'] ?? []), 'skipped_sql' => (array)($S['skipped_sql'] ?? [])];
 		try {
 			NuSchema::allow();
 			NuSchema::create();

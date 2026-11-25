@@ -37,7 +37,7 @@ if ($existing && isset($_GET['pwreset_frame'])) {                  // the e-mail
 	header('X-Frame-Options: SAMEORIGIN', true);
 	header("Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; img-src data: https: http:; font-src data: https:; frame-ancestors 'self'; base-uri 'none'; form-action 'none'", true);
 	header('Content-Type: text/html; charset=utf-8');
-	exit(NuPwReset::preview($existing)['html']);
+	exit(NuPwReset::preview(NuPwReset::withMailOptions($existing, '', (string)($_GET['lang'] ?? '')))['html']);
 }
 // ------------------------------------------------------------------ field definitions (column => [max length, label key])
 $text = [
@@ -564,21 +564,25 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 						<input type="hidden" name="xa_sent" value="1">
 						<div class="d-flex align-items-center gap-2 mb-1">
 							<span class="form-label mb-0"><?= h(t('xa_title')) ?></span><?= nu_info_tip(t('xa_tip'), '', true, '', 'access-additional') ?>
-							<span class="ms-auto d-flex gap-2"><button type="button" class="btn btn-sm btn-outline-secondary<?= $xaSel ? '' : ' d-none' ?>" id="xaEff"
-								data-bs-toggle="modal" data-bs-target="#xaEffDlg"><i class="bi bi-shield-check me-1"></i><?= h(t('eff_btn')) ?></button>
-							<button type="button" class="btn btn-sm btn-outline-secondary" id="xaAdd"<?= $canSave ? '' : ' disabled' ?>><i class="bi bi-plus-lg me-1"></i><?= h(t('xa_add')) ?></button></span>
+							<span class="ms-2 d-flex flex-wrap gap-2"><button type="button" class="btn btn-sm btn-outline-secondary" id="xaAdd"<?= $canSave ? '' : ' disabled' ?>><i class="bi bi-plus-lg me-1"></i><?= h(t('xa_add')) ?></button>
+							<button type="button" class="btn btn-sm btn-outline-secondary<?= $xaSel ? '' : ' d-none' ?>" id="xaEff"
+								data-bs-toggle="modal" data-bs-target="#xaEffDlg"><i class="bi bi-shield-check me-1"></i><?= h(t('eff_btn')) ?></button></span>
 						</div>
-						<?php $xaOpt = static function (string $sel) use ($accessLevels): string {
+						<?php // the same searchable list as the main access level: grouped, the description as second line (nulistselect.js)
+						$xaOpt = static function (string $sel) use ($accessLevels): string {
 							$o = '<option value="">' . h(t('please_select')) . '</option>';
-							foreach ($accessLevels as $a) $o .= '<option value="' . h($a['zzzzsys_access_id']) . '"'
-								. ($sel === (string)$a['zzzzsys_access_id'] ? ' selected' : '') . '>'
-								. h((string)($a['sal_code'] ?: $a['zzzzsys_access_id']) . ((string)$a['sal_description'] !== '' ? ' – ' . $a['sal_description'] : ''))
-								. '</option>';
-							return $o;
+							$grp = null;
+							foreach ($accessLevels as $a) {
+								$g = (string)$a['sal_group'];
+								if ($g !== $grp) { if ($grp !== null) $o .= '</optgroup>'; $o .= '<optgroup label="' . h($g !== '' ? $g : t('no_group')) . '">'; $grp = $g; }
+								$o .= '<option value="' . h($a['zzzzsys_access_id']) . '" data-sub="' . h((string)$a['sal_description']) . '"'
+									. ($sel === (string)$a['zzzzsys_access_id'] ? ' selected' : '') . '>' . h((string)($a['sal_code'] ?: $a['zzzzsys_access_id'])) . '</option>';
+							}
+							return $o . ($grp !== null ? '</optgroup>' : '');
 						}; $xaRow = static function (string $acc, string $until) use ($xaOpt, $canSave): string {
 							$gone = $until !== '' && !NuUserAccess::active($until);
 							return '<div class="input-group input-group-sm mb-1 xaRow' . ($gone ? ' xaExpired' : '') . '">'
-								. '<select class="form-select" name="xa_acc[]" aria-label="' . h(t('access_level')) . '"' . ($canSave ? '' : ' disabled') . '>' . $xaOpt($acc) . '</select>'
+								. '<select class="form-select nuListTomSelect xaAcc" name="xa_acc[]" aria-label="' . h(t('access_level')) . '"' . ($canSave ? '' : ' disabled') . '>' . $xaOpt($acc) . '</select>'
 								. '<span class="input-group-text">' . h(t('xa_until')) . '</span>'
 								. '<input type="date" class="form-control xaUntil" name="xa_until[]" value="' . h($until) . '" aria-label="' . h(t('xa_until')) . '"' . ($canSave ? '' : ' disabled') . '>'
 								. ($gone ? '<span class="input-group-text text-body-secondary">' . h(t('user_expired')) . '</span>' : '')
@@ -690,7 +694,7 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 
 </form>
 <?php if (!empty($pwrShow)):
-	$pwrMailWhy = NuPwReset::mailProblem($existing);
+	$pwrMailWhy = NuMail::configured() ? null : t('welcome_err_mail');   // the address is typed in the dialog (prefilled with the user's)
 	$pwrPk = NuPasskey::count($id); ?>
 <div class="modal fade" id="pwrDlg" tabindex="-1" aria-labelledby="pwrDlgTitle" aria-hidden="true">
 	<div class="modal-dialog"><form class="modal-content" method="post" id="pwrForm" action="<?= h(nu_url('user', ['id' => $id])) ?>" data-nu-once>
@@ -701,9 +705,25 @@ nu_layout_start($title, 'users', ['head' => '<link rel="stylesheet" href="' . nu
 			<p class="small"><?= h(t('pwr_dlg_intro', (string)$existing['sus_login_name'], NuPwReset::HOURS)) ?></p>
 			<div class="form-check mb-1">
 				<input class="form-check-input" type="radio" name="how" id="pwrHowMail" value="mail"<?= $pwrMailWhy === null ? ' checked' : ' disabled' ?>>
-				<label class="form-check-label" for="pwrHowMail"><?= h(t('pwr_how_mail', trim((string)$existing['sus_email']) ?: '–')) ?></label>
-				<?php if ($pwrMailWhy === null): ?>
-					<a class="small ms-1" id="pwrPreview" href="<?= h(nu_url('user', ['id' => $id, 'pwreset_frame' => 1])) ?>" target="_blank" rel="noopener"><?= h(t('pwr_preview')) ?></a>
+				<label class="form-check-label" for="pwrHowMail"><?= h(t('pwr_how_mail_to')) ?></label>
+				<?php if ($pwrMailWhy === null):
+					// address and language of this e-mail only – prefilled with the user's own; the preview follows the language
+					$pwrLangs = nu_lang_choices();
+					$pwrUserLang = (string)(nu_lang_from_db((string)($existing['sus_language'] ?? '')) ?? nu_lang());
+					$pwrUserVar = (string)NuUserJson::get((string)$existing['zzzzsys_user_id'], 'NUNEXT_LANG_VARIANT'); ?>
+					<a class="small ms-1" id="pwrPreview" href="<?= h(nu_url('user', ['id' => $id, 'pwreset_frame' => 1])) ?>"
+						data-base="<?= h(nu_url('user', ['id' => $id, 'pwreset_frame' => 1])) ?>" target="_blank" rel="noopener"><?= h(t('pwr_preview')) ?></a>
+					<div class="row g-2 mt-1" id="pwrMailOpts">
+						<div class="col-12"><label class="form-label small mb-1" for="pwrEmail"><?= h(t('user_email')) ?></label>
+							<input class="form-control form-control-sm" type="email" id="pwrEmail" name="pwr_email" maxlength="255" required
+								value="<?= h(trim((string)$existing['sus_email'])) ?>"></div>
+						<div class="col-12"><label class="form-label small mb-1" for="pwrLang"><?= h(t('pwr_mail_lang')) ?></label>
+							<select class="form-select form-select-sm" id="pwrLang" name="pwr_lang">
+								<option value=""><?= h(t('pwr_mail_lang_user', (string)($pwrLangs[$pwrUserVar] ?? $pwrLangs[$pwrUserLang] ?? (NU_LANGS[$pwrUserLang][0] ?? $pwrUserLang)))) ?></option>
+								<?php foreach ($pwrLangs as $lc => $ln): ?><option value="<?= h((string)$lc) ?>"><?= h((string)$ln) ?></option><?php endforeach; ?>
+							</select></div>
+						<div class="col-12 form-text mt-1"><?= h(t('pwr_mail_once')) ?></div>
+					</div>
 				<?php else: ?>
 					<div class="form-text text-body-secondary" id="pwrMailWhy"><?= h($pwrMailWhy) ?></div>
 				<?php endif; ?>

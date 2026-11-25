@@ -21,16 +21,21 @@ final class NuDbReset
 	/** Source of a clean installation (nuBuilder Next's install scripts) – not a file. */
 	public const CLEAN = '@clean';
 
-	/** Developer mode and MySQL or SQL Server – the globeadmin check is the caller's (page) or the shell's (nucron.php). */
+	/** MySQL or SQL Server – the globeadmin check is the caller's (page: allowed()) or the shell's (nucron.php). */
 	public static function available(): bool
 	{
-		$dev = nu_cfg('nuConfigDevMode');
-		$on = $dev === true || $dev === 1 || (is_string($dev) && in_array(strtolower(trim($dev)), ['1', 'true', 'yes', 'on'], true));
 		try {
-			return $on && in_array(nu_db()->type, ['mysql', 'sqlsrv'], true);
+			return in_array(nu_db()->type, ['mysql', 'sqlsrv'], true);
 		} catch (Throwable) {
 			return false;
 		}
+	}
+
+	/** The page and its tile: the real globeadmin (not demo, not acting as a user) on MySQL or SQL Server. */
+	public static function allowed(): bool
+	{
+		$u = NuAuth::user();
+		return $u && !empty($u['globeadmin']) && empty($u['demo']) && self::available();
 	}
 
 	/** SQL files (dumps, packages) can be imported: MySQL / MariaDB only. */
@@ -147,6 +152,8 @@ final class NuDbReset
 		try { $chk = NuInstall::checkDump(NuSqlImport::statements($path), true); } catch (RuntimeException $e) { return ['ok' => false, 'error' => $e->getMessage()]; }
 		$tables = self::currentTables();
 		clearstatcache();
+		// views the database user may not create are left out of the import (NuSqlImport::skippable) – said BEFORE anything is dropped
+		$chk['views_blocked'] = $chk['ok'] && !empty($chk['views']) && !NuSqlImport::canCreateView(nu_db());
 		return $chk + ['file' => basename($path), 'bytes' => NuSqlImport::size($path), 'fsize' => (int)@filesize($path), 'mtime' => (int)@filemtime($path),
 			'current' => $tables, 'database' => self::dbName()];
 	}
@@ -230,7 +237,7 @@ final class NuDbReset
 
 	/**
 	 * Runs the reset. $backup: a backup with the whole database first (Update → Backups). $sample: the sample application afterwards.
-	 * @return array{backup: string, dropped: int, statements: int, upgraded: array, steps: array, sample: string}
+	 * @return array{backup: string, dropped: int, statements: int, upgraded: array, steps: array, sample: string, skipped?: list<string>, skipped_sql?: array<string, string>}
 	 */
 	public static function run(string $path, bool $backup, bool $sample, string $via = 'page', ?callable $progress = null): array
 	{
@@ -250,6 +257,7 @@ final class NuDbReset
 		try {
 			$out['statements'] = NuSqlImport::run($db, $path, $progress, true);
 			$out['skipped'] = NuSqlImport::$skipped;
+			$out['skipped_sql'] = NuSqlImport::$skippedSql;
 		} finally {
 			$db->exec('SET FOREIGN_KEY_CHECKS = 1');
 		}
@@ -449,7 +457,8 @@ final class NuDbReset
 	{
 		NuDB::forgetColumns('');
 		$out = ['backup' => (string)($j['result']['backup'] ?? ''), 'dropped' => (int)($j['result']['dropped'] ?? 0), 'statements' => (int)$j['st']['n'],
-			'upgraded' => NuInstall::upgradeTo49($db), 'steps' => [], 'sample' => '', 'skipped' => array_values((array)($j['st']['skipped'] ?? []))];
+			'upgraded' => NuInstall::upgradeTo49($db), 'steps' => [], 'sample' => '', 'skipped' => array_values((array)($j['st']['skipped'] ?? [])),
+			'skipped_sql' => (array)($j['st']['skipped_sql'] ?? [])];
 		try { NuSettings::create($db); } catch (Throwable $e) { error_log('nuBuilder Next reset, settings table: ' . $e->getMessage()); }
 		NuSchema::allow();
 		NuSchema::create();

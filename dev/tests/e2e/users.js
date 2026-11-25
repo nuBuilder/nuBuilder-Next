@@ -429,13 +429,14 @@ T.pw_reset_admin = async (s) => {
 	};
 	const hash = () => sql(`SELECT sus_login_password FROM zzzzsys_user WHERE zzzzsys_user_id = '${uid}'`);
 	const reauth = async (url) => { if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, url); return true; } return false; };
-	const send = async (how, block) => {
+	const send = async (how, block, other) => {
 		const url = 'index.php?p=user&id=' + uid;
 		for (let i = 0; i < 2; i++) {
 			await open(p, url);
 			await p.click('#pwrOpen'); await p.waitForSelector('#pwrDlg.show');
 			await p.check(how === 'mail' ? '#pwrHowMail' : '#pwrHowLink');
 			if (block) await p.check('#pwrBlock');
+			if (other) { await p.fill('#pwrEmail', other.email); await p.selectOption('#pwrLang', other.lang); }
 			await Promise.all([p.waitForNavigation(), p.click('#pwrSend')]); await p.waitForLoadState('networkidle');
 			if (!(await reauth(url))) return;
 		}
@@ -459,6 +460,12 @@ T.pw_reset_admin = async (s) => {
 		expect(/eva@example\.com/.test(await p.textContent('body')) && m.subject === 'Set a new password' && /p=reset/.test(m.body), 'mail sent: ' + JSON.stringify(m).slice(0, 200));
 		const link1 = (m.body.match(/href="([^"]*p=reset[^"]*)"/) || [])[1].replace(/&amp;/g, '&');
 		expect(hash() === h0, 'password unchanged after the mail');
+		// 1b. another address and language: sent there in German, the user's row unchanged
+		await send('mail', false, { email: 'other@example.com', lang: 'de-DE' });
+		m = last();
+		const raw = fs.readFileSync(sdata, 'utf8').split('=====END=====').filter(x => x.trim()).pop();
+		expect(/other@example\.com/.test(raw) && m.subject !== 'Set a new password' && /p=reset/.test(m.body), 'other address + German: ' + m.subject);
+		expect(sql(`SELECT CONCAT(sus_email, '|', IFNULL(sus_language, '')) FROM zzzzsys_user WHERE zzzzsys_user_id = '${uid}'`) === 'eva@example.com|', 'user row unchanged');
 		// 2. link shown once + block: hash changed, Eva signed out, the first link replaced
 		await send('link', true);
 		const link2 = await p.inputValue('#pwrLinkUrl');
@@ -1909,7 +1916,7 @@ T.xa_row_widths = async (s) => {
 			await ga.click('#xaAdd');
 			const r = await ga.evaluate(() => {
 				const row = [...document.querySelectorAll('#xaRows .xaRow')].pop();
-				const sel = row.querySelector('select').getBoundingClientRect().width, d = row.querySelector('.xaUntil');
+				const sel = (row.querySelector('.ts-wrapper') || row.querySelector('select')).getBoundingClientRect().width, d = row.querySelector('.xaUntil');
 				return { sel, date: d.getBoundingClientRect().width, row: row.getBoundingClientRect().width };
 			});
 			expect(r.sel > r.date, w + ' px: the level select is wider than the date: ' + JSON.stringify(r));
@@ -1932,7 +1939,7 @@ T.user_extra_access = async (s) => {
 		await open(p, 'index.php?p=user&id=' + dario);
 		expect(await p.isVisible('#xaNone'), 'no additional level at first');
 		await p.click('#xaAdd');
-		await p.selectOption('#xaRows .xaRow:last-child select', 'sample_editor');
+		await p.evaluate(() => { const s = document.querySelector('#xaRows .xaRow:last-child select'); if (s.tomselect) s.tomselect.setValue('sample_editor'); else { s.value = 'sample_editor'; s.dispatchEvent(new Event('change', {bubbles: true})); } });
 		await Promise.all([p.waitForNavigation(), p.click('[data-nu-save]')]);
 		expect(sql(`SELECT access_id FROM zzzzsys_nunext_user_access WHERE user_id = '${dario}'`) === 'sample_editor', 'saved');
 		expect(/access_extra:sample_editor/.test(sql(`SELECT details FROM zzzzsys_nunext_log WHERE event = 'user_updated' AND record_id = '${dario}' ORDER BY 1 DESC LIMIT 1`)), 'logged');
@@ -1996,7 +2003,7 @@ T.effective_rights = async (s) => {
 	await open(p, 'index.php?p=user&id=sample_dario');
 	expect(!await p.isVisible('#xaEff'), 'button hidden without additional levels');
 	await p.click('#xaAdd');
-	await p.selectOption('#xaRows .xaRow:last-child select', 'sample_editor');
+	await p.evaluate(() => { const s = document.querySelector('#xaRows .xaRow:last-child select'); if (s.tomselect) s.tomselect.setValue('sample_editor'); else { s.value = 'sample_editor'; s.dispatchEvent(new Event('change', {bubbles: true})); } });
 	await p.waitForTimeout(200);
 	expect(await p.isVisible('#xaEff'), 'button shown with an additional level');
 	await p.click('#xaEff');
@@ -2763,4 +2770,91 @@ T.info_tip_tap_close = async (s) => {
 		await p.locator('h1').first().tap(); await p.waitForTimeout(600);
 		expect(!(await shown()), 'a tap elsewhere left the tip open');
 	} finally { await ctx.close(); }
+};
+
+T.adminroles_access_col = async (s) => {
+	// admin roles list: own column Access – a pill in every row (Full access with the causing rights as tooltip / Limited),
+	// rights as a plain right-aligned count, sort and filter by access
+	const p = s.ga;
+	await open(p, 'index.php?p=adminroles');
+	const m = await p.evaluate(() => [...document.querySelectorAll('table.nu-table tbody tr')].map(tr => {
+		const a = tr.querySelector('.nuAdmAccess'); return { acc: a && a.textContent.trim(), full: !!(a && a.classList.contains('nuAdmAccessFull')), tip: a ? a.title : '',
+			badgeInRights: !!tr.querySelector('.badge.text-bg-danger') }; }));
+	expect(m.length > 0 && m.every(r => r.acc && !r.badgeInRights), 'every row has an access pill, no badge in Rights ' + JSON.stringify(m));
+	expect(m.filter(r => r.full).every(r => /\n/.test(r.tip)), 'full access names its rights ' + JSON.stringify(m));
+	const nFull = m.filter(r => r.full).length;
+	await open(p, 'index.php?p=adminroles&full=yes');
+	const n = await p.evaluate(() => document.querySelectorAll('table.nu-table tbody .nuAdmAccessFull').length);
+	expect(n === nFull, 'filter full: ' + n + ' / ' + nFull);
+};
+
+T.user_access_ts = async (s) => {
+	// user form: the focus ring of the access level (searchable select in an input group) lies above the open button; additional
+	// access levels are searchable selects too (also rows added later)
+	const id = sql("SELECT zzzzsys_user_id FROM zzzzsys_user WHERE sus_login_name LIKE 'sample_%' LIMIT 1");
+	if (!id) { s.skip = 'no sample users'; return; }
+	const p = s.ga;
+	await open(p, 'index.php?p=user&id=' + encodeURIComponent(id));
+	await p.click('#sus_zzzzsys_access_id + .ts-wrapper .ts-control'); await p.waitForTimeout(200);
+	const z = await p.evaluate(() => getComputedStyle(document.querySelector('#sus_zzzzsys_access_id + .ts-wrapper')).zIndex);
+	expect(z === '5', 'focused select above the button, z-index ' + z);
+	await p.keyboard.press('Escape');
+	await p.click('#xaAdd'); await p.waitForTimeout(200);
+	const ts = await p.evaluate(() => { const r = [...document.querySelectorAll('#xaRows .xaRow')].pop(); return { ts: !!r.querySelector('select').tomselect, groups: r.querySelectorAll('select optgroup').length }; });
+	expect(ts.ts && ts.groups > 0, 'additional level row: searchable select ' + JSON.stringify(ts));
+};
+
+// access level → Form rights: chips + selects filter the grid; the column boxes tick the rows shown
+T.access_rights_filter = async (s) => {
+	const p = s.ga;
+	await open(p, 'index.php?p=accesslevel&id=sample_editor&tab=rights');
+	const vis = () => p.$$eval('.js-rights-body tr[data-form]:not(.d-none)', (r) => r.length);
+	const all = await vis();
+	expect(all > 2, 'rows: ' + all);
+	// one row without any right
+	const first = p.locator('.js-rights-body tr[data-form]').first();
+	for (const b of await first.locator('input[type=checkbox][data-col]').all()) if (await b.isChecked()) await b.uncheck();
+	await p.click('.accFltChip[data-chip="none"]');
+	expect(await vis() === 1 && /^1\D+\d+$/.test((await p.textContent('.js-rights-shown')).trim()), 'No rights ticked: ' + await vis());
+	await p.click('.accFltChip[data-chip="save"]');
+	expect(await vis() === all - 1, 'Can save: ' + await vis());
+	// column box ticks only the rows shown
+	await p.click('.accFltChip[data-chip="none"]');
+	await p.check('.js-col-toggle[data-col="print"]');
+	await p.click('.accFltChip[data-chip="print"]');
+	expect(await vis() === 1, 'Print / view only after ticking Print in the filtered rows: ' + await vis());
+	await p.selectOption('.accFltSel[data-flt="dm"]', '0');
+	expect(await vis() === 0 && await p.isVisible('.accFltReset'), 'data mode filter');
+	await p.click('.accFltReset');
+	expect(await vis() === all && await p.isHidden('.js-rights-shown'), 'reset');
+};
+
+// setup wizard: Back · steps · Next in one bar that stays at the top; a done step is a button; Enter = Next; phones: a step menu
+T.wizard_top_bar = async (s) => {
+	const p = s.ga;
+	await open(p, 'index.php?p=setupwizard&step=security');
+	if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForNavigation(), p.click('button[type=submit]')]); await open(p, 'index.php?p=setupwizard&step=security'); }
+	expect(await p.locator('#wizBar #wizBack').isVisible() && await p.locator('#wizBar #wizNext').isVisible(), 'Back / Next not in the bar');
+	expect(await p.locator('#wizForm button[value="back"], #wizForm button[value="next"]:visible').count() === 0, 'buttons still at the end of the form');
+	await p.evaluate(() => window.scrollTo(0, document.body.scrollHeight)); await p.waitForTimeout(200);
+	const top = await p.$eval('#wizNext', (b) => b.getBoundingClientRect().top);
+	expect(top >= 0 && top < 160, 'Next scrolled away: ' + top);
+	// a done step jumps back, the answers of this step are kept
+	await p.fill('#admin_email', 'e2e-wizard@example.com');
+	await Promise.all([p.waitForNavigation(), p.click('.nuWizSteps button[value="go:basics"]')]);
+	expect(/step=basics/.test(p.url()), 'jump to basics: ' + p.url());
+	expect(await p.locator('.nuWizSteps button[value^="go:"]').count() === 0, 'a later step is a button on the first step');
+	await open(p, 'index.php?p=setupwizard&step=security');
+	expect(await p.inputValue('#admin_email') === 'e2e-wizard@example.com', 'answer of the step lost');
+	// Enter in a field = Next (not Back)
+	await Promise.all([p.waitForNavigation(), p.press('#admin_email', 'Enter')]);
+	expect(/step=samples/.test(p.url()), 'Enter went to ' + p.url());
+	// phones: the step menu, Back as an icon
+	await p.setViewportSize({width: 390, height: 800});
+	await open(p, 'index.php?p=setupwizard&step=security');
+	expect(await p.locator('#wizStepBtn').isVisible() && !(await p.locator('.nuWizSteps').isVisible()), 'phone step menu');
+	const w = await p.evaluate(() => document.documentElement.scrollWidth);
+	expect(w <= 390, 'page wider than the phone: ' + w);
+	await p.setViewportSize({width: 1400, height: 900});
+	await p.evaluate(() => fetch('index.php?p=setupwizard&step=security'));
 };

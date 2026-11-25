@@ -55,11 +55,11 @@ final class NuLanguages
 		return in_array($code, self::installed(), true);
 	}
 
-	/** Language when nothing else decides: German, else English, else the first installed one. */
+	/** Language when nothing else decides (no browser language that is installed): English, else German, else the first installed one. */
 	public static function fallback(): string
 	{
 		$l = self::installed();
-		foreach (['de', 'en'] as $c) if (in_array($c, $l, true)) return $c;
+		foreach (['en', 'de'] as $c) if (in_array($c, $l, true)) return $c;
 		return $l[0];
 	}
 

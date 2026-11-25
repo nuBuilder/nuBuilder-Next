@@ -78,9 +78,9 @@ declare(strict_types=1);
  *   --lang    language of the titles (an installed one; default: the installation's fallback)
  *   Exit code: 0 = no failed check (warnings / skipped allowed), 1 = a check failed, 2 = wrong call.
  *
- * Reset database (only with $nuConfigDevMode = true, MySQL / MariaDB): deletes ALL tables of the database, imports a nuBuilder
+ * Reset database (MySQL / MariaDB, SQL Server: --clean only): deletes ALL tables of the database, imports a nuBuilder
  * Forte (4.x) SQL file (nubuilder4.sql or a complete dump, .sql / .sql.gz / .zip) and creates nuBuilder Next's tables:
- *     php nucron.php reset --sql=<file>|--clean [--check] [--backup] [--sample] --yes
+ *     php nucron.php reset --sql=<file>|--clean [--check] [--backup] [--sample] [--skip-views] --yes
  *   --check  read and check the file only, list the tables that would be deleted – nothing changes (no --yes needed)
  *   --backup a backup with the whole database first (Update → Backups)      --sample  install the sample application afterwards
  */
@@ -104,9 +104,9 @@ $_SESSION = [];
 $args = array_slice($argv, 1);
 if (($args[0] ?? '') === 'reset') {
 	$ro = [];
-	foreach (array_slice($args, 1) as $a) if (preg_match('/^--([a-z]+)(?:=(.*))?$/s', $a, $m)) $ro[$m[1]] = $m[2] ?? true;
-	$usage = "Usage: php nucron.php reset --sql=<file>|--clean [--check] [--backup] [--sample] --yes\n";
-	if (!NuDbReset::available()) { fwrite(STDERR, "Reset database needs \$nuConfigDevMode = true in nuconfig.php and a MySQL / MariaDB or SQL Server database.\n"); exit(2); }
+	foreach (array_slice($args, 1) as $a) if (preg_match('/^--([a-z-]+)(?:=(.*))?$/s', $a, $m)) $ro[$m[1]] = $m[2] ?? true;
+	$usage = "Usage: php nucron.php reset --sql=<file>|--clean [--check] [--backup] [--sample] [--skip-views] --yes\n";
+	if (!NuDbReset::available()) { fwrite(STDERR, "Reset database needs a MySQL / MariaDB or SQL Server database.\n"); exit(2); }
 	$file = !empty($ro['clean']) ? NuDbReset::CLEAN : (is_string($ro['sql'] ?? null) ? (string)$ro['sql'] : '');
 	if ($file !== NuDbReset::CLEAN && !NuDbReset::filesAllowed()) { fwrite(STDERR, "SQL Server: only --clean (a clean installation from nuBuilder Next's install scripts).\n" . $usage); exit(2); }
 	if ($file !== NuDbReset::CLEAN && ($file === '' || !is_file($file))) { fwrite(STDERR, ($file === '' ? 'No --sql=<file>.' : 'File not found: ' . $file) . "\n" . $usage); exit(2); }
@@ -116,7 +116,10 @@ if (($args[0] ?? '') === 'reset') {
 	if ($file === NuDbReset::CLEAN) echo str_pad('creates', 14) . $chk['tables'] . " table(s) of nuBuilder Next's install scripts\n";
 	else echo str_pad('creates', 14) . $chk['tables'] . ' table(s), ' . $chk['app'] . ' of the application, ' . $chk['forms'] . ' form(s), ' . $chk['users'] . " user(s)\n";
 	echo str_pad('deletes', 14) . count($chk['current']) . ' table(s) / view(s) now in the database' . "\n";
+	if (!empty($chk['views_blocked'])) echo str_pad('views', 14) . count($chk['views']) . ' view(s) the database user may not create – left out with --skip-views: '
+		. implode(', ', $chk['views']) . "\n";
 	if (!empty($ro['check'])) exit(0);
+	if (!empty($chk['views_blocked']) && empty($ro['skip-views'])) { fwrite(STDERR, "Nothing done: the database user may not create views – add --skip-views to import without them.\n" . $usage); exit(2); }
 	if (empty($ro['yes'])) { fwrite(STDERR, "Nothing done: add --yes to delete all tables and import the file.\n" . $usage); exit(2); }
 	try {
 		$r = NuDbReset::run($file, !empty($ro['backup']), !empty($ro['sample']), 'cli', static function (int $done, int $all) {
@@ -129,6 +132,8 @@ if (($args[0] ?? '') === 'reset') {
 	}
 	if ($r['backup'] !== '') echo str_pad('backup', 14) . $r['backup'] . "\n";
 	echo str_pad('dropped', 14) . $r['dropped'] . "\n" . str_pad('statements', 14) . $r['statements'] . "\n" . str_pad('steps', 14) . count($r['steps']) . "\n";
+	if (!empty($r['skipped'])) echo str_pad('left out', 14) . implode(', ', $r['skipped']) . "\n";
+	if (!empty($r['skipped_sql'])) echo "-- CREATE VIEW statements of the views left out (run them with a user who may create views):\n" . implode(";\n", $r['skipped_sql']) . ";\n";
 	if ($r['sample'] !== '') echo str_pad('sample', 14) . ($r['sample'] === 'ok' ? 'installed (Admin tools → Sample data → New passwords)' : 'failed: ' . $r['sample']) . "\n";
 	echo "Done. Open index.php?p=setupwizard to set up the installation.\n";
 	exit(0);

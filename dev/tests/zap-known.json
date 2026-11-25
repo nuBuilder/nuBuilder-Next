@@ -83,8 +83,8 @@
   {
    "id": "40018",
    "url": "[?&]p=formexport(&|$)",
-   "param": "^bt$",
-   "reason": "form list export (Excel): bt is the key of the breadcrumb trail in the session (12 hex characters, checked by NuTrail::get – anything else is ignored) and never reaches SQL; the export does not even read it. ZAP compares the downloads of its payloads and saw a difference because the .xlsx file carries its creation time (docProps/core.xml, one second apart). Checked by hand: the sheets of bt=<key>, <key>' AND '1'='1' -- and <key>' AND '1'='2' -- are byte for byte the same"
+   "param": "^(bt|per)$",
+   "reason": "form list export (Excel): bt is the key of the breadcrumb trail in the session (12 hex characters, checked by NuTrail::get – anything else is ignored) and never reaches SQL; the export does not even read it. ZAP compares the downloads of its payloads and saw a difference because the .xlsx file carries its creation time (docProps/core.xml, one second apart). Checked by hand: the sheets of bt=<key>, <key>' AND '1'='1' -- and <key>' AND '1'='2' -- are byte for byte the same. The same for per (the page size: read with (int) by nu_per_param, 1–1000, else the form's rows per page): per=10, 10' AND '1'='1' -- and 10' AND '1'='2' -- give identical sheets"
   }
  ]
 }

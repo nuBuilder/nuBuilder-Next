@@ -188,7 +188,8 @@ final class NuSqlDump
 	 * drops the tables of the scope, runs the dump, compares the row count of every table with the backup, then nuBuilder Next's tables
 	 * and database steps of THIS version. If the restore fails after the drop, the backup made first is put back by itself.
 	 * $backupFirst false only from the command line (--no-backup): then there is no way back.
-	 * @return array{safety: string, dropped: int, statements: int, steps: array, scope: string, version: string, checked: int, mismatch: array<string, array{0: int, 1: int}>}
+	 * @return array{safety: string, dropped: int, statements: int, steps: array, scope: string, version: string, checked: int, mismatch: array<string, array{0: int, 1: int}>,
+	 *   skipped: list<string>, skipped_sql: array<string, string>}
 	 */
 	public static function restore(string $zip, bool $backupFirst, string $via = 'page', ?callable $progress = null): array
 	{
@@ -199,7 +200,7 @@ final class NuSqlDump
 		$scope = in_array($sql['scope'] ?? '', ['nubuilder', 'nunext', 'all'], true) ? (string)$sql['scope'] : 'all';
 		if ($p = self::spaceProblem(NuUpdate::backupDir(), self::entrySize($zip) * 2 + ($backupFirst ? self::backupNeed($scope, false) : 0))) throw new RuntimeException($p);
 		$tmp = self::extract($zip);                        // before the safety backup: the keep rule may take the SQL out of older backups
-		$out = ['safety' => '', 'dropped' => 0, 'statements' => 0, 'steps' => [], 'scope' => $scope, 'version' => (string)($meta['version'] ?? '?'), 'checked' => 0, 'mismatch' => []];
+		$out = ['safety' => '', 'dropped' => 0, 'statements' => 0, 'steps' => [], 'scope' => $scope, 'version' => (string)($meta['version'] ?? '?'), 'checked' => 0, 'mismatch' => [], 'skipped' => [], 'skipped_sql' => []];
 		$db = nu_db();
 		$dbName = (string)$db->value('SELECT DATABASE()');
 		try {
@@ -215,6 +216,8 @@ final class NuSqlDump
 			try {
 				try {
 					[$out['dropped'], $out['statements']] = self::load($db, $tmp, $scope, $progress);
+					$out['skipped'] = NuSqlImport::$skipped;              // views / routines the database user may not create here
+					$out['skipped_sql'] = NuSqlImport::$skippedSql;
 				} catch (Throwable $e) {
 					// the tables are gone: put the backup made first back, then report both
 					$back = '';
@@ -254,7 +257,8 @@ final class NuSqlDump
 		}
 		self::stayIn();
 		NuLog::write('database_restore', $dbName, '', ['backup' => basename($zip), 'version' => $out['version'], 'scope' => $scope, 'dropped' => $out['dropped'],
-			'statements' => $out['statements'], 'safety' => $out['safety'], 'checked' => $out['checked'], 'mismatch' => $out['mismatch'], 'via' => $via]);
+			'statements' => $out['statements'], 'safety' => $out['safety'], 'checked' => $out['checked'], 'mismatch' => $out['mismatch'], 'via' => $via]
+			+ ($out['skipped'] ? ['skipped' => $out['skipped'], 'skipped_sql' => $out['skipped_sql']] : []));
 		return $out;
 	}
 

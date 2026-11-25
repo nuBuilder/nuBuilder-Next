@@ -69,11 +69,14 @@ nu_layout_start(t('debug_title'), 'log');
 		<?php // Back · Refresh · Print in one style; the auto refresh switch at the right end, on phones in its own row ?>
 		<a class="btn nuBtnAct nuPhKeep" href="<?= h(nu_url('debug', $keep)) ?>" title="<?= h(t('debug_refresh')) ?>"><i class="bi bi-arrow-clockwise me-1"></i><?= h(t('debug_refresh')) ?></a>
 		<?= $total > 0 ? NuListExport::buttons(NuAcl::FORM_DEBUG, 'debug', $keep, false, 'nuBtnAct') : '' /* no records: nothing to export */ ?>
-		<?php if ($canDelete && $total): ?>
-			<form method="post" class="d-inline" data-confirm="<?= h(t('debug_delete_all_confirm')) ?>" data-confirm-ok="<?= h(t('delete')) ?>" data-confirm-class="btn btn-danger">
+		<?php if ($canDelete && $total): // deleted without a question – assets/js/nudebug.js offers Undo (without the script: the form below, as before) ?>
+			<form method="post" class="d-inline" id="debugDelAllForm" data-confirm="<?= h(t('debug_delete_all_confirm')) ?>" data-confirm-ok="<?= h(t('delete')) ?>"
+				data-confirm-class="btn btn-danger">
 				<?= nu_csrf_field() ?><input type="hidden" name="action" value="delete_all">
-				<button class="btn nuBtnAct nuBtnDel" type="submit"><i class="bi bi-trash me-1"></i><?= h(t('debug_delete_all')) ?></button>
+				<button class="btn nuBtnAct nuBtnDel" type="submit" id="debugDeleteAll"><i class="bi bi-trash me-1"></i><?= h(t('debug_delete_all')) ?></button>
 			</form>
+			<?php if ($rows): ?><button class="btn nuBtnAct nuBtnDel" type="submit" form="debugList" name="action" value="delete_selected" id="debugDeleteSel"
+				disabled><i class="bi bi-trash me-1"></i><?= h(t('debug_delete_selected')) ?></button><?php endif; ?>
 		<?php endif; ?>
 		<div class="form-check form-switch mb-0 debugAutoWrap">
 			<input class="form-check-input" type="checkbox" role="switch" id="debugAuto">
@@ -104,15 +107,13 @@ nu_layout_start(t('debug_title'), 'log');
 		</div></div>
 	</div>
 </form>
-<form method="post" id="debugList">
+<form method="post" id="debugList" data-undo="<?= h(t('print_undo')) ?>" data-empty="<?= h(t('no_records')) ?>">
 	<?= nu_csrf_field() ?>
 	<div class="nuListBody">
 		<?php if ($canDelete && $rows): ?>
 			<div class="card-header d-flex align-items-center gap-2">
 				<input class="form-check-input mt-0" type="checkbox" id="debugAll" aria-label="<?= h(t('debug_select_all')) ?>">
 				<label class="small me-auto" for="debugAll"><?= h(t('debug_select_all')) ?></label>
-				<button class="btn btn-sm btn-outline-danger" type="submit" name="action" value="delete_selected" id="debugDeleteSel"
-					disabled><i class="bi bi-trash me-1"></i><?= h(t('debug_delete_selected')) ?></button>
 			</div>
 		<?php endif; ?>
 		<div class="list-group list-group-flush">
@@ -126,11 +127,15 @@ nu_layout_start(t('debug_title'), 'log');
 					<div class="d-flex flex-wrap gap-2 align-items-center mb-1">
 						<?php if ($canDelete): ?><input class="form-check-input mt-0 debugSel" type="checkbox" name="ids[]" value="<?= h($r['zzzzsys_debug_id']) ?>"
 							aria-label="<?= h(t('debug_select')) ?>"><?php endif; ?>
+						<span class="debugActs d-inline-flex gap-2"><?php /* copy + × next to the checkbox; on phones at the right end (nuapp.css) */ ?>
+							<button type="button" class="btn btn-sm btn-link p-0 debugCopy" title="<?= h(t('debug_copy')) ?>" aria-label="<?= h(t('debug_copy')) ?>"><i class="bi bi-clipboard"></i></button>
+							<?php if ($canDelete): ?><button type="button" class="btn btn-sm btn-link p-0 debugDel" data-id="<?= h($r['zzzzsys_debug_id']) ?>"
+								title="<?= h(t('debug_delete_one')) ?>" aria-label="<?= h(t('debug_delete_one')) ?>"><i class="bi bi-x-lg"></i></button><?php endif; ?></span>
 						<span class="small fw-semibold text-nowrap"><?= $r['deb_added'] ? h(date(nu_dfmt('d.m.Y H:i:s'), (int)$r['deb_added'])) : '' ?></span>
 						<?php if ($who !== ''): ?><span class="small text-body-secondary"><i class="bi bi-person me-1"></i><?= h($who) ?></span><?php endif; ?>
 						<?php if ($hasFlag && (string)$r['deb_flag'] !== ''): ?><span class="badge bg-warning-subtle text-warning-emphasis"><?= h($r['deb_flag']) ?></span><?php endif; ?>
 						<span class="small text-body-secondary text-truncate debugFirst me-auto"><?= h(preg_replace('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} - /', '', $first)) ?></span>
-						<button type="button" class="btn btn-sm btn-link p-0 debugCopy" title="<?= h(t('debug_copy')) ?>" aria-label="<?= h(t('debug_copy')) ?>"><i class="bi bi-clipboard"></i></button>
+
 					</div>
 					<pre class="debugMsg mb-0" data-more="<?= h(t('debug_more')) ?>" data-less="<?= h(t('debug_less')) ?>"><?= h(implode("\n", array_slice($lines, 1)) ?: $first) ?></pre>
 				</div>

@@ -1704,12 +1704,16 @@ T.lookup_dialog_fit = async (s) => {
 };
 
 T.notes_text_fill = async (s) => {
-	// 0.8.1295: the Notes form's text on the tab Additional fills the window's free height, no page scrolling
+	// 0.8.1295: the Notes form's text on the tab Text (stored: Additional) fills the window's free height, no page scrolling
 	const p = s.ga;
 	await open(p, 'index.php?p=form&f=nunotes&r=-1');
-	await p.click('.nuTab:has-text("Additional")'); await p.waitForTimeout(600);
+	await p.click('.nuTab:has-text("Text")'); await p.waitForTimeout(600);
 	const m = await p.evaluate(() => { const t = document.getElementById('not_text').getBoundingClientRect(); return { b: t.bottom, h: t.height, wh: innerHeight, sh: document.documentElement.scrollHeight }; });
 	expect(m.h > 500 && m.wh - m.b < 90 && m.sh <= m.wh + 2, 'text area does not fill the height: ' + JSON.stringify(m));
+	// the tab is shown as "Text" and the field has no label of its own; room below the text area
+	const t = await p.evaluate(() => ({ lbl: !!document.getElementById('label_not_text'), tabs: [...document.querySelectorAll('.nuTab')].map(x => x.textContent.trim()) }));
+	expect(!t.lbl && t.tabs.includes('Text') && !t.tabs.includes('Additional'), 'tab title / label: ' + JSON.stringify(t));
+	expect(m.wh - m.b >= 20, 'no room below the text area: ' + JSON.stringify(m));
 	// 0.8.1296: as wide as the editor on the tab Notes (same right edge)
 	const r = await p.evaluate(() => { const e = document.getElementById('nuw_not_content'), t = document.getElementById('nuw_not_text'); return [parseFloat(e.style.left) + parseFloat(e.style.width), parseFloat(t.style.left) + document.getElementById('not_text').offsetWidth]; });
 	expect(Math.abs(r[0] - r[1]) < 4, 'text area not as wide as the editor: ' + JSON.stringify(r));
@@ -2097,4 +2101,191 @@ T.toolbar_same_look = async (s) => {
 		expect(t === 'sample_ben', 'trail title of the user page: ' + t);
 	}
 	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
+// tooltip icons (nu-tooltip-icon): on a phone the field fills the width – the icon sits after the label, inside the screen;
+// on a wide screen it stays right of the field
+T.tooltip_icon_phone = async (s) => {
+	if (!sql("SELECT COUNT(*) FROM zzzzsys_object WHERE sob_all_id = 'all_tip_theme'").startsWith('1')) { s.skip = 'no sample application'; return; }
+	const showTab = (pg) => pg.evaluate(() => { const pane = document.getElementById('all_tip_theme').closest('.tab-pane'); const n = pane && pane.getAttribute('data-nu-pane-tab');
+		const t = [...document.querySelectorAll('.nuTab')].find(x => x.getAttribute('data-nu-tab-id') === n); if (t) t.click(); });
+	const rects = (pg) => pg.evaluate(() => { const i = document.getElementById('all_tip_theme_helpicon'), f = document.getElementById('all_tip_theme'), l = document.getElementById('label_all_tip_theme');
+		const r = (e) => e.getBoundingClientRect(); return { i: r(i), f: r(f), l: r(l), vw: document.documentElement.clientWidth, onLabel: i.classList.contains('nuToolTipIcon--label') }; });
+	const ctx = await browser.newContext({ storageState: await s.ga.context().storageState(), locale: 'en-GB', viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+	const ph = await ctx.newPage();
+	try {
+		const rid = sql("SELECT sample_all_id FROM sample_all LIMIT 1").trim();
+		await open(ph, 'index.php?p=form&f=sampleall&r=' + encodeURIComponent(rid || '-1'));
+		await showTab(ph); await ph.waitForTimeout(500);
+		const a = await rects(ph);
+		expect(a.onLabel && a.i.right <= a.vw - 4 && a.i.left > a.l.left && Math.abs((a.i.top + a.i.height / 2) - (a.l.top + a.l.height / 2)) < 8, 'phone: ' + JSON.stringify(a));
+	} finally { await ctx.close(); }
+	const p = s.ga;
+	await open(p, 'index.php?p=form&f=sampleall&r=-1');
+	await showTab(p); await p.waitForTimeout(500);
+	const b = await rects(p);
+	expect(!b.onLabel && b.i.left >= b.f.right, 'wide screen: icon right of the field ' + JSON.stringify(b));
+};
+
+// HTML objects of a fixed layout on a phone grow to their wrapped text (the next object no longer covers it); wide screen: unchanged
+T.html_object_grow_phone = async (s) => {
+	if (!sql("SELECT COUNT(*) FROM zzzzsys_object WHERE sob_all_id = 'all_upload_intro'").startsWith('1')) { s.skip = 'no sample application'; return; }
+	const showTab = (pg) => pg.evaluate(() => { const pane = document.getElementById('nuw_all_upload_intro').closest('.tab-pane'); const n = pane.getAttribute('data-nu-pane-tab');
+		const t = [...document.querySelectorAll('.nuTab')].find(x => x.getAttribute('data-nu-tab-id') === n); if (t) t.click(); });
+	const box = (pg) => pg.evaluate(() => { const w = document.getElementById('nuw_all_upload_intro'), n = w.nextElementSibling && w.parentElement.querySelector('.nuWrap_html ~ *');
+		const r = w.getBoundingClientRect(); return { h: w.clientHeight, sh: w.scrollHeight, style: w.style.height, bottom: r.bottom }; });
+	const rid = sql("SELECT sample_all_id FROM sample_all LIMIT 1").trim();
+	const ctx = await browser.newContext({ storageState: await s.ga.context().storageState(), locale: 'en-GB', viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+	const ph = await ctx.newPage();
+	try {
+		await open(ph, 'index.php?p=form&f=sampleall&r=' + encodeURIComponent(rid || '-1'));
+		await showTab(ph); await ph.waitForTimeout(500);
+		const a = await box(ph);
+		expect(a.sh <= a.h + 1 && parseInt(a.style, 10) > 150, 'phone: box fits its text ' + JSON.stringify(a));
+	} finally { await ctx.close(); }
+	const p = s.ga;
+	await open(p, 'index.php?p=form&f=sampleall&r=' + encodeURIComponent(rid || '-1'));
+	await showTab(p); await p.waitForTimeout(400);
+	const b = await box(p);
+	expect(b.style === '150px', 'wide screen: height of the form ' + JSON.stringify(b));
+};
+
+// Notes, text on tab Additional: on a phone inside the screen; the full-screen button fills the window (no on-screen keyboard
+// on phones), Esc ends it; with a keyboard the field gets the focus
+T.notes_text_phone_full = async (s) => {
+	const go = async (pg) => {
+		await open(pg, 'index.php?p=form&f=nunotes&r=-1');
+		await pg.evaluate(() => { const pane = document.getElementById('not_text').closest('.tab-pane'); const n = pane.getAttribute('data-nu-pane-tab');
+			const t = [...document.querySelectorAll('.nuTab')].find(x => x.getAttribute('data-nu-tab-id') === n); if (t) t.click(); });
+		await pg.waitForTimeout(400);
+	};
+	const st = (pg) => pg.evaluate(() => { const t = document.getElementById('not_text'), r = t.getBoundingClientRect();
+		return { right: r.right, w: r.width, h: r.height, vw: document.documentElement.clientWidth, vh: innerHeight, full: !!document.querySelector('.nuTaFullOn'), focus: document.activeElement === t }; });
+	const ctx = await browser.newContext({ storageState: await s.ga.context().storageState(), locale: 'en-GB', viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+	const ph = await ctx.newPage();
+	try {
+		await go(ph);
+		const a = await st(ph);
+		expect(a.right <= a.vw, 'phone: field inside the screen ' + JSON.stringify(a));
+		await ph.tap('.nuTaFullBtn'); await ph.waitForTimeout(300);
+		const b = await st(ph);
+		expect(b.full && b.h > b.vh * 0.8 && !b.focus, 'phone, full screen: ' + JSON.stringify(b));
+		await ph.tap('.nuTaFullBtn'); await ph.waitForTimeout(200);
+		expect(!(await st(ph)).full, 'phone: back to normal size');
+	} finally { await ctx.close(); }
+	const p = s.ga;
+	await go(p);
+	await p.click('.nuTaFullBtn'); await p.waitForTimeout(300);
+	const c = await st(p);
+	await p.keyboard.press('Escape'); await p.waitForTimeout(200);
+	const d = await st(p);
+	expect(c.full && c.focus && c.w > 1000 && !d.full, 'wide screen: full screen with focus, Esc ends it ' + JSON.stringify([c, d]));
+};
+
+T.notes_phone_fold = async (s) => {
+	// phones: title, category and "Updated on" of a saved note fold into one summary row (nunext.phone_fold; Notes by default),
+	// a tap opens them, remembered per form; new records show the fields; desktop unchanged
+	sql("INSERT INTO zzzzsys_note_category (zzzzsys_note_category_id, noc_name) VALUES ('e2e_ncat', 'E2E category');"
+		+ "INSERT INTO zzzzsys_note (zzzzsys_note_id, not_title, not_content, not_zzzzsys_note_category_id, not_updated_on) VALUES ('e2e_note', 'E2E fold note', '<p>Hello</p>', 'e2e_ncat', NOW())");
+	const ctx = await browser.newContext({ storageState: await s.ga.context().storageState(), locale: 'en-GB', viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+	const ph = await ctx.newPage();
+	const st = (pg) => pg.evaluate(() => { const r = document.querySelector('.nuPhFold'), vis = (id) => { const e = document.getElementById(id); return !!e && !!e.offsetParent; };
+		return { row: !!r && !!r.offsetParent, exp: r && r.getAttribute('aria-expanded'), title: r && r.querySelector('.nuPhFoldTitle').textContent, meta: r && r.querySelector('.nuPhFoldMeta').textContent,
+			t: vis('not_title'), u: vis('not_updated_on'), store: localStorage.getItem('nunext-phfold:nunotes') }; });
+	try {
+		await open(ph, 'index.php?p=form&f=nunotes&r=e2e_note');
+		await ph.evaluate(() => localStorage.removeItem('nunext-phfold:nunotes')); await ph.reload(); await ph.waitForTimeout(500);
+		const a = await st(ph);
+		expect(a.row && a.exp === 'false' && !a.t && !a.u && a.title === 'E2E fold note' && a.meta.includes('E2E category'), 'folded on phones: ' + JSON.stringify(a));
+		if (process.env.SHOT) await ph.screenshot({ path: process.env.SHOT });
+		await ph.tap('.nuPhFold'); await ph.waitForTimeout(200);
+		const b = await st(ph);
+		expect(b.exp === 'true' && b.t && b.u && b.store === '1', 'opened: ' + JSON.stringify(b));
+		await ph.reload(); await ph.waitForTimeout(500);
+		expect((await st(ph)).exp === 'true', 'stays open after a reload');
+		await ph.tap('.nuPhFold'); await ph.waitForTimeout(200);
+		await open(ph, 'index.php?p=form&f=nunotes&r=-1');
+		const c = await st(ph);
+		expect(!c.row && c.t, 'new record: fields shown ' + JSON.stringify(c));
+	} finally { await ctx.close(); sql("DELETE FROM zzzzsys_note WHERE zzzzsys_note_id = 'e2e_note'; DELETE FROM zzzzsys_note_category WHERE zzzzsys_note_category_id = 'e2e_ncat'"); }
+	await open(s.ga, 'index.php?p=form&f=nunotes&r=-1');
+	expect(!(await s.ga.evaluate(() => !!document.querySelector('.nuPhFold'))), 'desktop: no summary row');
+};
+
+T.tinymce_phone_toolbar = async (s) => {
+	// phones (TinyMCE's own phone detection): no menu bar, the short toolbar with the rest behind ⋯; desktop keeps the menu bar
+	const ctx = await browser.newContext({ ...devices['iPhone 13'], storageState: await s.ga.context().storageState(), locale: 'en-GB' });
+	const ph = await ctx.newPage();
+	try {
+		await open(ph, 'index.php?p=form&f=nunotes&r=-1');
+		if (!(await ph.evaluate(() => !!window.tinymce))) { s.skip = 'no TinyMCE pack'; return; }
+		await ph.waitForSelector('.tox-tinymce'); await ph.waitForTimeout(800);
+		const m = await ph.evaluate(() => { const tb = document.querySelector('.tox-toolbar'), ed = document.querySelector('.tox-edit-area');
+			return { menubar: !!document.querySelector('.tox-menubar'), bold: !!document.querySelector('.tox-toolbar [aria-label^="Bold"]'),
+				more: !!document.querySelector('[aria-label="Reveal or hide additional toolbar items"]'), font: !!document.querySelector('.tox-toolbar [aria-label^="Font"]'),
+				rows: document.querySelectorAll('.tox-toolbar').length, scroll: tb && tb.scrollWidth > tb.clientWidth, tbH: tb && tb.offsetHeight, edH: ed && ed.offsetHeight }; });
+		expect(!m.menubar && m.bold && !m.more && !m.font && m.rows === 1 && m.tbH < 60, 'phone toolbar: one row ' + JSON.stringify(m));
+		const first = await ph.evaluate(() => { const b = document.querySelector('.tox-toolbar .tox-tbtn'); return b && b.getAttribute('aria-label'); });
+		expect(/full ?screen/i.test(first || ''), 'phone toolbar: full screen first, got ' + first);
+		// full screen on and off: the text gets no focus on a touch screen (no on-screen keyboard)
+		const focused = () => ph.evaluate(() => { const ed = window.tinymce.activeEditor; return { has: ed.hasFocus(), act: document.activeElement && document.activeElement.tagName, full: !!document.querySelector('.tox-fullscreen') }; });
+		await ph.tap('.tox-toolbar .tox-tbtn'); await ph.waitForTimeout(400);
+		const f1 = await focused();
+		expect(f1.full && !f1.has && f1.act !== 'IFRAME', 'full screen on: no focus ' + JSON.stringify(f1));
+		await ph.tap('.tox-toolbar .tox-tbtn'); await ph.waitForTimeout(400);
+		const f2 = await focused();
+		expect(!f2.full && !f2.has && f2.act !== 'IFRAME', 'full screen off: no focus ' + JSON.stringify(f2));
+	} finally { await ctx.close(); }
+	await open(s.ga, 'index.php?p=form&f=nunotes&r=-1');
+	await s.ga.waitForSelector('.tox-tinymce');
+	expect(await s.ga.evaluate(() => !!document.querySelector('.tox-menubar')), 'desktop: menu bar');
+};
+
+// ⋮ of form pages: not shown when it would only repeat the user menu (Documentation, Change password)
+T.options_menu_no_dups = async (s) => {
+	const pw = execSync(`php -r 'echo password_hash("Test1234!", PASSWORD_BCRYPT);'`).toString();
+	const old = sql("SELECT sus_login_password FROM zzzzsys_user WHERE sus_login_name = 'sample_anna'");
+	sql(`UPDATE zzzzsys_user SET sus_login_password = '${pw}' WHERE sus_login_name = 'sample_anna'`);
+	let q;
+	try {
+		q = await login('sample_anna', 'Test1234!');
+		const info = [];
+		for (const url of ['index.php?p=form&f=samplecustomer', 'index.php?p=form&f=samplecustomer&r=sample_cus_1']) {
+			await open(q, url);
+			const r = await q.evaluate(() => ({ opt: !!document.getElementById('nuOptions'), docs: !!document.getElementById('nuMenuDocs'),
+				acts: (window.nuNext.shortcutActions ? window.nuNext.shortcutActions() : []).filter((a) => a[3] > 0).map((a) => a[1]), audit: !!window.nuNext.audit }));
+			info.push(r);
+			if (r.acts.every((a) => a === 'help' || a === 'password') && !r.audit) expect(!r.opt && r.docs, 'only duplicates, ⋮ still shown: ' + JSON.stringify(r));
+		}
+		await open(s.ga, 'index.php?p=form&f=samplecustomer');
+		expect(await s.ga.locator('#nuOptions').count() === 1, 'globeadmin lost the ⋮ menu');
+		expect(info.some((r) => !r.opt), 'the test user saw the ⋮ menu everywhere: ' + JSON.stringify(info));
+	} finally {
+		if (q) await q.context().close();
+		sql(`UPDATE zzzzsys_user SET sus_login_password = '${old}' WHERE sus_login_name = 'sample_anna'`);
+	}
+};
+
+T.launch_no_title = async (s) => {
+	// as nuBuilder Forte: a launch form shows no title / breadcrumb; the header row goes when no button is left in it
+	await open(s.ga, 'index.php?p=form&f=samplehome&r=-1');
+	const ga = await s.ga.evaluate(() => {
+		const h = document.querySelector('.nuFormHeader');
+		const nav = h.querySelector('nav[aria-label="breadcrumb"]');
+		return { launch: h.classList.contains('nuLaunchHead'), shown: h.offsetHeight > 0, navW: nav ? nav.getBoundingClientRect().width : -1, design: !!document.getElementById('nuDesignButton') };
+	});
+	expect(ga.launch && ga.navW <= 1 && (!ga.design || ga.shown), 'globeadmin: ' + JSON.stringify(ga));
+	const old = sql("SELECT sus_login_password FROM zzzzsys_user WHERE sus_login_name = 'sample_anna'");
+	sql(`UPDATE zzzzsys_user SET sus_login_password = '${execSync(`php -r 'echo password_hash("Test1234!", PASSWORD_BCRYPT);'`).toString()}' WHERE sus_login_name = 'sample_anna'`);
+	let q;
+	try {
+		q = await login('sample_anna', 'Test1234!');
+		await open(q, 'index.php?p=form&f=samplehome&r=-1');
+		await q.waitForFunction(() => !document.querySelector('#nuRECORD.nuEditJsWait'));
+		const u = await q.evaluate(() => { const h = document.querySelector('.nuFormHeader'); return { empty: h.classList.contains('nuLaunchEmpty'), h: h.offsetHeight, kids: [...h.querySelectorAll('#nuActionHolder > *')].filter((e) => e.offsetWidth).map((e) => e.id) }; });
+		expect(u.h === 0 || u.kids.length > 0, 'user: header with only a title still shown ' + JSON.stringify(u));
+	} finally {
+		if (q) await q.context().close();
+		sql(`UPDATE zzzzsys_user SET sus_login_password = '${old}' WHERE sus_login_name = 'sample_anna'`);
+	}
 };

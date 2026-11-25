@@ -106,16 +106,8 @@ nu_layout_start($editorPage ? t('home_u_title') : t('nav_home'), 'home',
 	<?php endif; ?>
 	<p class="small text-body-secondary mb-0 mt-2"><i class="bi bi-eye me-1" aria-hidden="true"></i><?= h(t($for === NuHome::ALL_LEVELS ? 'home_u_preview_all' : 'home_u_preview')) ?></p>
 </div>
-<?php elseif ($u['globeadmin']): // no greeting – the page is the tiles; Customize at the bottom ?>
+<?php else: // no greeting – the page is the tiles ?>
 <h1 class="visually-hidden"><?= h(t('nav_home')) ?></h1>
-<?php else: ?>
-<div class="mb-4">
-	<h1 class="h3 mb-1"><?= h(t('home_welcome', $u['display'])) ?></h1>
-	<?php if ($access): ?>
-		<p class="text-body-secondary mb-0"><?= h(t('home_your_access')) ?> <span class="badge text-bg-primary"><?= h($access['sal_code']) ?></span>
-			<?php if ($access['sal_description']): ?><span class="ms-1"><?= h($access['sal_description']) ?></span><?php endif; ?></p>
-	<?php endif; ?>
-</div>
 <?php endif; ?>
 
 <?php // notices before the tiles (usability review G12): two or more become one strip that folds – folded on phones until opened
@@ -259,12 +251,13 @@ if (count($noticeParts) >= 2): ?>
 	$mine = $userPage && !$editorPage ? (NuHome::overlay((string)NuHome::current()['id']) ?? []) : [];
 	$favList = array_key_exists('fav', $mine) ? (array)$mine['fav'] : (array)($layout['fav'] ?? []);
 	$hideList = (array)($mine['hide'] ?? []);
+	$mineOrder = (array)($mine['order'] ?? []);              // the user's own order of the tiles within the groups
 	$mineHidden = [];                                          // tiles the user hid: listed while he personalises his page
 	$groups = [];
 	foreach ($layout['groups'] as $g) {
 		if (!NuHome::condOk((array)($g['cond'] ?? []))) continue;
 		$items = [];
-		foreach ($g['tiles'] as $k) {
+		foreach (NuHome::mineOrder((array)$g['tiles'], (array)($mineOrder[$g['id']] ?? [])) as $k) {
 			if (!NuHome::visible($k, $layout) || ($r = NuHome::resolve($k, $layout)) === null) continue;
 			if (!$editorPage && NuHome::twinShown($k, $layout, $hideList)) continue;     // "Clone form" next to the tile Form cloner
 			$r += ['fav' => in_array($k, $favList, true), 'source' => NuHome::source($k)];
@@ -369,7 +362,12 @@ foreach (NuHomeHook::$banners as [$bText, $bLevel]): ?>
 		<h2 class="nuHomeGroupTitle"><button type="button" class="nuHomeStripToggle" aria-expanded="true"
 			aria-controls="nuHomeStripFav"><i class="bi bi-chevron-down nuHomeStripChev" aria-hidden="true"></i><i class="bi bi-star-fill nuHomeStripStar"
 			aria-hidden="true"></i><?= h(t('home_v_fav_row')) ?><span class="badge rounded-pill nuHomeStripCount"></span></button></h2>
-		<div class="nuHomeChips" id="nuHomeStripFav"><?php foreach ($groups as $g) foreach ($g['items'] as $k => $it) if (!empty($it['fav'])) echo $chip((string)$k, $it); ?></div>
+		<div class="nuHomeChips" id="nuHomeStripFav"><?php
+			// in the order of the favourites list – the user arranges it by dragging the chips (assets/js/nuhome.js favDrag)
+			$favItems = [];
+			foreach ($groups as $g) foreach ($g['items'] as $k => $it) if (!empty($it['fav'])) $favItems[(string)$k] = $it;
+			foreach ($favList as $k) if (isset($favItems[(string)$k])) { echo $chip((string)$k, $favItems[(string)$k]); unset($favItems[(string)$k]); }
+			foreach ($favItems as $k => $it) echo $chip((string)$k, $it); ?></div>
 	</section>
 	<?php // which chips of Recently used show (as recentShow() of assets/js/nuhome.js): the first 8, favourites left out when the view says so and the Favourites row is shown
 	$noFav = !empty($view['recentNoFav']) && $favCount && $view['favRow'];
@@ -495,7 +493,7 @@ $foot = nu_ts_foot() . ($homeDash ? NuDashboard::scriptTag() : '');
 if ($admin || $userPage) {
 	// set by the tile page above (same condition) – named again for the analysers
 	$hlCur ??= NuHome::current(); $hlAll ??= NuHome::layouts(); $hlDef ??= NuListView::listDefault(NuHome::LIST); $hlManage ??= NuHome::canManage();
-	$groups ??= []; $units ??= []; $mine ??= []; $hideList ??= []; $mineHidden ??= []; $myView ??= null;
+	$groups ??= []; $units ??= []; $mine ??= []; $hideList ??= []; $mineHidden ??= []; $mineOrder ??= []; $myView ??= null;
 	$cat = [];
 	if (!$userPage) {                                       // built-in tiles: the admin tile page only
 		foreach (NuHome::catalog() as $k => [$route, $icon, $label, $hint]) $cat[$k] = ['icon' => $icon, 'label' => $label, 'hint' => $hint];
@@ -521,7 +519,7 @@ if ($admin || $userPage) {
 	$vLayouts = [];
 	if (!$userPage) foreach ($hlAll as $hl) $vLayouts[] = ['id' => $hl['id'], 'name' => $hl['name'], 'scope' => $hl['scope'],
 		'isDefault' => $hl['id'] === $hlDef || ($hl['id'] === 'default' && $hlDef === 'default')];
-	$hlName = $editorPage ? (string)(($choices ?? [])[$for]['label'] ?? $hlCur['name']) : (string)$hlCur['name'];
+	$hlName = $editorPage ? (string)($choices[$for]['label'] ?? $hlCur['name']) : (string)$hlCur['name'];
 	$mode = $editorPage ? 'level' : ($userPage ? 'user' : 'admin');
 	$myFav = []; foreach ($groups as $g) foreach ($g['items'] as $k => $it) if (!empty($it['fav'])) $myFav[] = (string)$k;
 	foreach ($mineHidden as $k => $it) if (!empty($it['fav'])) $myFav[] = (string)$k;
@@ -535,7 +533,7 @@ if ($admin || $userPage) {
 		// … and Hide: in the layout on admin start pages, for me on user start pages (same rights as the ☆)
 		'hideMode' => !$editorPage && NuSidebar::canFav() ? ($mode === 'user' ? 'me' : 'layout') : '',
 		// a user's own favourites and hidden tiles
-		'mine' => $mode === 'user' ? ['fav' => $myFav, 'hide' => array_values(array_map('strval', array_keys($mineHidden))), 'own' => array_key_exists('fav', $mine) || $hideList !== []] : null,
+		'mine' => $mode === 'user' ? ['fav' => $myFav, 'order' => (object)$mineOrder, 'hide' => array_values(array_map('strval', array_keys($mineHidden))), 'own' => array_key_exists('fav', $mine) || $hideList !== [] || $mineOrder !== []] : null,
 		// View panel: the layout's view, this person's own changes, where a change may go, the saved layouts
 		'view' => ['layout' => $layout['view'], 'overlay' => $myView, 'editable' => (bool)$hlCur['editable'],
 			'scope' => $mode === 'admin' ? (string)$hlCur['scope'] : ($mode === 'level' ? 'level' : 'shared'), 'id' => (string)$hlCur['id'],
@@ -551,7 +549,7 @@ if ($admin || $userPage) {
 		'procUrl' => $userPage ? nu_url('home', ['for' => $for, 'run' => '__ID__']) : nu_url('procedures', ['id' => '__ID__']),
 		't' => array_combine($k = ['pgw_title', 'pgw_default', 'pgw_device_tip', 'pgw_standard', 'pgw_wide', 'pgw_full', 'pgw_custom', 'pgw_px_label',
 			'pgw_device_sec', 'home_customize', 'home_display', 'home_display_groups', 'home_display_tabs', 'home_size', 'home_size_large', 'home_size_compact',
-			'home_fav_add', 'home_unfav', 'home_fav_added', 'home_fav_removed', 'home_ctx_undo', 'home_fav_key', 'home_ctx_hide', 'sb_recent_remove', 'sb_recent_clear_menu', 'home_fav', 'home_fav_only', 'home_fav_none_edit',
+			'home_fav_add', 'home_unfav', 'home_fav_move_left', 'home_fav_move_right', 'sb_fav_not_possible', 'home_fav_added', 'home_fav_removed', 'home_ctx_undo', 'home_fav_key', 'home_ctx_hide', 'sb_recent_remove', 'sb_recent_clear_menu', 'home_fav', 'home_fav_only', 'home_fav_none_edit',
 			'home_fav_edit', 'home_row_hide', 'home_row_autofold', 'home_row_autofold_tip', 'home_row_hidden', 'home_v_fav_row', 'home_v_fav_row_hint',
 			'home_c_tab_appearance', 'home_size_list', 'home_size_listwide', 'home_size_list2',
 			'home_add_group', 'home_add_tile', 'home_kind_builtin', 'home_tile_builtin', 'home_builtin_tiles', 'home_builtin_none', 'home_pinned',
@@ -559,21 +557,23 @@ if ($admin || $userPage) {
 			'home_group_delete', 'home_move_up', 'home_move_down', 'home_move_left', 'home_move_right', 'home_hide', 'home_show', 'home_edit_tile', 'home_delete_tile',
 			'home_tile_new', 'home_tile_label', 'home_tile_hint', 'home_tile_icon', 'home_tile_color', 'home_tile_no_color', 'home_tile_kind', 'home_kind_form', 'home_kind_page',
 			'home_kind_procedure', 'home_kind_url', 'home_tile_form', 'home_tile_record', 'home_tile_record_hint', 'home_tile_page', 'home_tile_procedure', 'home_tile_run',
-			'home_run_window', 'home_run_hidden', 'home_tile_url', 'home_tile_url_hint', 'home_tile_newtab', 'home_drop_here', 'home_edit_hint', 'home_saved_err',
+			'home_run_window', 'home_run_hidden', 'home_tile_url', 'home_tile_url_hint', 'home_tile_newtab', 'home_drop_here', 'home_saved_err',
 			'home_proc_done', 'home_proc_failed', 'home_tabs', 'home_add_tab', 'home_tab_new', 'home_tab_title', 'home_tab_up', 'home_tab_down',
 			'home_tab_delete', 'home_tab_delete_confirm', 'home_tabs_hint', 'home_layout_saveas', 'home_start_from', 'home_start_from_tip', 'home_pf_menu_head',
 				'home_pf_n_tiles', 'home_pf_keep_own', 'home_pf_loaded', 'home_pf_loaded_own', 'home_pf_not_saved', 'home_pf_counts', 'home_pf_counts_tabs',
 				'home_pf_undo', 'home_pf_g_own', 'home_layout_based_on', 'home_layout_based_current', 'home_layout_based_profiles', 'home_layout_based_copy',
 				'home_layout_keep_own', 'home_layout_meta', 'home_layout_name', 'home_layout_scope', 'home_layout_scope_user',
 			'home_layout_scope_shared', 'home_layout_roles', 'home_layout_roles_all', 'home_layout_delete_confirm', 'home_layout_delete',
-				'home_layout_make_default', 'home_layout_copy', 'home_group_tab', 'home_running', 'home_done', 'home_editing', 'home_discard_confirm', 'home_drag',
+				'home_layout_make_default', 'home_layout_copy', 'home_group_tab', 'home_running', 'home_done', 'home_drag',
 				'home_delete_tile_confirm', 'home_group_delete_confirm', 'save', 'cancel', 'ok', 'delete', 'close',
 			// user start pages
 			'home_kind_report', 'home_tile_report', 'home_u_cond', 'home_u_cond_hint', 'home_u_cond_group', 'home_u_cond_permission', 'home_u_cond_team', 'home_u_cond_department',
-			'home_u_cond_position', 'home_u_cond_values', 'home_u_store_level', 'home_u_store_user', 'home_u_mine', 'home_u_mine_bar', 'home_u_mine_reset', 'home_u_mine_reset_confirm',
+			'home_u_cond_position', 'home_u_cond_values', 'home_u_store_level', 'home_u_store_user', 'home_u_mine', 'home_c_mine_help', 'home_u_mine_move', 'home_u_mine_reset', 'home_u_mine_reset_confirm',
 			'home_u_mine_fav', 'home_u_mine_unfav', 'home_u_mine_hide', 'home_show',
 			// one Customise panel: tabs Content · Appearance · Layouts
-			'home_layouts', 'home_c_tab_content', 'home_c_tab_appearance', 'home_c_edit', 'home_c_edit_hint', 'home_c_edit_btn', 'home_c_mine_hint'], array_map('t', $k))
+			'home_layouts', 'home_c_tab_content', 'home_c_tab_appearance', 'home_c_starting', 'home_c_edit_help', 'home_c_leave_title', 'home_c_leave_text', 'home_c_discard', 'home_c_keep',
+			'home_c_unsaved', 'home_c_nochange', 'home_c_add_tiles', 'home_c_add_search', 'home_c_add_x', 'home_c_add_nomatch', 'home_c_all_shown', 'home_c_add_hint',
+			'home_c_own', 'home_c_structure', 'home_start_from_pick'], array_map('t', $k))
 			// View panel
 			+ array_combine($k = array_map(static fn($x) => 'home_v_' . $x,
 				['view', 'personal', 'fav_row', 'fav_row_hint', 'recent_row', 'recent_row_hint', 'recent_nofav', 'recent_nofav_hint', 'sidebar', 'sidebar_hint',

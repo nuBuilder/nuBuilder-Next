@@ -3,6 +3,212 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.1495 – Release gate
+- Release gate: the full test run (smoke, end-to-end, cross-tests with nuBuilder Forte, installer wizard, security scan). Documentation
+  brought up to date: feature list (print views, favourites order, debug results with Undo, forms on phones) and the points to verify.
+
+## 0.8.1494 – Logo not selectable
+- The logo (top bar, sign-in page, own logo of Branding) can no longer be selected or dragged – no blue selection after a double
+  click or a long press.
+
+## 0.8.1493 – Setup wizard: Next on the left
+- Setup wizard: Next (Apply on the last step) sits right after Back on the left of the top row, the steps follow – the mouse is
+  usually on the left; on phones the order is Back · Next · step menu.
+
+## 0.8.1492 – Setup wizard: Back and Next on top
+- Setup wizard: Back, the steps and Next (Apply on the last step) are in one row at the top that stays visible while the page
+  scrolls – also on small screens; the buttons at the end of the form are gone. Steps already done show a tick and can be
+  clicked to go back (the answers of the open step are kept); Enter in a field still means Next. Phones and tablets show the
+  steps as a menu ("3/5 · Security ▾") between Back and Next.
+
+## 0.8.1491 – Customise: the Content tab is the editor
+- Start page: Customise → Content is now the editor itself. Choosing the tab makes the page editable at once and the panel stays
+  open with the tools: a searchable list of the tiles that are not on the page (+ puts one into the first group of the open tab),
+  Add tile for an own tile, groups or tabs, Add group / Add tab, the favourites filter, Start from, and at its foot the state,
+  Cancel and Save. The button "Edit tiles and groups" and the edit bar above the page are gone; the list of hidden tiles moved
+  from the page into the panel.
+- Leaving the Content tab, closing the panel, Esc or Cancel with unsaved changes asks inside the panel: Discard, Keep editing or
+  Save. Without changes the page simply goes back to normal. The panel never opens on Content by itself.
+- Users personalise the same way: Content puts the star, eye and grip on the tiles, Save and Cancel are in the panel.
+- Phones: while editing, the panel is a lower sheet of half the screen and the page scrolls above it.
+
+## 0.8.1490 – Back closes the File Manager editor
+- File Manager: Back (phone gesture or browser button) closes an open editor or preview and stays in the File Manager instead of leaving it; with unsaved changes it asks first.
+
+## 0.8.1489 – File Manager editor starts at the top
+- File Manager: a file opened in the editor always starts at its first line, also when the file opened before was scrolled down.
+
+## 0.8.1488 – Reset database without developer mode
+- Reset database no longer needs developer mode: the globeadmin finds it on the start page (tile with a red Danger badge) on MySQL / MariaDB and SQL Server, and on the command line. The page now starts with a red Danger zone box naming the database and what is deleted.
+
+## 0.8.1487 – No tile tooltip on touch screens
+- Start page on touch screens: the black tooltip with a tile's description no longer appears after a tap or when coming back to the page; a long press opens the tile's menu with the full description instead.
+
+## 0.8.1486 – Debug icons next to the checkbox
+- Debug results: the copy and × icons of each message sit right next to its checkbox on desktop; on phones they stay at the right end of the line.
+
+## 0.8.1485 – Debug results: delete with Undo
+- Debug results: "Delete selected" sits next to "Delete all"; each message has an × that deletes it. Deleting (×,
+  selected or all) no longer asks – the message that follows offers Undo, which writes the deleted messages back.
+  Delete all asks only when there is too much text to keep for Undo.
+
+## 0.8.1484 – Print view without jumping columns
+- Print view of lists: the columns no longer jump in width after loading or sorting – the column widths dragged in
+  the normal list are not applied there, and the table is shown once the remembered hidden / moved columns are in place.
+
+## 0.8.1483 – Sorting in the print view
+- Print view of form lists: sorting by a column title stays in the print view (it went back to the normal list).
+
+## 0.8.1482 – Move columns in print views
+- Print views (system lists and form lists): drag a column title onto another to move the column there (keyboard:
+  Alt+← / Alt+→ on a title). Printing, Copy, Export CSV and Export Excel follow the shown order; Undo takes back the
+  last step, Reset view restores all columns in their first order; the order is remembered per list in the browser.
+
+## 0.8.1481 – Hide columns in the print view of form lists
+- Print view of form lists (Export → HTML page): the × after a column title hides that column, Undo shows the last one
+  again, Reset view all of them – as in the print view of the system lists. Remembered per form in the browser; Copy,
+  Export CSV and Export Excel take only the visible columns.
+
+## 0.8.1480 – Search without duplicate pages
+- Start page search: a page that a tile already opens is listed only once (for example "Configuration file" as a
+  tile and again as a settings entry); likewise two other entries that open the same page.
+
+## 0.8.1479 – Drag cursor on the start page
+- Start page: the mouse cursor shows a closed hand while a tile or a favourite is dragged, and an open hand over the
+  tiles while personalising.
+
+## 0.8.1478 – Own tile order in Personalise
+- Personalise on users' tile pages: tiles can be put into an own order within each group – drag a tile by its new
+  grip (mouse, pen or touch; with the mouse also by the tile itself), or use the arrow keys on the grip. Done saves,
+  for this user only. Tiles the administrator adds later come at the end of their group; Back to the standard
+  also removes the own order.
+- Start page: after dragging a favourite (or a tile while personalising) and releasing the mouse outside it, the next
+  click (for example on Done) was swallowed.
+
+## 0.8.1477 – Tile page without greeting
+- The tile page of users no longer shows the greeting "Welcome, <name>" – the tiles start right below the top bar
+  (the page heading stays for screen readers).
+
+## 0.8.1476 – Launch forms without title
+- Launch forms show no title and no breadcrumb, as in nuBuilder Forte; the header row disappears completely
+  when it holds no button (for administrators the Design button stays, a Back button stays when the form was
+  opened from another page). The title is still there for screen readers.
+
+## 0.8.1475 – Filter for form rights
+- Access level → Form rights: a filter above the grid – chips Can add · Can save · Can delete · Print / view only · No rights
+  ticked, plus Group, Data mode and Form type, together with the text filter. The title shows how many of all forms are listed;
+  the box below a right's title now ticks (and shows the state of) only the rows shown.
+
+## 0.8.1474 – Tile page without the access level line
+- Start page (tile page) of users: the line with the access level (code badge and description) under the greeting is no
+  longer shown.
+
+## 0.8.1473 – Options menu without duplicates
+- Forms: the ⋮ options menu is no longer shown when it would only hold Documentation and Change password – both are already
+  in the user menu at the top right (typical for users without design rights). The keyboard shortcuts still work; inside
+  windows without a top bar, and when the form's code fills the menu itself, it stays.
+
+## 0.8.1472 – Password check procedures of nuBuilder Forte
+- Fix: a password check procedure written for nuBuilder Forte (nu_check_password_policy reading #new_password#) refused
+  every new password – the hash variables #new_password#, #confirm_password# and #old_password# (the old one when users
+  change their own password) are now filled as in nuBuilder Forte.
+- The procedure's message is shown as plain text: line breaks (<br>) and other HTML no longer appear as code.
+
+## 0.8.1471 – Password reset: other address and language
+- Reset password (user form): when the link goes by e-mail, the dialog now has a field for the address – prefilled with the
+  user's, changeable for this one e-mail – and a choice of the e-mail's language (default: the user's language). The preview
+  follows the chosen language. The user's saved address and language stay unchanged; a user without an address can get the
+  link at an address typed in.
+
+## 0.8.1470 – Arrange favourites
+- Start page: the favourites can be put in any order – drag a chip of the row Favourites with the mouse, or use Move left /
+  Move right in its right-click menu (long press on phones), Alt+Arrow keys on a chip. Saved at once; the side bar shows the same order.
+
+## 0.8.1469 – Add next to additional access levels
+- User form: the Add button of "Additional access levels" sits right next to its heading (was at the far right of the card).
+
+## 0.8.1468 – Searchable additional access levels
+- Searchable selects with a button next to them (for example the access level with its open button on the user form): the
+  focus ring is no longer cut off by the button.
+- User form: additional access levels are searchable selects like the main access level – grouped, with the description as a
+  second line.
+
+## 0.8.1467 – Admin roles: access column
+- Admin roles list: "full access" has its own column Access – a soft pill in every row (Full access with a shield, or Limited);
+  its tooltip names the rights that lead to full access. The column can be sorted and filtered; Rights shows only the count,
+  right-aligned.
+
+## 0.8.1466 – No keyboard on full screen
+- Text editors on phones and tablets: switching full screen on or off no longer puts the cursor into the text, so the
+  on-screen keyboard does not open.
+
+## 0.8.1465 – Full screen first on phones
+- Text editors on phones: the full-screen button is the first button of the toolbar.
+
+## 0.8.1464 – TinyMCE toolbar on phones in one row
+- Text editors on phones: the short toolbar is one row again that scrolls sideways – the ⋯ button opened three more rows that left
+  the editor only a few lines high. Undo, bold, italic, underline and lists come first; still no menu bar.
+
+## 0.8.1463 – TinyMCE on phones
+- Text editors on phones follow TinyMCE's recommendations for mobile: no menu bar, a short toolbar with the most used buttons
+  (undo, redo, bold, italic, lists) in one row and the rest behind ⋯ instead of a toolbar that scrolls sideways. Tablets keep the
+  desktop toolbar; a toolbar or mobile set given by the form's code is kept.
+
+## 0.8.1462 – Fold fields on phones
+- Phones: fields can fold into one summary row at the top of a saved record – the first value as its title, the others below.
+  A tap opens them; open or folded is remembered per form on the device; new records always show the fields. Set per field in
+  design mode (Fold on phones, fixed-layout forms). The Notes form folds title, category and "Updated on" by default, which
+  gives the note's editor more room.
+
+## 0.8.1461 – Notes text tab
+- Notes: the tab with the extra text is shown as "Text" (stored title unchanged, so nuBuilder Forte keeps its own name) and the text
+  field has no separate "Text" label any more.
+- Notes: more room between the bottom of the text field and the edge of the card.
+
+## 0.8.1460 – Notes text on phones and in full screen
+- Notes, text on the tab Additional: on phones the field stays inside the screen (it was as wide as on a large screen and ran
+  past the edge). A full-screen button at its top right gives the whole window for reading and writing; Esc or the button
+  ends it, and on phones and tablets it opens no on-screen keyboard.
+- Phones in general: a text area whose width the form's code sets stays as wide as the screen.
+
+## 0.8.1459 – HTML objects grow on phones
+- Phones: HTML objects of forms with fixed positions grow to their text, which wraps onto more lines in the narrow width – the
+  text was cut off and the next object covered it. Wider screens keep the height of the form.
+
+## 0.8.1458 – Tooltip icons on phones
+- Tooltip icons (attribute nu-tooltip-icon) on phones: when the field fills the width, the icon now sits after the field's label
+  instead of past the right edge of the screen. On wider screens it stays right of the field.
+
+## 0.8.1457 – Notes
+- Development notes: a confirmed point removed from the open checks.
+
+## 0.8.1456 – English as the fallback language
+- Language when the browser sends none, or only languages the installation does not include: English (was German); German
+  only when English is not included.
+
+## 0.8.1455 – Code editor full screen without keyboard on phones
+- Code editors on phones and tablets: the full-screen button no longer puts the cursor into the editor, so the on-screen
+  keyboard stays closed when the editor is enlarged and when it goes back to its normal size. With a mouse and keyboard the
+  editor keeps the focus as before.
+
+## 0.8.1454 – Dumps with views on hosts without CREATE VIEW
+- Importing a dump with views as a database user who may not create views (common on shared hosts): Reset database, the
+  installer and the database set-up now check this before anything is deleted, name the views and run the import only after
+  "Import without these views" is ticked. The views are left out (as procedures and triggers already were), and the result
+  shows their SQL with a copy button, so someone with the right can create them later. Before, the import stopped at the
+  first view and left the database half imported.
+- Restoring a backup on such a server leaves the views out instead of failing; they are named and their SQL is in the log entry.
+- Command line: php nucron.php reset --sql=<file> needs --skip-views in that case.
+
+## 0.8.1453 – Notes
+- Development notes: v0.8.1451 recorded as the last published release.
+
+## 0.8.1452 – Cross-tests on empty tables
+- Cross-tests against nuBuilder Forte: a form whose table is empty no longer skips its record and save checks – the test adds
+  one row (required fields filled), runs them and removes the row again.
+- Saving a record without a change: an untouched multiple select no longer writes "[]" into a column that was empty in a
+  table shared with nuBuilder Forte (Forte leaves it empty).
+
 ## 0.8.1451 – Release gate
 - Release gate: full test run (smoke, end-to-end, compatibility with nuBuilder Forte, installer wizard, OWASP ZAP) and documentation
   brought up to date (feature list, help on tooltips and on Reset database, tutorial note on moving work between installations).

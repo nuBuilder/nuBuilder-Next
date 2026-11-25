@@ -104,4 +104,5 @@ final class NuSess
 	public const TUTORIAL            = 'nu_tutorial';   // tutorial progress of demo visitors (NuTutorial)
 	public const IMPORT              = 'nu_import';   // state of a running data import (NuImport)
 	public const PLUGIN_UPLOAD       = 'nu_plg_upload';   // an uploaded plugin package waiting for Install (NuPluginsPage)
+	public const DEBUG_UNDO          = 'nu_debug_undo';   // debug results deleted last, for Undo (NuDebugPage)
 }

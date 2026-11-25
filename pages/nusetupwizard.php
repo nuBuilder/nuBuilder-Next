@@ -59,13 +59,35 @@ nu_layout_start(t('wiz_title'), 'home', ['head' => nu_ts_head()]);
 		<a class="btn btn-outline-primary mt-3 ms-1" href="<?= h(nu_url('tutorial')) ?>"><i class="bi bi-mortarboard me-1"></i><?= h(t('tut_start')) ?></a>
 	</div>
 	<?php else: ?>
-	<div class="card-body pb-0">
+	<?php // Back · Next · steps in one row (the buttons on the left, where the mouse usually is) that stays at the top while the page scrolls; the buttons submit #wizForm (form attribute)
+	$stepName = static fn(int $n, string $s) => ($n < $i ? '' : ($n + 1) . ' ') . t('wiz_step_' . $s);
+	$stepIcon = static fn(int $n, string $s) => $n < $i ? 'bi-check-circle-fill text-success' : $icons[$s]; ?>
+	<button type="submit" form="wizForm" name="action" value="next" class="visually-hidden" tabindex="-1" aria-hidden="true"></button><?php // Enter = Next: the first submit button of the form, before Back of the bar ?>
+	<div class="nuWizBar" id="wizBar">
+		<?php if ($i > 0): ?><button class="btn btn-outline-secondary nuWizBack" type="submit" form="wizForm" name="action" value="back" formnovalidate id="wizBack"
+			title="<?= h(t('ins_back')) ?>"><i class="bi bi-arrow-left"></i><span class="nuWizBtnTxt"> <?= h(t('ins_back')) ?></span></button>
+		<?php endif; ?>
+		<?php if ($step === 'summary'): ?>
+		<button class="btn btn-primary" type="submit" form="wizForm" name="action" value="apply" id="wizApply" data-nu-busy="<?= h(t('wiz_applying')) ?>"><i class="bi bi-check2"></i> <?= h(t('wiz_apply')) ?></button>
+		<?php else: ?>
+		<button class="btn btn-primary" type="submit" form="wizForm" name="action" value="next" id="wizNext"><?= h(t('ins_next')) ?> <i class="bi bi-arrow-right"></i></button>
+		<?php endif; ?>
 		<ul class="nav nav-tabs nuWizSteps" role="list">
 			<?php foreach ($steps as $n => $s): ?>
-			<li class="nav-item"
-				role="listitem"><span class="nav-link<?= $s === $step ? ' active' : ($n > $i ? ' disabled' : '') ?>"<?= $s === $step ? ' aria-current="step"' : '' ?>><i class="bi <?= $icons[$s] ?>"></i> <span class="<?= $s === $step ? 'nuWizCur' : 'd-none d-sm-inline' /* review N3: the current step is named on phones */ ?>"><?= h(t('wiz_step_' . $s)) ?></span></span></li>
+			<li class="nav-item" role="listitem"><?php if ($n < $i): ?><button type="submit" form="wizForm" name="action" value="go:<?= h($s) ?>" formnovalidate
+				class="nav-link nuWizDone"><i class="bi <?= $stepIcon($n, $s) ?>"></i> <?= h($stepName($n, $s)) ?></button><?php else: ?><span
+				class="nav-link<?= $s === $step ? ' active' : ' disabled' ?>"<?= $s === $step ? ' aria-current="step"' : '' ?>><i class="bi <?= $stepIcon($n, $s) ?>"></i> <?= h($stepName($n, $s)) ?></span><?php endif; ?></li>
 			<?php endforeach; ?>
 		</ul>
+		<div class="dropdown nuWizStepMenu">
+			<button class="btn btn-light dropdown-toggle w-100" type="button" data-bs-toggle="dropdown" aria-expanded="false" id="wizStepBtn" title="<?= h(t('wiz_step_n', $i + 1, count($steps))) ?>"><?= $i + 1 ?>/<?= count($steps) ?> · <?= h(t('wiz_step_' . $step)) ?></button>
+			<ul class="dropdown-menu w-100">
+				<?php foreach ($steps as $n => $s): ?>
+				<li><?php if ($n < $i): ?><button type="submit" form="wizForm" name="action" value="go:<?= h($s) ?>" formnovalidate class="dropdown-item"><i class="bi <?= $stepIcon($n, $s) ?> me-2"></i><?= h($stepName($n, $s)) ?></button><?php else: ?><span
+					class="dropdown-item<?= $s === $step ? ' active' : ' disabled' ?>"><i class="bi <?= $stepIcon($n, $s) ?> me-2"></i><?= h($stepName($n, $s)) ?></span><?php endif; ?></li>
+				<?php endforeach; ?>
+			</ul>
+		</div>
 	</div>
 	<form method="post" action="<?= h(nu_url('setupwizard', ['step' => $step])) ?>" class="card-body" novalidate autocomplete="off" id="wizForm"<?= $step === 'summary' ? ' data-nu-once' : '' ?>>
 		<?= nu_csrf_field() ?>
@@ -161,15 +183,6 @@ nu_layout_start(t('wiz_title'), 'home', ['head' => nu_ts_head()]);
 		<?php if ($v['pw1'] !== ''): ?><div class="alert alert-info small mt-3 mb-0"><?= h(t('wiz_pw_relogin_note')) ?></div><?php endif; ?>
 		<?php endif; ?>
 
-		<div class="d-flex flex-wrap mt-4 gap-3"><?php // Next right next to Back, with some space ?>
-			<?php if ($i > 0): ?><button class="btn btn-outline-secondary" type="submit" name="action" value="back"
-				formnovalidate><i class="bi bi-arrow-left"></i> <?= h(t('ins_back')) ?></button><?php endif; ?>
-			<?php if ($step === 'summary'): ?>
-			<button class="btn btn-primary" type="submit" name="action" value="apply" id="wizApply" data-nu-busy="<?= h(t('wiz_applying')) ?>"><i class="bi bi-check2"></i> <?= h(t('wiz_apply')) ?></button>
-			<?php else: ?>
-			<button class="btn btn-primary" type="submit" name="action" value="next" id="wizNext"><?= h(t('ins_next')) ?> <i class="bi bi-arrow-right"></i></button>
-			<?php endif; ?>
-		</div>
 	</form>
 	<?php endif; ?>
 </div>

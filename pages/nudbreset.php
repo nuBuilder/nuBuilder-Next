@@ -3,13 +3,13 @@ declare(strict_types=1);
 defined('NU_ROOT') || exit;
 
 /*
- * Reset database (core/nudbreset.php): only in developer mode (globeadmin + $nuConfigDevMode) on MySQL / MariaDB or SQL Server
+ * Reset database (core/nudbreset.php): the globeadmin on MySQL / MariaDB or SQL Server
  * (SQL Server: clean installation only – nuBuilder Next's install scripts).
  * 1. action=check: a file chosen (nubuilder4.sql of nuBuilder Forte, _install/, _update/) or uploaded – read and checked, nothing changes.
  * 2. action=run: the database name typed, password confirmed recently – all tables deleted, the file imported, nuBuilder Next's tables
  *    created (optionally a backup first and the sample application afterwards). Then: the setup wizard.
  */
-if (!NuHash::devMode() || !NuDbReset::available()) {
+if (!NuDbReset::allowed()) {
 	http_response_code(404);
 	nu_fatal(t('err_not_found'), '', true);
 }
@@ -43,10 +43,15 @@ nu_layout_start(t('dbr_title'), 'dbreset');
 <div class="card shadow-sm nuListCard">
 	<div class="card-header nuListHead nuTitleBar">
 		<h1 class="h5 mb-0 fw-semibold d-inline-flex align-items-center gap-1"><?= h(t('dbr_title')) ?><?= NuListView::infoTip(t('dbr_hint')) ?></h1>
-		<div class="nuTitleSub"><span class="badge text-bg-secondary">Dev</span></div>
 		<div class="d-flex flex-wrap gap-2"><?= nu_back_button() ?></div>
 	</div>
 	<div class="card-body">
+	<?php if (!$job): ?>
+		<div class="alert alert-danger d-flex gap-2 align-items-start nuDangerZone" id="dbrDanger" role="note">
+			<i class="bi bi-exclamation-octagon-fill fs-5 lh-1" aria-hidden="true"></i>
+			<div><div class="fw-semibold"><?= h(t('dbr_danger_title')) ?></div><div class="small"><?= h(t('dbr_danger_text', $dbName)) ?></div></div>
+		</div>
+	<?php endif; ?>
 	<?php if ($job): ?>
 		<div class="alert alert-warning" id="dbrJobRunning"><i class="bi bi-hourglass-split me-1"></i><?= h(t('dbr_job_running', (string)$job['database'])) ?></div>
 		<?php // the page goes through the steps (assets/js/nudbreset.js): the token is the right of ?p=dbresetstep ?>
@@ -88,6 +93,7 @@ nu_layout_start(t('dbr_title'), 'dbreset');
 			<ul class="mb-0 small">
 				<li><?= h(t('dbr_done_counts', $done['dropped'], $done['statements'], count($done['steps']))) ?></li>
 				<?php if (!empty($done['skipped'])): ?><li class="text-warning-emphasis" id="dbrSkipped"><?= h(t('dbr_done_skipped', count($done['skipped']), implode(', ', $done['skipped']))) ?></li><?php endif; ?>
+				<?php if (!empty($done['skipped_sql'])): ?><li class="text-warning-emphasis"><?= nu_skipped_views_box((array)$done['skipped_sql'], 'dbr') ?></li><?php endif; ?>
 				<?php if ($done['backup'] !== ''): ?><li><?= h(t('dbr_done_backup', $done['backup'])) ?></li><?php endif; ?>
 				<?php if ($done['sample'] === 'ok'): ?><li><?= h(t('dbr_done_sample')) ?></li>
 				<?php elseif ($done['sample'] !== ''): ?><li class="text-danger"><?= h(t('dbr_done_sample_err', $done['sample'])) ?></li><?php endif; ?>
@@ -126,8 +132,19 @@ nu_layout_start(t('dbr_title'), 'dbreset');
 					</table></div>
 				</details></dd>
 		</dl>
+		<?php if (!empty($chk['views_blocked'])): ?>
+		<div class="alert alert-warning small" id="dbrViewsWarn">
+			<p class="fw-semibold mb-1"><i class="bi bi-exclamation-triangle me-1"></i><?= h(t('dbr_views_title', count($chk['views']))) ?></p>
+			<p class="mb-1"><?= h(t('dbr_views_text')) ?></p>
+			<p class="mb-0 text-break" id="dbrViewsList"><?= h(implode(', ', $chk['views'])) ?></p>
+		</div>
+		<?php endif; ?>
 		<form method="post" id="dbrRunForm" data-nu-once data-nu-progress="#dbrProgress">
 			<?= nu_csrf_field() ?><input type="hidden" name="action" value="run">
+			<?php if (!empty($chk['views_blocked'])): ?>
+			<div class="form-check mb-1"><input class="form-check-input" type="checkbox" name="skip_views" value="1" id="dbrSkipViews" required>
+				<label class="form-check-label fw-semibold" for="dbrSkipViews"><?= h(t('dbr_views_ack')) ?></label></div>
+			<?php endif; ?>
 			<div class="form-check mb-1"><input class="form-check-input" type="checkbox" name="backup" value="1" id="dbrBackup"<?= !empty($S['backup']) ? ' checked' : '' ?>>
 				<label class="form-check-label" for="dbrBackup"><?= h(t('dbr_opt_backup')) ?></label></div>
 			<div class="form-check mb-3"><input class="form-check-input" type="checkbox" name="sample" value="1" id="dbrSample"<?= !empty($S['sample']) ? ' checked' : '' ?>>
@@ -176,7 +193,7 @@ nu_layout_start(t('dbr_title'), 'dbreset');
 				<label class="form-check-label" for="dbrSample0"><?= h(t('dbr_opt_sample')) ?></label></div>
 			<button type="submit" class="btn btn-primary" id="dbrCheckBtn" data-nu-busy="<?= h(t('dbr_checking')) ?>"><i class="bi bi-search me-1"></i><?= h(t('dbr_check')) ?></button>
 		</form>
-		<p class="small text-body-secondary mt-3 mb-0"><?= h(t('dbr_cli')) ?> <code>php nucron.php reset --sql=&lt;file&gt;|--clean [--backup] [--sample] --yes</code></p>
+		<p class="small text-body-secondary mt-3 mb-0"><?= h(t('dbr_cli')) ?> <code>php nucron.php reset --sql=&lt;file&gt;|--clean [--backup] [--sample] [--skip-views] --yes</code></p>
 	<?php endif; ?>
 	</div>
 </div>

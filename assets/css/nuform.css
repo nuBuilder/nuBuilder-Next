@@ -509,6 +509,18 @@ html.nuPortrait .nuLayout-absolute .nuAbsoluteCanvas { max-width: 720px; }
 	html.nuPhoneStack .nuAbsoluteCanvas > .nuAbs:not(.nuWrap_textarea):not(.nuWrap_html):not(.nuWrap_editor):not(.nuWrap_subform):not(.nuWrap_run):not(.nuWrap_chart):not(.nuWrap_image):not(.nuWrap_contentbox) { height: auto !important; }
 	html.nuPhoneStack .nuAbsoluteCanvas > .nuAbs .form-control:not(textarea), html.nuPhoneStack .nuAbsoluteCanvas > .nuAbs .form-select:not([multiple]) { height: 38px; font-size: 1rem; }
 	html.nuPhoneStack .nuAbsoluteCanvas > .nuAbs .nuLookupGroup .btn { height: 38px; }
+	html.nuPhoneStack .nuAbsoluteCanvas > .nuAbs > textarea { width: 100% !important; max-width: 100%; }   /* a width set by code (Notes) */
+	/* fields folded into one summary row of a saved record (nunext.phone_fold; 290-phones.js phoneFold) */
+	html.nuPhoneStack .nuAbsoluteCanvas > .nuAbs.nuPhFolded { display: none !important; }
+	html.nuPhoneStack .nuAbsoluteCanvas > .nuPhFold { display: flex; align-items: center; gap: .6rem; width: 100%; min-height: 48px; padding: .45rem .75rem;
+		border: 1px solid var(--bs-border-color); border-radius: .6rem; background: var(--bs-tertiary-bg); color: var(--bs-body-color); text-align: start; }
+	html.nuPhoneStack .nuPhFoldTxt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .1rem; }
+	html.nuPhoneStack .nuPhFoldTitle { font-weight: 600; font-size: .9375rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+	html.nuPhoneStack .nuPhFoldMeta { font-size: .75rem; color: var(--bs-secondary-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+	html.nuPhoneStack .nuPhFoldMeta:empty { display: none; }
+	html.nuPhoneStack .nuPhFoldAct { font-size: .75rem; color: var(--bs-secondary-color); }
+	html.nuPhoneStack .nuPhFoldChev { color: var(--bs-secondary-color); transition: transform .15s; }
+	html.nuPhoneStack .nuPhFold[aria-expanded="true"] .nuPhFoldChev { transform: rotate(180deg); }
 	html.nuPhoneStack .nuAbsoluteCanvas > .nuAbs .ts-wrapper .ts-control { min-height: 38px; font-size: 1rem; }
 	html.nuPhoneStack .nuAbsoluteCanvas > .nuAbs .nuButton, html.nuPhoneStack .nuAbsoluteCanvas > .nuAbs .nuRunButton,
 	html.nuPhoneStack .nuAbsoluteCanvas > .nuWrap_input > button.btn { min-height: 40px; }
@@ -1114,3 +1126,20 @@ html.nuPhoneCards #nuBrowseTable > tbody > tr.nuBrowseRow > td.nuCellTd:has(> .n
 /* grid / auto layouts: as tall as the other fields (input-group-sm made it smaller); absolute layouts keep their own heights */
 .nuEditForm .nuLookupGroup:not(.nuAbs .nuLookupGroup, .nuSubformTable .nuLookupGroup) > :is(input.form-control, .btn) { padding: .375rem .75rem; font-size: 1rem; line-height: 1.5; }
 .nuEditForm .nuLookupGroup:not(.nuAbs .nuLookupGroup, .nuSubformTable .nuLookupGroup) > .btn { padding-left: .65rem; padding-right: .65rem; }
+
+/* full-screen button of a long text field (Notes: nuruntime.js fullButton) */
+.nuTaFullBtn { position: absolute; z-index: 3; padding: .15rem .4rem; line-height: 1; color: var(--bs-secondary-color); background: var(--bs-body-bg);
+	border: 1px solid var(--bs-border-color); opacity: .85; }
+textarea.nuTaHasFull { padding-right: 2.4rem !important; }
+.nuTaFullBtn:hover, .nuTaFullBtn:focus-visible { opacity: 1; color: var(--bs-body-color); }
+html .nuAbsoluteCanvas > .nuAbs.nuWrap.nuTaFullOn, html .nuWrap.nuTaFullOn { position: fixed !important; inset: 0 !important; width: auto !important; height: auto !important; z-index: 1060 !important;
+	display: flex; flex-direction: column; gap: .5rem; padding: max(1rem, env(safe-area-inset-top, 0px)) max(1rem, env(safe-area-inset-right, 0px)) 1rem max(1rem, env(safe-area-inset-left, 0px));
+	background: var(--bs-body-bg); }
+html .nuWrap.nuTaFullOn > label { position: static !important; display: block; width: auto !important; height: auto !important; text-align: start; font-weight: 600; }
+html .nuWrap.nuTaFullOn > textarea { position: static !important; flex: 1 1 auto; width: 100% !important; height: auto !important; min-height: 0; resize: none; }
+html.nuTaFullOpen, html.nuTaFullOpen body { overflow: hidden; }
+/* launch forms: no title or breadcrumb (as nuBuilder Forte) – kept for screen readers; the header goes when it holds no button */
+.nuFormHeader.nuLaunchHead > nav[aria-label="breadcrumb"], .nuFormHeader.nuLaunchHead > .nuPhTitle, .nuFormHeader.nuLaunchHead > .nuPhBack {
+	position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important;
+	overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
+.nuFormHeader.nuLaunchHead.nuLaunchEmpty { display: none !important; }

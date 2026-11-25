@@ -149,8 +149,28 @@
 		if (!a.isConnected || !host || a.offsetParent === null || !a.offsetWidth) { rec.icon.hidden = true; return; }
 		rec.icon.hidden = false;
 		var ar = a.getBoundingClientRect(), hr = host.getBoundingClientRect(), s = rec.settings;
-		rec.icon.style.left = Math.round(ar.right - hr.left + host.scrollLeft + (Number(s.gapRight) || 0)) + 'px';
-		rec.icon.style.top = Math.round(ar.top - hr.top + host.scrollTop + ar.height / 2 - (Number(s.iconSize) || 16) / 2) + 'px';
+		var size = Number(s.iconSize) || 16, gap = Number(s.gapRight) || 0;
+		// no room right of the field (phones: the field fills the width) – the icon goes after the field's label instead
+		var box = a.closest('.tab-pane, #nuEditForm, .nuSubformCard') || document.documentElement;
+		var edge = Math.min(box.getBoundingClientRect().right, document.documentElement.clientWidth) - 4;
+		var lab = rec.field.id ? document.getElementById('label_' + rec.field.id) : null;
+		var after = ar.right + gap + size > edge && lab && lab.offsetParent !== null && lab.offsetWidth > 0;
+		rec.icon.classList.toggle('nuToolTipIcon--label', !!after);
+		if (after) {
+			var lr = textRect(lab);
+			rec.icon.style.left = Math.round(lr.right - hr.left + host.scrollLeft + 6) + 'px';
+			rec.icon.style.top = Math.round(lr.top - hr.top + host.scrollTop + lr.height / 2 - size / 2) + 'px';
+			return;
+		}
+		rec.icon.style.left = Math.round(ar.right - hr.left + host.scrollLeft + gap) + 'px';
+		rec.icon.style.top = Math.round(ar.top - hr.top + host.scrollTop + ar.height / 2 - size / 2) + 'px';
+	}
+	/** The box of a label's text (a label can be wider than its text: block or a set width). */
+	function textRect(lab) {
+		var rg = document.createRange();
+		rg.selectNodeContents(lab);
+		var rs = rg.getClientRects();
+		return rs.length ? rs[rs.length - 1] : lab.getBoundingClientRect();
 	}
 
 	function attachOne(el, base) {

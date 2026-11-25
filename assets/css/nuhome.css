@@ -56,6 +56,11 @@
 :root:not([data-bs-theme="dark"]) { --nu-home-line: #6060602d; --nu-home-shadow: none; }
 .nuHomeChip { display: inline-flex; align-items: center; gap: .5rem; max-width: 100%; padding: .3rem .85rem .3rem .3rem; font: inherit; font-size: .9rem; color: var(--bs-body-color);
 	text-decoration: none; background: var(--nu-surface, var(--bs-body-bg)); border: 1px solid var(--nu-home-line, var(--bs-border-color-translucent)); border-radius: 999px; box-shadow: var(--nu-home-shadow, var(--bs-box-shadow-sm)); cursor: pointer; }
+/* the row Favourites: a chip dragged to a new place (assets/js/nuhome.js favDrag) – the others make room, no text selection */
+.nuHomeChipsDragging { user-select: none; cursor: grabbing; }
+.nuHomeChipsDragging .nuHomeChip { cursor: grabbing; }
+.nuHomeChipDragging, .nuHomeChipDragging .nuHomeChip { opacity: .55; }
+.nuHomeChipDragging .nuHomeChip, .nuHomeChip.nuHomeChipDragging { outline: 2px dashed var(--bs-primary); outline-offset: 2px; }
 .nuHomeChip:hover, .nuHomeChip:focus-visible { color: var(--bs-body-color); border-color: color-mix(in srgb, var(--nu-gc, var(--bs-primary)) 50%, transparent); }
 #nuHomeView .nuHomeChip .nuHomeIcon { width: 1.7rem; height: 1.7rem; font-size: .85rem; border-radius: 50%; }
 .nuHomeChipLabel { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -539,3 +544,25 @@ html.nuHomeFold-recent .nuHomeStrip[data-nu-strip="recent"] .nuHomeStripChev { t
 .nuHomeVpPwCtl { display: flex; gap: .5rem; align-items: center; flex: 1 1 12rem; min-width: 0; }
 .nuHomeVpPwCtl .form-select { flex: 1 1 auto; min-width: 0; }
 .nuHomeVpPwCtl .nuHomeVpPx { width: 5.5rem; flex: 0 0 auto; }
+/* Personalise: own order of the tiles within a group – grip, the tile being dragged */
+.nuHomeMineTools .nuHomeMineGrip { cursor: grab; touch-action: none; }
+.nuHomeMineOn .nuHomeTileWrap, .nuHomeMineOn .nuHomeTileWrap :not(.nuHomeMineTools *) { cursor: grab; }   /* the tile's link would show the hand */
+.nuHomeMineOn .nuHomeMineTools .btn:not(.nuHomeMineGrip) { cursor: pointer; }
+.nuHomeMineSorting, .nuHomeMineSorting * { user-select: none; }
+/* while a tile or a favourite is dragged: the closed hand everywhere (the pointer is captured, the element below does not decide) */
+html.nuHomeGrabbing, html.nuHomeGrabbing * { cursor: grabbing !important; }
+.nuHomeTileWrap.nuHomeMineDragging { opacity: .55; outline: 2px dashed var(--bs-primary); outline-offset: 2px; }
+
+/* ------------------------------------------------------------------ Customise → Content edits the page: tools, state and the leave question in the panel */
+.nuHomeAddList { max-height: 18rem; overflow-y: auto; }
+.nuHomeAddItem { padding: .4rem .6rem; }
+.nuHomeAddItem .nu-tile-icon { flex: none; }
+.nuHomeAddBtn { flex: none; width: 2rem; padding-inline: 0; }
+.nuHomeVpDirty { display: inline-flex; align-items: center; gap: .4rem; font-size: .8rem; color: var(--bs-secondary-color); }
+.nuHomeVpDirty.nuHomeVpDirtyOn::before { content: ""; width: .5rem; height: .5rem; border-radius: 50%; background: var(--bs-warning); }
+.nuHomeVpLeave { margin: .9rem 0 .2rem; padding: .8rem .9rem; border: 1px solid var(--bs-warning-border-subtle); border-radius: .6rem; background: var(--bs-warning-bg-subtle); }
+.nuHomeVpLeaveIcon { margin-top: .15rem; color: var(--bs-warning-text-emphasis); }
+@media (max-width: 575.98px) {
+	body:is(.nuHomeEditing, .nuHomeMineOn) .nuHomeVp { height: 52vh; }
+	body.nuHomeVpOpen:is(.nuHomeEditing, .nuHomeMineOn) #main { padding-bottom: 54vh; }
+}

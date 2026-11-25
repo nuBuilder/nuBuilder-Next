@@ -140,11 +140,15 @@ if ($late) {
 					$chk = NuInstall::checkDumpFile($path);
 					if (!$chk['ok']) { $errors['dump'] = $chk['error']; $S['content']['dump'] = null; break; }
 					$S['content']['dump'] = ['file' => $chk['file'], 'name' => str_starts_with(basename($path), 'upload-') ? (string)($_FILES['dump']['name'] ?? basename($path)) : basename($path),
-						'tables' => $chk['tables'], 'forms' => $chk['forms'], 'size' => $chk['size'], 'mtime' => $chk['mtime'] ?? 0];
+						'tables' => $chk['tables'], 'forms' => $chk['forms'], 'size' => $chk['size'], 'mtime' => $chk['mtime'] ?? 0, 'views' => $chk['views'] ?? [],
+						'views_blocked' => NuInstallPage::viewsBlocked($S['db'], $chk['views'] ?? [])];
 					if ($action === 'check_dump') break;
 				}
 				if ($action === 'check_dump') { $errors['dump'] = t('ins_dump_err_none'); break; }
 				if (empty($S['content']['dump']) || !is_file((string)$S['content']['dump']['file'])) { $errors['dump'] = t('ins_dump_err_none'); break; }
+				// views the database user may not create: left out of the import – only with the tick
+				$S['content']['skip_views'] = nu_check('skip_views') === '1';
+				if (!empty($S['content']['dump']['views_blocked']) && !$S['content']['skip_views']) { $errors['skip_views'] = t('dbr_err_views'); break; }
 			}
 			if (isset($_POST['nub_path'])) {                       // nuBuilder folder for nubuilder4.sql (also on the options step)
 				$np = rtrim(trim(nu_post('nub_path')), '/\\');
@@ -284,6 +288,8 @@ if ($late) {
 				if ($det['kind'] === 'empty' || ($det['kind'] === 'other' && $S['content']['confirm_other'])) {
 					if ($stepped) {
 						$imported = (int)($S['import']['st']['n'] ?? 0);
+						$S['skipped'] = array_values((array)($S['import']['st']['skipped'] ?? []));
+						$S['skipped_sql'] = (array)($S['import']['st']['skipped_sql'] ?? []);
 					} elseif ($S['content']['choice'] === 'upload' && $db->type === 'mysql') {
 						$f = (string)($S['content']['dump']['file'] ?? '');
 						clearstatcache(true, $f);
@@ -292,6 +298,8 @@ if ($late) {
 							: ($same ? ['ok' => true] : NuInstall::checkDump(NuSqlImport::statements($f), true));   // unchanged since the check: not read twice
 						if (!$chk['ok']) throw new RuntimeException($chk['error']);              // checked again: the file may have been replaced
 						$imported += NuSqlImport::run($db, $f, null, true);                      // streamed: a dump of any size
+						$S['skipped'] = NuSqlImport::$skipped;
+						$S['skipped_sql'] = NuSqlImport::$skippedSql;
 					} else {
 						foreach (NuInstall::schemaFiles($S['content']['choice'], $db->type, $S['opt']['nub_path'] ?: null) as $f) $imported += NuInstall::importFile($db, $f);
 					}
@@ -369,6 +377,8 @@ nu_head($title, nu_ts_head());   // time zone: searchable
 				<h1 class="h4 mt-2"><?= h(t('ins_done_title')) ?></h1>
 				<p class="text-body-secondary"><?= h(t('ins_done_text', $done['admin'])) ?></p>
 				<?php if ($done['imported']): ?><p class="small mb-1"><?= h(t('ins_done_imported', $done['imported'])) ?></p><?php endif; ?>
+				<?php if (!empty($done['skipped'])): ?><div class="small mb-1 text-warning-emphasis" id="insSkipped"><?= h(t('dbr_done_skipped', count($done['skipped']), implode(', ', $done['skipped']))) ?>
+					<?php if (!empty($done['skipped_sql'])): ?><?= nu_skipped_views_box((array)$done['skipped_sql'], 'ins') ?><?php endif; ?></div><?php endif; ?>
 				<?php $up = $done['upgraded'] ?? null; if ($up && ($up['tables'] + $up['columns'] + $up['changed'])): ?><p class="small mb-1"
 					id="insUpgraded"><?= h(t('ins_done_upgraded', $up['tables'], $up['columns'] + $up['changed'])) ?></p>
 					<p class="small text-body-secondary mb-1"><?= h(t('ins_done_upgraded_hint')) ?></p><?php endif; ?>
@@ -533,6 +543,16 @@ nu_head($title, nu_ts_head());   // time zone: searchable
 					<div class="ms-4 mb-3 insDump" id="insDump">
 						<?php if ($cd): ?><div class="alert alert-success small py-2 mb-2"
 							id="insDumpOk"><i class="bi bi-file-earmark-check me-1"></i><?= h(t('ins_dump_ok', $cd['name'], $cd['tables'], $cd['forms'])) ?></div><?php endif; ?>
+						<?php if ($cd && !empty($cd['views_blocked'])): ?>
+						<div class="alert alert-warning small py-2 mb-2" id="insViewsWarn">
+							<p class="fw-semibold mb-1"><?= h(t('dbr_views_title', count($cd['views']))) ?></p>
+							<p class="mb-1"><?= h(t('dbr_views_text')) ?></p>
+							<p class="mb-2 text-break"><?= h(implode(', ', $cd['views'])) ?></p>
+							<div class="form-check mb-0"><input type="hidden" name="skip_views" value="0"><input class="form-check-input<?= $err('skip_views') ?>" type="checkbox"
+								name="skip_views" value="1" id="insSkipViews"<?= !empty($S['content']['skip_views']) ? ' checked' : '' ?>>
+								<label class="form-check-label fw-semibold" for="insSkipViews"><?= h(t('dbr_views_ack')) ?></label><?= $fb('skip_views') ?></div>
+						</div>
+						<?php endif; ?>
 						<div class="input-group input-group-sm has-validation">
 							<input class="form-control<?= $err('dump') ?>" type="file" id="dump" name="dump" accept=".sql,.gz,.zip" aria-label="<?= h(t('ins_choice_upload')) ?>">
 							<button class="btn btn-outline-secondary" type="submit" name="action" value="check_dump" id="insCheckDump"><?= h(t('ins_check')) ?></button><?= $fb('dump') ?>

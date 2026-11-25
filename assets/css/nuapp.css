@@ -67,6 +67,7 @@ html { scrollbar-gutter: stable; scroll-padding-top: calc(var(--nu-sticky-top, 5
 .nu-brand .nu-brand-dark, [data-bs-theme="dark"] .nu-brand .nu-brand-light { display: none; }
 [data-bs-theme="dark"] .nu-brand .nu-brand-dark { display: inline; }
 .navbar-brand .nu-brand img { height: 1.9rem; }
+.nu-brand img { user-select: none; -webkit-user-select: none; -webkit-user-drag: none; }   /* the logo is never selected (double click, long press) */
 @media (max-width: 380px) { .navbar-brand .nu-brand img { height: 1.6rem; } }
 /* branding (Admin tools → Branding): own logo – any aspect ratio, at most 32 px high in the top bar, 72 px on sign-in pages;
    title next to it; environment label (colour from the generated ?p=brand&a=css) and a line of its colour at the top of the page */
@@ -140,6 +141,14 @@ input.form-control[list]:not(.is-invalid):not(.is-valid) {
 .nu-rights thead th { background: var(--nu-surface); font-weight: 600; z-index: 2; }
 .nu-rights .form-check-input { cursor: pointer; }
 .nu-rights-filter { max-width: 15rem; }
+/* filter of the form rights grid: chips (one chosen = light blue, as a chosen outline button) + selects */
+.accRightsFlt .accFltChip { --bs-btn-padding-x: .75rem; border: 1px solid var(--bs-border-color); border-radius: 999px; color: var(--bs-secondary-color); background: var(--bs-body-bg); }
+.accRightsFlt .accFltChip:hover { background: var(--bs-tertiary-bg); }
+.accRightsFlt .accFltChip.active { background: #e7f1ff; border-color: #9ec5fe; color: #0a58ca; font-weight: 600; }
+[data-bs-theme="dark"] .accRightsFlt .accFltChip.active { background: #0b2a55; border-color: #3d6fb4; color: #9ec5fe; }
+.accRightsFlt .accFltSep { width: 1px; align-self: stretch; background: var(--bs-border-color); margin: 0 .25rem; }
+.accRightsFlt .accFltSel { width: auto; min-width: 7rem; max-width: 10rem; flex: 0 1 auto; }
+@media (max-width: 575.98px) { .accRightsFlt .accFltSep { display: none; } }
 /* breathing room at the card edges of tables */
 .card .table > :not(caption) > * > *:first-child { padding-inline-start: 1rem; }
 .card .table > :not(caption) > * > *:last-child { padding-inline-end: 1rem; }
@@ -1170,6 +1179,9 @@ body > .ts-dropdown { z-index: 1065; }
 .ts-wrapper.single .ts-control { flex-wrap: nowrap; }
 .ts-wrapper.single .ts-control > .item { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ts-wrapper.single .ts-control > input { min-width: 0 !important; flex: 1 1 0; }
+/* a searchable select in an input group: its focus ring lies above the button next to it, as Bootstrap does for a focused
+   .form-select (z-index 5) – without it the button covered the ring's right side */
+.input-group > .ts-wrapper.focus { z-index: 5; }
 .input-group > .ts-wrapper:not(:last-child) .ts-control { border-top-right-radius: 0; border-bottom-right-radius: 0; }
 
 /* Update page → Libraries: group rows */
@@ -1455,7 +1467,7 @@ button.nuDbStar:hover, button.nuDbStar:focus-visible { background: var(--bs-tert
 .nuSbClearForm { display: inline-flex; }
 .nuSbClear { padding: .15rem .3rem; font-size: .85rem; }
 .nuSbMenu { position: fixed; z-index: 1080; margin: 0; min-width: 12rem; }   /* right-click menu of "Recently used" */
-.xaRow > select { flex: 1 1 auto; min-width: 0; }   /* user form: additional access levels */
+.xaRow > :is(select, .ts-wrapper) { flex: 1 1 auto; min-width: 0; width: 1%; }   /* user form: additional access levels */
 .xaRow > .xaUntil { flex: 0 0 auto; width: 9.25rem; }   /* just the date + picker icon */
 @media (max-width: 575.98px) { .xaRow > .xaUntil { width: 7.75rem; padding-inline: .35rem; } .xaRow > .input-group-text { padding-inline: .35rem; } }
 .nuFormStatus { cursor: context-menu; border-radius: var(--bs-border-radius-pill); }   /* forms list: status with right-click menu */
@@ -1655,9 +1667,16 @@ body.nuColResizingBody, body.nuColResizingBody * { cursor: col-resize !important
 .nuTabDot { display: inline-block; width: .55rem; height: .55rem; border-radius: 50%; vertical-align: middle; }
 
 /* print view of lists: × after each column title hides the column */
-.nu-print-table .nuColHidden { display: none; }
-.nu-print-table th .nuColHide { border: 0; background: none; padding: 0 .1rem; margin-left: .25rem; line-height: 1; color: var(--bs-secondary-color); vertical-align: middle; }
-.nu-print-table th .nuColHide:hover, .nu-print-table th .nuColHide:focus-visible { color: var(--bs-danger); }
+:is(.nu-print-table, .nuPrintCols) .nuColHidden { display: none !important; }
+/* print views: the table shows once assets/js/nuprintlist.js has hidden / moved the remembered columns (no jump) – anyway after 2 s */
+:is(.nu-print-table, body.nuPrintView #nuBrowseTable):not(.nuPrintCols) { visibility: hidden; animation: nuRvShow 0s 2s forwards; }
+:is(.nu-print-table, .nuPrintCols) th .nuColHide { border: 0; background: none; padding: 0 .1rem; margin-left: .25rem; line-height: 1; color: var(--bs-secondary-color); vertical-align: middle; }
+:is(.nu-print-table, .nuPrintCols) th .nuColHide:hover, :is(.nu-print-table, .nuPrintCols) th .nuColHide:focus-visible { color: var(--bs-danger); }
+/* columns moved by dragging their title: grab cursor, the dragged title faded, a line where it lands */
+@media screen { .nuPrintCols th.nuPrintDrag { cursor: grab; } }
+.nuPrintCols th.nuPrintDragging { opacity: .45; }
+.nuPrintCols th.nuPrintDropBefore { box-shadow: inset 3px 0 0 var(--bs-primary); }
+.nuPrintCols th.nuPrintDropAfter { box-shadow: inset -3px 0 0 var(--bs-primary); }
 
 /* page size menu in the list footer */
 .nuLfPerBtn { color: var(--bs-secondary-color); font-size: inherit; padding: .15rem .5rem; border: 1px solid transparent; }
@@ -1683,6 +1702,25 @@ html.nuTabsPending [data-nu-tab-restore] { visibility: hidden; }
 .nu-rights .nuAccMode-ft { min-width: 10rem; }
 
 /* setup wizard: fields as wide as their content needs, not the whole column */
+/* setup wizard: Back · Next · steps in one row that stays below the top bar; phones: a step menu instead of the tabs */
+.nuWizBar { position: sticky; top: var(--nu-nav-h, 57px); z-index: 1010; display: flex; align-items: center; gap: .75rem; padding: .5rem 1rem;
+	background: var(--nu-surface); border-top: 1px solid var(--bs-border-color); border-bottom: 1px solid var(--bs-border-color); box-shadow: 0 4px 10px rgba(16, 24, 40, .05); }
+html.nuNoNavbar .nuWizBar { top: 0; }
+.nuWizBar > .nuWizBack { flex: none; min-width: 2.5rem; }
+.nuWizBar > .btn-primary { flex: none; }
+.nuWizSteps { flex: 1; min-width: 0; flex-wrap: nowrap; border-bottom: 0; margin-inline-start: .5rem; }
+.nuWizSteps .nav-link { white-space: nowrap; padding: .45rem .7rem; }
+.nuWizSteps button.nav-link { background: none; border-color: transparent; }
+.nuWizStepMenu { display: none; flex: 1; min-width: 0; }
+.nuWizStepMenu .dropdown-toggle { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 991.98px) {
+	.nuWizSteps { display: none; }
+	.nuWizStepMenu { display: block; }
+}
+@media (max-width: 575.98px) {
+	.nuWizBar { gap: .5rem; padding: .5rem .75rem; }
+	.nuWizBack .nuWizBtnTxt { display: none; }
+}
 #wizForm #lang { width: 260px; max-width: 100%; }
 #wizForm #timezone + .ts-wrapper, #wizForm select#timezone { width: 320px; max-width: 100%; }
 #wizForm #timeout, #wizForm #timeout_ga { width: 80px; }
@@ -2284,6 +2322,11 @@ input.nuOwnPwToggle::-ms-reveal { display: none; }
 #admRights .admArea { white-space: nowrap; }
 #admRights .nuAdmFull { display: inline-flex; align-items: center; gap: .35rem; color: var(--bs-danger-text-emphasis); font-size: .875rem; white-space: nowrap; }
 #admRights .nuAdmFull .bi { color: var(--bs-danger); }
+/* admin roles list: column Access – a soft pill in every row, full access tinted red with a shield */
+.nuAdmAccess { display: inline-flex; align-items: center; gap: .35rem; padding: .15rem .6rem; border-radius: 999px; font-size: .8125rem; font-weight: 500;
+	white-space: nowrap; background: var(--bs-secondary-bg); color: var(--bs-secondary-color); }
+.nuAdmAccess.nuAdmAccessFull { background: var(--bs-danger-bg-subtle); color: var(--bs-danger-text-emphasis); font-weight: 600; }
+.nu-table td.nuNum { font-variant-numeric: tabular-nums; }
 /* Phones (the owner picked mockup C): like the desktop – the titles None / View / Change once (sticky), each right one grid row:
    name with area + shield below, then three fixed radio columns; a right without View keeps its dash, so Change never moves */
 @media (max-width: 575.98px) {
@@ -2426,8 +2469,6 @@ a.nuPhBackOwn { display: none; }
 details.nuMoreHint > summary { cursor: pointer; color: var(--bs-link-color); width: fit-content; }
 @media (min-width: 576px) { details[data-nu-phone-fold] > summary { display: none; } }   /* folded on phones only: wider screens show the notices without the summary */
 /* ---- UI review N1–N7 ---- */
-/* N3: the setup wizard names the current step on phones */
-.nuWizSteps .nuWizCur { margin-left: .15rem; }
 /* N1: items whose value is an id */
 .nuItemId { font-size: .75rem; }
 /* N7: help index – finger-sized lines on touch screens */
@@ -3318,3 +3359,6 @@ body.nuRvPending > :not(#nuRecView) { visibility: hidden; animation: nuRvShow 0s
 .pgAnswerView .pgCodeCopy { position: absolute; top: .375rem; right: .375rem; background: var(--bs-body-bg); }
 .pgAnswerView table { border-collapse: collapse; margin-bottom: .75rem; }
 .pgAnswerView th, .pgAnswerView td { border: 1px solid var(--bs-border-color); padding: .25rem .5rem; }
+
+/* Debug results: copy and × next to the checkbox; on phones at the right end of the head line */
+@media (max-width: 575.98px) { .debugRow .debugActs { order: 10; margin-left: auto; } }

@@ -251,6 +251,8 @@ final class NuDB
 				if ((string)($o ?? '') === (string)($v ?? '')) unset($row[$col]);
 				// a value stored with spaces around it comes back trimmed from the form (nu_post trims) – not a change
 				elseif (is_string($o) && is_string($v) && $v !== '' && trim($o) === $v) unset($row[$col]);
+				// an untouched multiple select posts '[]' where nuBuilder Forte left the column empty – not a change either
+				elseif ($v === '[]' && ($o === null || $o === '')) unset($row[$col]);
 			}
 			if (!$row) return 0;
 		}

@@ -365,7 +365,7 @@ $client = [
 			'delete_named' => t('form_delete_named'), 'delete_with' => t('form_delete_with'),
 			'delete_undo' => NuRecycle::days($meta) > 0 ? t('rb_delete_note', NuRecycle::days($meta)) : t('form_delete_undo'), 'rb_undo' => t('rb_undo'),
 			'rb_in_bin' => t('rb_in_bin'), 'error' => t('form_error'), 'php_warn' => t('php_warn'), 'php_warn_more' => t('php_warn_more'),
-		'ok' => t('ok'), 'cancel' => t('cancel'), 'code_fullscreen' => t('form_code_fullscreen'), 'code_hint' => t('form_code_hint'),
+		'ok' => t('ok'), 'cancel' => t('cancel'), 'code_fullscreen' => t('form_code_fullscreen'), 'ta_full_exit' => t('form_ta_full_exit'), 'ph_fold_edit' => t('form_ph_fold_edit'), 'ph_fold_hide' => t('form_ph_fold_hide'), 'code_hint' => t('form_code_hint'),
 			'code_readonly' => t('form_code_readonly'), 'code_discard' => t('form_code_discard'), 'code_dblclick' => t('form_code_dblclick'),
 			'delete' => t('delete'), 'lookup' => t('form_lookup_title'), 'lk_clear' => t('lk_clear'), 'lk_clear_tip' => t('lk_clear_tip'),
 			'lk_keys' => t('lk_keys'), 'js_errors' => t('form_js_errors'),
@@ -541,6 +541,7 @@ $foot = '<script>window.nuNext = ' . json_encode($client, JSON_HEX_TAG | JSON_HE
 	. ($mode === 'browse' && $rights['print'] && empty($printMode) ? '<script src="' . nu_asset('assets/js/nu/nupivot.js') . '" data-apex="'
 		. h(nu_asset(NU_APEXCHARTS . '/apexcharts.min.js')) . '"></script>' : '')   // pivot
 	. ($calList || $calObjects ? NuCalendar::scriptTag() : '')   // calendars
+	. ($mode === 'browse' && !empty($printMode) ? '<script src="' . nu_asset('assets/js/nuprintlist.js') . '"></script>' : '')   // print view: hide columns
 	. ($mode === 'edit' && NuFormRules::of($meta) ? '<script src="' . nu_asset('assets/js/nu/nurules.js') . '"></script>' : '')
 	. '<script src="' . nu_asset('assets/js/nu/nutooltip.js') . '"></script>'
 	. (!$bare && !$design ? NuRecordView::script() : '')           // view mode; on lists: the order of the records for ← / →
@@ -587,7 +588,8 @@ nu_layout_start($title, $meta->id === 'nunotes' || $meta->id === 'nunotescategro
 		. ($design ? ' nuDesignMode' : '')]);
 ?>
 <?php if ($design): // design mode hides the header: the page's heading for screen readers (usability review G8) ?><h1 class="visually-hidden"><?= h($title) ?></h1><?php endif; ?>
-<div class="nuFormHeader nuTitleBar mb-3<?= !$bare ? ' nuPhHead' : '' /* holds .nuPhTitle (nuform.css phone header) */ ?>">
+<?php $launchHead = $mode === 'edit' && $meta->type() === 'launch' && !$bare && !$design; // as Forte: a launch form shows no title ?>
+<div class="nuFormHeader nuTitleBar mb-3<?= $launchHead ? ' nuLaunchHead' : '' ?><?= !$bare ? ' nuPhHead' : '' /* holds .nuPhTitle (nuform.css phone header) */ ?>">
 	<?php if (!$bare): // phones (the owner picked mockup B): "‹ <parent>" + the title instead of the breadcrumb and Back; the buttons sit right of the title
 		$phCur = (string)(end($breadcrumbs)['title'] ?? $title); $phBack = null;
 		for ($bi = count($breadcrumbs) - 2; $bi >= 0; $bi--) if (($breadcrumbs[$bi]['url'] ?? '') !== '') { $phBack = $breadcrumbs[$bi]; break; } ?>
@@ -754,6 +756,10 @@ if (!$bare && in_array($formStatus, [NuFormStatus::MAINT, NuFormStatus::ARCHIVED
 					data-nu-copy-failed="<?= h(t('copy_failed')) ?>"><i class="bi bi-clipboard me-1"></i><span><?= h(t('copy_table')) ?></span></button>
 				<?= NuListExport::csvDialog(['p' => 'formexport'] + array_diff_key($keep, ['p' => 1, 'print' => 1, 'iframe' => 1, 'lookup' => 1, 'lo' => 1]), $meta->code() ?: 'export') ?>
 				<?= NuListExport::xlsxButton(['p' => 'formexport', 'fmt' => 'xlsx'] + array_diff_key($keep, ['p' => 1, 'print' => 1, 'iframe' => 1, 'lookup' => 1, 'lo' => 1])) ?>
+				<?php // × in a column title hides it, Undo / Reset view as on the system lists (assets/js/nuprintlist.js) ?>
+				<button class="btn btn-sm btn-outline-secondary" type="button" id="nuPrintUndo" disabled><i class="bi bi-arrow-counterclockwise me-1"></i><?= h(t('print_undo')) ?></button>
+				<button class="btn btn-sm btn-outline-secondary" type="button" id="nuPrintReset" disabled><i class="bi bi-arrow-repeat me-1"></i><?= h(t('print_reset_view')) ?></button>
+				<span class="small text-body-secondary align-self-center d-none" id="nuPrintHiddenInfo" data-text="<?= h(t('print_cols_hidden', '%s')) ?>" data-move="<?= h(t('print_col_move')) ?>"></span>
 			</div></div>
 	<?php endif; ?>
 	<div class="card shadow-sm nuListCard nuBrowseCard">
@@ -874,13 +880,15 @@ if (!$bare && in_array($formStatus, [NuFormStatus::MAINT, NuFormStatus::ARCHIVED
 						$hidden = $c['width'] <= 0;
 						$isSort = $state['sort'] === $c['index'];
 						$nextDir = $isSort && $state['dir'] === 'asc' ? 'desc' : 'asc';
-						$link = nu_url('form', ['sort' => $c['index'], 'dir' => $nextDir] + $keep);
+						$link = nu_url('form', ['sort' => $c['index'], 'dir' => $nextDir] + $keep + (!empty($printMode) ? ['print' => '1'] : []));   // the print view stays the print view
 					?>
 						<th scope="col" id="nuBrowseTitle<?= (int)$c['index'] ?>" class="nuBrowseTitle text-<?= ['l' => 'start', 'c' => 'center', 'r' => 'end'][$c['align']] ?? 'start' ?>"
 							data-nu-col="<?= (int)$c['index'] ?>" data-nu-browse-id="<?= h($c['id']) ?>" data-nu-title-id="<?= h($c['id']) ?>"
 								style="<?= $hidden ? 'display:none;' : 'width:' . (int)($bw[$c['index']] ?? (int)$c['width'] + NU_BROWSE_CELL_PAD) . 'px;' ?>"<?= $isSort ? ' aria-sort="' . ($state['dir'] === 'asc' ? 'ascending' : 'descending') . '"' : '' ?>>
 							<a class="nu-sort" id="nusort_<?= (int)$c['index'] ?>"
-								href="<?= h($link) ?>"><?php /* id as nuBuilder Forte's title text (form code styles $('#nusort_2')) */ ?><?= NuHtmlClean::cell((string)$c['title']) ?><?= $isSort ? ' <i class="bi bi-caret-' . ($state['dir'] === 'asc' ? 'up' : 'down') . '-fill"></i>' : '' ?></a>
+								href="<?= h($link) ?>"><?php /* id as nuBuilder Forte's title text (form code styles $('#nusort_2')) */ ?><?= NuHtmlClean::cell((string)$c['title']) ?><?= $isSort ? ' <i class="bi bi-caret-' . ($state['dir'] === 'asc' ? 'up' : 'down') . '-fill"></i>' : '' ?></a><?php if (!empty($printMode)):
+								$hdTxt = NuHtmlClean::cellText((string)$c['title']); ?><button type="button" class="nuColHide d-print-none"
+								aria-label="<?= h(t('print_col_hide', $hdTxt)) ?>" title="<?= h(t('print_col_hide', $hdTxt)) ?>"><i class="bi bi-x"></i></button><?php endif; ?>
 						</th>
 					<?php endforeach; ?>
 				</tr>

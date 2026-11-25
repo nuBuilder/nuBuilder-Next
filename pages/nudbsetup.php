@@ -45,6 +45,8 @@ nu_center_start(t('dbs_title'), $dbName !== '' ? t('dbs_subtitle', $dbName) : ''
 		<i class="bi bi-check-circle text-success display-6"></i>
 		<p class="mt-2 mb-1 fw-semibold"><?= h(t($done['state'] === 'old' ? 'dbs_done_upgrade' : ($done['state'] === 'partial' ? 'dbs_done_repair' : 'dbs_done_setup'))) ?></p>
 		<?php if ($done['imported']): ?><p class="small text-body-secondary mb-1"><?= h(t('ins_done_imported', $done['imported'])) ?></p><?php endif; ?>
+		<?php if (!empty($done['skipped'])): ?><div class="small text-warning-emphasis text-start mb-1" id="dbsSkipped"><?= h(t('dbr_done_skipped', count($done['skipped']), implode(', ', $done['skipped']))) ?>
+			<?php if (!empty($done['skipped_sql'])): ?><?= nu_skipped_views_box((array)$done['skipped_sql'], 'dbs') ?><?php endif; ?></div><?php endif; ?>
 		<?php $up = $done['upgraded']; if ($up && ($up['tables'] + $up['columns'] + $up['changed'])): ?><p class="small text-body-secondary mb-1"><?= h(t('ins_done_upgraded', $up['tables'], $up['columns'] + $up['changed'])) ?></p><?php endif; ?>
 		<a class="btn btn-primary mt-3" id="dbsContinue" href="<?= h(nu_url($isGa ? 'home' : 'login')) ?>"><?= h(t($isGa ? 'dbs_continue' : 'ins_login')) ?></a>
 	</div>

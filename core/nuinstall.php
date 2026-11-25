@@ -333,7 +333,7 @@ final class NuInstall
 	 * Checks a dump of any size without reading it into memory: a .zip / .sql.gz is unpacked next to it as <name>.checked.sql (a plain
 	 * .sql is used where it is), then checkDump() reads it statement by statement – the application's tables too (the installer and the
 	 * database set-up start from an empty database: a complete dump of a nuBuilder Forte database is fine).
-	 * @return array{ok: bool, error: string, file: string, tables: int, forms: int, size: int, mtime?: int}
+	 * @return array{ok: bool, error: string, file: string, tables: int, forms: int, size: int, mtime?: int, views?: list<string>}
 	 */
 	public static function checkDumpFile(string $path): array
 	{
@@ -356,7 +356,7 @@ final class NuInstall
 		}
 		clearstatcache(true, $file);
 		return ['ok' => true, 'error' => '', 'file' => $file, 'tables' => (int)$chk['tables'], 'forms' => (int)$chk['forms'], 'size' => (int)@filesize($file),
-			'mtime' => (int)@filemtime($file)];
+			'mtime' => (int)@filemtime($file), 'views' => $chk['views'] ?? []];
 	}
 
 	/** Why a dump cannot be read: a .zip without / with several .sql files, or simply unreadable. */
@@ -405,19 +405,21 @@ final class NuInstall
 	 * Checks a nubuilder4.sql before it runs: only nuBuilder's own tables (zzzzsys_…) are created, filled, changed or dropped, besides
 	 * SET, transactions, LOCK TABLES and nuBuilder 4.5's views. Refused: other tables, other databases (USE, CREATE / DROP DATABASE),
 	 * users and rights, files (INTO OUTFILE, LOAD DATA), triggers, routines, events and an explicit DEFINER.
+	 * views: the views the dump creates (not mysqldump's stand-ins, not nuBuilder Forte 4.5's own).
 	 * $anyTable (Reset database in developer mode): tables of the application too (a complete dump of a nuBuilder database);
-	 * the other rules stay. @return array{ok: bool, error: string, tables: int, forms: int, users: int, app: int}
+	 * the other rules stay. @return array{ok: bool, error: string, tables: int, forms: int, users: int, app: int, views: list<string>}
 	 */
 	public static function checkDump(string|iterable $sql, bool $anyTable = false, bool $needCore = true): array
 	{
-		$res = ['ok' => false, 'error' => '', 'tables' => 0, 'forms' => 0, 'users' => 0, 'app' => 0];
+		$res = ['ok' => false, 'error' => '', 'tables' => 0, 'forms' => 0, 'users' => 0, 'app' => 0, 'views' => []];
 		$created = [];
 		$tbl = $anyTable ? '`?(\w+)`?' : '`?(zzzzsys_\w+)`?';
 		$insert = '/^(INSERT|REPLACE)\s+INTO\s+' . $tbl . '\s*(\([^)]*\)\s*)?VALUES\b/i';
 		foreach (is_string($sql) ? self::splitSql($sql) : $sql as $stmt) {
 			$s = trim((string)preg_replace('#^/\*!\d*\s*(.*?)\s*\*/$#s', '$1', trim($stmt)));
 			if ($s === '') continue;
-			$bad = static fn() => ['ok' => false, 'error' => t('ins_dump_err_stmt', mb_substr((string)preg_replace('/\s+/', ' ', $s), 0, 80)), 'tables' => 0, 'forms' => 0, 'users' => 0, 'app' => 0];
+			$bad = static fn() => ['ok' => false, 'error' => t('ins_dump_err_stmt', mb_substr((string)preg_replace('/\s+/', ' ', $s), 0, 80)), 'tables' => 0, 'forms' => 0, 'users' => 0, 'app' => 0,
+				'views' => []];
 			if (preg_match($insert, $s, $m)) {
 				// VALUES with literals only (strings, numbers, NULL, hex) – no sub-queries or functions such as LOAD_FILE()
 				$vals = (string)preg_replace("/'(?:[^'\\\\]|\\\\.|'')*'/s", "''", substr($s, strlen($m[0])));
@@ -425,6 +427,16 @@ final class NuInstall
 				if (!preg_match('/^[\s(),]*$/', $vals)) return $bad();
 				if (strtolower($m[2]) === 'zzzzsys_form') $res['forms'] += preg_match_all('/\)\s*,\s*\(/', $s) + 1;
 				if (strtolower($m[2]) === 'zzzzsys_user') $res['users'] += preg_match_all('/\)\s*,\s*\(/', $s) + 1;
+				continue;
+			}
+			// a view (mysqldump's DEFINER is already gone – NuSqlImport::plainCreate): recorded, so the check can say a user without CREATE VIEW loses it
+			if (stripos($s, 'VIEW') !== false && ($v = NuSqlImport::viewStmt($stmt))) {
+				$body = $v['body'];
+				$named = (bool)preg_match('/^' . $tbl . '$/i', '`' . $v['name'] . '`');
+				$legacy = in_array(strtolower($v['name']), self::LEGACY_VIEWS, true);
+				if (preg_match('/\b(INTO\s+(OUT|DUMP)FILE|LOAD_FILE\s*\()/i', $body) || !$named) return $bad();
+				if (!preg_match($anyTable ? '/^(SELECT|WITH|\()/i' : '/^SELECT\b/i', ltrim($body))) return $bad();
+				if (!$v['stub'] && !$legacy) $res['views'][$v['name']] = true;
 				continue;
 			}
 			if (preg_match('/\b(INTO\s+(OUT|DUMP)FILE|LOAD_FILE\s*\(|DEFINER\s*=)/i', $s)) return $bad();
@@ -448,6 +460,7 @@ final class NuInstall
 		$missing = $needCore ? array_diff(self::DUMP_CORE, array_keys($created)) : [];   // $needCore false: a backup of nuBuilder Next's own tables
 		if ($missing) { $res['error'] = t('ins_dump_err_core', implode(', ', $missing)); return $res; }
 		$res['ok'] = true;
+		$res['views'] = array_keys($res['views']);
 		$res['tables'] = count($created);
 		$res['app'] = count(array_filter(array_keys($created), static fn($t) => !str_starts_with($t, 'zzzzsys_')));
 		return $res;

@@ -2211,6 +2211,7 @@
 	function brInit() {
 		var t = brTable();
 		if (BR.ctl || !t || N.mode !== 'browse' || typeof window.nuColResize !== 'function') return BR.ctl;
+		if (document.body.classList.contains('nuPrintView')) return null;   // the print view keeps its own widths (no dragged widths of the list)
 		BR.ctl = window.nuColResize(t, {key: 'nunext-browse-w:' + N.form.id + (N.lookup ? ':lookup' : ''), titles: 'thead th.nuBrowseTitle',
 			id: function (th) { return th.getAttribute('data-nu-col'); }, cells: function (c) { return brColCells(t, c); },
 			fixedClass: 'nuBrowseFixed', saved: N.lookup ? null : brCookie});
@@ -3709,8 +3710,10 @@
 			var w = parseFloat(like.style.left) + parseFloat(like.style.width) - parseFloat(own.style.left);
 			if (w > ta.offsetWidth || !ta.offsetWidth) { own.style.width = w + 'px'; ta.style.width = w + 'px'; }
 		}
+		fullButton(ta);
 		var fit = function () {
 			if (ta.offsetParent === null || document.documentElement.classList.contains('nuDesigning')) return;
+			if (ta.closest('.nuTaFullOn')) return;
 			var wrap = ta.closest('.nuWrap') || ta, pane = ta.closest('.nuTabPane') || document;
 			var rect = wrap.getBoundingClientRect(), below = false;
 			pane.querySelectorAll('.nuWrap').forEach(function (w) {
@@ -3719,7 +3722,7 @@
 			if (below) return;
 			var main = document.querySelector('main') || document.body, tr = ta.getBoundingClientRect();
 			var rest = Math.max(0, main.getBoundingClientRect().bottom - Math.max(rect.bottom, tr.bottom));
-			var h = Math.max(250, Math.floor(window.innerHeight - tr.top - rest - 8));
+			var h = Math.max(250, Math.floor(window.innerHeight - tr.top - rest - 24));   // room below the box before the card's edge
 			var delta = h - ta.offsetHeight;
 			if (Math.abs(delta) < 2) return;
 			ta.style.height = h + 'px';
@@ -3730,6 +3733,38 @@
 		fit();
 		document.addEventListener('shown.bs.tab', function () { setTimeout(fit, 0); });
 		var tm; window.addEventListener('resize', function () { clearTimeout(tm); tm = setTimeout(fit, 120); });
+	}
+	// a full-screen button at the top right of a long text field (Notes): the whole window to read and write; Esc or the button ends it.
+	// The cursor goes into the field only with a real keyboard – on phones / tablets no on-screen keyboard pops up
+	function fullButton(ta) {
+		var wrap = ta.closest('.nuWrap');
+		if (!wrap || wrap.querySelector('.nuTaFullBtn') || document.documentElement.classList.contains('nuDesigning')) return;
+		var b = document.createElement('button');
+		b.type = 'button';
+		b.className = 'btn btn-sm nuTaFullBtn';
+		b.innerHTML = '<i class="bi bi-arrows-fullscreen" aria-hidden="true"></i>';
+		var label = function (on) {
+			var t = on ? (M.ta_full_exit || 'Exit full screen (Esc)') : (M.code_fullscreen || 'Full screen');
+			b.title = t; b.setAttribute('aria-label', t); b.setAttribute('aria-pressed', on ? 'true' : 'false');
+			b.firstChild.className = 'bi ' + (on ? 'bi-fullscreen-exit' : 'bi-arrows-fullscreen');
+		};
+		var place = function () { b.style.top = (ta.offsetTop + 6) + 'px'; b.style.left = (ta.offsetLeft + ta.offsetWidth - b.offsetWidth - 6) + 'px'; };
+		var set = function (on) {
+			wrap.classList.toggle('nuTaFullOn', on);
+			document.documentElement.classList.toggle('nuTaFullOpen', on);
+			label(on);
+			place();
+			var kb = window.nuHasKeyboard ? window.nuHasKeyboard() : matchMedia('(hover: hover) and (pointer: fine)').matches;
+			if (kb) ta.focus(); else if (document.activeElement === ta) ta.blur();
+		};
+		label(false);
+		ta.classList.add('nuTaHasFull');                       // room on the right, so the button covers no text
+		wrap.appendChild(b);
+		place();
+		b.addEventListener('click', function (e) { e.preventDefault(); set(!wrap.classList.contains('nuTaFullOn')); });
+		document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && wrap.classList.contains('nuTaFullOn')) { e.preventDefault(); set(false); } });
+		if (window.ResizeObserver) new ResizeObserver(place).observe(ta);
+		document.addEventListener('shown.bs.tab', function () { setTimeout(place, 0); });
 	}
 	function phoneStack() {
 		var html = document.documentElement;
@@ -3747,15 +3782,87 @@
 		var on = (phone || forced) && !!document.querySelector('.nuLayout-absolute .nuAbsoluteCanvas');
 		html.classList.toggle('nuPhoneStack', on);
 		html.classList.toggle('nuPortrait', on && forced);
-		if (!on) return;
+		growHtml(on);
+		if (!on) { phoneFold(false); return; }
 		$('.nuLayout-absolute .nuAbsoluteCanvas').each(function () {
 			$(this).children('.nuAbs').each(function () {
 				var t = parseInt(this.style.top, 10) || 0, l = parseInt(this.style.left, 10) || 0;
 				this.style.order = String(t * 10 + Math.min(9, Math.floor(l / 100)));   // rows first, left to right within ~ a row
 			});
 		});
+		phoneFold(true);
+	}
+
+	// phones, saved record: objects marked to fold (sob_all_json nunext.phone_fold, data-nu-ph-fold) collapse into one summary row –
+	// first value as its title, the others below; a tap opens them. Open / folded is remembered per form on this device.
+	// New records always show the fields.
+	var foldKey = 'nunext-phfold:' + ((N.form && N.form.id) || '');
+	function foldText(w) {
+		if (w.style.display === 'none') return '';
+		var desc = w.querySelector('input[id$="description"]');
+		if (desc && desc.value) return desc.value;
+		var el = w.querySelector('select, textarea, input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=button])');
+		if (!el) return '';
+		if (el.tagName === 'SELECT') return el.selectedIndex >= 0 && el.value !== '' ? el.options[el.selectedIndex].text : '';
+		return String(el.value || '').trim();
+	}
+	function phoneFold(on) {
+		$('.nuAbsoluteCanvas').each(function () {
+			var canvas = this, ws = Array.prototype.slice.call(canvas.querySelectorAll(':scope > .nuAbs[data-nu-ph-fold]'));
+			var row = canvas.querySelector(':scope > .nuPhFold');
+			if (!on || N.is_new || !ws.length) {
+				if (row) row.remove();
+				ws.forEach(function (w) { w.classList.remove('nuPhFolded'); });
+				return;
+			}
+			ws.sort(function (a, b) { return (parseInt(a.style.order, 10) || 0) - (parseInt(b.style.order, 10) || 0); });
+			if (!row) {
+				row = document.createElement('button');
+				row.type = 'button';
+				row.className = 'nuPhFold';
+				row.innerHTML = '<span class="nuPhFoldTxt"><span class="nuPhFoldTitle"></span><span class="nuPhFoldMeta"></span></span>'
+					+ '<span class="nuPhFoldAct"></span><i class="bi bi-chevron-down nuPhFoldChev" aria-hidden="true"></i>';
+				canvas.insertBefore(row, ws[0]);
+				row.addEventListener('click', function (e) {
+					e.preventDefault();
+					var open = row.getAttribute('aria-expanded') !== 'true';
+					nuStore.set(foldKey, open ? '1' : '0');
+					fold(open);
+					if (open) { var f = ws[0].querySelector('input:not([type=hidden]), select, textarea'); if (f && window.nuHasKeyboard && window.nuHasKeyboard()) f.focus(); }
+				});
+				canvas.addEventListener('change', fill);
+				canvas.addEventListener('input', fill);
+			}
+			row.style.order = String((parseInt(ws[0].style.order, 10) || 0) - 1);
+			function fill() {
+				var vals = ws.map(foldText).filter(function (v) { return v !== ''; });
+				row.querySelector('.nuPhFoldTitle').textContent = vals[0] || '';
+				row.querySelector('.nuPhFoldMeta').textContent = vals.slice(1).join(' · ');
+			}
+			function fold(open) {
+				row.setAttribute('aria-expanded', open ? 'true' : 'false');
+				row.querySelector('.nuPhFoldAct').textContent = open ? (M.ph_fold_hide || 'Hide') : (M.ph_fold_edit || 'Edit');
+				ws.forEach(function (w) { w.classList.toggle('nuPhFolded', !open); });
+			}
+			fill();
+			fold(nuStore.get(foldKey) === '1' || !!canvas.querySelector(':scope > .nuAbs[data-nu-ph-fold] .is-invalid'));
+		});
 	}
 	if (phoneMq) { try { phoneMq.addEventListener('change', function () { phoneStack(); growFrames(); }); } catch (x) { /* old Safari */ } }
+
+	// HTML objects of a fixed-layout form on phones: their text wraps onto more lines in the narrow width, so a box keeps its
+	// height of the desktop layout only as a minimum and grows to its content (the next object no longer covers the text)
+	function growHtml(on) {
+		$('.nuLayout-absolute .nuAbsoluteCanvas > .nuWrap_html').each(function () {
+			var w = this, grown = w.getAttribute('data-nu-ph-h') !== null;
+			if (grown) { w.style.height = w.getAttribute('data-nu-ph-h'); w.removeAttribute('data-nu-ph-h'); }   // back to the form's height
+			if (!on || !w.offsetParent) return;                  // a hidden tab: measured when it is shown
+			var h0 = w.style.height, need = w.scrollHeight;
+			if (need > w.clientHeight + 1) { w.setAttribute('data-nu-ph-h', h0); w.style.height = need + 'px'; }
+		});
+	}
+	$(document).on('shown.bs.tab', '.nuTab', function () { setTimeout(function () { growHtml(document.documentElement.classList.contains('nuPhoneStack')); }, 30); });
+	window.addEventListener('load', function () { growHtml(document.documentElement.classList.contains('nuPhoneStack')); });
 
 	// embedded lists (review F3): a form shown in a run object of another form gets html.nuEmbedded (compact chrome, nuform.css);
 	// the parent grows such iframes to their content while its objects flow (phones, auto / grid layouts) – absolute layouts keep their size
@@ -5239,7 +5346,12 @@
 				: (toolbar
 					|| 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | forecolor backcolor removeformat | alignleft aligncenter alignright alignjustify | outdent indent | numlist bullist | link image table charmap emoticons | fullscreen preview code'),
 			toolbar_groups: toolbarGroups || {}, menubar: menubar || 'file edit view insert format tools table help', contextmenu: contextmenu || 'link image table',
-			mobile: mobile || {menubar: false}, toolbar_mode: 'sliding', resize: true, elementpath: false, image_advtab: true,
+			// phones (TinyMCE's own detection – tablets keep the desktop set): no menu bar, ONE toolbar row that scrolls sideways
+			// (a drawer of more rows took most of the editor's height), the most used buttons first.
+			// A toolbar or mobile set of the form's code is kept as given
+			mobile: mobile || $.extend({menubar: false, toolbar_mode: 'scrolling'}, !toolbar || toolbar === 'minimal'
+				? {toolbar: 'fullscreen | undo redo | bold italic underline | bullist numlist | blocks | link image | forecolor backcolor removeformat | alignleft aligncenter alignright'} : {}),
+			toolbar_mode: 'sliding', resize: true, elementpath: false, image_advtab: true,
 			height: edH, width: '100%',
 			skin: dark ? 'oxide-dark' : 'oxide', content_css: dark ? 'dark' : 'default', content_style: 'p { margin: 0; }',
 			autosave_ask_before_unload: false, readonly: ro, disabled: ro,
@@ -5249,6 +5361,18 @@
 				editor.on('init', function (e) {
 					editor.setContent(ta.value);
 					if (window.nuTinyMCEOnInit) { try { window.nuTinyMCEOnInit(e, editor, id); } catch (x) { reportError(x.message, 'nuTinyMCEOnInit'); } }
+				});
+				// full screen on / off: TinyMCE puts the cursor into the text – on phones / tablets (no real keyboard) that opens the
+				// on-screen keyboard, so the focus is taken away again
+				editor.on('FullscreenStateChanged', function () {
+					var kb = window.nuHasKeyboard ? window.nuHasKeyboard() : matchMedia('(hover: hover) and (pointer: fine)').matches;
+					if (kb) return;
+					var off = function () {
+						try { var b = editor.getBody(); if (b) b.blur(); var w = editor.getWin(); if (w) w.blur(); } catch (x) { /* editor gone */ }
+						var a = document.activeElement;
+						if (a && a !== document.body && a.blur) a.blur();
+					};
+					off(); setTimeout(off, 0); setTimeout(off, 120);
 				});
 				editor.on('SetContent', function (e) { if (window.nuTinyMCEOnSetContent) window.nuTinyMCEOnSetContent(e, editor, id); });
 				editor.on('input change undo redo', function () {
@@ -6316,6 +6440,13 @@
 			.attr({title: S.options || 'Options', 'aria-label': S.options || 'Options'});
 		var ul = $('<ul class="dropdown-menu nuOptionsList"></ul>');
 		phoneDesignItems(ul);
+		// nothing but entries the user menu of the top bar has too (Documentation, Change password): no ⋮ at all – the keys
+		// stay; form code that fills the list itself (nuOnOptionsListLoadedGlobal) keeps it
+		var inUserMenu = function (a) {
+			return (a[1] === 'help' && g('nuMenuDocs')) || (a[1] === 'password' && document.querySelector('.nu-navbar .dropdown-menu a[href*="p=password"]'));
+		};
+		if (!N.iframe && !N.audit && !N.nulog && !ul.children().length && typeof window.nuOnOptionsListLoadedGlobal !== 'function'
+			&& acts.every(inUserMenu)) return;
 		ul.append($('<li><h6 class="dropdown-header"></h6></li>').find('h6').text(S.options || 'Options').end());
 		var last = null;
 		acts.forEach(function (a) {
@@ -6525,6 +6656,11 @@
 		phoneStack();
 		if (N.mode === 'edit') fitWide();   // wide fixed-layout forms: page margins away while the form would scroll sideways
 		if (N.mode === 'edit') growFrames();
+		// launch forms (as Forte): no title – and no header at all while it holds no visible button (form code may add some in nuOnLoad)
+		$('.nuFormHeader.nuLaunchHead').each(function () {
+			var any = Array.prototype.some.call(this.querySelectorAll('#nuActionHolder > *'), function (el) { return el.offsetWidth > 0 || el.offsetHeight > 0; });
+			this.classList.toggle('nuLaunchEmpty', !any);
+		});
 		$('#nuRECORD.nuEditJsWait').removeClass('nuEditJsWait');   // the record shown once the form's code and the layout ran (pages/nuform.php)
 		if (typeof window.nuHScrollScan === 'function') window.nuHScrollScan();   // usability review G5: tabs of three rows or more on phones
 		// first field gets the focus (mouse / trackpad only, see nuFocusFirst in assets/js/nuapp.js) – after nuOnLoad, which may set its own

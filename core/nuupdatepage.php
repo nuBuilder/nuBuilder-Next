@@ -290,6 +290,7 @@ final class NuUpdatePage
 		if ($r['mismatch']) nu_flash('warning',
 			t('rst_verify_diff', count($r['mismatch']), implode(', ', array_map(static fn($t, $c) => $t . ' ' . $c[0] . ' → ' . $c[1], array_keys($r['mismatch']), $r['mismatch']))));
 		elseif ($r['checked']) nu_flash('success', t('rst_verify_ok', $r['checked']));
+		if ($r['skipped']) nu_flash('warning', t('dbr_done_skipped', count($r['skipped']), implode(', ', $r['skipped'])) . ($r['skipped_sql'] ? ' ' . t('views_skipped_log') : ''));
 		if ($r['safety'] !== '') nu_flash('info', t('rst_done_safety', $r['safety']));
 		nu_redirect(nu_url('update', ['tab' => 'backups']) . '#backups');
 	}

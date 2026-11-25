@@ -43,7 +43,8 @@ final class NuDbsetupPage
 					$r = NuDbState::setUp($choice, $file);
 					foreach (glob(NU_ROOT . '/_install/nunext-lib-*.zip') ?: [] as $f) @rename($f, NuUpdate::folderDir() . '/' . basename($f));   // library packs stay offered
 					NuInstall::cleanup();                                 // token, uploads, install.allow
-					$_SESSION[NuSess::DB_SETUP_DONE] = ['state' => $st['state'], 'imported' => $r['imported'], 'upgraded' => $r['upgraded'], 'steps' => count($r['steps'])];
+					$_SESSION[NuSess::DB_SETUP_DONE] = ['state' => $st['state'], 'imported' => $r['imported'], 'upgraded' => $r['upgraded'], 'steps' => count($r['steps']),
+						'skipped' => (array)($r['skipped'] ?? []), 'skipped_sql' => (array)($r['skipped_sql'] ?? [])];
 					unset($_SESSION[NuSess::DB_SETUP_AUTH]);
 				} catch (Throwable $e) {
 					error_log('nuBuilder Next database set-up: ' . $e->getMessage());

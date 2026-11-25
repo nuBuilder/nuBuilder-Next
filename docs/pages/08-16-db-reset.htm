@@ -1,8 +1,8 @@
 <section id="db-reset" data-doc="admin" data-level="advanced">
 	<h2 id="db-reset-h">Reset database</h2>
-	<p class="doc-lead"><span class="badge doc-adv">Advanced</span> Start a development database again from a nuBuilder Forte SQL file.</p>
-	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin) in developer mode</p>
-	<p>The start page tile <em>Reset database</em> (<code>index.php?p=dbreset</code>) is shown only to the globeadmin while <code>$nuConfigDevMode = true</code>, on MySQL / MariaDB and SQL Server. It <strong>deletes all tables and views of the database</strong> – nuBuilder Forte's, nuBuilder Next's and the application's – imports a nuBuilder Forte (4.x) SQL file and creates nuBuilder Next's tables, as a new installation does. Use it on development and test installations to start again from a clean nuBuilder or from a copy of a real one – never with live data.</p>
+	<p class="doc-lead"><span class="badge doc-adv">Advanced</span> Start a database again from a nuBuilder Forte SQL file.</p>
+	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin)</p>
+	<p>The start page tile <em>Reset database</em> (<code>index.php?p=dbreset</code>) is shown only to the globeadmin (not in demo mode, not while acting as another user), on MySQL / MariaDB and SQL Server; it carries a red <em>Danger</em> badge, and the page starts with a <em>Danger zone</em> box naming the database. It <strong>deletes all tables and views of the database</strong> – nuBuilder Forte's, nuBuilder Next's and the application's – imports a nuBuilder Forte (4.x) SQL file and creates nuBuilder Next's tables, as a new installation does. Use it on development and test installations to start again from a clean nuBuilder or from a copy of a real one – never with live data.</p>
 <ol>
 <li><strong>Choose the file</strong>: <code>nubuilder4.sql</code> of a nuBuilder Forte folder next to nuBuilder Next, a <code>.sql</code>, <code>.sql.gz</code> or <code>.zip</code> copied into <code>_install/</code> or <code>_update/</code>, or an upload. Either nuBuilder's own <code>nubuilder4.sql</code> (any 4.x – it is brought to 4.9 like in the installer) or a <strong>complete dump</strong> of a nuBuilder database with the application's tables (e.g. from phpMyAdmin or <code>mysqldump</code>).</li>
 <li><strong>Check file</strong> reads and checks it – nothing changes yet. Only plain statements are allowed: <code>CREATE</code> / <code>DROP</code> / <code>ALTER TABLE</code>, <code>INSERT</code> with literal values, <code>SET</code>, <code>LOCK TABLES</code>, views, and – as a complete dump or a backup of nuBuilder Next writes them – functions, procedures, triggers, events and sequences between <code>DELIMITER</code> lines; refused are other databases (<code>USE</code>), users and rights, files (<code>INTO OUTFILE</code>, <code>LOAD DATA</code>) and <code>DEFINER</code>. The file is read line by line, so its size does not matter. The page shows what the file creates (tables, of them the application's, forms, users) and lists every table that would be deleted.</li>
@@ -16,6 +16,7 @@
 <h3 id="db-reset-clean">Clean installation (also SQL Server)</h3>
 <p>The first entry of the list, <strong>nuBuilder Next: clean installation</strong>, needs no file: all tables and views are deleted and the database is built again from nuBuilder Next's own install scripts for the database type – an empty application with the globeadmin, like a new installation – then the sample application can follow. On <strong>SQL Server</strong> this is the only choice: SQL files of nuBuilder Forte are MySQL dumps, and packages and uploads are not offered there. On the command line: <code>php nucron.php reset --clean [--backup] [--sample] --yes</code>.</p>
 <p>Many shared hosts do not allow stored procedures, functions, triggers or events. When the dump holds such routines and the database refuses them, the reset goes on without them and lists the ones it skipped at the end; the tables and data are imported.</p>
+<p>The same applies to views. Before anything is deleted, the check tries whether the database user may create views. If not, it names the dump's views and the reset only runs after you tick <em>Import without these views</em>. The page shows the SQL of the views it left out at the end, so someone with the right CREATE VIEW can create them later (for example in phpMyAdmin or Adminer). On the command line, add <code>--skip-views</code>. The installer and the database set-up do the same with a dump.</p>
 </div>
 <div class="doc-sub">
 <h3 id="db-reset-fresh">Fresh installation from a package</h3>
@@ -28,10 +29,10 @@
 </ol>
 <p><code>nuconfig.php</code> (connection, globeadmin), <code>custom/</code> (custom pages and their data) and the backups stay. The installation is written to the log (<code>database_fresh</code>).</p>
 </div>
-<p>On the command line (also only with <code>$nuConfigDevMode = true</code>):</p>
+<p>On the command line:</p>
 <pre><code>php nucron.php reset --sql=/path/nubuilder4.sql --check          # check only, list what would be deleted
 php nucron.php reset --sql=/path/dump.sql.gz --backup --sample --yes</code></pre>
 <p>An uploaded file is kept in <code>_update/</code> as <code>dbreset-….zip</code> / <code>.sql</code> only between <em>Check</em> and <em>Reset</em>: it is deleted after the reset, on <em>Cancel</em>, when the check fails or another file is checked – and by the housekeeping after a day. The Update page does not list these files.</p>
-<p>Without <code>--yes</code> nothing is deleted. Exit code: 0 = done / checked, 1 = failed, 2 = wrong call or developer mode off.</p>
+<p>Without <code>--yes</code> nothing is deleted. Exit code: 0 = done / checked, 1 = failed, 2 = wrong call or a database other than MySQL / MariaDB or SQL Server.</p>
 	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nudbreset.php</code></li><li><code>pages/nudbreset.php</code></li><li><code>nucron.php</code></li></ul></details>
 </section>

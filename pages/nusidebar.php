@@ -52,6 +52,11 @@ switch (nu_post('action')) {
 		if (nu_post('json') === '1') nu_json(['ok' => $r !== null, 'fav' => $r, 'error' => $r === null ? t('sb_fav_not_possible') : '']);
 		if ($r === null) nu_flash('warning', t('sb_fav_not_possible'));
 		break;
+	case 'fav_order':   // the row Favourites of the start page: dragged into a new order (JSON answer)
+		$keys = json_decode(nu_post('keys'), true);
+		$fn = static fn() => NuSidebar::favOrder(is_array($keys) ? array_values(array_filter($keys, 'is_string')) : []);
+		$r = !empty($u['demo']) ? NuDemo::permitted($fn) : $fn();
+		nu_json(['ok' => $r !== null, 'error' => $r === null ? t('sb_fav_not_possible') : '']);
 	case 'hide':     // tile menu of the start page: hide a tile – in the layout (admins) or for me (user start pages); message with Undo
 	case 'unhide':   // its Undo
 		$fn = nu_post('action') === 'hide' ? static fn() => NuSidebar::hideTile(nu_post('key')) : static fn() => NuSidebar::unhideTile(nu_post('key'));

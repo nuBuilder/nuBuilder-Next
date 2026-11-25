@@ -888,6 +888,21 @@ function nu_back_button(?string $route = null, ?string $url = null, string $clas
  * click does not toggle a switch. $cls: classes of the span (ms-1 by default); $wide: the wide tooltip; $trigger: e.g. 'hover focus click'.
  */
 /**
+ * The CREATE VIEW statements of views an import left out (the database user may not create views) – folded, read-only, with a copy
+ * button: someone with the right runs them later (phpMyAdmin, Adminer). $id: prefix of the element ids. @param array<string, string> $sql
+ */
+function nu_skipped_views_box(array $sql, string $id): string
+{
+	$text = implode(";\n\n", array_values($sql)) . ';';
+	return '<details class="mt-1" id="' . h($id) . 'SkippedViews"><summary>' . h(t('views_skipped_sql', count($sql))) . '</summary>'
+		. '<p class="mb-1 mt-1 text-body-secondary">' . h(t('views_skipped_sql_hint')) . '</p>'
+		. '<textarea class="form-control form-control-sm font-monospace mb-1" rows="6" readonly id="' . h($id) . 'SkippedSql" aria-label="'
+		. h(t('views_skipped_sql', count($sql))) . '">' . h($text) . '</textarea>'
+		. '<button type="button" class="btn btn-sm btn-outline-secondary" data-nu-copy="#' . h($id) . 'SkippedSql"><i class="bi bi-clipboard me-1"></i>'
+		. h(t('copy')) . '</button></details>';
+}
+
+/**
  * (i) with a tooltip. $doc = id of a section of the documentation (docs/pages): a long tap on a touch screen opens it (assets/js/nuapp.js);
  * without one the long tap opens the page's own documentation (F1, <body data-nu-help>).
  */

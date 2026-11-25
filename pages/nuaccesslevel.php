@@ -382,8 +382,41 @@ nu_layout_start($title, 'access', ['head' => '<link rel="stylesheet" href="' . n
 	<div class="tab-pane fade<?= $accTab === 'rights' ? ' show active' : '' ?>" id="accessTabRights" role="tabpanel" aria-labelledby="accessTabRightsBtn" tabindex="0">
 			<div class="card shadow-sm">
 				<div class="card-header d-flex flex-wrap gap-2 justify-content-between align-items-center">
-					<span class="fw-semibold"><i class="bi bi-ui-checks-grid me-2"></i><?= h(t('access_forms')) ?> <span class="badge text-bg-secondary js-rights-count"><?= $rightsCount ?></span></span>
+					<span class="fw-semibold"><i class="bi bi-ui-checks-grid me-2"></i><?= h(t('access_forms')) ?> <span class="badge text-bg-secondary js-rights-count"><?= $rightsCount ?></span>
+						<span class="small fw-normal text-body-secondary ms-1 js-rights-shown" hidden data-fmt="<?= h(t('acc_flt_shown')) ?>"></span></span>
 					<input type="search" class="form-control form-control-sm nu-rights-filter js-rights-filter" placeholder="<?= h(t('access_filter_forms')) ?>" aria-label="<?= h(t('access_filter_forms')) ?>">
+				</div>
+				<?php // filter of the rights grid (the owner picked A of the canvas "Form rights filter"): chips + group / data mode / form type
+				$fGroups = [];
+				try {
+					foreach (nu_db()->all('SELECT zzzzsys_form_id, sfo_group FROM zzzzsys_form') as $gr) $fGroups[(string)$gr['zzzzsys_form_id']] = trim((string)($gr['sfo_group'] ?? ''));
+				} catch (Throwable) { /* expected: databases without sfo_group */ }
+				$groupList = array_values(array_unique(array_filter(array_map(static fn($r) => $fGroups[$r['form']] ?? '', $rows), static fn($g) => $g !== '')));
+				natcasesort($groupList); ?>
+				<div class="card-body border-bottom py-2 d-flex flex-wrap align-items-center gap-2 accRightsFlt" id="accRightsFlt">
+					<?php foreach (['' => t('all'), 'add' => t('acc_flt_add'), 'save' => t('acc_flt_save'), 'delete' => t('acc_flt_delete'), 'print' => t('acc_flt_print'),
+						'none' => t('acc_flt_none')] as $ck => $cl): ?>
+						<button type="button" class="btn btn-sm accFltChip<?= $ck === '' ? ' active' : '' ?>" data-chip="<?= h($ck) ?>" aria-pressed="<?= $ck === '' ? 'true' : 'false' ?>"><?= h($cl) ?></button>
+					<?php endforeach; ?>
+					<span class="accFltSep" aria-hidden="true"></span>
+					<?php if ($groupList): ?>
+					<label class="d-flex align-items-center gap-1 small text-body-secondary"><?= h(t('builder_group')) ?>
+						<select class="form-select form-select-sm accFltSel" data-flt="group"><option value=""><?= h(t('acc_flt_groups')) ?></option>
+							<?php foreach ($groupList as $gl): ?><option value="<?= h($gl) ?>"><?= h($gl) ?></option><?php endforeach; ?>
+							<option value="-"><?= h(t('forms_group_none')) ?></option></select></label>
+					<?php endif; ?>
+					<?php if ($hasDm): ?>
+					<label class="d-flex align-items-center gap-1 small text-body-secondary"><?= h(t('access_col_dm')) ?>
+						<select class="form-select form-select-sm accFltSel" data-flt="dm"><option value="*"><?= h(t('acc_flt_any')) ?></option>
+							<option value=""><?= h(t('access_dm_normal')) ?></option><option value="0"><?= h(t('access_dm_noedit')) ?></option></select></label>
+					<?php endif; ?>
+					<?php if ($hasFt): ?>
+					<label class="d-flex align-items-center gap-1 small text-body-secondary"><?= h(t('access_col_ft')) ?>
+						<select class="form-select form-select-sm accFltSel" data-flt="ft"><option value="*"><?= h(t('acc_flt_any')) ?></option>
+							<option value=""><?= h(t('access_ft_both')) ?></option><option value="0"><?= h(t('access_ft_browse')) ?></option>
+							<option value="1"><?= h(t('access_ft_edit')) ?></option></select></label>
+					<?php endif; ?>
+					<button type="button" class="btn btn-sm btn-link ms-auto accFltReset" hidden><?= h(t('reset')) ?></button>
 				</div>
 				<?php if (isset($errors['rights'])): ?><div class="alert alert-danger rounded-0 mb-0 py-2"><?= h($errors['rights']) ?></div><?php endif; ?>
 
@@ -426,7 +459,7 @@ nu_layout_start($title, 'access', ['head' => '<link rel="stylesheet" href="' . n
 						<tbody class="js-rights-body" data-admin-forms="<?= h(implode(' ', NuSecurity::ADMIN_FORMS)) ?>" data-label-remove="<?= h(t('remove')) ?>"
 							data-label-undo="<?= h(t('remove_undo')) ?>" data-label-pending="<?= h(t('remove_pending')) ?>">
 						<?php foreach ($rows as $key => $row): $k = h((string)$key); ?>
-							<tr data-form="<?= h($row['form']) ?>">
+							<tr data-form="<?= h($row['form']) ?>" data-group="<?= h($fGroups[$row['form']] ?? '') ?>">
 								<td>
 									<input type="hidden" name="rights[<?= $k ?>][id]" value="<?= h($row['id']) ?>">
 									<input type="hidden" name="rights[<?= $k ?>][form]" value="<?= h($row['form']) ?>">

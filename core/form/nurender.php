@@ -44,7 +44,7 @@ final class NuRender
 			$nav .= '<li class="nav-item" role="presentation"' . ($hidden ? ' style="display:none"' : '') . '>'
 				. '<button type="button" class="nav-link nuTab' . ($i === 0 ? ' active nuTabSelected' : '') . '" id="nuTab' . $i . '" data-nu-tab="' . $i . '"'
 				. ' data-nu-tab-id="' . h($t['zzzzsys_tab_id']) . '" data-bs-toggle="tab" data-bs-target="#nuPane' . $i . '" role="tab"'
-				. ' aria-controls="nuPane' . $i . '" aria-selected="' . ($i === 0 ? 'true' : 'false') . '">' . h($t['syt_title']) . '</button></li>';
+				. ' aria-controls="nuPane' . $i . '" aria-selected="' . ($i === 0 ? 'true' : 'false') . '">' . h($this->tabTitle($t)) . '</button></li>';
 			$objects = $this->meta->objectsOfTab((string)$t['zzzzsys_tab_id']);
 			// the pane carries data-nu-pane-tab, not data-nu-tab-id: in nuBuilder Forte only the tab has that attribute, and form code
 			// such as $('div[data-nu-tab-id=…]').html(title) (Forte's Procedures form) would otherwise empty the pane
@@ -163,7 +163,7 @@ final class NuRender
 		$hidden = NuRecord::hiddenFor($o);
 		if ($hidden) $style .= ($style !== '' ? ';' : '') . 'display:none';
 		return '<div id="nuw_' . h($o['sob_all_id']) . '" class="nuWrap nuWrap_' . h($o['sob_all_type']) . ' ' . $class . '"'
-			. ' data-nu-object-id="' . h($o['zzzzsys_object_id']) . '"' . ($style !== '' ? ' style="' . h($style) . '"' : '') . '>' . $inner . '</div>';
+			. ' data-nu-object-id="' . h($o['zzzzsys_object_id']) . '"' . ($this->phoneFold($o) ? ' data-nu-ph-fold="1"' : '') . ($style !== '' ? ' style="' . h($style) . '"' : '') . '>' . $inner . '</div>';
 	}
 
 	// ================================================================= objects
@@ -211,7 +211,29 @@ final class NuRender
 	}
 
 	/** Labels nuBuilder Next does not show (nuBuilder's own forms stay unchanged in the database): form id => object ids. */
-	private const HIDDEN_LABELS = ['nunotes' => ['not_content']];
+	private const HIDDEN_LABELS = ['nunotes' => ['not_content', 'not_text']];
+
+	/** Objects of nuBuilder Forte's system forms folded on phones without an entry of their own (sob_all_json nunext.phone_fold). */
+	private const PHONE_FOLD = ['nunotes' => ['not_title', 'not_zzzzsys_note_category_id', 'not_updated_on']];
+
+	/** Folded into the summary row of a saved record on phones (fixed layout, assets/js/nu: phoneFold). */
+	private function phoneFold(array $o): bool
+	{
+		$j = $o['nunext'] ?? NuFormMeta::nunextJson($o['sob_all_json'] ?? null);
+		if (array_key_exists('phone_fold', $j)) return !empty($j['phone_fold']);
+		return in_array((string)$o['sob_all_id'], self::PHONE_FOLD[$this->meta->id] ?? [], true);
+	}
+
+	/** Tab titles of nuBuilder Forte's system forms shown differently (form id => tab id => [stored title, text key]); only while the
+	 *  stored title is still Forte's own – Forte's rows stay as they are. */
+	private const TAB_TITLES = ['nunotes' => ['nu684e16abd1b5744' => ['Additional', 'notes_tab_text']]];
+
+	private function tabTitle(array $t): string
+	{
+		$title = (string)$t['syt_title'];
+		$o = self::TAB_TITLES[$this->meta->id][(string)$t['zzzzsys_tab_id']] ?? null;
+		return $o !== null && trim($title) === $o[0] ? t($o[1]) : $title;
+	}
 
 	private function label(array $o, string $mode, bool $isTitle = false): string
 	{

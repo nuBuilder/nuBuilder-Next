@@ -96,6 +96,8 @@ final class NuDbState
 			$chk = $ok ? NuInstall::checkDump(NuSqlImport::statements($dumpFile), true) : ['ok' => false, 'error' => t('ins_dump_err_none')];
 			if (!$chk['ok']) throw new RuntimeException($chk['error']);
 			$out['imported'] = NuSqlImport::run($db, (string)$dumpFile, null, true);                 // streamed: a dump of any size
+			$out['skipped'] = NuSqlImport::$skipped;
+			$out['skipped_sql'] = NuSqlImport::$skippedSql;
 			$out['upgraded'] = NuInstall::upgradeTo49($db);
 		} else {
 			foreach (NuInstall::schemaFiles('nunext', $db->type, null) as $f) $out['imported'] += NuInstall::importFile($db, $f);

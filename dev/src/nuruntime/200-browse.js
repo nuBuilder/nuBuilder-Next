@@ -33,6 +33,7 @@
 	function brInit() {
 		var t = brTable();
 		if (BR.ctl || !t || N.mode !== 'browse' || typeof window.nuColResize !== 'function') return BR.ctl;
+		if (document.body.classList.contains('nuPrintView')) return null;   // the print view keeps its own widths (no dragged widths of the list)
 		BR.ctl = window.nuColResize(t, {key: 'nunext-browse-w:' + N.form.id + (N.lookup ? ':lookup' : ''), titles: 'thead th.nuBrowseTitle',
 			id: function (th) { return th.getAttribute('data-nu-col'); }, cells: function (c) { return brColCells(t, c); },
 			fixedClass: 'nuBrowseFixed', saved: N.lookup ? null : brCookie});

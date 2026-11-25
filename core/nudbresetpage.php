@@ -31,6 +31,8 @@ final class NuDbresetPage
 				NuSecurity::requireRecentAuth(nu_url('dbreset'));
 				if (trim(nu_post('confirm')) !== (string)$S['check']['database']) {
 					nu_flash('danger', t('dbr_err_confirm'));
+				} elseif (!empty($S['check']['views_blocked']) && nu_post('skip_views') !== '1') {   // the user may not create views: only with the tick
+					nu_flash('danger', t('dbr_err_views'));
 				} else {
 					try {
 						if (($S['check']['kind'] ?? '') === 'clean') {   // install scripts: small, one request

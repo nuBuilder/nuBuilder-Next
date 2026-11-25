@@ -51,6 +51,7 @@ if (($_GET['fmt'] ?? '') === 'xlsx' && !empty($data['totals']) && $lines) {
 	}
 	if ($any) $lines[] = $line;
 }
+[$head, $lines] = NuListExport::onlyColumns($head, $lines);   // ?cols= – the columns left in the print view (× hides one)
 if (($_GET['fmt'] ?? '') === 'xlsx') NuListExport::writeXlsx($meta->code() ?: 'export', $meta->description() ?: $meta->code(), $head, $lines,
 	$state['q'] !== '' ? t('search') . ': ' . $state['q'] : '');
 // options from the CSV dialog of the print view (sep, head, bom, name) – see core/nulistexport.php

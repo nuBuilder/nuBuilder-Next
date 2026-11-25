@@ -1663,7 +1663,7 @@ T.home_customise = async (s) => {
 	await open(p, 'index.php?p=home');
 	await p.click('#nuHomeViewBtn'); await p.waitForTimeout(300);
 	expect(await p.getAttribute('#nuHomeVpTab-appearance', 'aria-selected') === 'true', 'last tab remembered');
-	await p.click('#nuHomeVpTab-content'); await p.click('#nuHomeVpEdit'); await p.waitForTimeout(400);
+	await p.click('#nuHomeVpTab-content'); await p.waitForSelector('body.nuHomeEditing'); await p.waitForTimeout(400);
 	expect(await p.evaluate(() => document.body.classList.contains('nuHomeEditing')) && await p.locator('#nuHomeSize').count() === 0, 'edit mode without the tile size');
 	await p.click('#nuHomeCancel'); await p.waitForTimeout(300);
 	await p.keyboard.press('v'); await p.waitForTimeout(300);
@@ -2809,4 +2809,205 @@ T.menu_no_select = async (s) => {                      // 0.8.1415: menus never 
 	await p.fill('#nuHomeSearch', 'x');
 	expect(await us('#nuHomeSearch') !== 'none', 'search field not selectable');
 	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+};
+
+T.home_fav_order = async (s) => {
+	// the row Favourites in an order of its own: the mouse drags a chip, Alt+← / → on a chip, Move left / right in its menu;
+	// saved at once (?p=sidebar action fav_order) – also the side bar's order
+	const p = s.ga;
+	await open(p, 'index.php?p=home&tiles=1');
+	const keys = await p.evaluate(() => [...document.querySelectorAll('[data-nu-tile]')].map(e => e.getAttribute('data-nu-tile')).filter((k, i, a) => a.indexOf(k) === i).slice(0, 3));
+	const favNow = () => p.evaluate(() => [...document.querySelectorAll('#nuHomeStripFav [data-nu-chip]')].map(e => e.getAttribute('data-nu-chip')));
+	for (const k of keys) if (!(await favNow()).includes(k)) {
+		await p.evaluate(async (k) => { const fd = new FormData(); fd.append('_csrf', window.NuUtil.csrf()); fd.append('action', 'fav'); fd.append('key', k); fd.append('json', '1');
+			await fetch('index.php?p=sidebar', {method: 'POST', body: fd, credentials: 'same-origin'}); }, k);
+		await p.reload(); await p.waitForTimeout(300);
+	}
+	await p.evaluate(() => { localStorage.removeItem('nunext-home-strip-fav'); localStorage.removeItem('nunext-home-strip-auto-fav'); });
+	await p.reload(); await p.waitForTimeout(500);
+	const before = await favNow();
+	expect(before.length >= 3, 'three favourites ' + JSON.stringify(before));
+	// drag the first chip behind the last
+	const chips = p.locator('#nuHomeStripFav [data-nu-chip]');
+	const a = await chips.first().boundingBox(), z = await chips.last().boundingBox();
+	await p.mouse.move(a.x + 20, a.y + a.height / 2); await p.mouse.down();
+	for (let i = 1; i <= 12; i++) await p.mouse.move(a.x + 20 + (z.x + z.width - 10 - a.x - 20) * i / 12, a.y + a.height / 2);
+	await p.mouse.up(); await p.waitForTimeout(600);
+	const url = p.url();
+	expect(url.includes('p=home'), 'the drag did not open the chip: ' + url);
+	const dragged = await favNow();
+	expect(dragged[dragged.length - 1] === before[0] && dragged[0] === before[1], 'dragged order ' + JSON.stringify([before, dragged]));
+	await p.reload(); await p.waitForTimeout(500);
+	expect(JSON.stringify(await favNow()) === JSON.stringify(dragged), 'order kept after a reload');
+	// keyboard: Alt+← on the last chip
+	await chips.last().focus(); await p.keyboard.press('Alt+ArrowLeft'); await p.waitForTimeout(500);
+	const kb = await favNow();
+	expect(kb[kb.length - 2] === before[0], 'Alt+← moved the chip ' + JSON.stringify(kb));
+	// menu: Move right on that chip again
+	await p.reload(); await p.waitForTimeout(500);
+	await p.locator('#nuHomeStripFav [data-nu-chip="' + before[0] + '"]').click({button: 'right'}); await p.waitForTimeout(300);
+	await p.locator('.nuHomeCtx .dropdown-item', {hasText: 'Move right'}).click(); await p.waitForTimeout(600);
+	await p.reload(); await p.waitForTimeout(500);
+	const mv = await favNow();
+	expect(mv[mv.length - 1] === before[0], 'Move right saved ' + JSON.stringify(mv));
+};
+
+// tile page of a user: the greeting without the access level line
+T.home_user_no_level = async () => {
+	const old = sql("SELECT sus_login_password FROM zzzzsys_user WHERE sus_login_name = 'sample_anna'");
+	sql(`UPDATE zzzzsys_user SET sus_login_password = '${execSync(`php -r 'echo password_hash("Test1234!", PASSWORD_BCRYPT);'`).toString()}' WHERE sus_login_name = 'sample_anna'`);
+	let q;
+	try {
+		q = await login('sample_anna', 'Test1234!');
+		await open(q, 'index.php?p=home');
+		// no greeting and no access level: the h1 is only for screen readers
+		const h1 = await q.locator('main h1').first().evaluate((h) => ({ cls: h.className, w: h.getBoundingClientRect().width, t: h.textContent }));
+		expect(h1.cls.includes('visually-hidden') && h1.w <= 1, 'greeting still shown: ' + JSON.stringify(h1));
+	} finally {
+		if (q) await q.context().close();
+		sql(`UPDATE zzzzsys_user SET sus_login_password = '${old}' WHERE sus_login_name = 'sample_anna'`);
+	}
+};
+
+T.home_mine_order = async () => {
+	// Personalise: a user puts the tiles of a group into an own order (grip + arrow key, mouse drag); Done keeps it, Back to the standard drops it
+	const uid = sql("SELECT zzzzsys_user_id FROM zzzzsys_user WHERE sus_login_name = 'sample_anna'");
+	const old = sql("SELECT sus_login_password FROM zzzzsys_user WHERE zzzzsys_user_id = '" + uid + "'");
+	const oldJson = sql("SELECT IFNULL(sus_json, '') FROM zzzzsys_user WHERE zzzzsys_user_id = '" + uid + "'");
+	sql(`UPDATE zzzzsys_user SET sus_login_password = '${execSync(`php -r 'echo password_hash("Test1234!", PASSWORD_BCRYPT);'`).toString()}' WHERE zzzzsys_user_id = '${uid}'`);
+	let q;
+	const orderOf = (pg, gid) => pg.$$eval('[data-nu-group="' + gid + '"] .nuHomeTiles > [data-nu-wrap]', l => l.map(w => w.getAttribute('data-nu-wrap')));
+	try {
+		q = await login('sample_anna', 'Test1234!');
+		await open(q, 'index.php?p=home');
+		const gid = await q.evaluate(() => { const g = [...document.querySelectorAll('[data-nu-group]')].find(x => x.querySelectorAll('.nuHomeTiles > [data-nu-wrap]').length >= 3); return g ? g.getAttribute('data-nu-group') : ''; });
+		expect(gid !== '', 'no group with three tiles');
+		const before = await orderOf(q, gid);
+		await homeMine(q); await q.waitForTimeout(300);
+		// keyboard: the first tile one place to the right
+		await q.focus('[data-nu-wrap="' + before[0] + '"] .nuHomeMineGrip');
+		await q.keyboard.press('ArrowRight');
+		let now = await orderOf(q, gid);
+		expect(now[0] === before[1] && now[1] === before[0], 'arrow key did not move the tile: ' + now.join(','));
+		// mouse: the last tile dragged onto the first place
+		const last = now[now.length - 1];
+		await q.evaluate((g) => document.querySelector('[data-nu-group="' + g + '"]').scrollIntoView({block: 'center'}), gid); await q.waitForTimeout(150);   // the panel makes the page narrower and longer
+		const a = await q.locator('[data-nu-wrap="' + last + '"] .nuHomeMineGrip').boundingBox();
+		const b = await q.locator('[data-nu-wrap="' + now[0] + '"]').boundingBox();
+		await q.mouse.move(a.x + a.width / 2, a.y + a.height / 2); await q.mouse.down();
+		for (let i = 1; i <= 8; i++) await q.mouse.move(a.x + (b.x + 4 - a.x) * i / 8, a.y + (b.y + b.height / 4 - a.y) * i / 8);
+		const cur = await q.evaluate(([x, y]) => getComputedStyle(document.elementFromPoint(x, y)).cursor, [b.x + 4, b.y + b.height / 4]);
+		expect(cur === 'grabbing', 'cursor while dragging: ' + cur);
+		await q.mouse.up();
+		expect(await q.evaluate(() => !document.documentElement.classList.contains('nuHomeGrabbing')), 'grabbing cursor left after the drag');
+		const idle = await q.$eval('[data-nu-wrap="' + now[1] + '"] a, [data-nu-wrap="' + now[1] + '"] button.nuHomeTile', e => getComputedStyle(e).cursor).catch(() => 'grab');
+		expect(idle === 'grab', 'tile cursor while personalising: ' + idle);
+		now = await orderOf(q, gid);
+		expect(now[0] === last, 'drag did not move the tile: ' + now.join(','));
+		await Promise.all([q.waitForNavigation(), q.click('#nuHomeMineDone')]); await q.waitForLoadState('networkidle');
+		const saved = await orderOf(q, gid);
+		expect(JSON.stringify(saved) === JSON.stringify(now), 'order not kept after Done: ' + saved.join(',') + ' / ' + now.join(','));
+		expect(/"order":\{"/.test(sql("SELECT sus_json FROM zzzzsys_user WHERE zzzzsys_user_id = '" + uid + "'")), 'order not stored');
+		// Back to the standard: the page's order again
+		await homeMine(q); await q.waitForTimeout(300);
+		await Promise.all([q.waitForNavigation(), q.click('#nuHomeMineReset')]); await q.waitForLoadState('networkidle');
+		const back = await orderOf(q, gid);
+		expect(JSON.stringify(back) === JSON.stringify(before), 'Back to the standard kept the order: ' + back.join(','));
+	} finally {
+		if (q) await q.context().close();
+		execSync('mysql ' + DB, { input: "UPDATE zzzzsys_user SET sus_login_password = '" + old + "', sus_json = " + (oldJson === '' ? 'NULL' : "'" + oldJson.replace(/\\/g, '\\\\').replace(/'/g, "''") + "'") + " WHERE zzzzsys_user_id = '" + uid + "'" });
+	}
+};
+
+T.home_search_no_dup_page = async (s) => {
+	// the start page search lists a page once: a tile and an entry of the palette (or two entries) that open the same page are one result
+	const g = s.ga;
+	for (const q of ['Configuration', 'Settings']) {
+		await open(g, 'index.php?p=home');
+		await g.fill('#nuHomeSearch', q); await g.waitForTimeout(1200);
+		const urls = await g.$$eval('#nuHomeSearchMore [data-nu-res]', l => l.map(a => { try { return new URL(a.getAttribute('href'), location.href).href; } catch (e) { return ''; } }).filter(u => u && !u.endsWith('#')));
+		const dup = urls.filter((u, i) => urls.indexOf(u) !== i);
+		expect(urls.length > 0 && dup.length === 0, q + ': same page listed twice: ' + dup.join(', '));
+	}
+	await g.fill('#nuHomeSearch', '');
+};
+
+T.home_tip_touch = async (s) => {
+	// touch screens: no tile tooltip from the focus a tap / Back leaves or from the mouse events a tap fakes (long press = tile menu)
+	const ctx = await browser.newContext({ ...devices['iPhone 13'], storageState: await s.ga.context().storageState(), locale: 'en-GB' });
+	const ph = await ctx.newPage();
+	try {
+		await open(ph, 'index.php?p=home');
+		await ph.waitForSelector('[data-nu-tile]');
+		const shown = await ph.evaluate(async () => {
+			const tip = () => { const t = document.getElementById('nuHomeTip'); return !!t && !t.hidden; };
+			const tiles = Array.from(document.querySelectorAll('a[data-nu-tile]')).filter(a => a.offsetParent).slice(0, 6);
+			const out = [];
+			for (const a of tiles) {
+				a.focus(); await new Promise(r => setTimeout(r, 300)); out.push(tip()); a.blur();
+				a.dispatchEvent(new PointerEvent('pointerdown', {bubbles: true, pointerType: 'touch'}));
+				a.dispatchEvent(new PointerEvent('pointerup', {bubbles: true, pointerType: 'touch'}));
+				a.dispatchEvent(new MouseEvent('mouseover', {bubbles: true}));
+				await new Promise(r => setTimeout(r, 1000)); out.push(tip());
+			}
+			return out;
+		});
+		expect(shown.length > 0 && !shown.some(Boolean), 'tooltip on a touch screen: ' + JSON.stringify(shown));
+	} finally { await ctx.close(); }
+};
+
+T.home_content_editor = async (s) => {
+	// Customise → Content is the editor: the page becomes editable, the panel holds the tools and Save; leaving with changes asks inside the panel
+	const p = s.ga;
+	await open(p, 'index.php?p=home');
+	await p.click('#nuHomeViewBtn'); await p.waitForTimeout(300);
+	await p.click('#nuHomeVpTab-content'); await p.waitForSelector('body.nuHomeEditing');
+	expect(await p.locator('.nuHeBar').count() === 0, 'edit bar on the page');
+	for (const id of ['#nuHomeAddSearch', '#nuHomeAddGroup', '#nuHomeDisplay', '#nuHomeAddTile', '#nuHomeSave', '#nuHomeCancel'])
+		expect(await p.locator('#nuHomeViewPanel ' + id).count() === 1, 'not in the panel: ' + id);
+	expect((await p.textContent('#nuHomeEditState')).trim() === 'No changes', 'state at start');
+	// no changes: another tab ends the edit mode without asking
+	await p.click('#nuHomeVpTab-appearance'); await p.waitForTimeout(300);
+	expect(await p.evaluate(() => !document.body.classList.contains('nuHomeEditing')) && await p.locator('#nuHomeLeaveKeep').count() === 0, 'left without a question');
+	// hide a tile → it is listed under Add tiles, the state says unsaved
+	await p.click('#nuHomeVpTab-content'); await p.waitForSelector('body.nuHomeEditing');
+	const key = await p.$eval('#nuHomeEdit .nuHeItem[data-key]', e => e.getAttribute('data-key'));
+	await p.click('#nuHomeEdit .nuHeItem[data-key="' + key + '"] .nuHeToolBtn:has(.bi-eye-slash)', {force: true}); await p.waitForTimeout(200);
+	expect(await p.locator('#nuHomeAddList [data-key="' + key + '"]').count() === 1, 'hidden tile not in Add tiles');
+	expect((await p.textContent('#nuHomeEditState')).trim() === 'Unsaved changes', 'state after a change');
+	// search filters the list
+	await p.fill('#nuHomeAddSearch', 'zzqq-nothing'); await p.waitForTimeout(100);
+	expect(await p.locator('#nuHomeAddNone').isVisible(), 'no-match text');
+	await p.fill('#nuHomeAddSearch', '');
+	// leaving with changes asks: Keep editing stays, Discard ends without saving
+	await p.click('#nuHomeVpTab-appearance'); await p.waitForTimeout(200);
+	expect(await p.locator('#nuHomeLeaveKeep').isVisible(), 'no question when leaving');
+	await p.click('#nuHomeLeaveKeep'); await p.waitForTimeout(200);
+	expect(await p.evaluate(() => document.body.classList.contains('nuHomeEditing')) && await p.locator('#nuHomeVpTab-content.active').count() === 1, 'Keep editing left');
+	await p.click('#nuHomeCancel'); await p.waitForTimeout(200);
+	await p.click('#nuHomeLeaveDiscard'); await p.waitForTimeout(300);
+	expect(await p.evaluate(() => !document.body.classList.contains('nuHomeEditing')) && await p.locator('#nuHomeViewPanel').isHidden(), 'Discard did not close');
+	expect(await p.locator('#nuHomeView [data-nu-wrap="' + key + '"], #nuHomeView [data-nu-tile="' + key + '"]').count() > 0, 'discarded change kept');
+	// + brings a hidden tile back; Save stores it (the page is put back afterwards)
+	await p.click('#nuHomeViewBtn'); await p.waitForTimeout(200);
+	expect(await p.locator('#nuHomeVpTab-appearance.active').count() === 1, 'panel did not reopen on Appearance');
+	await p.click('#nuHomeViewBtn'); await p.waitForTimeout(200);
+	// phone: the panel is a lower sheet and leaves room above it
+	await p.setViewportSize({width: 390, height: 800});
+	await open(p, 'index.php?p=home');
+	await p.click('#nuHomeViewBtn'); await p.waitForTimeout(300);
+	await p.click('#nuHomeVpTab-content'); await p.waitForSelector('body.nuHomeEditing');
+	const h = await p.$eval('#nuHomeViewPanel', e => e.getBoundingClientRect().height);
+	expect(h > 380 && h < 440, 'phone sheet height ' + h);
+	await p.click('#nuHomeCancel'); await p.waitForTimeout(300);
+	expect(await p.evaluate(() => !document.body.classList.contains('nuHomeEditing')), 'phone Cancel');
+	await p.setViewportSize({width: 1400, height: 900});
+};
+
+T.logo_no_select = async (s) => {
+	// the logo of the top bar (and the sign-in page) cannot be selected
+	const p = s.ga;
+	await open(p, 'index.php?p=home');
+	const v = await p.$$eval('.nu-brand img', (l) => l.map((i) => getComputedStyle(i).userSelect));
+	expect(v.length > 0 && v.every((x) => x === 'none'), 'logo selectable: ' + v.join());
 };

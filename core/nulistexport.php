@@ -222,7 +222,7 @@ final class NuListExport
 			<?= $csv ?>
 			<button class="btn btn-sm btn-outline-secondary" type="button" id="nuPrintUndo" disabled><i class="bi bi-arrow-counterclockwise me-1"></i><?= h(t('print_undo')) ?></button>
 			<button class="btn btn-sm btn-outline-secondary" type="button" id="nuPrintReset" disabled><i class="bi bi-arrow-repeat me-1"></i><?= h(t('print_reset_view')) ?></button>
-			<span class="small text-body-secondary align-self-center d-none" id="nuPrintHiddenInfo" data-text="<?= h(t('print_cols_hidden', '%s')) ?>"></span>
+			<span class="small text-body-secondary align-self-center d-none" id="nuPrintHiddenInfo" data-text="<?= h(t('print_cols_hidden', '%s')) ?>" data-move="<?= h(t('print_col_move')) ?>"></span>
 		</div>
 	</div>
 	<table class="table table-sm table-bordered nu-print-table">

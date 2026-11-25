@@ -18,8 +18,10 @@ page) for how to use it.
 - **Lists by keyboard** – search, ↓ into the rows, ↑ / ↓ / Page Down to move, Enter to open, Esc back to the search; the row is kept when you come back,
   shown with a soft rounded highlight and always scrolled into view.
 - **Export** – every list as print page, CSV or Excel; copy rows straight into Excel or Word.
+- **Print views to suit** – hide columns of a print view and move them by dragging their title; the PDF / Excel export follows the shown columns and their order.
 - **Comfortable editing** – sub-forms, lookups (a window sized to its list, the current value marked, Clear, keyboard) and file uploads; required and unique fields marked; unsaved changes shown;
   Clone opens an unsaved copy; fields you cannot change look quiet (soft fill, a small lock) but stay fully readable.
+- **Forms on phones** – fields that can fold away behind one line, HTML objects that grow to their content, a long text in full screen, TinyMCE with one scrolling toolbar row.
 - **Start page** – tiles, favourites, recently used and one search over everything (also Ctrl+K); dashboards with KPI tiles,
   charts and tables.
 - **Notification centre** – a bell with unread messages, optionally also by e-mail; on wide screens the editor shows everything at once
@@ -27,6 +29,9 @@ page) for how to use it.
 - **Keyboard shortcuts** for save, clone, delete, search, print and more; *Back* returns to the page you came from; success messages close by themselves, warnings stay.
 - **Favourites from the search** – a star on each tile in the start page search adds or removes the favourite at once (Undo,
   Ctrl+Shift+F).
+- **Favourites in your order** – drag the chips of the row Favourites (or Alt+← / →); users also put the tiles of a group in their own order with Personalise.
+- **Edit the start page in place** – Customise → Content makes the page editable while the panel holds the tools (tiles to add, structure,
+  profiles, Save / Cancel); leaving with unsaved changes asks first; users personalise the same way.
 - **Recently used** – the start page row and the side bar, optionally without the pages that are already favourites.
 - **Secure sign-in** – two-step login (authenticator app or e-mail code), passkeys, single sign-on (OpenID Connect: Microsoft
   Entra ID, Google Workspace, Keycloak …) and *Forgot password* by e-mail.
@@ -38,6 +43,7 @@ page) for how to use it.
 ## For building applications
 
 - **Debug icon** – a red bug with a count appears in the top bar as soon as new Debug results are written (form code errors, failing queries, nuDebug()); a click lists the newest, *Mark as read* hides it, *Delete all* empties the Debug results
+- **Debug results with Undo** – delete one message, the selected ones or all of them at once; a toast brings them back.
 - **Form designer** – design a form where it runs: drag and arrange objects, a properties panel for every object type, the
   list's columns and settings right on the list, responsive layouts for phones (grid rows that always fit), tabs (with unique names), events and code in one place;
   *Properties…* in an object's right-click menu opens it selected in design mode; the properties panel has section chips that stay
@@ -132,7 +138,7 @@ page) for how to use it.
 - **Start pages at a glance** – the globeadmin lists every Home form and every tile page with their access levels from the button right of
   Customise on the start page (or a right-click / long press on Home): tabs Home forms / Tile pages, search, Open and Design on one line, User Home in the head
 - **Maintenance in the browser** – signed updates with backup, rollback and a preview of database changes; restore the
-  database from a backup (MySQL / MariaDB); in developer mode, reset the database from a SQL dump of any size (runs in short steps with a progress window; routines the host does not allow are skipped and listed) or to a clean installation (also on SQL Server); a `nuconfig.php`
+  database from a backup (MySQL / MariaDB); reset the database (globeadmin, marked as danger zone) from a SQL dump of any size (runs in short steps with a progress window; routines the host does not allow are skipped and listed) or to a clean installation (also on SQL Server); a `nuconfig.php`
   editor; global JavaScript / CSS; system status; logged-in users; phpMyAdmin, Adminer and a file manager (recycle bin,
   versions, code editor, tiles with picture thumbnails; made for phones too).
 - **Plugins** – extensions of other developers in `plugins/<id>/`: pages, start page tiles, menu entries, admin rights, settings, events (save, delete, sign-in, e-mail), REST routes and cron tasks through a versioned plugin API; signed packages, upload only when switched on, switched off by themselves after an error, safe mode, checked before every update.

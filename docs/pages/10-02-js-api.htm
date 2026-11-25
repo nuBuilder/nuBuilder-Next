@@ -44,7 +44,7 @@ $.nuInfoBar.modal.warning('Please confirm first');</pre>
 </div>
 	<div class="doc-sub" data-doc="admin">
 <h3 id="js-tooltips">Tooltip icons (nu-tooltip-icon)</h3>
-<p>Add the HTML attribute <code>nu-tooltip-icon="text"</code> (HTML allowed: <code>b, i, br, ul, li, code, a</code> …) to an object – a help icon appears on its right; hover, focus or tap shows the text. Per object: <code>nu-tooltip-position</code> (top, bottom, left, right), <code>nu-tooltip-theme</code> (light, dark, blue, green, purple, red, orange), <code>nu-tooltip-arrow-size</code> (small, default, large). <code>nu-tooltip="text"</code> puts the tooltip on the field itself, without icon.</p>
+<p>Add the HTML attribute <code>nu-tooltip-icon="text"</code> (HTML allowed: <code>b, i, br, ul, li, code, a</code> …) to an object – a help icon appears on its right (where there is no room, as on phones, after its label); hover, focus or tap shows the text. Per object: <code>nu-tooltip-position</code> (top, bottom, left, right), <code>nu-tooltip-theme</code> (light, dark, blue, green, purple, red, orange), <code>nu-tooltip-arrow-size</code> (small, default, large). <code>nu-tooltip="text"</code> puts the tooltip on the field itself, without icon.</p>
 <p>No JavaScript needed – fields added later are found by themselves. <code>nuAttachToolTip(options)</code>, <code>nuAttachToolTip.refresh()</code>, <code>.destroy()</code> as in nuBuilder Forte; <code>function nuOnToolTipIcon(element, settings)</code> changes the settings of single fields (<code>theme, iconSize, gapRight, tooltipPosition, animationDuration, iconClasses, onClick(el, text)</code>), <code>nuOnToolTipIconClick(element, text)</code> is called on a click.</p>
 </div>
 	<div class="doc-sub" data-doc="admin">
