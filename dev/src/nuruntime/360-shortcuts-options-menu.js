@@ -221,7 +221,10 @@
 			[N.nulog.added, N.nulog.edited].forEach(function (t) { if (t) info.append($('<div></div>').text(t)); });
 			ul.append(info);
 		}
-		wrap.append(btn).append(ul).appendTo(holder);
+		wrap.append(btn).append(ul);
+		var lastOwn = null;
+		ownActs.forEach(function (el) { if (el.parentNode === holder && !el.classList.contains('d-none') && el.id !== 'nuJsErrors') lastOwn = el; });
+		if (lastOwn) wrap.insertAfter(lastOwn); else wrap.prependTo(holder);
 		btn.on('shown.bs.dropdown', function () { callHook('nuOnOptionsListLoadedGlobal'); });   // nuBuilder: each time the list opens
 	}
 	N.shortcutActions = shortcutActions;

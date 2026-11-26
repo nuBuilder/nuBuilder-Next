@@ -24,6 +24,9 @@
 	var propsDirty = false;      // properties changed in the browser since the page's scope was stored on the server
 	N.edited = false;
 	N.jsErrors = [];
+	// the buttons nuBuilder Next itself put into the action row – the ⋮ menu goes right after them, so buttons that form code
+	// appends to #nuActionHolder (filter buttons, nuAddActionButton …) follow the ⋮ instead of pushing it to the end of the row
+	var ownActs = (function () { var h = document.getElementById('nuActionHolder'); return h ? Array.prototype.slice.call(h.children) : []; })();
 
 	function g(id) { return id ? document.getElementById(id) : null; }
 	function arr(x) { return x === undefined || x === null ? [] : (Array.isArray(x) ? x : [x]); }

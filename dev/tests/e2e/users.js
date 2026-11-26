@@ -2858,3 +2858,74 @@ T.wizard_top_bar = async (s) => {
 	await p.setViewportSize({width: 1400, height: 900});
 	await p.evaluate(() => fetch('index.php?p=setupwizard&step=security'));
 };
+
+// The sign-in page and the other sign-in-style pages (forgot password …) show no program name and version.
+T.login_no_version = async () => {
+	const ctx = await browser.newContext(); const p = await ctx.newPage();
+	try {
+		const ver = (fs.readFileSync(path.join(__dirname, '..', '..', 'core/nuapp.php'), 'utf8').match(/NU_VERSION',\s*'([^']+)'/) || [])[1];
+		expect(!!ver, 'version read');
+		for (const u of ['index.php?p=login', 'index.php?p=forgot']) {
+			await p.goto(BASE + u);
+			const html = await p.content();
+			expect(!html.includes('nuBuilder Next ' + ver), 'no "nuBuilder Next <version>" on ' + u);
+			expect(!html.includes('>' + ver + '<'), 'no version text on ' + u);
+		}
+	} finally { await ctx.close(); }
+};
+
+// Logged-in users: the "Act as user" menu of a row floats above a short list (fixed positioning) instead of being cut off by
+// the table's scroll box
+T.sessions_impersonate_menu = async (s) => {
+	const a = await login('sample_anna', UPW), a2 = await login('sample_anna', UPW);   // two sessions = a group row
+	const p = s.ga;
+	try {
+		await p.setViewportSize({ width: 1300, height: 700 });
+		await open(p, 'index.php?p=sessions&q=sample_anna');
+		// several sessions of the same user (earlier tests in a full run) are grouped: the group row has the button too, its rows are hidden
+		const btn = p.locator('#sessTable tbody tr .dropdown-toggle:has(.bi-person-fill-gear):visible').first();
+		expect(await btn.count() === 1, 'Act as user button of sample_anna');
+		await btn.scrollIntoViewIfNeeded(); await btn.click(); await p.waitForTimeout(300);
+		const r = await p.evaluate(() => {
+			const m = document.querySelector('#sessTable .dropdown-menu.show');
+			if (!m) return null;
+			const b = m.getBoundingClientRect(), last = m.querySelector('li:last-child button');
+			const lb = last.getBoundingClientRect();
+			const hit = document.elementFromPoint(lb.left + lb.width / 2, lb.top + lb.height / 2);
+			return { top: b.top, bottom: b.bottom, h: innerHeight, pos: getComputedStyle(m).position, hit: !!hit && m.contains(hit) };
+		});
+		expect(r && r.pos === 'fixed' && r.top >= 0 && r.bottom <= r.h && r.hit, 'menu fully visible: ' + JSON.stringify(r));
+		await p.keyboard.press('Escape');
+	} finally { await a.context().close(); await a2.context().close(); await p.setViewportSize({ width: 1300, height: 900 }); }
+};
+
+T.access_start_col = async (s) => {
+	// Access levels list: column Start page = Tiles chip + source (own / default / automatic) or Form chip + the form's name; filter Start page
+	const p = s.ga;
+	const lv = sql("SELECT zzzzsys_access_id FROM zzzzsys_access WHERE COALESCE(sal_zzzzsys_form_id, '') <> '' ORDER BY zzzzsys_access_id LIMIT 1");
+	if (!lv) { s.skip = 'no access level with a Home form'; return; }
+	const old = sql("SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'start_page'");
+	try {
+		sql(`REPLACE INTO zzzzsys_nunext_setting (zzzzsys_nunext_setting_id, setting_value) VALUES ('start_page', '{"levels":{"${lv}":"form"}}')`);
+		await open(p, 'index.php?p=access');
+		const cell = await p.evaluate((id) => {
+			const rows = [...document.querySelectorAll('tr[data-href]')];
+			const r = rows.find(x => (x.getAttribute('data-href') || '').includes('id=' + encodeURIComponent(id)));
+			const c = r && r.querySelector('.nuAccStart');
+			return {rows: rows.length, form: !!(c && c.querySelector('.nuAccStartForm')),
+				tiles: rows.filter(x => x.querySelector('.nuAccStartTiles')).length, src: !!document.querySelector('.nuAccStartTiles + .nuAccStartSrc, .nuAccStartSrc')};
+		}, lv);
+		expect(cell.form, 'level in form mode shows the Form chip: ' + JSON.stringify(cell));
+		expect(cell.tiles === cell.rows - 1 && cell.src, 'other levels show Tiles + source: ' + JSON.stringify(cell));
+		await open(p, 'index.php?p=access&start=form');
+		const nForm = await p.locator('tr[data-href]').count();
+		expect(nForm === 1, 'filter form: ' + nForm);
+		await open(p, 'index.php?p=access&start=tiles');
+		const t = await p.evaluate(() => ({n: document.querySelectorAll('tr[data-href]').length, f: [...document.querySelectorAll('tr[data-href]')].filter(x => x.querySelector('.nuAccStartForm')).length}));
+		expect(t.n === cell.rows - 1 && t.f === 0, 'filter tiles: ' + JSON.stringify(t));
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		if (old) sql(`REPLACE INTO zzzzsys_nunext_setting (zzzzsys_nunext_setting_id, setting_value) VALUES ('start_page', '${old.replace(/'/g, "''")}')`);
+		else sql("DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'start_page'");
+	}
+};

@@ -40,7 +40,13 @@ final class NuEmailTemplatesPage
 					if ($sent >= 10) NuEmailTemplatesPage::json(['ok' => false, 'error' => t('emt_err_test_limit', 10)]);
 				}
 				$out = NuEmailTemplate::render($in, trim(nu_post('record')));
-				if ($action === 'preview') NuEmailTemplatesPage::json(['ok' => true] + $out);
+				if ($action === 'preview') {
+					// the body goes into a frame served with a CSP of its own (mails carry inline styles, which the page's CSP – and a srcdoc frame
+					// that inherits it – blocks); the last five previews are kept
+					$key = bin2hex(random_bytes(8));
+					$_SESSION[NuSess::EMT_PREVIEW] = array_slice(($_SESSION[NuSess::EMT_PREVIEW] ?? []) + [$key => (string)$out['body']], -5, null, true);
+					NuEmailTemplatesPage::json(['ok' => true, 'frame' => nu_url('emailtemplates', ['frame' => $key])] + $out);
+				}
 				$to = trim(nu_post('test_to'));
 				if (!NuMailer::validAddress($to)) NuEmailTemplatesPage::json(['ok' => false, 'error' => t('user_err_email')]);
 				$r = nuSendEmailEx(['to' => $to, 'subject' => $out['subject'], 'body' => $out['body'], 'html' => true],

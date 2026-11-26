@@ -191,6 +191,48 @@ const expect = (ok, msg) => { if (!ok) throw new Error(msg); };
 		expect(!/p=login/.test(q.url()), 'login failed after the install on the existing database');
 		await ctx2.close();
 		console.log('install on an existing database: ok');
+		// nuBuilder Forte itself on the database the installer just set up (its own nuconfig.php pointed there for the test): sign in,
+		// open the users list and an access level, save it without a change – nuBuilder Forte's rows stay as they were. Skipped without
+		// nuBuilder Forte's nuconfig.php in NUB_DIR (CI)
+		const forteCfg = path.join(NUB_DIR, 'nuconfig.php');
+		if (fs.existsSync(forteCfg) && fs.existsSync(path.join(NUB_DIR, 'core', 'nuapi.php'))) {
+			const keep = fs.readFileSync(forteCfg, 'utf8');
+			const gaPw = (keep.match(/\$nuConfigDBGlobeadminPassword\s*=\s*["']([^"']*)["']/) || [])[1] || 'nu';
+			const rows = () => sql('SELECT CONCAT_WS("|", (SELECT COUNT(*) FROM ' + NAME + '.zzzzsys_access), (SELECT MD5(GROUP_CONCAT(CONCAT_WS("~", zzzzsys_access_id,'
+				+ ' sal_code, sal_description, sal_zzzzsys_form_id, sal_group) ORDER BY zzzzsys_access_id)) FROM ' + NAME + '.zzzzsys_access), (SELECT MD5(GROUP_CONCAT('
+				+ 'CONCAT_WS("~", zzzzsys_access_form_id, slf_zzzzsys_form_id, slf_add_button, slf_save_button, slf_delete_button, slf_clone_button, slf_print_button)'
+				+ ' ORDER BY zzzzsys_access_form_id)) FROM ' + NAME + '.zzzzsys_access_form))');
+			const level = sql('SELECT zzzzsys_access_id FROM ' + NAME + '.zzzzsys_access ORDER BY zzzzsys_access_id LIMIT 1');
+			const ctx3 = await browser.newContext(), f = await ctx3.newPage();
+			const errs = []; f.on('pageerror', (e) => errs.push(e.message)); f.on('dialog', (d) => d.accept());
+			try {
+				fs.writeFileSync(forteCfg, keep.replace(/(\$nuConfigDBName\s*=\s*)["'][^"']*["']/, '$1"' + NAME + '"'));
+				const before = rows();
+				await f.goto(NUB + 'index.php');
+				await f.fill('#nuusername', 'globeadmin'); await f.fill('#nupassword', gaPw); await f.press('#nupassword', 'Enter');
+				const drawn = async (form, rec) => f.waitForFunction(([fm, r]) => { try { const c = nuCurrentProperties(); return c.form_id === fm && (r === '' ? !!c.browse_columns : c.record_id === r); } catch (e) { return false; } }, [form, rec], { timeout: 20000 });
+				await f.waitForFunction(() => { try { return !!nuCurrentProperties().form_id; } catch (e) { return false; } }, null, { timeout: 20000 });
+				for (const [form, rec] of [['nuuser', ''], ['nuaccess', ''], ['nuaccess', level]]) {
+					if (!rec && form === 'nuaccess' && !level) continue;
+					await f.evaluate(([fm, r]) => nuForm(fm, r, '', '', 0), [form, rec]);
+					await drawn(form, rec);
+					await f.waitForLoadState('networkidle'); await f.waitForTimeout(600);
+				}
+				if (level) {
+					const r = f.waitForResponse((x) => /nuapi\.php/.test(x.url()) && x.request().method() === 'POST', { timeout: 20000 });
+					await f.evaluate(() => nuSaveAction());
+					await r; await f.waitForLoadState('networkidle'); await f.waitForTimeout(1000);
+				}
+				expect(rows() === before, 'nuBuilder Forte changed its access level rows on a save without a change, after the install');
+				expect(!errs.filter((e) => !/nuToast is not defined/.test(e)).length, 'nuBuilder Forte script errors after the install: ' + errs.join(' | '));
+				console.log('nuBuilder Forte on the installed database: ok');
+			} catch (e) {
+				throw new Error('nuBuilder Forte on the installed database: ' + e.message.split('\n')[0] + ' – page: ' + ((await f.locator('body').textContent().catch(() => '')) || '').replace(/\s+/g, ' ').slice(0, 300) + ' – errors: ' + errs.join(' | '));
+			} finally {
+				fs.writeFileSync(forteCfg, keep);
+				await ctx3.close();
+			}
+		} else console.log('nuBuilder Forte on the installed database: skipped (no nuconfig.php of nuBuilder Forte in NUB_DIR)');
 		// 0.8.1418: an existing database of an older nuBuilder Forte (OLD_DUMP = e.g. the nubuilder4.sql of 4.5, imported as it is, not
 		// uploaded): the content step offers to bring it to 4.9 (tick required), Install does it, the globeadmin's sign-in goes on
 		if (OLD_DUMP) {

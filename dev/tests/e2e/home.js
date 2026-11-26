@@ -2568,7 +2568,7 @@ T.home_forms_panel = async (s) => {
 	// 0.8.1270: a Home form that no longer exists is not listed either
 	db("INSERT INTO zzzzsys_access (zzzzsys_access_id, sal_code, sal_description, sal_zzzzsys_form_id) VALUES ('e2e_hf_gone', 'e2e_hf_gone', 'Gone level', 'e2e_no_such_form')");
 	try {
-		await open(p, 'index.php?p=access&q=e2e_hf_blank');
+		await open(p, 'index.php?p=access&view=all&q=e2e_hf_blank');
 		expect(/Blank page \(system\)/.test(await p.locator('.nuAccHomeLink').first().innerText()), 'access list label');
 	} catch (e) { db("DELETE FROM zzzzsys_access WHERE zzzzsys_access_id IN ('e2e_hf_blank', 'e2e_hf_gone')"); throw e; }
 	// 0.8.1289 (the owner): the button sits on the start page, right of Customise – not in the top bar any more
@@ -3010,4 +3010,15 @@ T.logo_no_select = async (s) => {
 	await open(p, 'index.php?p=home');
 	const v = await p.$$eval('.nu-brand img', (l) => l.map((i) => getComputedStyle(i).userSelect));
 	expect(v.length > 0 && v.every((x) => x === 'none'), 'logo selectable: ' + v.join());
+};
+
+T.nav_toggler_small = async (s) => {
+	// phones: the ☰ button is smaller than Bootstrap's 56 × 40 px, but still a tap target of at least 32 px
+	const ctx = await s.ga.context().browser().newContext({ viewport: { width: 390, height: 800 }, hasTouch: true, isMobile: true, storageState: await s.ga.context().storageState() });
+	try {
+		const q = await ctx.newPage();
+		await q.goto(BASE + 'index.php?p=home'); await q.waitForLoadState('networkidle');
+		const r = await q.evaluate(() => { const b = document.querySelector('.navbar-toggler'); if (!b) return null; const x = b.getBoundingClientRect(); return { w: Math.round(x.width), h: Math.round(x.height) }; });
+		expect(r && r.w <= 46 && r.h <= 38 && r.w >= 32 && r.h >= 32, 'toggler size: ' + JSON.stringify(r));
+	} finally { await ctx.close(); }
 };

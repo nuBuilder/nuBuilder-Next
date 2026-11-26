@@ -105,6 +105,12 @@
 	// ------------------------------------------------------------------ preview / test
 	function post(action, extra) {
 		var fd = new FormData(form);
+		// read-only templates (nuBuilder's own) sit in a disabled fieldset, which FormData leaves out – preview / test need their values too
+		Array.prototype.forEach.call(form.elements, function (e) {
+			if (!e.name || !e.matches(':disabled') || fd.has(e.name) || e.type === 'file' || /^(submit|button|reset)$/.test(e.type)) return;
+			if ((e.type === 'checkbox' || e.type === 'radio') && !e.checked) return;
+			fd.set(e.name, e.value);
+		});
 		fd.set('action', action);
 		Object.keys(extra || {}).forEach(function (k) { fd.set(k, extra[k]); });
 		if (formSel.disabled) fd.set('emt_form_id', formSel.value);
@@ -119,7 +125,8 @@
 				head.appendChild(el('div', {}, [p[0] ? el('span', {'class': 'text-body-secondary me-2', text: p[0] + ':'}) : null, el(p[0] ? 'span' : 'strong', {text: p[1]})]));
 			});
 			if (rec.value && !j.found) head.appendChild(el('div', {'class': 'text-warning-emphasis', text: D.labels.not_found}));
-			frame.srcdoc = '<!doctype html><meta charset="utf-8"><body>' + (j.body || '') + '</body>';
+			if (j.frame) { frame.removeAttribute('srcdoc'); frame.src = j.frame; }   // own CSP: the mail's inline styles show
+			else frame.srcdoc = '<!doctype html><meta charset="utf-8"><body>' + (j.body || '') + '</body>';
 		});
 	}
 	document.getElementById('emtPreviewBtn').addEventListener('click', preview);

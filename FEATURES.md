@@ -136,8 +136,8 @@ page) for how to use it.
 - **Tile pages per access level** – users get their own tiles and can personalise them; or, per access level, the Home form opens
   after sign-in as in nuBuilder Forte – set on the access level's tab *Start page*, with a preview of the tiles.
 - **Start pages at a glance** – the globeadmin lists every Home form and every tile page with their access levels from the button right of
-  Customise on the start page (or a right-click / long press on Home): tabs Home forms / Tile pages, search, Open and Design on one line, User Home in the head
-- **Maintenance in the browser** – signed updates with backup, rollback and a preview of database changes; restore the
+  Customise on the start page (or a right-click / long press on Home): tabs Home forms / Tile pages, search, Open and Design on one line, User Home in the head; the access levels list shows each level's start page (tiles or Home form)
+- **Maintenance in the browser** – signed updates with backup, rollback, a preview of database changes and the database steps grouped by area; restore the
   database from a backup (MySQL / MariaDB); reset the database (globeadmin, marked as danger zone) from a SQL dump of any size (runs in short steps with a progress window; routines the host does not allow are skipped and listed) or to a clean installation (also on SQL Server); a `nuconfig.php`
   editor; global JavaScript / CSS; system status; logged-in users; phpMyAdmin, Adminer and a file manager (recycle bin,
   versions, code editor, tiles with picture thumbnails; made for phones too).
@@ -160,6 +160,8 @@ page) for how to use it.
   saved in nuBuilder Next stay usable in nuBuilder Forte.
 - **Compatibility check** – scans your application's code and shows which functions are supported (on SQL Server also the SQL
   it does not understand).
+- **Hash variables in quotes** – the compatibility check lists `#field#` outside quotes and puts them in quotes where that is
+  safe, with a preview per spot and Undo; calculations in SQL are fixed with a note; numbers, names, lists and PHP calculations are left for a person.
 - **Context menus of form code** (`nuOpenContextMenu`, `ctxmenu`) work as in nuBuilder Forte; a quick search lists the
   places that call functions nuBuilder Next does not have.
 - **Forte databases start as in Forte** – access levels with a Home form open it after sign-in; lists in run objects follow the

@@ -273,6 +273,7 @@ $client = [
 	'props' => (object)$props,
 	'ps' => $pageScope, 'caller' => $caller !== [], 'locked' => array_keys($locked), 'globals' => (object)NuHashCookies::all(),
 	'objects' => $mode === 'edit' ? (object)$render->clientObjects : (object)[],
+	'object_order' => $mode === 'edit' ? array_values(array_filter($meta->forteOrder, static fn($i) => isset($render->clientObjects[$i]))) : [],
 	'subforms' => $mode === 'edit' ? (object)$render->clientSubforms : (object)[],
 	'events' => $mode === 'edit' ? NuFormPage::clientEvents($meta) : (object)[],
 	'breadcrumbs' => $breadcrumbs, 'title' => $title, 'errors' => $errors,

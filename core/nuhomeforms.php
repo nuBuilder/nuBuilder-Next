@@ -104,6 +104,24 @@ final class NuHomeForms
 		return $pages;
 	}
 
+	/**
+	 * Where the tile page of each access level comes from: 'level' (a saved tile page of the level), 'default' (the default tile page)
+	 * or 'auto' (built from the level's rights) – the access levels list (column Start page).
+	 * @return array<string, string> access id => level | default | auto
+	 */
+	public static function tileSources(): array
+	{
+		return NuMemo::get('hf:tilesrc', [NuListView::TABLE, 'zzzzsys_access'], static function (): array {
+			$all = [];
+			foreach (NuAcl::levels() as $id => $r) $all[(string)$id] = ['id' => (string)$id, 'code' => (string)($r['sal_code'] ?? '')];
+			$out = [];
+			foreach (self::tilePages(nu_db(), $all) as $pg) {
+				foreach ($pg['levels'] as $lv) $out[$lv['id']] = $pg['kind'];
+			}
+			return $out;
+		});
+	}
+
 	/** Texts of the panel (sent with the data, assets/js/nuhomeforms.js). */
 	public static function texts(): array
 	{

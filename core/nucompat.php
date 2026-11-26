@@ -188,46 +188,10 @@ final class NuCompat
 		'USER_LAST_NAME', 'HOME_ID', 'LANGUAGE', 'DEV_MODE', 'USER_PERMISSIONS', 'DEPARTMENT', 'TEAM', 'POSITION', 'FIRST_NAME', 'LAST_NAME',
 		'FORM_ID', 'FORM_CODE', 'FORM_GROUP', 'NEW_RECORD', 'TABLE_ID', 'PROCEDURE_CODE', 'OBJECT_ID'];
 
-	/** Names of hash variables outside string quotes ('…', "…", `…`) and comments; server-set variables are left out. */
+	/** Names of hash variables outside string quotes ('…', "…", `…`) and comments; server-set variables are left out (scanner: NuHashFix). */
 	public static function unquotedVars(string $code, string $lang): array
 	{
-		$safe = static fn(string $n): bool => in_array($n, self::SERVER_VARS, true) || str_starts_with($n, 'nu_');
-		$found = [];
-		$n = strlen($code);
-		$q = '';                                          // open quote character
-		$from = 0;                                        // start of the open string
-		for ($i = 0; $i < $n; $i++) {
-			$c = $code[$i];
-			if ($q !== '') {
-				if ($c === '\\' && $q !== '`') { $i++; continue; }
-				if ($c === $q) {
-					// PHP string with SQL in it (nuRunQuery("… WHERE id = #x#")): the PHP quotes do not protect the SQL
-					$inner = substr($code, $from + 1, $i - $from - 1);
-					if ($lang === 'php' && $q !== '`' && preg_match('/\b(SELECT|UPDATE|DELETE|INSERT|WHERE|FROM)\b/i', $inner)) {
-						foreach (self::unquotedVars($inner, 'sql') as $v) $found[$v] = true;
-					}
-					$q = '';
-				}
-				continue;
-			}
-			if ($c === '#' && preg_match('/\G#([A-Za-z_][A-Za-z0-9_]*)#/', $code, $m, 0, $i)) {      // a hash variable comes before a # comment
-				if (!$safe($m[1])) $found[$m[1]] = true;
-				$i += strlen($m[0]) - 1;
-				continue;
-			}
-			if ($c === "'" || $c === '"' || $c === '`') { $q = $c; $from = $i; continue; }
-			$next = $i + 1 < $n ? $code[$i + 1] : '';
-			if (($c === '/' && $next === '/' && $lang === 'php') || ($c === '-' && $next === '-' && $lang === 'sql') || $c === '#') {
-				$e = strpos($code, "\n", $i);
-				$i = $e === false ? $n : $e;
-				continue;
-			}
-			if ($c === '/' && $next === '*') {
-				$e = strpos($code, '*/', $i + 2);
-				$i = $e === false ? $n : $e + 1;
-			}
-		}
-		return array_keys($found);
+		return array_values(array_unique(array_column(NuHashFix::spots($code, $lang), 'var')));
 	}
 
 	/**

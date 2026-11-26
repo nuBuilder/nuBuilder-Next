@@ -142,6 +142,11 @@
 <p>The tab <em>History</em> of the update page lists every version of the installed package, newest first – 10 per page with the list footer, the installed one with a green badge, the newest five open; the search field (<kbd>Enter</kbd>) finds versions by number, title and text, with every hit open. <em>What's new</em> at the foot of <em>System info…</em> (user menu) opens it.</p>
 </div>
 <div class="doc-sub">
+	<h3 id="update-steps">Database steps</h3>
+<p>The tab <em>System</em> lists every database step of the installed version, folded unless a step is still pending. The steps are grouped by area – <em>Feature tables</em> (nuBuilder Next's own tables), <em>Shared tables</em> (tables shared with nuBuilder Forte), <em>Settings</em>, <em>Templates &amp; code</em>, <em>Indexes &amp; columns</em> and <em>Files</em>. Each row shows the step's number and short title, what it did, the tables it touched and the kind of change (<em>Table</em>, <em>Rows</em>, <em>Column</em>, <em>Index</em>, <em>Files</em>).</p>
+<p>The line on top says when the steps ran. When they ran at different times, each row shows its own date and version; a step that has not run yet is marked <em>pending</em> and runs with the next update or sign-in of the globeadmin. The search field finds steps by number, title, text or table, the area chips show one area.</p>
+</div>
+<div class="doc-sub">
 	<h3 id="update-by-hand">Without the update page</h3>
 <p>If the update page is not available (e.g. PHP may not write to the folder): unpack the zip over the old folder (<code>nuconfig.php</code> and <code>_backup/</code> stay), and sign in as globeadmin – the database steps run automatically. What changed in each version: <code>CHANGELOG.md</code> in the package, or the tab <em>History</em> of the update page.</p>
 <p>The server needs PHP 8.1+, the <code>zip</code> and <code>sodium</code> extensions, write permission for PHP on the nuBuilder Next folder (Plesk: the folder belongs to the site user) and some free disk space – the update page shows each of them.</p>

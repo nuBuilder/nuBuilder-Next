@@ -357,6 +357,20 @@ check('lint sql comment', $lint('SELECT 1 -- #x#', 'sql') === []);
 check('lint php', $lint('$a = #amount#; $b = "#name#";', 'php') === ['amount']);
 check('lint sql in php string', $lint('nuRunQuery("SELECT * FROM t WHERE id = #x#");', 'php') === ['x']);
 check('lint record id unquoted', $lint('SELECT * FROM t WHERE id = #RECORD_ID#', 'sql') === ['RECORD_ID']);
+// quote fix (NuHashFix): safe spots get quotes, numbers / names / lists / calculations / ORDER BY stay for a person
+$hfWhy = static fn(string $code, string $lang) => array_column(NuHashFix::spots($code, $lang), 'why', 'var');
+$hfAll = static fn(string $code, string $lang) => NuHashFix::applyTo($code, $lang, array_column(NuHashFix::spots($code, $lang), 'pos'));
+check('hashfix sql reasons', $hfWhy("SELECT #f# FROM #t# WHERE a = #a# AND b IN (#l#) AND c IN (#c1#, #c2#) AND d = x + #m# AND p.#n# = 1 ORDER BY #o# LIMIT #k#", 'sql')
+	=== ['f' => '', 't' => 'name', 'a' => '', 'l' => 'list', 'c1' => '', 'c2' => '', 'm' => '', 'n' => 'name', 'o' => 'name', 'k' => 'number']);
+check('hashfix sql calculation', $hfAll('SELECT id FROM t WHERE y = #y# - 1 OR y = #y# + 1', 'sql') === "SELECT id FROM t WHERE y = '#y#' - 1 OR y = '#y#' + 1"
+	&& array_column(NuHashFix::spots('SELECT 1 WHERE y = #y# - 1', 'sql'), 'note') === ['math'] && $hfWhy('$z = #n# + 1;', 'php') === ['n' => 'math']);
+check('hashfix order by list', $hfWhy('SELECT a FROM t ORDER BY a, #o#', 'sql') === ['o' => 'order']);
+check('hashfix sql apply', $hfAll("SELECT * FROM t WHERE id = #RECORD_ID# AND x = '#a#' LIMIT #n#", 'sql') === "SELECT * FROM t WHERE id = '#RECORD_ID#' AND x = '#a#' LIMIT #n#");
+check('hashfix php apply', $hfAll('$id = #RECORD_ID#; $z = #n# + 1;', 'php') === "\$id = '#RECORD_ID#'; \$z = #n# + 1;");
+check('hashfix php strings', $hfAll("nuRunQuery(\"SELECT * FROM t WHERE id = #a#\"); nuRunQuery('SELECT * FROM t WHERE c = #b#');", 'php')
+	=== "nuRunQuery(\"SELECT * FROM t WHERE id = '#a#'\"); nuRunQuery('SELECT * FROM t WHERE c = \\'#b#\\'');");
+check('hashfix fixed code is clean', $lint("nuRunQuery('SELECT * FROM t WHERE c = \\'#b#\\'');", 'php') === []);
+check('hashfix server vars', NuHashFix::spots('SELECT * FROM t WHERE u = #USER_ID# AND d = #nu_date#', 'sql') === []);
 
 // ---------------------------------------------------------------- GitHub releases (0.8.374)
 $asset = static fn(string $v, string $host = 'github.com') => ['name' => 'nunext.zip', 'size' => 10, 'browser_download_url' => "https://$host/o/r/releases/download/v$v/nunext.zip"];
@@ -1764,6 +1778,10 @@ try { $papi->on('no.event', static fn() => null); } catch (InvalidArgumentExcept
 check('NuPluginApi: table prefix, REST pattern with named parts, unknown events refused', $papi->table('notes') === 'zzzzsys_nunext_plg_demo_x_notes'
 	&& preg_match($papi->apiRoutes()[0][1], '/items/42', $mm) === 1 && $mm['item'] === '42' && $bad);
 check('NuPlugin::report: the API versions of a new release', NuPlugin::apiInfo()['current'] === NuPlugin::API_VERSION);
+
+$enLang = require NU_ROOT . '/lang/en.php';
+$noTitle = array_filter(array_keys(NuMigrate::CHANGES), static fn($id) => !isset($enLang['upd_mig_' . substr($id, 0, 4)]));
+check('every database step has a short title (text upd_mig_<number>) for the update page', $noTitle === [], implode(', ', $noTitle));
 
 @unlink($cfg);
 echo ($fails ? "$fails of $n tests FAILED" : "all $n tests passed") . "\n";

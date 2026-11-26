@@ -127,7 +127,9 @@
 			return $.extend({viewSchema: [], tableSchema: {}, formSchema: {}, buttons: {}, user_a11y: false}, nuCurrentProperties(), {
 				title: N.form.description || '', search: N.browse ? N.browse.q : '', browse_filtered_rows: N.browse ? N.browse.total : 0,
 				home_id: (N.user && N.user.home_id) || '',
-				objects: Object.keys(N.objects || {}).map(function (id) { return $.extend({id: id}, N.objects[id]); })
+				// in the order of nuBuilder Forte's list (content boxes, order, tab, run objects last) – form code may count on it
+				objects: (N.object_order && N.object_order.length ? N.object_order : Object.keys(N.objects || {}))
+					.filter(function (id) { return N.objects && N.objects[id]; }).map(function (id) { return $.extend({id: id}, N.objects[id]); })
 			});
 		},
 		set: function (v) { serverResponse = v; }

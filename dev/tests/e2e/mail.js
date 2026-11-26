@@ -174,8 +174,13 @@ T.welcome_templates = async (s) => {
 	const source = () => { const d = sql("SELECT details FROM zzzzsys_nunext_log WHERE event = 'welcome_sent' ORDER BY 1 DESC LIMIT 1"); return (d.match(/"source":"([a-z]+)"/) || [])[1] || d; };
 	const sendWelcome = async () => {
 		await open(p, 'index.php?p=user&id=' + uid);
-		await p.check('#user_send_welcome_email'); await p.waitForTimeout(400);
-		const toast = await p.textContent('#nuWelcomeToasts .toast-body').catch(() => '');
+		await p.check('#user_send_welcome_email');
+		// the toast comes with the answer of the check request – wait for it, tick once more when it did not come
+		let toast = await p.waitForSelector('#nuWelcomeToasts .toast-body', { timeout: 8000 }).then(e => e.textContent()).catch(() => '');
+		if (!toast) {
+			await p.uncheck('#user_send_welcome_email'); await p.waitForTimeout(300); await p.check('#user_send_welcome_email');
+			toast = await p.waitForSelector('#nuWelcomeToasts .toast-body', { timeout: 8000 }).then(e => e.textContent()).catch(() => '(no toast)');
+		}
 		await Promise.all([p.waitForNavigation(), p.click('button.nuBtnSave[data-nu-save]')]); await p.waitForLoadState('networkidle');
 		return toast;
 	};
@@ -657,4 +662,42 @@ T.notify_colours = async (s) => {
 	expect(r.lvBorder === 'rgb(194, 65, 12)' && r.lvBg === 'rgb(255, 244, 236)', 'warning tile: ' + JSON.stringify(r));
 	expect(r.pub === 'rgb(79, 70, 229)' && !r.alert && /ntfReach /.test(r.reach + ' '), 'publish / reach: ' + JSON.stringify(r));
 	s.result = r;
+};
+
+T.mail_check_scroll_phone = async (s) => {
+	// phones: after Check connection the page comes back with the result in sight (it sits below the test mail form)
+	const ga = s.ga, port = 2900 + Math.floor(Math.random() * 90);
+	const cols = 'set_smtp_host,set_smtp_port,set_smtp_use_ssl';
+	const old = sql('SELECT CONCAT_WS(\',\',' + cols.split(',').map(c => "IFNULL(HEX(CAST(" + c + " AS CHAR)),'-')").join(',') + ') FROM zzzzsys_setup LIMIT 1').split(',');
+	const ctx = await ga.context().browser().newContext({ viewport: { width: 390, height: 800 }, hasTouch: true, isMobile: true, storageState: await ga.context().storageState() });
+	try {
+		sql("UPDATE zzzzsys_setup SET set_smtp_host='127.0.0.1', set_smtp_port=" + port + ", set_smtp_use_ssl='0'");   // nothing listens: the check fails fast
+		const p = await ctx.newPage();
+		await p.goto(BASE + 'index.php?p=email&tab=test');
+		await Promise.all([p.waitForNavigation(), p.click('#nuMailCheckBtn')]);
+		await p.waitForSelector('#mailCheckResult'); await p.waitForTimeout(400);
+		const r = await p.evaluate(() => { const b = document.getElementById('mailCheckResult').getBoundingClientRect(); return { top: Math.round(b.top), y: Math.round(scrollY), h: innerHeight }; });
+		expect(r.y > 0 && r.top >= 0 && r.top + r.y > r.h && r.top < r.h - 100, 'result not in sight: ' + JSON.stringify(r));
+	} finally {
+		await ctx.close();
+		sql('UPDATE zzzzsys_setup SET ' + cols.split(',').map((c, i) => c + '=' + (old[i] === '-' ? 'NULL' : "UNHEX('" + old[i] + "')")).join(','));
+	}
+};
+
+T.emt_preview_frame = async (s) => {
+	// e-mail template preview: also for read-only templates (their fields sit in a disabled fieldset), shown with the mail's inline styles
+	const p = s.ga, csp = [];
+	const onMsg = m => { if (/Content Security Policy/.test(m.text())) csp.push(m.text().slice(0, 80)); };
+	p.on('console', onMsg);
+	try {
+		await open(p, 'index.php?p=emailtemplates&id=nx_pwreset_en');
+		await p.click('#emtPreviewBtn'); await p.waitForTimeout(1200);
+		const f = p.frames().find(x => /[?&]frame=/.test(x.url()));
+		const r = f ? await f.evaluate(() => { const a = document.querySelector('a'); return { txt: document.body.innerText.slice(0, 40), bg: a ? getComputedStyle(a).backgroundColor : '' }; }) : null;
+		expect(r && /\S/.test(r.txt), 'preview empty: ' + JSON.stringify(r));
+		expect(r && r.bg === 'rgb(47, 111, 214)', 'inline style of the button not applied: ' + JSON.stringify(r));
+		const head = await p.$eval('#emtPreviewHead', e => e.innerText);
+		expect(/\S/.test(head), 'subject / To missing');
+		expect(csp.length === 0, 'CSP: ' + csp.join(' | '));
+	} finally { p.off('console', onMsg); }
 };

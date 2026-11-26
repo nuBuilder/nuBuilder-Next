@@ -831,18 +831,26 @@ final class NuCodeSearch
 				$out['lines'] += $n;
 			}
 		});
-		$u = NuAuth::currentRaw();
-		$bid = nu_id();
-		$db->insert(self::T, ['zzzzsys_nunext_code_replace_id' => $bid, 'created_at' => date('Y-m-d H:i:s'), 'login' => mb_substr((string)$u['login'], 0, 50),
-			'search' => mb_substr($s['q'], 0, 1000), 'replace_with' => mb_substr($rep, 0, 1000), 'part_count' => $out['parts'], 'line_count' => $out['lines'],
-			'changes' => json_encode($changes, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE)]);
+		$bid = self::saveBatch($s['q'], $rep, $changes, $out['parts'], $out['lines']);
 		NuLog::write('code_replaced', 'codesearch', $bid, ['search' => mb_substr($s['q'], 0, 200), 'replace' => mb_substr($rep, 0, 200), 'parts' => $out['parts'], 'lines' => $out['lines'],
 			'where' => array_slice(array_column($changes, 'label'), 0, 30)]);
-		foreach ($db->page('SELECT zzzzsys_nunext_code_replace_id AS id FROM ' . self::T, [], 'created_at DESC', 1000, self::KEEP_BATCHES) as $r) $db->delete(self::T,
-			'zzzzsys_nunext_code_replace_id', (string)$r['id']);
 		$out['ok'] = true;
 		$out['batch'] = $bid;
 		return $out;
+	}
+
+	/** Keeps a run for undo() (also the quote fixes of the compatibility check, NuHashFix); the oldest beyond KEEP_BATCHES go. */
+	public static function saveBatch(string $search, string $rep, array $changes, int $parts, int $lines): string
+	{
+		$db = nu_db();
+		$u = NuAuth::currentRaw();
+		$bid = nu_id();
+		$db->insert(self::T, ['zzzzsys_nunext_code_replace_id' => $bid, 'created_at' => date('Y-m-d H:i:s'), 'login' => mb_substr((string)$u['login'], 0, 50),
+			'search' => mb_substr($search, 0, 1000), 'replace_with' => mb_substr($rep, 0, 1000), 'part_count' => $parts, 'line_count' => $lines,
+			'changes' => json_encode($changes, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE)]);
+		foreach ($db->page('SELECT zzzzsys_nunext_code_replace_id AS id FROM ' . self::T, [], 'created_at DESC', 1000, self::KEEP_BATCHES) as $r) $db->delete(self::T,
+			'zzzzsys_nunext_code_replace_id', (string)$r['id']);
+		return $bid;
 	}
 
 	/** Puts a run back: a part is restored only while it still holds what the run wrote. @return array{ok: bool, error: string, done: int, skipped: int} */

@@ -2,6 +2,19 @@
 /* nuBuilder Next – E-mail settings (pages/nuemail.php): copy the SMTP settings as JSON to the clipboard and paste them back –
  * e.g. from another installation. The password is never copied and never taken over. Without the clipboard API (http without TLS,
  * permission refused) copy falls back to a selection and paste to a dialog with a text field. */
+// result of Check connection / Send test mail: scrolled into view when the page comes back with it below the screen (phones)
+(function () {
+	'use strict';
+	var go = function () {
+		var el = document.getElementById('mailCheckResult') || document.getElementById('mailTestResult');
+		if (!el || el.offsetParent === null) return;
+		var r = el.getBoundingClientRect();
+		if (r.top >= 0 && r.top < window.innerHeight * 0.6) return;   // already in sight
+		el.scrollIntoView({ block: 'start', behavior: 'instant' });
+	};
+	if (document.readyState === 'complete') setTimeout(go, 0); else window.addEventListener('load', function () { setTimeout(go, 0); });
+})();
+
 (function () {
 	'use strict';
 	var form = document.getElementById('nuMailForm');

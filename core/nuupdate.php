@@ -1098,6 +1098,50 @@ final class NuMigrate
 		return $out;
 	}
 
+	/** Areas of the update page's step list, in the order they are shown. */
+	public const AREAS = ['next', 'forte', 'settings', 'code', 'structure', 'files'];
+
+	/**
+	 * The steps for the update page: status() plus a short title (text upd_mig_<number>, else the description), the area
+	 * (AREAS), the kinds of change and the tables – area, kinds and tables come from CHANGES.
+	 * @return list<array{id: string, n: string, title: string, description: string, applied: ?string, version: mixed,
+	 *   area: string, kinds: list<string>, tables: list<string>}>
+	 */
+	public static function overview(): array
+	{
+		$out = [];
+		foreach (self::status() as $s) {
+			$n = substr($s['id'], 0, 4);
+			$key = 'upd_mig_' . $n;
+			$title = t($key);
+			$ch = self::CHANGES[$s['id']] ?? [];
+			$kinds = $tables = [];
+			$files = false;
+			foreach ($ch as [$table, $kind, $what]) {
+				if (str_starts_with((string)$what, 'files only')) { $files = true; continue; }
+				$kinds[$kind] = true;
+				$tables[$table] = true;
+			}
+			if ($files) $kinds['files'] = true;
+			$out[] = $s + ['n' => $n, 'title' => $title === $key ? $s['description'] : $title,
+				'area' => self::areaOf($kinds, array_keys($tables)), 'kinds' => array_keys($kinds), 'tables' => array_keys($tables)];
+		}
+		return $out;
+	}
+
+	/** @param array<string, bool> $kinds @param list<string> $tables */
+	private static function areaOf(array $kinds, array $tables): string
+	{
+		if (isset($kinds['files']) && !$tables) return 'files';
+		if (isset($kinds['index']) || isset($kinds['column'])) return 'structure';
+		$code = ['zzzzsys_php', 'zzzzsys_email_template', 'zzzzsys_code_snippet'];
+		if (array_intersect($tables, $code)) return 'code';
+		$settings = ['zzzzsys_config', 'zzzzsys_nunext_setting', 'zzzzsys_nunext_list_view'];
+		if (!isset($kinds['table']) && !array_diff($tables, $settings)) return 'settings';
+		foreach ($tables as $tb) if (str_starts_with($tb, 'zzzzsys_nunext_')) return 'next';
+		return 'forte';
+	}
+
 	/** Runs the steps not applied yet. @return string[] ids applied now */
 	public static function run(): array
 	{

@@ -1383,3 +1383,34 @@ T.file_manager_edit_back = async (s) => {
 		}
 	}
 };
+
+T.compat_hash_fix = async (s) => {
+	// Compatibility check → Hash variables outside quotes → Fix…: safe spots put in quotes, LIMIT stays for a person, the run can be undone
+	const p = s.ga;
+	const code = '$id = #RECORD_ID#;\n$r = nuRunQuery("SELECT * FROM zzzzsys_user WHERE zzzzsys_user_id = #RECORD_ID# LIMIT #e2e_n#");\n$y = nuRunQuery("SELECT 1 FROM zzzzsys_user WHERE 1 = #e2e_y# - 1");';
+	const esc = v => v.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+	execSync('mysql ' + DB, {input: "DELETE FROM zzzzsys_php WHERE zzzzsys_php_id = 'e2e_hf_proc'; INSERT INTO zzzzsys_php (zzzzsys_php_id, sph_code, sph_description, sph_php, sph_system) "
+		+ "VALUES ('e2e_hf_proc', 'e2e_hf_proc', 'e2e', '" + esc(code) + "', '0')"});
+	const cur = () => execSync('mysql -N --raw ' + DB, {input: "SELECT sph_php FROM zzzzsys_php WHERE zzzzsys_php_id = 'e2e_hf_proc'"}).toString().replace(/\n$/, '');
+	try {
+		await open(p, 'index.php?p=compat');
+		expect(await p.locator('#compatHashFix').count() === 1, 'Fix… button missing');
+		await open(p, 'index.php?p=hashfix');
+		const part = p.locator('.hfPart', { hasText: 'e2e_hf_proc' });
+		const r = await part.evaluate(el => ({ ticks: el.querySelectorAll('.hfTick').length, manual: [...el.querySelectorAll('.hfManual')].map(m => m.dataset.var + ':' + m.dataset.why),
+			after: [...el.querySelectorAll('.hfAfter')].map(a => a.textContent.trim()) }));
+		expect(r.ticks === 3 && r.manual.join() === 'e2e_n:number', 'spots: ' + JSON.stringify(r));
+		expect(r.after.some(a => a.includes("'#RECORD_ID#'")), 'preview: ' + JSON.stringify(r.after));
+		// only this part: untick the others
+		await p.evaluate(() => document.querySelectorAll('.hfPart').forEach(el => { if (!/e2e_hf_proc/.test(el.textContent)) el.querySelectorAll('.hfTick').forEach(t => { t.checked = false; }); }));
+		await p.click('#hfGo'); await confirmDelete(p);
+		if (/p=reauth/.test(p.url())) { await p.fill('input[type=password]', 'nu'); await Promise.all([p.waitForNavigation(), p.press('input[type=password]', 'Enter')]); await p.click('#hfGo'); await confirmDelete(p); }
+		const after = cur();
+		expect(after.includes("$id = '#RECORD_ID#';") && after.includes("zzzzsys_user_id = '#RECORD_ID#' LIMIT #e2e_n#") && after.includes("1 = '#e2e_y#' - 1"), 'fixed code: ' + after);
+		await p.locator('#hfBatches .hfUndo').first().click(); await p.waitForLoadState('networkidle');
+		expect(cur() === code, 'undo: ' + cur());
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		sql("DELETE FROM zzzzsys_php WHERE zzzzsys_php_id = 'e2e_hf_proc'");
+	}
+};

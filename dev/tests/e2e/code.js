@@ -23,9 +23,18 @@ T.config_editor_fill = async (s) => {
 		for (const h of [800, 1100]) {
 			await p.setViewportSize({ width: 1300, height: h }); await p.waitForTimeout(500);
 			const r = await m();
-			expect(r.bottom > h - 60 && r.page <= h + 2, 'height ' + h + ': ' + JSON.stringify(r));
+			expect(r.bottom > h - 20 && r.page <= h + 2, 'height ' + h + ': ' + JSON.stringify(r));
 		}
-	} finally { await p.setViewportSize({ width: 1300, height: 900 }); }
+		// closing the warning above the editor lets it grow at once (no reload, no resize of the window)
+		if (await p.locator('#cfgWarnHide').isVisible()) {
+			const before = await p.evaluate(() => document.querySelector('.cfgCM').getBoundingClientRect().height);
+			await p.click('#cfgWarnHide'); await p.waitForTimeout(400);
+			const r = await m();
+			const after = await p.evaluate(() => document.querySelector('.cfgCM').getBoundingClientRect().height);
+			expect(after > before + 20 && r.bottom > r.h - 20 && r.page <= r.h + 2, 'after closing the warning: ' + before + ' → ' + after + ' ' + JSON.stringify(r));
+			await p.click('#cfgWarnShow'); await p.waitForTimeout(300);
+		}
+	} finally { await p.setViewportSize({ width: 1300, height: 900 }); await p.evaluate(() => { try { localStorage.removeItem('nunext-cfg-warn-hidden'); } catch (e) {} }); }
 };
 
 T.config_insert = async (s) => {

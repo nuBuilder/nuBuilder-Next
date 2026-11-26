@@ -74,6 +74,7 @@ final class NuSqlSelect
 			'sse_edit' => (string)($in['sse_edit'] ?? '') === '1' ? '1' : '0',
 		];
 		$errors = [];
+		if ($row['sse_code'] === '') $errors['sse_code'] = t('err_required');
 		if ($row['sse_description'] === '') $errors['sse_description'] = t('err_required');
 		if ($row['sse_code'] !== ''
 			&& (int)$db->value('SELECT COUNT(*) FROM zzzzsys_select WHERE sse_code = ? AND zzzzsys_select_id <> ?', [$row['sse_code'], $id])) $errors['sse_code'] = t('sqb_err_code_taken');
@@ -177,7 +178,7 @@ final class NuSqlSelect
 			while (($r = $st->fetch(PDO::FETCH_NUM)) !== false) {
 				if (count($rows) >= $limit) { $more = true; break; }
 				$row = [];
-				foreach ($r as $i => $v) $row[] = $v === null ? null : mb_substr((string)NuSecurity::demoMask($cols[$i] ?? '', $v), 0, 300);
+				foreach ($r as $i => $v) $row[] = $v === null ? null : mb_substr((string)NuSecurity::demoMask($cols[$i] ?? '', $v), 0, 4000);
 				$rows[] = $row;
 			}
 			$st->closeCursor();

@@ -98,6 +98,10 @@
 		winCarryRestore();
 		try { callHook('nuOnLoad', N.form.id, N.form.code); } finally { $('#nuBrowseTable').removeClass('nuBrowseJsWait'); }   // rows shown after the form's code
 		forteHidden();
+		(function () {                                                    // buttons the form's code added to the toolbar row (phones: own wrapping line)
+			var h = document.getElementById('nuActionHolder');
+			if (h) h.classList.toggle('nuHasFormActs', Array.prototype.some.call(h.children, function (el) { return ownActs.indexOf(el) < 0 && !el.classList.contains('nuOptionsMenu') && el.id !== 'nuJsErrors'; }));
+		})();
 		brRestore();                                                       // column widths dragged in this tab
 		rdRestore();                                                       // rows whose details were open
 		(function () {                                                    // PHP warnings: of this page (Before Edit …) and of the save that reloaded it

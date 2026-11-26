@@ -72,6 +72,7 @@ return [
 	'aip_cancelled' => 'Canceled.',
 	'upd_libs_license' => 'License',
 	'upd_libuse_dialogs' => 'form runtime dialogs',
+	'upd_mig_0012' => 'Notification center',
 	'adm_test_intro' => 'You work as the chosen user with this admin role added – for this session only, nothing is saved. Their access level and permission items apply as usual. "Back to globeadmin" in the colored bar ends the test.',
 	'adm_r_homelayout' => 'Start page layout (Customize)',
 	'smp_intro_home' => 'Tile pages: sample_sales (Dario) gets a sales desk with favorites and a group only for the permission item sample_discount, sample_manager (Carla) a page with two tabs and a group only for team Lead, sample_editor (Ben) a data entry list with a report only for some positions. sample_viewer and sample_secure keep the automatic page with their forms and reports.',

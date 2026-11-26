@@ -251,6 +251,7 @@ nu_layout_start(t('sess_title'), 'log', ['head' => nu_ts_head()]);
 					<td class="small text-nowrap sLast"
 						data-label="<?= h(t('sess_last')) ?>"><span class="sAbs"><?= h(date(nu_dfmt('d.m.Y H:i:s'), $gLast)) ?></span><div class="text-body-secondary sAgo"><?= h(NuSessionsPage::ago($gLast)) ?></div></td>
 					<td class="text-end sActs">
+						<?php $gUid = (string)$gRows[0]['user_id']; if (!$gMine && isset($users[$gUid])): ?><?= NuImpersonate::button($gUid, $gLogin, nu_url('sessions'), true) ?><?php endif; ?>
 						<?php if (count($gRows) - ($gMine ? 1 : 0) > 0): ?>
 						<form method="post" class="d-inline" data-confirm="<?= h(t('sess_end_user_confirm', count($gRows) - ($gMine ? 1 : 0), $gLogin)) ?>"
 							data-confirm-ok="<?= h(t('sess_end')) ?>" data-confirm-class="btn btn-danger">

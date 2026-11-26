@@ -603,6 +603,22 @@ final class NuReport
 		}
 		require_once $dir . '/tcpdf.php';
 		require_once NU_ROOT . '/core/nutcpdf.php';
+		self::quietTcpdf(dirname($dir));
+	}
+
+	/**
+	 * Deprecation notices raised inside TCPDF's own files are dropped (nuBuilder Forte's TCPDF 6 calls xml_parser_free(), deprecated
+	 * in PHP 8.5): with display_errors on they would be printed into the PDF or the JSON answer and break it. Other messages and
+	 * every message of our own code go to the handler that was set before (or PHP's own).
+	 */
+	private static function quietTcpdf(string $base): void
+	{
+		$base = rtrim(str_replace('\\', '/', $base), '/') . '/';
+		$prev = null;
+		$prev = set_error_handler(static function (int $no, string $msg, string $file = '', int $line = 0) use ($base, &$prev): bool {
+			if (($no === E_DEPRECATED || $no === E_USER_DEPRECATED) && str_starts_with(str_replace('\\', '/', $file), $base)) return true;
+			return $prev ? (bool)$prev($no, $msg, $file, $line) : false;
+		});
 	}
 
 	// ================================================================= running

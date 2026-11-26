@@ -92,6 +92,7 @@ final class NuSess
 	public const LOGIN_LINK          = 'nu_ltok_link';   // new one-time login link, shown once (pages/nuuser.php)
 	public const PW_RESET_LINK       = 'nu_pwr_link';   // password reset link made by an administrator, shown once (pages/nuuser.php)
 	public const WELCOME_PREVIEW     = 'nu_welcome_pv';   // welcome e-mail shown in the preview frame (pages/nuuser.php)
+	public const EMT_PREVIEW         = 'nu_emt_pv';       // e-mail template preview shown in the preview frame (pages/nuemailtemplates.php ?frame=)
 	public const MAIL_OAUTH          = 'nunext_mail_oauth';   // state of the SMTP OAuth consent (NuMailOAuth)
 	public const SSO                 = 'nunext_sso';   // state / nonce / PKCE of a single sign-on (NuSso)
 	public const SSO_TEST            = 'nunext_sso_test';   // result of the single sign-on Test (NuSso)

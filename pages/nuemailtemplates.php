@@ -20,6 +20,16 @@ if (isset($_GET['fields'])) {
 	NuEmailTemplatesPage::json(['ok' => true, 'fields' => NuEmailTemplate::fields((string)$_GET['fields'])]);
 }
 
+// ------------------------------------------------------------------ preview frame: the rendered body from the session, CSP of its own (inline styles, no scripts)
+if (isset($_GET['frame'])) {
+	$html = $_SESSION[NuSess::EMT_PREVIEW][(string)$_GET['frame']] ?? null;
+	if (!is_string($html)) { http_response_code(404); exit; }
+	header('X-Frame-Options: SAMEORIGIN', true);
+	header("Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; img-src data: https: http:; font-src data: https:; frame-ancestors 'self'; base-uri 'none'; form-action 'none'", true);
+	header('Content-Type: text/html; charset=utf-8');
+	exit('<!doctype html><meta charset="utf-8"><body>' . $html . '</body>');
+}
+
 $id     = (string)($_GET['id'] ?? '');
 $isNew  = $id === 'new';
 $tpl    = null;

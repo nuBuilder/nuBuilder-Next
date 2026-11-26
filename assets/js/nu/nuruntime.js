@@ -25,6 +25,9 @@
 	var propsDirty = false;      // properties changed in the browser since the page's scope was stored on the server
 	N.edited = false;
 	N.jsErrors = [];
+	// the buttons nuBuilder Next itself put into the action row – the ⋮ menu goes right after them, so buttons that form code
+	// appends to #nuActionHolder (filter buttons, nuAddActionButton …) follow the ⋮ instead of pushing it to the end of the row
+	var ownActs = (function () { var h = document.getElementById('nuActionHolder'); return h ? Array.prototype.slice.call(h.children) : []; })();
 
 	function g(id) { return id ? document.getElementById(id) : null; }
 	function arr(x) { return x === undefined || x === null ? [] : (Array.isArray(x) ? x : [x]); }
@@ -424,7 +427,9 @@
 			return $.extend({viewSchema: [], tableSchema: {}, formSchema: {}, buttons: {}, user_a11y: false}, nuCurrentProperties(), {
 				title: N.form.description || '', search: N.browse ? N.browse.q : '', browse_filtered_rows: N.browse ? N.browse.total : 0,
 				home_id: (N.user && N.user.home_id) || '',
-				objects: Object.keys(N.objects || {}).map(function (id) { return $.extend({id: id}, N.objects[id]); })
+				// in the order of nuBuilder Forte's list (content boxes, order, tab, run objects last) – form code may count on it
+				objects: (N.object_order && N.object_order.length ? N.object_order : Object.keys(N.objects || {}))
+					.filter(function (id) { return N.objects && N.objects[id]; }).map(function (id) { return $.extend({id: id}, N.objects[id]); })
 			});
 		},
 		set: function (v) { serverResponse = v; }
@@ -6474,7 +6479,10 @@
 			[N.nulog.added, N.nulog.edited].forEach(function (t) { if (t) info.append($('<div></div>').text(t)); });
 			ul.append(info);
 		}
-		wrap.append(btn).append(ul).appendTo(holder);
+		wrap.append(btn).append(ul);
+		var lastOwn = null;
+		ownActs.forEach(function (el) { if (el.parentNode === holder && !el.classList.contains('d-none') && el.id !== 'nuJsErrors') lastOwn = el; });
+		if (lastOwn) wrap.insertAfter(lastOwn); else wrap.prependTo(holder);
 		btn.on('shown.bs.dropdown', function () { callHook('nuOnOptionsListLoadedGlobal'); });   // nuBuilder: each time the list opens
 	}
 	N.shortcutActions = shortcutActions;
@@ -6613,6 +6621,10 @@
 		winCarryRestore();
 		try { callHook('nuOnLoad', N.form.id, N.form.code); } finally { $('#nuBrowseTable').removeClass('nuBrowseJsWait'); }   // rows shown after the form's code
 		forteHidden();
+		(function () {                                                    // buttons the form's code added to the toolbar row (phones: own wrapping line)
+			var h = document.getElementById('nuActionHolder');
+			if (h) h.classList.toggle('nuHasFormActs', Array.prototype.some.call(h.children, function (el) { return ownActs.indexOf(el) < 0 && !el.classList.contains('nuOptionsMenu') && el.id !== 'nuJsErrors'; }));
+		})();
 		brRestore();                                                       // column widths dragged in this tab
 		rdRestore();                                                       // rows whose details were open
 		(function () {                                                    // PHP warnings: of this page (Before Edit …) and of the save that reloaded it

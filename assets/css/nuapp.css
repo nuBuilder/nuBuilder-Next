@@ -253,6 +253,11 @@ fieldset[disabled] .form-control, fieldset[disabled] .form-select { background-c
 	--bs-btn-focus-shadow-rgb: var(--bs-secondary-rgb);
 	border-radius: .5rem; font-weight: 400;
 }
+/* …but a split button (Design ▾) stays one control: the radius above is stronger than Bootstrap's own group rule */
+.btn-group > .btn.btn.btn:not(:last-child):not(.dropdown-toggle), .btn-group > .btn.btn.btn.dropdown-toggle-split:first-child {
+	border-top-right-radius: 0; border-bottom-right-radius: 0;
+}
+.btn-group > .btn.btn.btn:nth-child(n+2) { border-top-left-radius: 0; border-bottom-left-radius: 0; }
 .btn.nuBtnAct > .bi { margin-inline-end: .45rem !important; }
 .btn.nuBtnSave.nuSaveEdited {
 	--bs-btn-color: var(--bs-danger); --bs-btn-bg: rgba(var(--bs-danger-rgb), .05); --bs-btn-border-color: rgba(var(--bs-danger-rgb), .25);
@@ -518,6 +523,8 @@ li.CodeMirror-hint-active .nuHintIcon { opacity: .9; }
 .cfgCM { height: auto; font-size: .85rem; border-bottom-left-radius: var(--bs-card-inner-border-radius); border-bottom-right-radius: var(--bs-card-inner-border-radius); }
 .cfgCM .CodeMirror-scroll { min-height: 16rem; }   /* height set by assets/js/nuconfigfile.js: the window below it */
 .cfgEditor.nuCodeFull .cfgToolbar { border: 0 !important; padding: 0 0 .5rem !important; }
+/* nuconfig.php editor: the page ends right below the editor, which fills the window (nuconfigfile.js fit()) */
+body.nuCfgPage main#main { padding-bottom: .5rem !important; margin-bottom: 0 !important; }
 [data-bs-theme="dark"] .cfgCM.CodeMirror { background: var(--bs-body-bg); color: var(--bs-body-color); }
 #procTabJs .procCM, #procTabJs .procCM .CodeMirror-scroll { min-height: 16rem; }
 .procCM.procCMFit, .procCM.procCMFit .CodeMirror-scroll { min-height: 0; max-height: none; }   /* height set by nuprocedures.js: the window below it */
@@ -587,6 +594,8 @@ td.nuColEmail { min-width: 12rem; max-width: 20rem; }
 /* hamburger: Bootstrap draws a 0.25rem ring on every :focus (also after a tap) – only for keyboard focus, and thinner */
 .navbar-toggler:focus { box-shadow: none; }
 .navbar-toggler:focus-visible { box-shadow: 0 0 0 2px var(--bs-focus-ring-color); outline: 0; }
+/* smaller than Bootstrap's 56 × 40 px: 44 × 36 px – near the height of the icon buttons of the bar, still a full tap target */
+.navbar-toggler { --bs-navbar-toggler-padding-x: .55rem; --bs-navbar-toggler-padding-y: .3rem; --bs-navbar-toggler-font-size: 1rem; }
 
 /* top bar (and login page): theme, language and user menu buttons with a light border; dark mode keeps its own */
 :root:not([data-bs-theme="dark"]) .nu-navbar .btn.btn-outline-secondary.dropdown-toggle,
@@ -1271,8 +1280,50 @@ button.nuDbStar:hover, button.nuDbStar:focus-visible { background: var(--bs-tert
 
 /* update page: progress modal while installing */
 .nuUpdSpinner { width: 3rem; height: 3rem; border-width: .3rem; }
-/* update page, database steps: description and date wrap on narrow screens instead of widening the page */
-.nuUpdStepDesc { flex: 1 1 14rem; min-width: 0; overflow-wrap: anywhere; }
+/* update page, database steps: grouped by area, search + area chips (assets/js/nuupdsteps.js) */
+#updSteps { --upd-st-line: var(--bs-border-color-translucent); }
+.updStHead { display: flex; flex-direction: column; gap: .6rem; padding: .75rem 1rem; border-bottom: 1px solid var(--upd-st-line); }
+.updStTools { display: flex; flex-wrap: wrap; gap: .5rem .75rem; align-items: center; }
+.updStQ { flex: 0 1 20rem; min-width: 12rem; }
+.updStChips { display: flex; flex-wrap: wrap; gap: .35rem; }
+.updStChip { display: inline-flex; align-items: center; gap: .35rem; font-size: .8125rem; font-weight: 600; min-height: 2rem;
+	padding: .2rem .7rem; border-radius: 999px; border: 1px solid var(--bs-border-color); background: var(--bs-body-bg); color: var(--bs-secondary-color); }
+.updStChip:hover { background: var(--bs-tertiary-bg); }
+.updStChip.active { background: #e7f1ff; border-color: #9ec5fe; color: #0a58ca; }
+[data-bs-theme="dark"] .updStChip.active { background: #031633; border-color: #084298; color: #6ea8fe; }
+.updStChipN { font-weight: 400; opacity: .8; }
+.updStDot { display: inline-block; width: .6rem; height: .6rem; border-radius: 50%; flex: none; background: #6c757d; }
+.updStA-next { background: #0d6efd; }
+.updStA-forte { background: #6f42c1; }
+.updStA-settings { background: #d39e00; }
+.updStA-code { background: #20c997; }
+.updStA-structure { background: #6c757d; }
+.updStA-files { background: #dc3545; }
+.updStGrp + .updStGrp { border-top: 1px solid var(--upd-st-line); }
+.updStGrpHead { display: flex; align-items: center; gap: .5rem; margin: 0; padding: .55rem 1rem; font-size: .9375rem; font-weight: 600;
+	background: var(--bs-tertiary-bg); border-bottom: 1px solid var(--upd-st-line); }
+.updStRow { display: grid; grid-template-columns: 4.25rem minmax(0, 1fr) auto; gap: .25rem 1rem; align-items: start; padding: .5rem 1rem;
+	border-bottom: 1px solid var(--upd-st-line); font-size: .875rem; }
+.updStGrp .updStRow:last-child { border-bottom: 0; }
+.updStRow.updStPending { background: var(--bs-warning-bg-subtle); }
+.updStNo { display: inline-flex; align-items: center; gap: .35rem; font-family: var(--bs-font-monospace); font-size: .8125rem; color: var(--bs-secondary-color); padding-top: .05rem; }
+.updStMain { display: flex; flex-direction: column; gap: .15rem; min-width: 0; }
+.updStTitle { font-weight: 600; }
+.updStDesc { color: var(--bs-secondary-color); overflow-wrap: anywhere; }
+.updStTables { display: flex; flex-wrap: wrap; gap: .25rem; margin-top: .1rem; }
+.updStTables code { font-size: .75rem; color: var(--bs-body-color); background: var(--bs-tertiary-bg); border-radius: .25rem; padding: .05rem .35rem; overflow-wrap: anywhere; }
+.updStSide { display: flex; flex-direction: column; align-items: flex-end; gap: .3rem; }
+.updStKinds { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .25rem; }
+.updStKind { font-size: .75rem; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; color: var(--bs-secondary-color);
+	border: 1px solid var(--bs-border-color); border-radius: .25rem; padding: 0 .35rem; }
+.updStWhen { font-size: .75rem; color: var(--bs-secondary-color); white-space: nowrap; }
+.updStNone { padding: 1rem; margin: 0; }
+@media (max-width: 575.98px) {
+	.updStRow { grid-template-columns: 3.75rem minmax(0, 1fr); }
+	.updStSide { grid-column: 2; align-items: flex-start; }
+	.updStKinds { justify-content: flex-start; }
+	.updStQ { flex: 1 1 100%; }
+}
 
 
 .nuHomeSearchBox { max-width: 26rem; }
@@ -1847,12 +1898,15 @@ body.nuRecPage:not(.nuRecKeep) main > nav > .breadcrumb .breadcrumb-item.active 
 
 /* users: Position, Department, Team, Status at most 280 px; admin roles: Has users at most 200 px */
 .nuLvFlt-users :is(#lvf_pos, #lvf_dept, #lvf_team, #lvf_state), .nuLvFlt-users :is(#lvf_pos, #lvf_dept, #lvf_team, #lvf_state) + .ts-wrapper { max-width: 280px; }
-/* users on desktop: every filter 250 px wide, the same gap between all of them */
+/* system lists on desktop: every filter 250 px wide, the same gap between all of them (permission items: the group filter 450 px) */
 @media (min-width: 992px) {
-	.nuLvFlt-users > .row { display: flex; flex-wrap: wrap; gap: .5rem 1rem; margin: 0; }
-	.nuLvFlt-users > .row > [class*="col-"] { flex: 0 0 250px; width: 250px; max-width: 250px; padding: 0; margin: 0; }
+	#nuLvFilters > .row { display: flex; flex-wrap: wrap; gap: .5rem 1rem; margin: 0; }
+	#nuLvFilters > .row > [class*="col-"] { flex: 0 0 250px; width: 250px; max-width: 250px; padding: 0; margin: 0; }
+	.nuLvFlt-permissions > .row > [class*="col-"]:has(> #lvf_group) { flex-basis: 450px; width: 450px; max-width: 450px; }
 	.nuLvFlt-users :is(#lvf_pos, #lvf_dept, #lvf_team, #lvf_state), .nuLvFlt-users :is(#lvf_pos, #lvf_dept, #lvf_team, #lvf_state) + .ts-wrapper { max-width: none; }
 }
+/* SQL builder: Code at most 350 px, Description at most 600 px */
+@media (min-width: 768px) { .sqbCodeCol { flex: 0 1 350px; } .sqbDescCol { flex: 0 1 600px; } }
 .nuLvFlt-adminroles #lvf_has_users, .nuLvFlt-adminroles #lvf_has_users + .ts-wrapper { max-width: 200px; }
 #userPermGroup { max-width: 450px; }   /* user form permission items: group filter */
 /* themes: "Per access level" folds */
@@ -2326,6 +2380,16 @@ input.nuOwnPwToggle::-ms-reveal { display: none; }
 .nuAdmAccess { display: inline-flex; align-items: center; gap: .35rem; padding: .15rem .6rem; border-radius: 999px; font-size: .8125rem; font-weight: 500;
 	white-space: nowrap; background: var(--bs-secondary-bg); color: var(--bs-secondary-color); }
 .nuAdmAccess.nuAdmAccessFull { background: var(--bs-danger-bg-subtle); color: var(--bs-danger-text-emphasis); font-weight: 600; }
+/* access levels list: column Start page – Tiles (own / default / automatic) or the Home form */
+.nuAccStart { display: inline-flex; align-items: center; gap: .5rem; flex-wrap: wrap; text-decoration: none; color: inherit; }
+a.nuAccStart:hover .nuAccStartName, a.nuAccStart:hover .nuAccStartSrc { text-decoration: underline; }
+.nuAccStartChip { display: inline-flex; align-items: center; gap: .3rem; padding: .1rem .55rem; border-radius: 999px; font-size: .75rem; font-weight: 600; white-space: nowrap; }
+.nuAccStartTiles { background: #e7f1ff; color: #0a58ca; }
+.nuAccStartForm { background: #efe7fb; color: #5a32a3; }
+[data-bs-theme="dark"] .nuAccStartTiles { background: #031633; color: #6ea8fe; }
+[data-bs-theme="dark"] .nuAccStartForm { background: #2a1a4a; color: #c5b3f0; }
+.nuAccStartSrc { font-size: .75rem; color: var(--bs-secondary-color); }
+.nuAccStartName { font-size: .875rem; }
 .nu-table td.nuNum { font-variant-numeric: tabular-nums; }
 /* Phones (the owner picked mockup C): like the desktop – the titles None / View / Change once (sticky), each right one grid row:
    name with area + shield below, then three fixed radio columns; a right without View keeps its dash, so Change never moves */
@@ -3362,3 +3426,17 @@ body.nuRvPending > :not(#nuRecView) { visibility: hidden; animation: nuRvShow 0s
 
 /* Debug results: copy and × next to the checkbox; on phones at the right end of the head line */
 @media (max-width: 575.98px) { .debugRow .debugActs { order: 10; margin-left: auto; } }
+
+/* Compatibility check → hash variables in quotes (pages/nuhashfix.php) */
+.hfSpot { padding: .15rem 0; }
+.hfSpot + .hfSpot { border-top: 1px dashed var(--bs-border-color); }
+.hfLine { display: flex; align-items: flex-start; gap: .4rem; }
+.hfNo { flex: 0 0 2.5rem; text-align: right; color: var(--bs-secondary-color); font-size: .8rem; padding-top: .15rem; }
+.hfTick { flex: 0 0 auto; margin: .2rem 0 0; }
+.hfGap { flex: 0 0 1rem; }
+.hfText { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--bs-body-color); min-width: 0; }
+.hfAfter { background: color-mix(in srgb, var(--bs-success) 12%, transparent); border-radius: .25rem; }
+.hfAfter .hfNo { color: var(--bs-success-text-emphasis); }
+.hfOff .hfAfter { display: none; }
+.hfWhy { margin-left: 3.9rem; }
+.hfText mark.nuHfNew { background: color-mix(in srgb, var(--bs-success) 30%, transparent); }

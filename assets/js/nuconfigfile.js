@@ -53,19 +53,39 @@
 	var tools = document.querySelector('.cfgCodeTools');
 	if (tools && window.NuCodeTools) NuCodeTools.attach(cm, tools, {lang: 'PHP', readOnly: ro, noInsert: true});   // nuconfig.php: no nuBuilder functions
 	initInsert(cm);
-	// the editor fills the window below it: its height = window height − its top − what follows it on the page
-	var ed = cm.getWrapperElement();
+	// the editor fills the window below it: its height = window height − its top − the frame and page padding below it
+	// (only up to the end of <main>: anything after the page's main part is not counted)
+	var ed = cm.getWrapperElement(), main = ed.closest('main') || document.body;
+	function below() {
+		var gap = 0;
+		for (var el = ed.parentElement; el; el = el.parentElement) {
+			var cs = getComputedStyle(el);
+			gap += parseFloat(cs.paddingBottom) + parseFloat(cs.borderBottomWidth);
+			if (el === main) { gap += parseFloat(cs.marginBottom); break; }
+		}
+		return gap;
+	}
+	var lastH = 0;
 	function fit() {
 		if (ed.closest('.nuCodeFull')) return;                  // full screen of the code tools sizes it itself
-		cm.setSize(null, 'auto');
-		var r = ed.getBoundingClientRect(), after = document.documentElement.scrollHeight - (r.bottom + window.scrollY);
-		var h = Math.max(256, Math.floor(window.innerHeight - (r.top + window.scrollY) - Math.max(0, after) - 1));
-		cm.setSize(null, h);
+		var top = ed.getBoundingClientRect().top + window.scrollY;
+		var h = Math.max(256, Math.floor(window.innerHeight - top - below()));
+		if (h !== lastH) { lastH = h; cm.setSize(null, h); }
 	}
 	var tm = null;
-	window.addEventListener('resize', function () { clearTimeout(tm); tm = setTimeout(fit, 80); });
+	function later() { clearTimeout(tm); tm = setTimeout(fit, 60); }
+	window.addEventListener('resize', later);
+	window.addEventListener('load', fit);
+	if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
+	// whatever above the editor changes height (warning closed / shown, toolbar wrapping, late styles) moves its top
+	if (window.ResizeObserver) {
+		var ro = new ResizeObserver(later), card = ed.closest('.card');
+		Array.prototype.forEach.call((card || main).children, function (c) { if (c !== ed.parentElement && !c.contains(ed)) ro.observe(c); });
+		var nav = document.querySelector('.nu-navbar'); if (nav) ro.observe(nav);
+		var head = main.querySelector('.nuTitleBar, .nuListHead'); if (head) ro.observe(head);
+	}
 	fit();
-	setTimeout(fit, 300);                                         // after fonts / the alert above have their final height
+	setTimeout(fit, 300);
 })();
 
 /* Insert variable: the dialog lists the variables nuBuilder Next reads (NuConfigFile::catalog) that the editor's text does not

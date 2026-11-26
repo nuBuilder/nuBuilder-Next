@@ -3850,3 +3850,16 @@ T.browse_sql_run = async (s) => {
 	} finally { await u.context().close(); }
 	expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
 };
+
+// Design ▾ of a list is one split button: no gap, square inner corners (the shared toolbar look rounded both halves)
+T.design_split_joined = async (s) => {
+	const p = s.ga;
+	await open(p, 'index.php?p=form&f=samplecustomer');
+	const r = await p.evaluate(() => {
+		const a = document.getElementById('nuDesignButton'), b = document.getElementById('nuDesignMore');
+		if (!a || !b) return null;
+		const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect(), ca = getComputedStyle(a), cb = getComputedStyle(b);
+		return { gap: Math.round(rb.left - ra.right), aR: ca.borderTopRightRadius, bL: cb.borderTopLeftRadius, aL: ca.borderTopLeftRadius, bR: cb.borderTopRightRadius };
+	});
+	expect(r && r.gap <= 0 && r.aR === '0px' && r.bL === '0px' && r.aL !== '0px' && r.bR !== '0px', 'split button joined: ' + JSON.stringify(r));
+};

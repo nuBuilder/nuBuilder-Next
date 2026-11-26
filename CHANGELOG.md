@@ -3,6 +3,124 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.1519 – Release gate
+- Release gate: smoke, end-to-end, compatibility with nuBuilder Forte, installer wizard (with nuBuilder Forte on the installed
+  database) and security scan. Documentation brought up to date (feature list, tutorial, open checks).
+
+## 0.8.1518 – Act as user on grouped sessions
+- Logged-in users: a user with several sessions (one grouped row) now has *Act as user* on the group row too – it was only on the
+  session rows, which are folded away.
+- Tests: two end-to-end tests followed changes of the pages (access levels list, grouped sessions).
+
+## 0.8.1517 – Installer test checks nuBuilder Forte afterwards
+- Tests: the installer test now also opens nuBuilder Forte on the database the installer has just set up on an existing Forte
+  database. It signs in, opens the users list and the access levels, and saves an access level without a change; nuBuilder
+  Forte's rows must stay as they were. Runs in every gate; skipped when no nuBuilder Forte configuration is present (CI).
+
+## 0.8.1516 – PHP 8.6 tested, CI row no longer nightly
+- PHP 8.6 (released): the same run as for PHP 8.5 – installer wizard (new installation and existing database), 30 browser tests of
+  the update page, backups and restore, data export, Data import, cloners, reset database and reports, the App cloner and the unit
+  tests – with every PHP message shown: no message.
+- CI: the PHP 8.6 row is no longer a nightly row – a failure on 8.6 now turns the run red like the other rows.
+
+## 0.8.1515 – PHP 8.5 tested, PDF library notices
+- PHP 8.5: installer wizard, update page, backups and restore, data export, Data import, App cloner / Form cloner, reset database and
+  reports tested on PHP 8.5 (and the App cloner, unit tests on PHP 8.6) with every PHP message shown – one problem found: with
+  nuBuilder Forte's TCPDF 6, a deprecation notice of the library ("xml_parser_free() is deprecated") was printed into the PDF or the
+  self-test's answer while display_errors is on. Deprecation notices raised inside the PDF library's own files are now dropped while
+  reports run; every other message goes on as before.
+- CI: the PHP 8.5 and 8.6 rows also run the installer wizard and the browser tests of the update page, backups, exports, imports,
+  cloners, reset database and reports (list in dev/tests/e2e/php-new.txt).
+
+## 0.8.1514 – Objects in nuBuilder Forte's order
+- Forms in the fixed (absolute) layout draw the objects of a tab in nuBuilder Forte's order: content boxes first, then the order
+  value, a run object after the other objects of the same order value. This only changes objects that share an order value –
+  for them the keyboard's Tab order now matches nuBuilder Forte (before: top, then left).
+- nuSERVERRESPONSE.objects lists the objects in nuBuilder Forte's order (one list over the whole form: content boxes, order value,
+  tab, run objects last), so form code that counts on the position in that list finds the same object as in nuBuilder Forte.
+
+## 0.8.1513 – Smaller menu button on phones
+- Phones: the menu button (☰) in the top bar is smaller – 44 × 36 px instead of 56 × 40 px, closer to the other buttons.
+
+## 0.8.1512 – Hash variables in quotes: calculations in SQL
+- Compatibility check → Hash variables in quotes: a hash variable in a calculation in SQL (WHERE year = #year# - 1) can now be
+  fixed too – it becomes '#year#' - 1, which the database reads as a number; the page notes this under the new line.
+  Calculations in PHP code stay for a person.
+
+## 0.8.1511 – Compatibility check: put hash variables in quotes
+- Compatibility check → Hash variables outside quotes → Fix…: a page with every such spot, the line as it is and as it will be
+  with quotes. Where quotes keep the code working (a value after =, <>, LIKE, in VALUES, in a list of several values, a plain PHP
+  value, SQL inside PHP strings) the spot is ticked and "Fix ticked" puts the variable in quotes – '#field#', or \'#field#\'
+  inside a single-quoted PHP string. Numbers after LIMIT / OFFSET / TOP, table or column names, IN (#list#), calculations and
+  ORDER BY / GROUP BY are shown with the reason, to fix by hand. Only the globeadmin changes code (password asked again); forms
+  get a version in their history first, every run can be undone on the same page. The quoted code works in nuBuilder Forte too.
+- The check itself now reads SQL inside single-quoted PHP strings correctly: \'#field#\' counts as quoted.
+
+## 0.8.1510 – E-mail templates: preview of read-only templates
+- E-mail templates: the preview stayed empty for the read-only templates (their fields are locked, and locked fields were not sent
+  with the preview request), and the mail's inline styles (button colours, spacing) were blocked by the page's security policy.
+  The preview now takes the locked fields too and is shown in a frame with a policy of its own, so it looks as the mail will.
+
+## 0.8.1509 – E-mail: scroll to the check result
+- E-mail settings: after Check connection or Send test mail, the page scrolls to the result when it is below the screen
+  (phones) – before, the result was out of sight under the test mail form.
+
+## 0.8.1508 – Phones: toolbar buttons added by form code on their own line
+- Phones: when a list's own code adds buttons to the toolbar row (for example filter buttons of older nuBuilder Forte code),
+  the row gets a line of its own below the title and wraps – the page no longer scrolls sideways and the title stays readable.
+  Lists without such buttons keep the one-line header.
+
+## 0.8.1507 – Options button before buttons of form code
+- Form pages: the ⋮ options button sits right after nuBuilder Next's own toolbar buttons; buttons that a form's code adds
+  to the toolbar (for example filter buttons of older nuBuilder Forte code) now come after it instead of before it.
+
+## 0.8.1506 – nuconfig.php editor fills the window
+- Configuration file (nuconfig.php): the code editor uses all the vertical space down to the bottom of the window, also
+  when the warning above it is closed or shown, the toolbar wraps or fonts load late.
+
+## 0.8.1505 – SQL builder: code mandatory
+- SQL builder: the Code field is now mandatory (marked with *, a query without a code is not saved).
+
+## 0.8.1504 – SQL builder preview rows on one line
+- SQL builder: the preview rows show one line each; long values are cut with … and the whole value shows when the
+  mouse rests on the cell (values up to 4000 characters are sent, was 300).
+
+## 0.8.1503 – SQL builder field widths
+- SQL builder: the Code field is at most 350 px and the Description field at most 600 px wide on wide screens
+  (full width on phones).
+
+## 0.8.1502 – List filters 250 px wide
+- System lists: on wide screens every filter (for example Group and Source type of the reports list) is at most
+  250 px wide, with the same gap between them – they no longer stretch across the whole row.
+
+## 0.8.1501 – Access levels: start page column
+- Access levels list: new column Start page shows whether a level starts on its tile page (own, default or built
+  automatically – a click opens the tile editor) or on its Home form (a click opens the form); a Home form that is set
+  but not used shows only in the tooltip. New filter Start page (Tile page / Home form).
+
+## 0.8.1500 – Design split button joined again
+- Lists: the ▾ next to Design is attached to the Design button again – one split button without a gap, the inner
+  corners square. The common look of the toolbar buttons had rounded both halves; button groups now keep their
+  joined corners everywhere.
+
+## 0.8.1499 – Database steps grouped by area
+- Update → System → Database steps: the list is grouped by area – feature tables, tables shared with nuBuilder Forte,
+  settings, templates and code, indexes and columns, files. Each step shows a short title, what it did, the tables it
+  touched and the kind of change. The run date is shown once on top when all steps ran together, otherwise on each row.
+  A search field and area chips filter the list; pending steps are marked.
+
+## 0.8.1498 – Act as user menu above the list
+- Logged-in users: the "Act as user" menu of a row now opens above the list. With only a few rows it was cut off at
+  the bottom of the table and could only be reached by scrolling. Same for the button on the user form.
+
+## 0.8.1497 – Sign-in page without version
+- Sign-in page: the program name and version are no longer shown below the sign-in box – also on the other
+  sign-in pages (forgotten password, new password, two-factor sign-in). Visitors who are not signed in no longer
+  learn which version runs on the server. Signed-in users still find the version in System info and on the update page.
+
+## 0.8.1496 – Notes
+- Development notes: v0.8.1495 recorded as the last published release.
+
 ## 0.8.1495 – Release gate
 - Release gate: the full test run (smoke, end-to-end, cross-tests with nuBuilder Forte, installer wizard, security scan). Documentation
   brought up to date: feature list (print views, favourites order, debug results with Undo, forms on phones) and the points to verify.

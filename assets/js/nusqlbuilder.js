@@ -403,9 +403,9 @@
 			result.innerHTML = '';
 			if (!r.ok) { result.appendChild(el('div', {'class': 'alert alert-danger small', text: M.run_failed + ' ' + (r.message || '')})); return; }
 			var t = el('table', {'class': 'table table-sm table-striped table-bordered mb-0 small'});
-			t.appendChild(el('thead', {}, [el('tr', {}, r.columns.map(function (c) { return el('th', {text: c}); }))]));
+			t.appendChild(el('thead', {}, [el('tr', {}, r.columns.map(function (c) { return el('th', {text: c, title: c}); }))]));
 			var tb = el('tbody');
-			r.rows.forEach(function (row) { tb.appendChild(el('tr', {}, row.map(function (v) { return el('td', {'class': v === null ? 'text-body-tertiary' : '', text: v === null ? 'NULL' : v}); }))); });
+			r.rows.forEach(function (row) { tb.appendChild(el('tr', {}, row.map(function (v) { var tx = v === null ? 'NULL' : String(v); return el('td', {'class': v === null ? 'text-body-tertiary' : '', text: tx, title: tx}); }))); });
 			t.appendChild(tb);
 			result.appendChild(el('div', {'class': 'small fw-semibold mb-1', text: (M.rows || '%d').replace('%d', r.rows.length) + (r.more ? ' ' + M.more : '')}));
 			result.appendChild(r.rows.length ? el('div', {'class': 'table-responsive sqbResultTable'}, [t]) : el('div', {'class': 'text-body-secondary small', text: M.no_rows}));

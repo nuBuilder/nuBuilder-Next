@@ -984,19 +984,61 @@ $lpTip = static fn(string $tip,
 			<div class="card-footer small text-body-secondary"><?= h(t('upd_req_hint')) ?></div>
 		</div>
 	
-<?php $stAll = NuMigrate::status(); $stPend = count(array_filter($stAll, static fn($s) => !$s['applied'])); // folded unless a step is pending ?>
+<?php $stAll = NuMigrate::overview(); $stPend = count(array_filter($stAll, static fn($s) => !$s['applied'])); // folded unless a step is pending
+	$stRuns = [];  // runs = steps applied in the same minute with the same version
+	foreach ($stAll as $s) if ($s['applied']) $stRuns[substr((string)$s['applied'], 0, 16) . '|' . $s['version']] = [$s['applied'], (string)$s['version']];
+	$stLast = $stRuns ? end($stRuns) : null; $stMany = count($stRuns) > 1;
+	$stDate = static fn($at) => date(nu_dfmt('d.m.Y H:i'), strtotime((string)$at));
+	$stCount = array_count_values(array_column($stAll, 'area')); ?>
 <div class="card shadow-sm mb-4" id="updStepsCard">
 	<div class="card-header fw-semibold"><button class="btn btn-link p-0 fw-semibold text-decoration-none text-body nuChevToggle<?= $stPend ? '' : ' collapsed' ?>"
 		type="button" data-bs-toggle="collapse" data-bs-target="#updSteps" aria-expanded="<?= $stPend ? 'true' : 'false' ?>" aria-controls="updSteps"
 		id="updStepsToggle"><i class="bi bi-chevron-right me-1"></i><?= h(t('upd_db_steps')) ?></button>
 		<span class="badge text-bg-<?= $stPend ? 'warning' : 'secondary' ?> ms-1" id="updStepsCount"><?= $stPend ? (int)$stPend . ' / ' . count($stAll) : count($stAll) ?></span></div>
-	<ul class="list-group list-group-flush small collapse<?= $stPend ? ' show' : '' ?>" id="updSteps">
-		<?php foreach ($stAll as $s): ?>
-			<li class="list-group-item d-flex flex-wrap gap-2 nuUpdStep"><i class="bi <?= $s['applied'] ? 'bi-check-circle text-success' : 'bi-hourglass text-warning' ?>"></i>
-				<code><?= h($s['id']) ?></code><span class="me-auto nuUpdStepDesc"><?= h($s['description']) ?></span>
-				<span class="text-body-secondary text-nowrap"><?= $s['applied'] ? h(date(nu_dfmt('d.m.Y H:i'), strtotime($s['applied'])) . ' · ' . $s['version']) : h(t('upd_pending')) ?></span></li>
+	<div class="collapse<?= $stPend ? ' show' : '' ?>" id="updSteps">
+		<div class="updStHead">
+			<div class="updStSum small" id="updStSum"><?php if ($stLast): ?><i class="bi bi-check-circle text-success me-1"></i><?= h($stMany
+				? t('upd_st_runs', count($stAll) - $stPend, count($stRuns), $stDate($stLast[0]), $stLast[1])
+				: t('upd_st_one_run', count($stAll) - $stPend, $stDate($stLast[0]), $stLast[1])) ?><?php endif; ?>
+				<?php if ($stPend): ?><span class="text-warning-emphasis ms-2" id="updStPendNote"><i class="bi bi-hourglass me-1"></i><?= h(t('upd_st_pending_n', $stPend)) ?></span><?php endif; ?></div>
+			<div class="updStTools">
+				<input type="search" class="form-control form-control-sm updStQ" id="updStQ" placeholder="<?= h(t('upd_st_search')) ?>"
+					aria-label="<?= h(t('upd_st_search')) ?>" data-nu-noguard>
+				<div class="updStChips" role="group" aria-label="<?= h(t('upd_st_areas')) ?>">
+					<button type="button" class="updStChip active" data-area="" aria-pressed="true"><?= h(t('upd_st_all')) ?> <span class="updStChipN"><?= count($stAll) ?></span></button>
+					<?php foreach (NuMigrate::AREAS as $ar): if (empty($stCount[$ar])) continue; ?>
+						<button type="button" class="updStChip" data-area="<?= h($ar) ?>" aria-pressed="false"><span class="updStDot updStA-<?= h($ar) ?>"></span><?= h(t('upd_st_area_' . $ar)) ?>
+							<span class="updStChipN"><?= (int)$stCount[$ar] ?></span></button>
+					<?php endforeach; ?>
+				</div>
+			</div>
+		</div>
+		<?php foreach (NuMigrate::AREAS as $ar): if (empty($stCount[$ar])) continue; ?>
+			<section class="updStGrp" data-area="<?= h($ar) ?>">
+				<h3 class="updStGrpHead"><span class="updStDot updStA-<?= h($ar) ?>"></span><?= h(t('upd_st_area_' . $ar)) ?>
+					<span class="badge text-bg-secondary updStGrpN"><?= (int)$stCount[$ar] ?></span></h3>
+				<?php foreach ($stAll as $s): if ($s['area'] !== $ar) continue;
+					$q = mb_strtolower($s['id'] . ' ' . $s['title'] . ' ' . $s['description'] . ' ' . implode(' ', $s['tables'])); ?>
+					<div class="updStRow nuUpdStep<?= $s['applied'] ? '' : ' updStPending' ?>" data-q="<?= h($q) ?>" data-step="<?= h($s['id']) ?>">
+						<span class="updStNo"><i class="bi <?= $s['applied'] ? 'bi-check-circle text-success' : 'bi-hourglass text-warning' ?>"
+							role="img" aria-label="<?= h($s['applied'] ? t('upd_applied') : t('upd_pending')) ?>"></i><?= h($s['n']) ?></span>
+						<div class="updStMain">
+							<div class="updStTitle"><?= h($s['title']) ?></div>
+							<?php if ($s['title'] !== $s['description']): ?><div class="updStDesc nuUpdStepDesc" title="<?= h($s['id']) ?>"><?= h($s['description']) ?></div><?php endif; ?>
+							<?php if ($s['tables']): ?><div class="updStTables"><?php foreach ($s['tables'] as $tb): ?><code><?= h($tb) ?></code><?php endforeach; ?></div><?php endif; ?>
+						</div>
+						<div class="updStSide">
+							<div class="updStKinds"><?php foreach ($s['kinds'] as $k): ?><span class="updStKind"><?= h(t('upd_st_kind_' . $k)) ?></span><?php endforeach; ?></div>
+							<?php if (!$s['applied']): ?><span class="badge text-bg-warning"><?= h(t('upd_pending')) ?></span>
+							<?php elseif ($stMany): ?><span class="updStWhen"><?= h($stDate($s['applied']) . ' · ' . $s['version']) ?></span><?php endif; ?>
+						</div>
+					</div>
+				<?php endforeach; ?>
+			</section>
 		<?php endforeach; ?>
-	</ul>
+		<p class="updStNone small text-body-secondary" id="updStNone" hidden><?= h(t('upd_st_none')) ?>
+			<button type="button" class="btn btn-link btn-sm p-0 align-baseline" id="updStReset"><?= h(t('upd_st_show_all')) ?></button></p>
+	</div>
 </div>
 <?php if (!$check): // integrity check of the database: on request – it also tries a scratch table ?>
 <div class="card shadow-sm mb-4" id="updIntegrityNow">
@@ -1032,4 +1074,5 @@ $lpTip = static fn(string $tip,
 </div>
 </div>
 <?php
-nu_layout_end('<script src="' . nu_asset('assets/js/nulibpacks.js') . '"></script><script src="' . nu_asset('assets/js/nubackups.js') . '"></script>');
+nu_layout_end('<script src="' . nu_asset('assets/js/nulibpacks.js') . '"></script><script src="' . nu_asset('assets/js/nubackups.js') . '"></script>'
+	. '<script src="' . nu_asset('assets/js/nuupdsteps.js') . '"></script>');

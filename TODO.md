@@ -21,9 +21,6 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       entry in docs/nunext-functions.json; the examples `e` / sample results `x` are never executed. Proposal: an e2e test that runs every
       example – PHP against the test database, JavaScript on a test form – and compares with `x`; functions with side effects (mail,
       windows, downloads) marked "not runnable" in the entry.
-- [ ] **Drawing order of objects** (absolute layout): nuBuilder Forte sorts content boxes first, then sob_all_order, then the tab order,
-      run objects last at the same order; nuBuilder Next sorts tab, sob_all_order, top, left. Matters only for objects with the same order
-      value (stacking, keyboard Tab order) – align exactly if wanted (0.8.567 fixed the z-index).
 
 ## SQL Server
 
@@ -68,10 +65,11 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       built, another tab of the same user keeps working; the report of a procedure and Save / E-mail of a report behave as before.
 - [ ] **Bell without a request after each page load** (0.8.1341) – a new notification still shows at once on the next page and within a
       minute on an open page; "must confirm" ones open their dialogue right after signing in.
-- [ ] **PHP 8.5** (0.8.1317) – curl_close() and PDO::MYSQL_ATTR_USE_BUFFERED_QUERY gave "Deprecated" on PHP 8.5 (WampServer); fixed, and run.php now refuses the known 8.5 deprecations. Not run on PHP 8.5 here (container has 8.3): installer, update page, backups, data export, App cloner on 8.5 with display_errors on.
-- [ ] **PHP 8.6 in CI** (0.8.1421) – the row mariadb:11.4 × PHP 8.6 runs with continue-on-error while setup-php installs a nightly build (step `php -v` shows `-dev`). Once the setup-php README lists 8.6 as Stable: remove `nightly: true` from the row; a red 8.6 job before that is worth a look but does not fail the run. Not run on PHP 8.6 here (container has 8.3).
-- [ ] **Existing nuBuilder Forte database** (0.8.1008, no longer blocked): installer on a copy of the live Forte database – backup
-      tick, integrity check, nuBuilder Forte keeps working afterwards; a hand-written nuconfig.php shows the backup note on the sign-in page.
+- [ ] **CI on PHP 8.5 / 8.6** (0.8.1515 / 0.8.1516) – the rows 8.5 and 8.6 run the installer wizard and the browser tests of dev/tests/e2e/php-new.txt, and 8.6 is no longer a nightly row (a failure turns the run red): check their first run.
+- [ ] **Existing nuBuilder Forte database, with your data** (0.8.1008 / 0.8.1517) – the installer on a copy of the live Forte database: what the
+      integrity check reports, Install with the backup tick, sign in to Next, then two or three forms in nuBuilder Forte on the same copy;
+      a hand-written nuconfig.php on a second copy shows the backup note. (Forte's demo database: covered by dev/tests/install.js, which
+      now also signs in to nuBuilder Forte afterwards and saves an access level without a change, and e2e.)
 - [ ] **E-mail → Test → Check connection** with the real SMTP server (also OAuth 2); PHPMailer 7.2.0 (0.8.1257) with that server.
 - [ ] **Cron and unattended updates**: `php nucron.php update` as the web server's user (--url over https, proxy), unattended update from
       GitHub; after the entry file rename (0.8.825 / 0.8.826) the crontab line (`nucron.php`) and Adminer bookmarks – `api.php` and
@@ -86,7 +84,7 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **Library packs on a live server** (0.8.865): Update → Libraries status "Installed (pack / nuBuilder Forte's copy / copied by hand)".
 - [ ] **Database tools in an installed app** (0.8.852–0.8.854): phpMyAdmin and Adminer open from the app window (Chrome / Edge "Install").
 - [ ] **Installable app** (0.8.1136) – on HTTPS: install on Android / desktop Chrome, Add to Home Screen on iPhone; icon, name, favourites as shortcuts, offline page in airplane mode, Branding switch off removes the worker; own logo as icon.
-- [ ] **PHP 8.5 and the health check, please verify** (0.8.1317 / 0.8.1335) – the installation on PHP 8.5 without deprecation notices (installer Libraries step, backups, data export); ?p=health with a monitoring tool (key as header), the cron warning gone once the server's cron runs nucron.php.
+- [ ] **Health check, please verify** (0.8.1335) – ?p=health with a monitoring tool (key as header), the cron warning gone once the server's cron runs nucron.php.
 
 ## Sign-in and security
 - [ ] **Test an admin role** (0.8.1318) – role form → Test role: view only / full access on a chosen user, the role's tools on the start page and their pages open, nothing saved to the user, Back returns to the role form; as an admin-role user with Act as user + Admin roles only roles within your own rights.
@@ -125,6 +123,7 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
       protect_fields is off.
 
 ## Forms and design mode
+- [ ] **Please verify 0.8.1497–0.8.1514** – sign-in page without the version (0.8.1497); *Act as user* menu in a short list (0.8.1498); Update → System → Database steps grouped by area with search (0.8.1499); Design ▾ joined as one button (0.8.1500); access levels list column Start page (0.8.1501); filters ≤ 250 px (0.8.1502); SQL builder Code required, preview one line per row (0.8.1503–0.8.1505); nuconfig.php editor fills the window (0.8.1506); ⋮ after the own buttons, form code's buttons on their own line on phones (0.8.1507 / 0.8.1508); e-mail check result in view on phones (0.8.1509); e-mail template preview on phones (0.8.1510); Compatibility check → Hash variables outside quotes → Fix, Undo (0.8.1511 / 0.8.1512); ☰ smaller (0.8.1513); objects of absolute forms in nuBuilder Forte's order for form code (0.8.1514).
 - [ ] **Please verify 0.8.1452–0.8.1494** – Customise → Content as the editor (tiles to add, leave question, Personalise, phone sheet) (0.8.1491);
   setup wizard bar Back · Next · steps on top, done steps clickable, step menu on phones (0.8.1492 / 0.8.1493); print views: hide / move columns,
   sorting stays in print (0.8.1481–0.8.1484); Debug results delete with Undo (0.8.1485 / 0.8.1486); favourites order + Personalise order
@@ -133,7 +132,7 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
   (0.8.1488); File Manager editor: top on opening, Back closes it on phones (0.8.1489 / 0.8.1490)
 - [ ] **Please verify 0.8.1438–0.8.1450** – Reset database with a dump holding procedures / triggers on a shared host: skipped ones listed (0.8.1439); a nuBuilder Forte form whose code calls nuSelectTab($('.nuTabSelected').next()[0]) (0.8.1440); a run button / iframe of a report whose launch form is nublank opens the PDF at once (0.8.1441); toolbar buttons of lists and record pages in one look (0.8.1445); on a phone: a second tap closes an (i) hint (0.8.1446), the title bar of a page without Save scrolls away (0.8.1447), the ⋮ menu of the forms list shows Maintenance… (0.8.1450); application package with access levels and settings from a test to a live installation – check that nothing of the live installation's own settings changes (0.8.1448); a custom page draft works on its own _data, Reset draft data, a page moved with the application package (0.8.1449).
 - [ ] **Please verify 0.8.1414–0.8.1417** – design mode Browse list workspace on a list page: editing a column keeps the workspace open and the focus (0.8.1414); long press on a menu entry / heading on a phone selects no text (0.8.1415); sample start page Excel tiles with icons after a sample refresh (0.8.1416); Form settings → Data switch *Audit columns* on a form whose table has the four columns (0.8.1417).
-- [ ] **Please verify 0.8.1421–0.8.1436** – the CI row PHP 8.6 (nightly, may fail – remove `nightly` once setup-php has 8.6) (0.8.1421); view mode: the bar lines up with the sheet, ← / → shows no edit form in between (0.8.1422 / 0.8.1423); `index.php?p=home&redirect` from another website returns there after the sign-in (0.8.1424); design panel wider by dragging, two columns of sections (0.8.1426 / 0.8.1427); ▶ Run of the browse SQL on a list with nuSetProperty filters (0.8.1432); lookups as one control in absolute and grid layouts (0.8.1433); prompt generator *Ask AI* with a real provider and the context file ticked (0.8.1435); debug icon *Delete all* (0.8.1436).
+- [ ] **Please verify 0.8.1421–0.8.1436** – view mode: the bar lines up with the sheet, ← / → shows no edit form in between (0.8.1422 / 0.8.1423); `index.php?p=home&redirect` from another website returns there after the sign-in (0.8.1424); design panel wider by dragging, two columns of sections (0.8.1426 / 0.8.1427); ▶ Run of the browse SQL on a list with nuSetProperty filters (0.8.1432); lookups as one control in absolute and grid layouts (0.8.1433); prompt generator *Ask AI* with a real provider and the context file ticked (0.8.1435); debug icon *Delete all* (0.8.1436).
 - [ ] **Shown as in the New form wizard** (0.8.1412) – please verify: a new table with a select (options), a lookup and a Yes / No select; an existing table's column list with a changed type – the objects in design mode match
 - [ ] **Debug icon and lookup dialog** (0.8.1409 / 0.8.1411) – please verify on the live server: the red bug appears after an error of form code and goes after *Mark as read*; a lookup opens once at its final size
 - [ ] **Lists on phones keep their sideways position** (0.8.1383) – please verify: sort / page / reload a wide list on a phone; the sorted column comes into view

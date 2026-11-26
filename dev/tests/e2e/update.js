@@ -1360,3 +1360,34 @@ T.db_reset_no_devmode = async (s) => {
 		expect(await p.locator('.nuTitleBar .badge', {hasText: 'Dev'}).count() === 0, 'Dev badge still shown');
 	} finally { fs.writeFileSync(cfg, orig); await p.waitForTimeout(1500); }
 };
+
+// Update → System → Database steps: grouped by area, every step once, search and area chips filter the rows
+T.update_steps_grouped = async (s) => {
+	const p = s.ga;
+	await open(p, 'index.php?p=update&tab=system');
+	// clicks through the page itself: late in a full run a toast / notice may cover the controls for a moment
+	const tap = async (sel) => { const ok = await p.evaluate((q) => { const e = document.querySelector(q); if (!e) return false; e.click(); return true; }, sel); expect(ok, 'control there: ' + sel); await p.waitForTimeout(200); };
+	if (!await p.locator('#updSteps').isVisible()) { await tap('#updStepsToggle'); await p.waitForTimeout(400); }
+	const r = await p.evaluate(() => ({
+		rows: document.querySelectorAll('#updSteps .updStRow').length,
+		groups: [...document.querySelectorAll('#updSteps .updStGrp')].map((g) => g.dataset.area),
+		titled: [...document.querySelectorAll('#updSteps .updStTitle')].every((t) => t.textContent.trim().length > 0 && t.textContent.length < 60),
+		kinds: document.querySelectorAll('#updSteps .updStKind').length
+	}));
+	const total = Number(sql('SELECT COUNT(*) FROM zzzzsys_nunext_migration'));
+	expect(r.rows >= total && r.groups[0] === 'next' && r.groups.includes('settings') && r.titled && r.kinds >= r.rows, 'grouped steps: ' + JSON.stringify(r));
+	await p.fill('#updStQ', 'passkey'); await p.waitForTimeout(150);
+	const q = await p.evaluate(() => [...document.querySelectorAll('#updSteps .updStRow:not([hidden])')].map((x) => x.dataset.step));
+	expect(q.length >= 2 && q.every((id) => /passkey/.test(id)), 'search passkey: ' + q);
+	await p.fill('#updStQ', '');
+	await tap('.updStChip[data-area="settings"]');
+	const c = await p.evaluate(() => ({
+		shown: [...document.querySelectorAll('#updSteps .updStGrp:not([hidden])')].map((g) => g.dataset.area),
+		pressed: document.querySelector('.updStChip[data-area="settings"]').getAttribute('aria-pressed')
+	}));
+	expect(c.shown.length === 1 && c.shown[0] === 'settings' && c.pressed === 'true', 'area chip: ' + JSON.stringify(c));
+	await p.fill('#updStQ', 'zzzz-nothing'); await p.waitForTimeout(150);
+	expect(await p.locator('#updStNone').isVisible(), 'empty message');
+	await tap('#updStReset');
+	expect(await p.locator('#updSteps .updStRow:not([hidden])').count() === r.rows, 'show all');
+};

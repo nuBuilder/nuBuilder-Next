@@ -1877,3 +1877,65 @@ T.forte_tab_next = async (s) => {
 	});
 	expect(r.n0 === 'nuTab1' && r.a1 === 'nuTab1' && r.a0 === 'nuTab0' && r.other && r.filtered === 0, JSON.stringify(r));
 };
+
+T.forte_filter_buttons_after_menu = async (s) => {
+	// form code that appends buttons to #nuActionHolder (Forte-style filter buttons): the ⋮ menu stays with nuBuilder Next's
+	// own buttons, the appended ones follow it
+	const p = s.ga;
+	const brj = sql("SELECT IFNULL(REPLACE(TO_BASE64(sfo_browse_javascript), '\\n', ''), 'NULL') FROM zzzzsys_form WHERE zzzzsys_form_id = 'samplecustomer'");
+	try {
+		execSync('mysql ' + DB, {input: "UPDATE zzzzsys_form SET sfo_browse_javascript = CONCAT(IFNULL(sfo_browse_javascript, ''), "
+			+ "'\n[\\'All\\', \\'North\\'].forEach(function (f) { $(\\'#nuActionHolder\\').append(\"<input id=\\'nuFilter\" + f + \"Button\\' type=\\'button\\' class=\\'nuActionButton\\' value=\\'\" + f + \"\\' >&nbsp;\"); });')"
+			+ " WHERE zzzzsys_form_id = 'samplecustomer'"});
+		await open(p, 'index.php?p=form&f=samplecustomer'); await p.waitForSelector('#nuFilterAllButton');
+		const r = await p.evaluate(() => {
+			const kids = [...document.getElementById('nuActionHolder').children].filter(e => e.offsetParent !== null);
+			const ids = kids.map(e => e.id || (e.querySelector('[id]') || {}).id || e.className);
+			return {ids, menu: ids.indexOf('nuOptions'), all: ids.indexOf('nuFilterAllButton'), north: ids.indexOf('nuFilterNorthButton')};
+		});
+		expect(r.menu >= 0 && r.menu < r.all && r.all < r.north, 'order: ' + JSON.stringify(r.ids));
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+		// phones: the row gets a line of its own, wraps, and leaves the title readable and the page as wide as the screen
+		const ctx = await p.context().browser().newContext({ viewport: { width: 390, height: 800 }, hasTouch: true, isMobile: true, storageState: await p.context().storageState() });
+		try {
+			const q = await ctx.newPage();
+			await q.goto(BASE + 'index.php?p=form&f=samplecustomer'); await q.waitForSelector('#nuFilterAllButton');
+			const m = await q.evaluate(() => {
+				const h = document.getElementById('nuActionHolder'), t = document.querySelector('.nuFormHeader > .nuPhTitle');
+				return {cls: h.className, sw: document.documentElement.scrollWidth, iw: innerWidth, tw: t ? t.getBoundingClientRect().width : 0,
+					below: t ? h.getBoundingClientRect().top >= t.getBoundingClientRect().bottom - 1 : false};
+			});
+			expect(/nuHasFormActs/.test(m.cls), 'holder class: ' + m.cls);
+			expect(m.sw <= m.iw, 'page wider than the phone: ' + m.sw + ' > ' + m.iw);
+			expect(m.tw > 150 && m.below, 'title squeezed / row not below it: ' + JSON.stringify(m));
+		} finally { await ctx.close(); }
+	} finally {
+		execSync('mysql ' + DB, {input: 'UPDATE zzzzsys_form SET sfo_browse_javascript = ' + (brj === 'NULL' ? 'NULL' : "FROM_BASE64('" + brj + "')") + " WHERE zzzzsys_form_id = 'samplecustomer'"});
+	}
+};
+
+T.forte_object_order = async (s) => {
+	// objects in nuBuilder Forte's order: inside a tab content boxes first, then sob_all_order, a run object after the others of the same
+	// order (DOM → keyboard Tab order); nuSERVERRESPONSE.objects as Forte's list over the whole form
+	const p = s.ga;
+	const old = sql("SELECT CONCAT(sob_all_order) FROM zzzzsys_object WHERE zzzzsys_object_id = (SELECT zzzzsys_object_id FROM (SELECT zzzzsys_object_id FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id = 'samplecustomer' AND sob_all_id = 'cus_name') x)");
+	const copy = (id, from, set) => `CREATE TEMPORARY TABLE e2e_oo AS SELECT * FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id = 'samplecustomer' AND sob_all_id = '${from}';`
+		+ ` UPDATE e2e_oo SET zzzzsys_object_id = '${id}', sob_all_id = '${id}', ${set}; INSERT INTO zzzzsys_object SELECT * FROM e2e_oo; DROP TEMPORARY TABLE e2e_oo;`;
+	try {
+		execSync('mysql ' + DB, {input: "UPDATE zzzzsys_object SET sob_all_order = 10 WHERE sob_all_zzzzsys_form_id = 'samplecustomer' AND sob_all_id = 'cus_name';"
+			+ copy('e2e_oo_run', 'cus_code', "sob_all_type = 'run', sob_all_order = 10, sob_all_top = 0, sob_all_left = 420, sob_all_label = 'Run'")
+			+ copy('e2e_oo_box', 'cus_since', "sob_all_type = 'contentbox', sob_all_order = 999, sob_all_top = 0, sob_all_left = 500, sob_all_label = 'Box'")});
+		const rec = sql("SELECT sample_customer_id FROM sample_customer ORDER BY sample_customer_id LIMIT 1");
+		await open(p, 'index.php?p=form&f=samplecustomer&r=' + encodeURIComponent(rec));
+		const r = await p.evaluate(() => {
+			const ids = ['cus_code', 'cus_name', 'e2e_oo_run'].map(i => document.getElementById(i));
+			const before = (a, b) => a && b && !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+			return { dom: before(ids[0], ids[1]) && before(ids[1], ids[2]), list: nuSERVERRESPONSE.objects.map(o => o.id).filter(i => /^(cus_code|cus_name|cus_since|e2e_oo_)/.test(i)) };
+		});
+		expect(r.dom, 'DOM order code, name, run');
+		expect(r.list.join() === 'e2e_oo_box,cus_code,cus_name,e2e_oo_run,cus_since', 'nuSERVERRESPONSE.objects: ' + r.list.join());
+		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
+	} finally {
+		execSync('mysql ' + DB, {input: `DELETE FROM zzzzsys_object WHERE zzzzsys_object_id IN ('e2e_oo_run', 'e2e_oo_box'); UPDATE zzzzsys_object SET sob_all_order = ${parseInt(old, 10) || 20} WHERE sob_all_zzzzsys_form_id = 'samplecustomer' AND sob_all_id = 'cus_name';`});
+	}
+};

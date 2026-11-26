@@ -160,10 +160,10 @@ final class NuImpersonate
 			. '<button class="dropdown-item" type="submit"><i class="bi ' . $icon . ' me-2"></i>' . $label . '</button></form></li>';
 		$menu = '<ul class="dropdown-menu ' . ($iconOnly ? 'nuImpMenu' : 'dropdown-menu-end') . '">';
 		$toggle = $iconOnly
-			? '<div class="dropdown nuImpIcon"><button class="btn nuImpIconBtn" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="'
+			? '<div class="dropdown nuImpIcon"><button class="btn nuImpIconBtn" type="button" data-bs-toggle="dropdown" data-bs-popper-config="{&quot;strategy&quot;:&quot;fixed&quot;}" aria-expanded="false" title="'
 				. h(t('imp_act_as')) . '" aria-label="' . h(t('imp_act_as_user', $login)) . '">'
 				. '<i class="bi bi-person-fill-gear"></i></button>'
-			: '<div class="dropdown"><button class="btn ' . ($small ? 'btn-sm ' : '') . 'btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">'
+			: '<div class="dropdown"><button class="btn ' . ($small ? 'btn-sm ' : '') . 'btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-popper-config="{&quot;strategy&quot;:&quot;fixed&quot;}" aria-expanded="false">'
 				. '<i class="bi bi-person-fill-gear me-1"></i>' . h(t('imp_act_as')) . '</button>';
 		return $toggle . $menu
 			. '<li><h6 class="dropdown-header">' . h(t('imp_act_as_user', $login)) . '</h6></li>'

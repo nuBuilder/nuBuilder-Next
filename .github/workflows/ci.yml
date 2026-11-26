@@ -40,8 +40,8 @@ jobs:
           - { db: 'mysql:8.4', health: 'mysqladmin ping -h 127.0.0.1 -uroot -proot' }
           - { db: 'mariadb:11.4', php: '8.4', health: 'healthcheck.sh --connect' }
           - { db: 'mariadb:11.4', php: '8.5', health: 'healthcheck.sh --connect' }
-          # PHP 8.6: setup-php still installs a nightly build – a failure does not turn the run red until it lists 8.6 as Stable
-          - { db: 'mariadb:11.4', php: '8.6', health: 'healthcheck.sh --connect', nightly: true }
+          # a row with nightly: true (a PHP version setup-php only has as a nightly build) does not turn the run red when it fails
+          - { db: 'mariadb:11.4', php: '8.6', health: 'healthcheck.sh --connect' }
     name: mysql (${{ matrix.db }}, PHP ${{ matrix.php }})
     continue-on-error: ${{ matrix.nightly == true }}
     services:
@@ -80,6 +80,19 @@ jobs:
       # srv.log, which the next step reads
       - name: Self-test
         run: cd nub/nunext && php -d opcache.jit=disable -d display_errors=0 -d log_errors=1 -d error_log="$GITHUB_WORKSPACE/srv.log" -d error_reporting=-1 nucron.php selftest --sample --lang=en
+      # PHP 8.5 / 8.6 only: the parts that use the most PHP functions – installer wizard, update page, backups and restore, data export,
+      # Data import, cloners, reset database, reports – through the browser; PHP messages land in srv.log (step below). MariaDB's own
+      # client tools (the runner's MySQL client tools do not read MariaDB 11's statistics tables)
+      - name: Browser tests of update, backups, export, import, cloners, reports (PHP 8.5+)
+        if: matrix.php == '8.5' || matrix.php == '8.6'
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq mariadb-client > /dev/null
+          mysql -h127.0.0.1 -uroot -proot -e "GRANT ALL ON nuinst_e2e.* TO 'nu'@'%'"
+          cd nub/nunext && NODE_PATH=$(npm root -g) SITE="$GITHUB_WORKSPACE/nub/nunext" BASE=http://127.0.0.1:8099/nunext/ ADMIN_PW=ci-globeadmin-pw \
+            DB="-h127.0.0.1 -unu -pnu nutest" ONLY="$(cat dev/tests/e2e/php-new.txt | tr '\n' ',')" node dev/tests/e2e.js
+      - name: Installer wizard (PHP 8.5+)
+        if: matrix.php == '8.5' || matrix.php == '8.6'
+        run: NODE_PATH=$(npm root -g) NUB=http://127.0.0.1:8099/ NUB_DIR="$GITHUB_WORKSPACE/nub" DUMP="$GITHUB_WORKSPACE/nub/nubuilder4.sql" DB="-h127.0.0.1 -unu -pnu" node nub/nunext/dev/tests/install.js
       # (0.8.888) warnings, notices and deprecations of every request – also JSON calls the smoke test does not look into – fail the job
       - name: PHP messages in the server log
         if: always()

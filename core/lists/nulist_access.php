@@ -5,6 +5,14 @@ defined('NU_ROOT') || exit;
 /** The system list "access" – part of NuListDefs (one file per list, code review L3; the format is described there). */
 trait NuListAccess
 {
+	/** The Home form the level's users really open after the sign-in ('' = the tile page): start page "Home form" and a form that exists. */
+	private static function accStartForm(array $r): string
+	{
+		$f = (string)($r['sal_zzzzsys_form_id'] ?? '');
+		if ($f === '' || NuHome::startMode((string)$r['__id']) !== 'form' || !nu_form_exists($f)) return '';
+		return $f;
+	}
+
 	private static function access(): array
 	{
 		$db = nu_db();
@@ -21,6 +29,23 @@ trait NuListAccess
 				'html' => static fn($r) => h($r['sal_code'] !== '' ? $r['sal_code'] : '—') . ((string)$r['sal_use_2fa'] === '1' ? ' <span class="badge bg-secondary-subtle text-secondary-emphasis ms-1 fw-normal">2FA</span>' : '')],
 			'group' => ['label' => t('access_group'), 'select' => ['sal_group' => 'a.sal_group'], 'sort' => 'a.sal_group', 'text' => static fn($r) => (string)$r['sal_group']],
 			'description' => ['label' => t('access_description'), 'select' => ['sal_description' => 'a.sal_description'], 'sort' => 'a.sal_description', 'text' => static fn($r) => (string)$r['sal_description']],
+			// what the users of the level see after the sign-in: the tile page (own / default / built automatically) or the Home form
+			'start' => ['label' => t('acc_start_page'), 'select' => ['sal_zzzzsys_form_id' => 'a.sal_zzzzsys_form_id'], 'sort' => null,
+				'text' => static fn($r) => self::accStartForm($r) !== '' ? t('acc_start_form_chip') . ': ' . nu_form_label(self::accStartForm($r))
+					: t('acc_start_tiles_chip') . ' – ' . t('acc_start_src_' . (NuHomeForms::tileSources()[(string)$r['__id']] ?? 'auto')),
+				'html' => static function ($r): string {
+					$form = self::accStartForm($r);
+					if ($form !== '') {
+						return '<a class="nuAccStart" href="' . h(nu_url('form', ['f' => $form])) . '" target="_blank" rel="noopener" title="' . h(t('acc_home_open')) . '">'
+							. '<span class="nuAccStartChip nuAccStartForm"><i class="bi bi-window" aria-hidden="true"></i>' . h(t('acc_start_form_chip')) . '</span>'
+							. '<span class="nuAccStartName">' . h(nu_form_label($form)) . '</span></a>';
+					}
+					$src = NuHomeForms::tileSources()[(string)$r['__id']] ?? 'auto';
+					$unused = (string)$r['sal_zzzzsys_form_id'] !== '' ? ' title="' . h(t('acc_start_form_unused', nu_form_label((string)$r['sal_zzzzsys_form_id']))) . '"' : '';
+					$tag = NuHome::canManage() ? 'a class="nuAccStart" href="' . h(nu_url('home', ['for' => $r['__id']])) . '"' : 'span class="nuAccStart"';
+					return '<' . $tag . $unused . '><span class="nuAccStartChip nuAccStartTiles"><i class="bi bi-grid" aria-hidden="true"></i>' . h(t('acc_start_tiles_chip')) . '</span>'
+						. '<span class="nuAccStartSrc">' . h(t('acc_start_src_' . $src)) . '</span></' . (NuHome::canManage() ? 'a' : 'span') . '>';
+				}],
 			'home_form' => ['label' => t('home_form'), 'select' => ['sal_zzzzsys_form_id' => 'a.sal_zzzzsys_form_id'], 'sort' => null, 'class' => 'small',
 				'text' => static fn($r) => $r['sal_zzzzsys_form_id'] ? nu_form_label((string)$r['sal_zzzzsys_form_id']) : '',
 				// the home form opens in a new tab (as the access level form's ↗ button)
@@ -42,6 +67,13 @@ trait NuListAccess
 		$filters = [
 			'group' => ['label' => t('access_group'), 'type' => 'distinct', 'expr' => 'a.sal_group', 'none' => t('lv_empty')],
 			'twofa' => ['label' => '2FA', 'type' => 'bool', 'expr' => "a.sal_use_2fa = '1'"],
+			'start' => ['label' => t('acc_start_page'), 'type' => 'select',
+				'options' => static fn() => ['tiles' => t('acc_start_tiles'), 'form' => t('acc_start_form')],
+				'where' => static function (string $v): ?array {
+					$ids = array_keys(array_filter(NuHome::startLevels(), static fn($m) => $m === 'form'));
+					$in = $ids ? 'a.zzzzsys_access_id IN (' . implode(', ', array_fill(0, count($ids), '?')) . ") AND COALESCE(a.sal_zzzzsys_form_id, '') <> ''" : '1 = 0';
+					return match ($v) { 'form' => [$in, $ids], 'tiles' => ['NOT (' . $in . ')', $ids], default => null };
+				}],
 			'has_users' => ['label' => t('lv_has_users'), 'type' => 'bool', 'expr' => 'EXISTS (SELECT 1 FROM zzzzsys_user u WHERE u.sus_zzzzsys_access_id = a.zzzzsys_access_id)'],
 			// the levels that can open a form
 			'form' => ['label' => t('access_flt_form'), 'type' => 'select', 'tom' => true,
@@ -60,11 +92,11 @@ trait NuListAccess
 			'search' => ['a.sal_code', 'a.sal_description', 'a.sal_group'], 'search_ph' => t('access_search_ph'), 'open_min' => 0,
 			'columns' => $cols, 'filters' => $filters,
 			'builtin' => [
-				'default' => ['columns' => ['code', 'group', 'description', 'home_form', 'users', 'forms'], 'card' => ['title' => 'code', 'badge' => 'group', 'lines' => ['description', 'users']],
-					'sort' => ['code', 'asc'], 'filters' => ['shown' => ['group', 'form'], 'values' => []]],
+				'default' => ['columns' => ['code', 'group', 'description', 'start', 'users', 'forms'], 'card' => ['title' => 'code', 'badge' => 'group', 'lines' => ['description', 'start', 'users']],
+					'sort' => ['code', 'asc'], 'filters' => ['shown' => ['group', 'start', 'form'], 'values' => []]],
 				'compact' => ['columns' => ['code', 'description', 'users'], 'card' => ['title' => 'code', 'badge' => '', 'lines' => ['description']],
 					'sort' => ['code', 'asc'], 'filters' => ['shown' => ['group'], 'values' => []]],
-				'all' => ['columns' => array_keys($cols), 'card' => ['title' => 'code', 'badge' => 'group', 'lines' => ['description', 'users', 'forms', 'home_form']],
+				'all' => ['columns' => array_keys($cols), 'card' => ['title' => 'code', 'badge' => 'group', 'lines' => ['description', 'start', 'users', 'forms', 'home_form']],
 					'sort' => ['code', 'asc'], 'filters' => ['shown' => array_keys($filters), 'values' => []]],
 			],
 		];

@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 define('NU_ROOT', dirname(__DIR__));
-define('NU_VERSION', '0.8.1495');
+define('NU_VERSION', '0.8.1519');
 // third-party code: vendor/bundled/ comes with nunext.zip (an update replaces it), vendor/packs/ = library packs (NuLibs,
 // an update never touches them). Bundled paths only through these constants.
 define('NU_VENDOR', 'vendor/bundled');
@@ -100,7 +100,7 @@ const NU_AUTOLOAD = [
 	'NuPwReset' => 'core/nupwreset.php', 'NuSqlSelect' => 'core/nusqlselect.php', 'NuPrompt' => 'core/nuprompt.php', 'NuImport' => 'core/nuimport.php',
 	'NuPermission' => 'core/nupermission.php', 'NuAppCloner' => 'core/nuappcloner.php', 'NuAppClonerConfig' => 'core/nuappclonerconfig.php',
 		'NuClonerConfig' => 'core/nuclonerconfig.php', 'NuSqlDump' => 'core/nusqldump.php', 'NuSqlImport' => 'core/nusqlimport.php',
-		'NuProject' => 'core/nuproject.php', 'NuCodeSearch' => 'core/nucodesearch.php', 'NuProjectPackage' => 'core/nuprojectpackage.php', 'NuAppFolder' => 'core/nuappfolder.php', 'NuPackageParts' => 'core/nupackageparts.php',
+		'NuProject' => 'core/nuproject.php', 'NuCodeSearch' => 'core/nucodesearch.php', 'NuHashFix' => 'core/nuhashfix.php', 'NuHashfixPage' => 'core/nuhashfixpage.php', 'NuProjectPackage' => 'core/nuprojectpackage.php', 'NuAppFolder' => 'core/nuappfolder.php', 'NuPackageParts' => 'core/nupackageparts.php',
 	'NuInspect' => 'core/nuinspect.php', 'NuCloner' => 'core/nucloner.php', 'NuFormHistory' => 'core/form/nuhistory.php',
 		'NuFormSnapshot' => 'core/form/nusnapshot.php', 'NuFormDraft' => 'core/form/nuformdraft.php',
 	'NuDraftRevException' => 'core/form/nuformdraft.php', 'NuDraftStore' => 'core/form/nuformstore.php',

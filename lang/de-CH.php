@@ -224,6 +224,7 @@ return [
 	'lp_result_next' => 'Release-Tag: «%s» – jedes Zip und libraries.json hochladen.',
 	'upd_size' => 'Grösse',
 	'upd_backups_hint' => 'Programmdateien und die eigenen Tabellen von nuBuilder Next (Protokoll, 2FA, Sitzungen …), mit der Auswahl oben auch ein SQL-Dump der Datenbank, in %s – über das Web nicht erreichbar (Apache). Besser ein Ordner ausserhalb des Web-Verzeichnisses ($nuConfigBackupPath): der SQL-Dump enthält Benutzerdaten.',
+	'upd_mig_0010' => 'Startseiten-Layout «Standard»',
 	'upd_req_writable_help' => 'PHP läuft als «%1$s» und darf diese Ordner nur lesen: Die Ordner gehören dem Benutzer, der sie hochgeladen hat (z. B. per SFTP), mit den üblichen Rechten 755 (andere: nur lesen).
 Beheben per SSH (Ordner: %2$s):
 • sudo chown -R %1$s %2$s – PHP gehören die Dateien (per SFTP dann nur lesbar)

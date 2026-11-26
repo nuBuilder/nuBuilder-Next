@@ -2134,3 +2134,56 @@ T.print_no_flicker = async (s) => {
 		await ctx.close();
 	}
 };
+
+T.list_filter_width = async (s) => {
+	// system lists on desktop: every filter at most 250 px wide (permission items: the group filter 450 px)
+	const p = s.ga;
+	for (const [r, want] of [['reports', [250, 250]], ['permissions', [450, 250]], ['procedures', null]]) {
+		await open(p, 'index.php?p=' + r);
+		await p.evaluate(() => document.querySelector('#nuLvFilters')?.classList.add('show'));
+		const w = await p.evaluate(() => [...document.querySelectorAll('#nuLvFilters > .row > [class*=col-]')].map(c => Math.round(c.getBoundingClientRect().width)));
+		expect(w.length > 0 && (want ? JSON.stringify(w) === JSON.stringify(want) : w.every(x => x <= 250)), r + ': ' + JSON.stringify(w));
+	}
+};
+
+T.sqlbuilder_field_width = async (s) => {
+	// SQL builder: Code at most 350 px, Description at most 600 px on wide screens; full width on phones
+	const p = s.ga;
+	await open(p, 'index.php?p=sqlbuilder&id=new');
+	const w = await p.evaluate(() => [document.querySelector('#sse_code').offsetWidth, document.querySelector('#sse_description').offsetWidth]);
+	expect(w[0] <= 350 && w[0] > 300 && w[1] <= 600 && w[1] > 500, 'desktop widths: ' + JSON.stringify(w));
+	await p.setViewportSize({width: 390, height: 800});
+	try {
+		await open(p, 'index.php?p=sqlbuilder&id=new');
+		const m = await p.evaluate(() => [document.querySelector('#sse_code').offsetWidth, document.querySelector('#sse_description').offsetWidth]);
+		expect(m[0] > 300 && m[0] === m[1], 'phone: full width: ' + JSON.stringify(m));
+	} finally { await p.setViewportSize({width: 1300, height: 900}); }
+};
+
+T.sqlbuilder_preview_oneline = async (s) => {
+	// SQL builder preview: one line per row, long values cut with …, the full value as title
+	const p = s.ga;
+	await open(p, 'index.php?p=sqlbuilder&id=new');
+	await p.evaluate(() => { document.getElementById('sse_sql').value = "SELECT 'short' AS a, REPEAT('long text ', 60) AS b"; });
+	await p.click('#sqbPreview');
+	await p.waitForSelector('.sqbResultTable td');
+	const r = await p.evaluate(() => { const td = document.querySelectorAll('.sqbResultTable td')[1]; const tr = td.closest('tr');
+		return {h: tr.getBoundingClientRect().height, cut: td.scrollWidth > td.clientWidth, title: (td.getAttribute('title') || '').length, ws: getComputedStyle(td).whiteSpace}; });
+	expect(r.h < 30 && r.cut && r.title > 500 && r.ws === 'nowrap', JSON.stringify(r));
+};
+
+T.sqlbuilder_code_required = async (s) => {
+	// SQL builder: Code is mandatory (marked, required in the browser, refused by the server)
+	const p = s.ga;
+	await open(p, 'index.php?p=sqlbuilder&id=new');
+	const r = await p.evaluate(() => ({req: document.querySelector('#sse_code').required, mark: !!document.querySelector('label[for=sse_code] .text-danger')}));
+	expect(r.req && r.mark, JSON.stringify(r));
+	const errs = await p.evaluate(async () => {
+		const f = document.getElementById('nuRecordForm'); const fd = new FormData(f);
+		fd.set('sse_code', ''); fd.set('sse_description', 'e2e code required'); fd.set('sse_sql', 'SELECT 1');
+		const html = await (await fetch(f.getAttribute('action') || location.href, {method: 'POST', body: fd, credentials: 'same-origin'})).text();
+		return /id="sse_code"[^>]*is-invalid|is-invalid[^"]*" id="sse_code"/.test(html);
+	});
+	expect(errs, 'server refuses an empty code');
+	expect(sql("SELECT COUNT(*) FROM zzzzsys_select WHERE sse_description = 'e2e code required'") === '0', 'nothing saved');
+};

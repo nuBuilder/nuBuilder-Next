@@ -126,6 +126,7 @@ $routes = [
 	'tutorial'    => [],
 	'listview'    => [],
 	'compat'      => [],
+	'hashfix'     => [],                     // Compatibility check: put hash variables in quotes (core/nuhashfix.php)
 	'update'      => [],
 	'sample'      => [],
 	'procedures'  => [],

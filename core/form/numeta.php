@@ -11,6 +11,8 @@ final class NuFormMeta
 	public array $tabs = [];
 	/** @var array<int,array> objects ordered by tab then sob_all_order */
 	public array $objects = [];
+	/** @var list<string> sob_all_id of the objects in the order of nuBuilder Forte's object list (nuSERVERRESPONSE.objects) */
+	public array $forteOrder = [];
 	/** sob_all_id => object */
 	public array $byId = [];
 	/** zzzzsys_object_id => [event => js] */
@@ -138,9 +140,24 @@ final class NuFormMeta
 
 		$objects = $snap !== null ? array_values((array)($snap['objects'] ?? []))
 			: ($pre['objects'] ?? $db->all('SELECT * FROM zzzzsys_object WHERE sob_all_zzzzsys_form_id = ?', [$this->id]));
-		usort($objects, static fn($a, $b) =>
-			[$tabOrder[$a['sob_all_zzzzsys_tab_id']] ?? 999, (int)($a['sob_all_order'] ?? 0), (int)($a['sob_all_top'] ?? 0), (int)($a['sob_all_left'] ?? 0)]
-			<=> [$tabOrder[$b['sob_all_zzzzsys_tab_id']] ?? 999, (int)($b['sob_all_order'] ?? 0), (int)($b['sob_all_top'] ?? 0), (int)($b['sob_all_left'] ?? 0)]);
+		// order of the objects: per tab (the page draws one tab after the other), inside a tab as nuBuilder Forte draws them in the
+		// absolute layout – content boxes first, then sob_all_order, a run object after the others of the same order; top / left only
+		// where Forte leaves it to the database. Auto / grid layouts flow by sob_all_order, so content boxes keep their place there.
+		$abs = $this->layout() === 'absolute';
+		$key = static function (array $o) use ($tabOrder, $abs): array {
+			$cb = $abs && (string)($o['sob_all_type'] ?? '') === 'contentbox';
+			return [$tabOrder[$o['sob_all_zzzzsys_tab_id']] ?? 999, $cb ? -1 : 0, $cb ? 0 : (int)($o['sob_all_order'] ?? 0),
+				$abs && (string)($o['sob_all_type'] ?? '') === 'run' ? 1 : 0, (int)($o['sob_all_top'] ?? 0), (int)($o['sob_all_left'] ?? 0)];
+		};
+		usort($objects, static fn($a, $b) => $key($a) <=> $key($b));
+		// the order of nuBuilder Forte's object list (nuSERVERRESPONSE.objects): one list over the form – content boxes, sob_all_order,
+		// the tab's order, run objects last of the same order (ids, sob_all_id)
+		$fo = $objects;
+		usort($fo, static fn($a, $b) => [(string)($a['sob_all_type'] ?? '') === 'contentbox' ? -1 : (int)($a['sob_all_order'] ?? 0), $tabOrder[$a['sob_all_zzzzsys_tab_id']] ?? 999,
+			(string)($a['sob_all_type'] ?? '') === 'run' ? 1 : 0, (int)($a['sob_all_top'] ?? 0), (int)($a['sob_all_left'] ?? 0)]
+			<=> [(string)($b['sob_all_type'] ?? '') === 'contentbox' ? -1 : (int)($b['sob_all_order'] ?? 0), $tabOrder[$b['sob_all_zzzzsys_tab_id']] ?? 999,
+			(string)($b['sob_all_type'] ?? '') === 'run' ? 1 : 0, (int)($b['sob_all_top'] ?? 0), (int)($b['sob_all_left'] ?? 0)]);
+		$this->forteOrder = array_map(static fn($o) => (string)$o['sob_all_id'], $fo);
 
 		// a draft's new rows hold only the columns that were set (NuDraftStore::row): the others are NULL, as in the table
 		$blank = $snap !== null ? array_fill_keys(array_keys($db->columns('zzzzsys_object') ?: []), null) : [];

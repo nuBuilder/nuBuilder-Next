@@ -1024,7 +1024,6 @@ function nu_center_end(string $extraBody = ''): void
 	?>
 		</div>
 	</div>
-	<p class="text-center small text-body-secondary mt-3 mb-0">nuBuilder Next <?= NU_VERSION ?></p>
 </main>
 <script src="<?= nu_asset(NU_BS . '/js/bootstrap.bundle.min.js') ?>"></script>
 <script src="<?= nu_asset('assets/js/nubs.js') ?>"></script>
