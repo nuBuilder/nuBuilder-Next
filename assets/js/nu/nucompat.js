@@ -1004,8 +1004,22 @@
 	window.nuNextPatchUppy = patchUppy;
 
 	api('nuUppyCreate', function (language, languageFallback) {
-		if (!window.Uppy || typeof window.Uppy.Uppy !== 'function') {
-			throw new Error('Uppy is not installed – library pack "Uppy": Update → tab Libraries');
+		if (!window.Uppy || typeof window.Uppy.Uppy !== 'function' || window.Uppy.nuStub) {
+			// without the pack: a stand-in whose methods do nothing (and chain), so the rest of the form's code still runs; the
+			// globeadmin sees the notice of the form page (form_uppy_missing)
+			console.warn('Uppy is not installed – library pack "Uppy": Update → tab Libraries');
+			var stub = new Proxy(function () {}, {
+				get: function (t, k) {
+					if (k === 'upload') return function () { return Promise.resolve({successful: [], failed: []}); };
+					if (k === 'getFiles') return function () { return []; };
+					if (k === 'getPlugin' || k === 'getFile') return function () { return null; };
+					if (k === 'nuStub') return true;
+					if (k === 'then' || k === 'prototype' || typeof k === 'symbol') return undefined;
+					return function () { return stub; };
+				}
+			});
+			if (!window.Uppy) window.Uppy = stub;      // the template goes on with Uppy.Dashboard / Uppy.XHRUpload
+			return stub;
 		}
 		patchUppy();
 		var uppy = new window.Uppy.Uppy();

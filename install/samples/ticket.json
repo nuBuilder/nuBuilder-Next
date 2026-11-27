@@ -1,10 +1,11 @@
 {
     "key": "ticket",
-    "version": 12,
+    "version": 13,
     "prefix": "tkt_",
     "home": "tkthome",
     "date_ref": "2026-10-29",
     "changes": {
+        "13": "The hidden Created column of the tickets list also works in nuBuilder Forte (it named the column with the table alias, which Forte cannot use).",
         "12": "The start page greets the globeadmin without an empty name; the Status and Due columns of the tickets list are wide enough for their values.",
         "11": "The tickets list has row details: ▸ opens the description, channel and creation time of a ticket (hidden columns of the list).",
         "10": "The subject of a ticket suggests the subjects of earlier tickets while typing.",
@@ -4113,7 +4114,7 @@
                 "zzzzsys_browse_id": "tkt_br_019",
                 "sbr_zzzzsys_form_id": "tktticket",
                 "sbr_title": "Created",
-                "sbr_display": "t.created_at",
+                "sbr_display": "created_at",
                 "sbr_align": "l",
                 "sbr_format": "D|dd.mm.yyyy hh:nn",
                 "sbr_order": 110,

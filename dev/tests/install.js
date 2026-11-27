@@ -97,9 +97,15 @@ const expect = (ok, msg) => { if (!ok) throw new Error(msg); };
 		await p.setInputFiles('#dump', []);
 		await p.selectOption('#dump_pick', bigOpt);
 		// 0.8.1402: Check with a dump shows a spinner on the button and a note while the server unpacks and checks it
-		const busySeen = p.waitForFunction(() => { const b = document.getElementById('insCheckDump'); return !!document.getElementById('insDumpBusy') && b && b.disabled && !!b.querySelector('.spinner-border'); }, null, {timeout: 20000, polling: 50}).then(() => true, () => false);
+		// watched by a MutationObserver that notes it in sessionStorage – the page leaves as soon as the check is done, and older
+		// Playwright versions (CI) poll waitForFunction through the page's script engine, which the CSP refuses
+		await p.evaluate(() => {
+			sessionStorage.removeItem('e2eBusy');
+			const seen = () => { const b = document.getElementById('insCheckDump'); return !!document.getElementById('insDumpBusy') && b && b.disabled && !!b.querySelector('.spinner-border'); };
+			new MutationObserver(() => { if (seen()) sessionStorage.setItem('e2eBusy', '1'); }).observe(document.body, {subtree: true, childList: true, attributes: true});
+		});
 		await Promise.all([p.waitForNavigation({timeout: 300000}), p.click('#insCheckDump', {noWaitAfter: true})]);
-		expect(await busySeen, 'no spinner / note while checking');
+		expect(await p.evaluate(() => sessionStorage.getItem('e2eBusy')) === '1', 'no spinner / note while checking');
 		expect(await p.locator('#insNotice, #insDumpOk').count() >= 1, 'dump not accepted: ' + await p.locator('.invalid-feedback').allTextContents());
 		await p.check('#choice_up');
 		await next();

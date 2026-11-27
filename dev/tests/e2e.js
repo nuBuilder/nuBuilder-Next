@@ -159,7 +159,7 @@ async function pssPack(p) {
 	execSync(`php dev/libpack.php ${JSON.stringify(tmp)} ${JSON.stringify(key)} phpspreadsheet=${JSON.stringify(src)}`, { cwd: path.resolve(__dirname, '../..') });
 	const pack = fs.readdirSync(tmp).find((f) => /^nunext-lib-phpspreadsheet-.*\.zip$/.test(f));
 	await open(p, 'index.php?p=update&lp=' + Date.now() + '#libraries');
-	if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=update&lp=' + Date.now() + '#libraries'); }
+	if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForNavigation(), p.evaluate(() => document.querySelector('#reauthPassword').form.requestSubmit())]); await open(p, 'index.php?p=update&lp=' + Date.now() + '#libraries'); }
 	await p.setInputFiles('#lpUpload', path.join(tmp, pack));
 	await Promise.all([p.waitForNavigation(), p.click('#lpUploadBtn')]);
 	return undo;

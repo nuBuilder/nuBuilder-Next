@@ -3,6 +3,23 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.1527 – Release gate
+- Release gate: smoke, all end-to-end tests, the cross-tests against nuBuilder Forte, the installer wizard and the security scan
+- Help: a form with a file upload field shows an empty drop area while the Uppy library pack is missing, and the rest of its code runs
+- Tests: every password confirmation in the browser tests sends the form itself (the page also holds hidden buttons of the menus)
+
+## 0.8.1526 – Ticket sample list in nuBuilder Forte
+- Ticket sample (version 13): the hidden Created column of the tickets list named its column with the table alias, so the list stayed
+  empty in nuBuilder Forte on the same database; it now names the column alone and works in both
+- Tests: the update steps test confirms the password when the update page asks for it again
+
+## 0.8.1525 – Uppy stand-in, test fixes for the automatic tests
+- A form whose upload field uses Uppy no longer stops with a script error when the Uppy library pack is not installed: nuUppyCreate()
+  gives a stand-in whose methods do nothing, so the rest of the form's code runs; the globeadmin still sees the notice to install the pack
+- Tests: the installer wizard test watches the spinner of Check with an observer in the page (the older Playwright of the automatic
+  tests could not poll it under the strict content security policy – PHP 8.5 / 8.6 rows failed); run_query_error uses any form list
+  (an installation made from the install scripts, as on SQLite, has no nuBuilder Forte system forms)
+
 ## 0.8.1524 – Release gate
 - Release gate: full test run (smoke, end-to-end, compatibility with nuBuilder Forte, installer wizard, OWASP ZAP) and documentation
   brought up to date for SQLite (backups and restore, Reset database, database tools, migration, development with Claude: the SQLite

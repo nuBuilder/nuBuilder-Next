@@ -308,7 +308,7 @@ T.ui_review_n = async (s) => {
 		await open(p, 'index.php?p=setupwizard');
 		expect(await p.locator('#wizStepBtn').isVisible(), 'N3: current step named on phones');
 		await open(p, 'index.php?p=configfile');
-		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForNavigation(), p.click('button[type=submit]')]); await open(p, 'index.php?p=configfile'); }
+		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForNavigation(), p.evaluate(() => document.querySelector('#reauthPassword').form.requestSubmit())]); await open(p, 'index.php?p=configfile'); }
 		expect(await p.locator('#cfgPathCopy[data-nu-copy="#cfgPathFull"]').count() === 1 && (await p.inputValue('#cfgPathFull')).endsWith('nuconfig.php'), 'N5: copy button with the full path');
 		await open(p, 'index.php?p=formats');
 		expect(await p.locator('.nuListCard .nuListHead h1').count() === 1 && await p.locator('.nuListCard #fmtTable').count() === 1, 'N6: Formats as a list card');

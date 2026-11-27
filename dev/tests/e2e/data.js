@@ -89,7 +89,7 @@ T.data_export = async (s) => {
 	const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'nudxp-'));
 	const go = async (q) => {
 		await open(p, 'index.php?p=dataexport' + (q || ''));
-		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=dataexport' + (q || '')); }
+		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForNavigation(), p.evaluate(() => document.querySelector('#reauthPassword').form.requestSubmit())]); await open(p, 'index.php?p=dataexport' + (q || '')); }
 	};
 	const download = async (click) => { const [d] = await Promise.all([p.waitForEvent('download', { timeout: 20000 }), click()]); const f = path.join(tmp, d.suggestedFilename()); await d.saveAs(f); return f; };
 	const py = (code) => execSync('python3 -I -', { input: code }).toString().trim();
@@ -206,7 +206,7 @@ T.apiclients_list = async (s) => {
 	sql(`INSERT INTO ${C} (zzzzsys_nunext_api_client_id, name, client_id, scopes, user_id, active, created_at) VALUES ('e2eapi2','E2E Off','nk_e2e2','["access:read"]','', '0', NOW())`);
 	const go = async (q) => {
 		await open(p, 'index.php?p=apiclients' + (q || ''));
-		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=apiclients' + (q || '')); }
+		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForNavigation(), p.evaluate(() => document.querySelector('#reauthPassword').form.requestSubmit())]); await open(p, 'index.php?p=apiclients' + (q || '')); }
 	};
 	try {
 		await go('');
@@ -480,7 +480,7 @@ T.spreadsheet_import = async (s) => {
 		execSync(`php dev/libpack.php ${JSON.stringify(tmp)} ${JSON.stringify(key)} phpspreadsheet=${JSON.stringify(src)}`, { cwd: path.resolve(__dirname, '../..') });
 		const pack = fs.readdirSync(tmp).find((f) => /^nunext-lib-phpspreadsheet-.*\.zip$/.test(f));
 		await open(p, 'index.php?p=update&lp=' + Date.now() + '#libraries');
-		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=update&lp=' + Date.now() + '#libraries'); }
+		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForNavigation(), p.evaluate(() => document.querySelector('#reauthPassword').form.requestSubmit())]); await open(p, 'index.php?p=update&lp=' + Date.now() + '#libraries'); }
 		await p.setInputFiles('#lpUpload', path.join(tmp, pack));
 		await Promise.all([p.waitForNavigation(), p.click('#lpUploadBtn')]);
 		expect(/5\.\d+\.\d+/.test(await p.locator('tr[data-slot=phpspreadsheet] .nuLpInUse').innerText()), 'pack not in use: ' + await p.locator('tr[data-slot=phpspreadsheet]').innerText());

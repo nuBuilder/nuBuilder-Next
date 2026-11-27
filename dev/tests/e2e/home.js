@@ -11,7 +11,7 @@ T.lang_variants = async (s) => {
 	const hadLangs = sql("SELECT COUNT(*) FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'languages'") !== '0';   // Save also stores the languages
 	try {
 		await open(p, 'index.php?p=settings&s=general');
-		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=settings&s=general'); }
+		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForNavigation(), p.evaluate(() => document.querySelector('#reauthPassword').form.requestSubmit())]); await open(p, 'index.php?p=settings&s=general'); }
 		expect(await p.locator('#setLangVar_en_GB').count() === 1 && await p.locator('#setLangVar_de_CH').count() === 1, 'variant boxes shown');
 		await p.check('#setLangVar_en_GB'); await p.check('#setLangVar_en_US'); await p.uncheck('#setLangVar_en_AU');
 		await p.check('#setLangVar_de_DE'); await p.uncheck('#setLangVar_de_CH');
@@ -46,7 +46,7 @@ T.languages = async (s) => {
 	const langBefore = await p.evaluate(() => document.documentElement.lang) || 'en-GB';
 	try {
 		await open(p, 'index.php?p=settings&s=general');
-		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=settings&s=general'); }
+		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForNavigation(), p.evaluate(() => document.querySelector('#reauthPassword').form.requestSubmit())]); await open(p, 'index.php?p=settings&s=general'); }
 		expect(await p.locator('#setLangs input[name="langs[]"]:checked').count() === 11, 'all languages before');
 		for (const c of ['it', 'es', 'pt', 'nl', 'pl', 'ru', 'zh', 'ar', 'fr']) await p.uncheck('#setLang_' + c);
 		await Promise.all([p.waitForLoadState('networkidle'), p.click('#setLangsSave')]);
@@ -368,7 +368,7 @@ T.wizard_lang = async (s) => {
 	const p = s.ga;
 	const go = async () => {
 		await open(p, 'index.php?p=setupwizard&step=basics');
-		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=setupwizard&step=basics'); }
+		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForNavigation(), p.evaluate(() => document.querySelector('#reauthPassword').form.requestSubmit())]); await open(p, 'index.php?p=setupwizard&step=basics'); }
 	};
 	await go();
 	const before = await p.evaluate(() => document.documentElement.lang);
@@ -1947,7 +1947,7 @@ T.settings_hub = async (s) => {
 	execSync('mysqldump ' + DB + ' zzzzsys_nunext_setting > ' + keep);
 	try {
 		await open(p, 'index.php?p=settings');
-		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=settings'); }
+		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForNavigation(), p.evaluate(() => document.querySelector('#reauthPassword').form.requestSubmit())]); await open(p, 'index.php?p=settings'); }
 		const secs = await p.$$eval('#shOverview [data-sh]', e => e.map(x => x.getAttribute('data-sh')));
 		expect(['general', 'look', 'security', 'mail', 'data', 'code', 'updates', 'forte', 'configfile'].every(x => secs.includes(x)), 'sections: ' + secs.join(','));
 		for (const r of ['branding', 'themes', 'securitycheck', 'globalcode', 'configfile', 'email&tab=settings']) {
@@ -2025,7 +2025,7 @@ T.home_btn_inplace = async (s) => {
 T.active_link_noreload = async (s) => {
 	const p = s.ga;
 	await open(p, 'index.php?p=email&tab=test');
-	if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=email&tab=test'); }
+	if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForNavigation(), p.evaluate(() => document.querySelector('#reauthPassword').form.requestSubmit())]); await open(p, 'index.php?p=email&tab=test'); }
 	await p.evaluate(() => { window.__nuMark = 1; });
 	await p.click('.nav-tabs a.nav-link.active'); await p.waitForTimeout(600);
 	expect(await p.evaluate(() => window.__nuMark) === 1, 'active tab: no reload');

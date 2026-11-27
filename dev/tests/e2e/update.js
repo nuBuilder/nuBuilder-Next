@@ -11,7 +11,7 @@ T.integrity = async (s) => {
 			INSERT INTO zzzzsys_object (zzzzsys_object_id, sob_all_zzzzsys_form_id, sob_all_id, sob_all_type) VALUES ('e2e_ic_o1', 'e2e_no_form', 'x', 'input');
 			INSERT INTO zzzzsys_nunext_migration (zzzzsys_nunext_migration_id) VALUES ('9999-e2e-future')`);
 		await open(p, 'index.php?p=update&tab=system&integrity=1');
-		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=update&tab=system&integrity=1'); }
+		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForNavigation(), p.evaluate(() => document.querySelector('#reauthPassword').form.requestSubmit())]); await open(p, 'index.php?p=update&tab=system&integrity=1'); }
 		const ids = await p.$$eval('#updIntegrityNow [data-ic]', e => e.map(x => x.getAttribute('data-ic') + ':' + x.getAttribute('data-level')));
 		for (const want of ['dup_login:error', 'json:warn', 'orphans:warn', 'migration_newer:warn']) expect(ids.includes(want), 'missing ' + want + ': ' + ids.join(','));
 		expect(/e2e_ic_dup/.test(await p.textContent('[data-ic=dup_login]')) && /e2e_ic_o1/.test(await p.textContent('[data-ic=orphans]')), 'details');
@@ -251,7 +251,7 @@ T.backup_scope = async (s) => {
 	const list = () => fs.existsSync(dir) ? fs.readdirSync(dir).filter(f => /^nunext-.*\.zip$/.test(f)) : [];
 	const before = list();
 	await open(p, 'index.php?p=update&tab=backups#backups');
-	if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=update&tab=backups#backups'); }
+	if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForNavigation(), p.evaluate(() => document.querySelector('#reauthPassword').form.requestSubmit())]); await open(p, 'index.php?p=update&tab=backups#backups'); }
 	const opts = await p.$$eval('#updBkScope option', os => os.map(o => o.value));
 	expect(opts.join() === 'none,nubuilder,all', 'database choices: ' + opts);
 	await p.selectOption('#updBkScope', 'nubuilder');
@@ -283,7 +283,7 @@ T.backup_restore = async (s) => {
 	const sessDump = execSync('mysqldump --no-create-info --insert-ignore ' + DB + ' zzzzsys_session zzzzsys_nunext_session zzzzsys_nunext_token').toString();
 	const reauth = async (url) => {
 		await open(p, url);
-		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, url); }
+		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForNavigation(), p.evaluate(() => document.querySelector('#reauthPassword').form.requestSubmit())]); await open(p, url); }
 	};
 	sql("DROP VIEW IF EXISTS e2e_rst_v; DROP TABLE IF EXISTS e2e_rst, e2e_rst_new; DROP PROCEDURE IF EXISTS e2e_rst_p;\n"
 		+ "CREATE TABLE e2e_rst (id int PRIMARY KEY, n decimal(10,2), s varchar(30));\nINSERT INTO e2e_rst VALUES (1, -12.50, 'a;b'), (2, NULL, 'it''s');\n"
@@ -342,7 +342,7 @@ T.backup_restore_fail = async (s) => {
 	const sessDump = execSync('mysqldump --no-create-info --insert-ignore ' + DB + ' zzzzsys_session zzzzsys_nunext_session zzzzsys_nunext_token').toString();
 	const reauth = async (url) => {
 		await open(p, url);
-		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, url); }
+		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForNavigation(), p.evaluate(() => document.querySelector('#reauthPassword').form.requestSubmit())]); await open(p, url); }
 	};
 	sql("DROP TABLE IF EXISTS e2e_rst, e2e_rst_new; CREATE TABLE e2e_rst (id int PRIMARY KEY, s varchar(30)); INSERT INTO e2e_rst VALUES (1, 'a'), (2, 'b');");
 	const broken = 'nunext-0.0.1-broken-' + Date.now() + '.zip';
@@ -387,7 +387,7 @@ T.backups_bulk = async (s) => {
 	const go = async (q) => {                            // a real load every time (the same address with #backups would only scroll)
 		q = q.replace('#', '&_t=' + Date.now() + '#');
 		await open(p, 'index.php?p=update' + q);
-		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=update' + q); }
+		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForNavigation(), p.evaluate(() => document.querySelector('#reauthPassword').form.requestSubmit())]); await open(p, 'index.php?p=update' + q); }
 	};
 	let made = [];
 	try {
@@ -521,7 +521,7 @@ T.update_quick = async (s) => {
 	const ver = (f) => execSync('python3 -', { input: "import zipfile, json\nz=zipfile.ZipFile(" + JSON.stringify(f) + ")\nn=[x for x in z.namelist() if x.endswith('nunext-manifest.json')][0]\nprint(json.loads(z.read(n))['version'])" }).toString().trim();
 	const pv = ver(pkg);
 	await open(p, 'index.php?p=update');
-	if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=update'); }
+	if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForNavigation(), p.evaluate(() => document.querySelector('#reauthPassword').form.requestSubmit())]); await open(p, 'index.php?p=update'); }
 	const installed = SITE ? (fs.readFileSync(path.join(SITE, 'core/nuapp.php'), 'utf8').match(/define\('NU_VERSION', '([^']+)'\)/) || ['', ''])[1] : '';
 	if (!installed) { s.skip = 'SITE not set'; return; }
 	if (!(await p.locator('#updOther').isVisible())) { await p.click('#updOtherBtn'); await p.waitForTimeout(500); }
@@ -560,7 +560,7 @@ T.update_check = async (s) => {
 	if (!pkg || !fs.existsSync(pkg)) { s.skip = 'PKG not set'; return; }
 	const p = s.ga;
 	await open(p, 'index.php?p=update');
-	if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=update'); }
+	if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForNavigation(), p.evaluate(() => document.querySelector('#reauthPassword').form.requestSubmit())]); await open(p, 'index.php?p=update'); }
 	if (!(await p.locator('#updOther').isVisible())) { await p.click('#updOtherBtn'); await p.waitForTimeout(500); }   // other ways are folded (0.8.376)
 	await p.setInputFiles('#updPackage', pkg);
 	await p.waitForTimeout(300);
@@ -618,7 +618,7 @@ T.libpacks = async (s) => {
 		const p = s.ga;
 		const go = async () => {                                // a new address each time: a change of the #hash alone does not load the page
 			await open(p, 'index.php?p=update&lp=' + Date.now() + '#libraries');
-			if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=update&lp=' + Date.now() + '#libraries'); }
+			if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForNavigation(), p.evaluate(() => document.querySelector('#reauthPassword').form.requestSubmit())]); await open(p, 'index.php?p=update&lp=' + Date.now() + '#libraries'); }
 		};
 		const row = async () => (await p.locator('tr[data-slot=phpmailer]').innerText()).replace(/\s+/g, ' ');
 		await go();
@@ -648,7 +648,7 @@ T.libpacks = async (s) => {
 		expect(/^99\.0\.2/.test((await p.locator('tr[data-slot=phpmailer] .nuLpInUse .fw-semibold').innerText()).trim()), 'changed pack changed the installation');
 		// developer page: build a pack with the key uploaded
 		if ((await open(p, 'index.php?p=libpack')).status() !== 404) {
-			if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=libpack'); }
+			if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForNavigation(), p.evaluate(() => document.querySelector('#reauthPassword').form.requestSubmit())]); await open(p, 'index.php?p=libpack'); }
 			for (const b of await p.locator('#lpBuildForm input[name="slots[]"]').all()) if (await b.isChecked()) await b.uncheck();
 			await p.check('#lpB-phpmailer');
 			await p.fill('input[name="ver[phpmailer]"]', '99.0.3');
@@ -694,7 +694,7 @@ T.libreq = async (s) => {
 		// the package with the requirement (requires_libs is not part of the signed payload – the signature stays valid)
 		execSync('python3 -', { input: `import zipfile, json\nsrc = zipfile.ZipFile(${JSON.stringify(pkg)})\nout = zipfile.ZipFile(${JSON.stringify(path.join(tmp, 'pkg.zip'))}, 'w', zipfile.ZIP_DEFLATED)\nfor n in src.namelist():\n    d = src.read(n)\n    if n.endswith('nunext-manifest.json'):\n        m = json.loads(d); m['requires_libs'] = {'phpmailer': {'min': '99.0.2', 'needed': True}}; d = json.dumps(m).encode()\n    out.writestr(n, d)\nout.close()\n` });
 		await open(p, 'index.php?p=update&lr=' + Date.now());
-		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=update'); }
+		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForNavigation(), p.evaluate(() => document.querySelector('#reauthPassword').form.requestSubmit())]); await open(p, 'index.php?p=update'); }
 		if (!(await p.locator('#updOther').isVisible())) { await p.click('#updOtherBtn'); await p.waitForTimeout(500); }
 		await p.setInputFiles('#updPackage', path.join(tmp, 'pkg.zip'));
 		await Promise.all([p.waitForLoadState('networkidle'), p.click('#updUpload')]);
@@ -815,7 +815,7 @@ T.jquery_settings = async (s) => {
 	const before = sql("SELECT IFNULL((SELECT setting_value FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'jquery'), '')");
 	const goto = async () => {
 		await open(p, 'index.php?p=jquery');
-		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=jquery'); }
+		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForNavigation(), p.evaluate(() => document.querySelector('#reauthPassword').form.requestSubmit())]); await open(p, 'index.php?p=jquery'); }
 	};
 	const save = async (o) => {
 		await goto();
@@ -939,7 +939,7 @@ T.db_reset = async (s) => {
 		await p.evaluate(() => { window.__dbrShown = false; document.getElementById('dbrProgress').addEventListener('show.bs.modal', () => { sessionStorage.setItem('e2e-dbr-shown', '1'); }); });
 		await Promise.all([p.waitForNavigation(), p.click('#dbrRun')]);
 		expect(await p.evaluate(() => { const v = sessionStorage.getItem('e2e-dbr-shown'); sessionStorage.removeItem('e2e-dbr-shown'); return v === '1'; }), 'progress window not shown while running');
-		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=dbreset'); }
+		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForNavigation(), p.evaluate(() => document.querySelector('#reauthPassword').form.requestSubmit())]); await open(p, 'index.php?p=dbreset'); }
 		expect(sql("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'e2e_dbr_marker'") === '1', 'wrong database name: tables deleted');
 		await p.fill('#dbrConfirm', dbNameForReset());
 		// the reset runs in steps (?p=dbresetstep) – listen before the click: a small dump can finish its first steps
@@ -1003,7 +1003,7 @@ T.db_reset_package = async (s) => {
 		await p.fill('#dbrConfirm', dbNameForReset());
 		await Promise.all([p.waitForNavigation({ timeout: 180000 }), p.click('#dbrRun')]);
 		if (/p=reauth/.test(p.url())) {
-			await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]);
+			await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForNavigation(), p.evaluate(() => document.querySelector('#reauthPassword').form.requestSubmit())]);
 			await go('index.php?p=dbreset');
 			await p.fill('#dbrConfirm', dbNameForReset());
 			await Promise.all([p.waitForNavigation({ timeout: 180000 }), p.click('#dbrRun')]);
@@ -1366,6 +1366,13 @@ T.db_reset_no_devmode = async (s) => {
 T.update_steps_grouped = async (s) => {
 	const p = s.ga;
 	await open(p, 'index.php?p=update&tab=system');
+	// the update page asks for the password again once the last confirmation is older than the limit (late in a full run)
+	// (sent through the form itself: late in a full run a toast / notice may lie over the button)
+	if (/p=reauth/.test(p.url())) {
+		await p.fill('#reauthPassword', GA[1]);
+		await Promise.all([p.waitForNavigation(), p.evaluate(() => document.querySelector('#reauthPassword').form.requestSubmit())]);
+		await open(p, 'index.php?p=update&tab=system');
+	}
 	// clicks through the page itself: late in a full run a toast / notice may cover the controls for a moment
 	const tap = async (sel) => { const ok = await p.evaluate((q) => { const e = document.querySelector(q); if (!e) return false; e.click(); return true; }, sel); expect(ok, 'control there: ' + sel); await p.waitForTimeout(200); };
 	if (!await p.locator('#updSteps').isVisible()) { await tap('#updStepsToggle'); await p.waitForTimeout(400); }

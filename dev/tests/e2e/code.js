@@ -17,7 +17,7 @@ T.proc_fields_layout = async (s) => {                 // 0.8.837: procedure deta
 T.config_editor_fill = async (s) => {
 	const p = s.ga;
 	await open(p, 'index.php?p=configfile');
-	if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=configfile'); }
+	if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForNavigation(), p.evaluate(() => document.querySelector('#reauthPassword').form.requestSubmit())]); await open(p, 'index.php?p=configfile'); }
 	const m = () => p.evaluate(() => { const r = document.querySelector('.cfgCM').getBoundingClientRect(); return { bottom: r.bottom, h: innerHeight, page: document.documentElement.scrollHeight }; });
 	try {
 		for (const h of [800, 1100]) {
@@ -40,7 +40,7 @@ T.config_editor_fill = async (s) => {
 T.config_insert = async (s) => {
 	const p = s.ga;
 	await open(p, 'index.php?p=configfile');
-	if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=configfile'); }
+	if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForNavigation(), p.evaluate(() => document.querySelector('#reauthPassword').form.requestSubmit())]); await open(p, 'index.php?p=configfile'); }
 	if (!await p.locator('#cfgInsertBtn').count()) { s.skip = 'nuconfig.php not writable'; return; }
 	const val = () => p.evaluate(() => document.querySelector('.CodeMirror').CodeMirror.getValue());
 	const before = await val();
@@ -137,7 +137,7 @@ T.custom_code = async (s) => {
 	const setCm = (k, v) => p.evaluate(([k, v]) => { const ta = document.getElementById('scode-' + k); ta.nextElementSibling.CodeMirror.setValue(v); }, [k, v]);
 	const openPage = async (hash) => {
 		await open(p, 'index.php?p=globalcode' + (hash || ''));
-		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=globalcode' + (hash || '')); }
+		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForNavigation(), p.evaluate(() => document.querySelector('#reauthPassword').form.requestSubmit())]); await open(p, 'index.php?p=globalcode' + (hash || '')); }
 	};
 	const look = (u) => open(p, u).then(() => p.waitForTimeout(250)).then(() => p.evaluate(() => ({ page: document.body.dataset.nuPage, mode: document.body.dataset.nuMode || '',
 		form: document.body.dataset.nuForm || '', admin: document.body.dataset.nuAdmin || '', hook: window.e2eHook || null, ev: window.e2eEv || null,
@@ -215,7 +215,7 @@ T.custom_code_templates = async (s) => {
 	const p = s.ga;
 	const openPage = async (hash) => {
 		await open(p, 'index.php?p=globalcode' + hash);
-		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=globalcode' + hash); }
+		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForNavigation(), p.evaluate(() => document.querySelector('#reauthPassword').form.requestSubmit())]); await open(p, 'index.php?p=globalcode' + hash); }
 	};
 	await openPage('#gjs');
 	for (const tab of ['header', 'style', 'include', 'gjs', 'gcss']) {
@@ -283,7 +283,7 @@ T.config_includes = async (s) => {
 		expect(st.css === '7px', 'CSS include: ' + st.css);
 		expect(st.php === 'from nuBuilder folder', 'PHP include from nuBuilder folder: ' + st.php);
 		await open(p, 'index.php?p=securitycheck');
-		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=securitycheck'); }
+		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForNavigation(), p.evaluate(() => document.querySelector('#reauthPassword').form.requestSubmit())]); await open(p, 'index.php?p=securitycheck'); }
 		const txt = await p.textContent('body');
 		expect(txt.includes('e2e_missing.php') && !txt.includes('IncludePHP: e2e_inc.php'), 'Security check names the missing file only');
 		// Compatibility check (0.8.578): a function defined in an include file is the application's own, not missing
@@ -313,7 +313,7 @@ T.setup_code = async (s) => {
 	const setCm = (k, v) => p.evaluate(([k, v]) => { const ta = document.getElementById('scode-' + k); ta.nextElementSibling.CodeMirror.setValue(v); }, [k, v]);
 	const openPage = async (hash) => {
 		await open(p, 'index.php?p=globalcode' + (hash || ''));
-		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=globalcode' + (hash || '')); }
+		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForNavigation(), p.evaluate(() => document.querySelector('#reauthPassword').form.requestSubmit())]); await open(p, 'index.php?p=globalcode' + (hash || '')); }
 	};
 	try {
 		await openPage('#include');
@@ -507,7 +507,7 @@ T.debug_phone_refresh = async (s) => {
 T.code_format = async (s) => {                           // 0.8.896: the formatters of the code editors (js-beautify 2, Prettier 3.9 + plugin-php 0.26, sql-formatter)
 	const p = s.ga;
 	await open(p, 'index.php?p=globalcode#gjs');
-	if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=globalcode#gjs'); }
+	if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForNavigation(), p.evaluate(() => document.querySelector('#reauthPassword').form.requestSubmit())]); await open(p, 'index.php?p=globalcode#gjs'); }
 	const r = await p.evaluate(async () => {
 		const f = (c, l) => Promise.resolve(window.NuCodeTools.format(c, l, 'mysql')).then(x => x, e => 'ERR ' + (e && e.message || e));
 		return {
@@ -529,7 +529,7 @@ T.code_format = async (s) => {                           // 0.8.896: the formatt
 T.code_check = async (s) => {
 	const p = s.ga;
 	await open(p, 'index.php?p=globalcode#gjs');
-	if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=globalcode#gjs'); }
+	if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForNavigation(), p.evaluate(() => document.querySelector('#reauthPassword').form.requestSubmit())]); await open(p, 'index.php?p=globalcode#gjs'); }
 	const setCode = (id, v) => p.evaluate(([id, v]) => { document.getElementById(id).nextElementSibling.CodeMirror.setValue(v); }, [id, v]);
 	const marks = id => p.evaluate(id => Array.from(document.querySelectorAll('#' + id + ' + .CodeMirror .nuChkMark')).map(m => (m.classList.contains('nuChk-error') ? 'E:' : 'W:') + m.title), id);
 	const tab = async k => { await p.click('[data-nu-tab="' + k + '"]').catch(() => {}); await p.waitForTimeout(300); };

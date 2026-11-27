@@ -21,7 +21,7 @@ T.searchable_selects = async (s) => {
 	const p = s.ga;
 	const ts = async (path, ids) => {
 		await open(p, path);
-		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, path); }
+		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForNavigation(), p.evaluate(() => document.querySelector('#reauthPassword').form.requestSubmit())]); await open(p, path); }
 		for (const id of ids) expect(await p.locator(id + '.tomselected').count() === 1, path + ': ' + id + ' not searchable');
 	};
 	await ts('index.php?p=accesslevel&id=sample_editor', ['#sal_zzzzsys_form_id']);

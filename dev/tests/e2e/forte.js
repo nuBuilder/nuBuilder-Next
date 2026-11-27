@@ -37,7 +37,10 @@ T.run_query_error = async (s) => {
 	execSync('mysql ' + DB, {input: "INSERT INTO zzzzsys_php (zzzzsys_php_id, sph_code, sph_description, sph_run, sph_global, sph_system, sph_php) VALUES ('e2e_rq', 'e2e_rq', 'e2e', 'hide', '1', '0', " + JSON.stringify(code) + ")"});
 	const before = Number(sql("SELECT COUNT(*) FROM zzzzsys_debug WHERE deb_message LIKE '%e2e_no_such_table%'") || 0);
 	try {
-		await open(p, 'index.php?p=form&f=nuuser'); await p.waitForSelector('#nuBrowseTable');
+		// any form list will do – an installation made from the install scripts has no nuBuilder Forte system forms (nuuser …)
+		const lf = sql("SELECT zzzzsys_form_id FROM zzzzsys_form WHERE zzzzsys_form_id IN ('nuuser', 'samplecustomer') ORDER BY zzzzsys_form_id");
+		if (!lf) { s.skip = 'no form list'; return; }
+		await open(p, 'index.php?p=form&f=' + lf.split('\n')[0]); await p.waitForSelector('#nuBrowseTable');
 		await p.evaluate(() => { window.e2eRq = null; nuRunPHPHidden('e2e_rq'); });
 		await p.waitForFunction(() => window.e2eRq !== null, null, {timeout: 8000});
 		const r = await p.evaluate(() => window.e2eRq);

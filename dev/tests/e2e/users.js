@@ -20,7 +20,7 @@ T.user_field_defaults = async (s) => {
 	const p = s.ga;
 	const go = async (u) => {
 		await open(p, u);
-		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, u); }
+		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForNavigation(), p.evaluate(() => document.querySelector('#reauthPassword').form.requestSubmit())]); await open(p, u); }
 	};
 	const add = async (label, code, type, def) => {
 		await go('index.php?p=userfields&id=new');
@@ -428,7 +428,7 @@ T.pw_reset_admin = async (s) => {
 		return JSON.parse(execSync('python3 -I -c "import sys,email,email.policy,json;m=email.message_from_string(sys.stdin.read(),policy=email.policy.default);b=m.get_body((\'html\',\'plain\'));print(json.dumps({\'subject\':str(m[\'subject\']),\'body\':b.get_content() if b else \'\'}))"', { input: msgs[msgs.length - 1].replace(/^\s+/, '') }).toString());
 	};
 	const hash = () => sql(`SELECT sus_login_password FROM zzzzsys_user WHERE zzzzsys_user_id = '${uid}'`);
-	const reauth = async (url) => { if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, url); return true; } return false; };
+	const reauth = async (url) => { if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForNavigation(), p.evaluate(() => document.querySelector('#reauthPassword').form.requestSubmit())]); await open(p, url); return true; } return false; };
 	const send = async (how, block, other) => {
 		const url = 'index.php?p=user&id=' + uid;
 		for (let i = 0; i < 2; i++) {
@@ -1356,7 +1356,7 @@ T.sec_probe = async (s) => {
 	await p.route(/\/docs\/toc\.json\?probe=/, r => r.fulfill({ status: 403, contentType: 'text/html', body: '403 Forbidden' }));
 	try {
 		await open(p, 'index.php?p=securitycheck');
-		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=securitycheck'); }
+		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForNavigation(), p.evaluate(() => document.querySelector('#reauthPassword').form.requestSubmit())]); await open(p, 'index.php?p=securitycheck'); }
 		await p.waitForTimeout(2500);
 		const state = async f => p.locator('#secProbe .js-probe-list li', { hasText: f }).first().evaluate(li => li.classList.contains('sec-open') ? 'open' : 'ok');
 		expect(await state('README.md') === 'open', 'README.md served by the test server not found readable');
@@ -1508,7 +1508,7 @@ T.user_fields = async (s) => {
 	if (!anna || !bob) { s.skip = 'sample users missing'; return; }
 	const go = async (u) => {
 		await open(p, u);
-		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, u); }
+		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForNavigation(), p.evaluate(() => document.querySelector('#reauthPassword').form.requestSubmit())]); await open(p, u); }
 	};
 	const add = async (f) => {
 		await go('index.php?p=userfields&id=new');
@@ -1635,7 +1635,7 @@ T.pw_policy = async (s) => {
 	try {
 		await new Promise(r => setTimeout(r, 600));
 		await open(p, 'index.php?p=pwpolicy');
-		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=pwpolicy'); }
+		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForNavigation(), p.evaluate(() => document.querySelector('#reauthPassword').form.requestSubmit())]); await open(p, 'index.php?p=pwpolicy'); }
 		expect(await p.locator('#pwpForm').count() === 1, 'policy page');
 		await p.fill('#pwp_min_len', '14');
 		await p.setChecked('#pwp_digit', true);
@@ -2833,7 +2833,7 @@ T.access_rights_filter = async (s) => {
 T.wizard_top_bar = async (s) => {
 	const p = s.ga;
 	await open(p, 'index.php?p=setupwizard&step=security');
-	if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForNavigation(), p.click('button[type=submit]')]); await open(p, 'index.php?p=setupwizard&step=security'); }
+	if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForNavigation(), p.evaluate(() => document.querySelector('#reauthPassword').form.requestSubmit())]); await open(p, 'index.php?p=setupwizard&step=security'); }
 	expect(await p.locator('#wizBar #wizBack').isVisible() && await p.locator('#wizBar #wizNext').isVisible(), 'Back / Next not in the bar');
 	expect(await p.locator('#wizForm button[value="back"], #wizForm button[value="next"]:visible').count() === 0, 'buttons still at the end of the form');
 	await p.evaluate(() => window.scrollTo(0, document.body.scrollHeight)); await p.waitForTimeout(200);
