@@ -3,6 +3,15 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.1529 – Release gate
+- Release gate: full test run (smoke, end-to-end, cross-tests against nuBuilder Forte, installer
+  wizard, security scan).
+
+## 0.8.1528 – Tests without the online password leak check
+- Tests: the end-to-end run switches the online check for leaked passwords off. Where the test
+  machine has internet, the check knew the tests' known password, and every sign-in of a sample
+  user ended on "change your password" – three tests of the SQLite job failed that way.
+
 ## 0.8.1527 – Release gate
 - Release gate: smoke, all end-to-end tests, the cross-tests against nuBuilder Forte, the installer wizard and the security scan
 - Help: a form with a file upload field shows an empty drop area while the Uppy library pack is missing, and the rest of its code runs

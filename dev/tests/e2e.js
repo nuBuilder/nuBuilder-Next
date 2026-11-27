@@ -213,6 +213,12 @@ const grIds = () => SITE ? JSON.parse(execSync(`php -r 'chdir(${JSON.stringify(S
 const grSet = (v) => { sql("DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'getting_ready'"); if (v !== null) sql("INSERT INTO zzzzsys_nunext_setting (zzzzsys_nunext_setting_id, setting_value) VALUES ('getting_ready', '" + v.replace(/'/g, "''") + "')"); };
 
 const grHideAll = () => grSet(JSON.stringify({ marks: {}, hide: { mode: 'forever', until: 0, bad: grIds() } }));
+// the leak check of passwords at sign-in asks haveibeenpwned.com where the runner has internet (CI): the tests' known password
+// Test1234! is leaked, so every sample user was sent to "change your password" – off for the run (test pw_policy sets its own)
+const pwLeakOff = () => {
+	sql("DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'pw_policy'");
+	sql("INSERT INTO zzzzsys_nunext_setting (zzzzsys_nunext_setting_id, setting_value) VALUES ('pw_policy', '{\"leak\":\"off\",\"leak_login\":false}')");
+};
 
 // the tests (code review L6): one file per area in dev/tests/e2e/, read into THIS scope so they use the helpers above; the run order
 // is dev/tests/e2e/order.txt, then tests not listed (file order), logout last. A new test goes into the file of its area.
@@ -270,6 +276,7 @@ const runOrder = () => {
 		sql("UPDATE zzzzsys_user SET sus_login_password = '" + hash + "', sus_change_password = '0' WHERE sus_login_name LIKE 'sample\\_%'");
 		// the globeadmin's own language (0.8.1205, setting lang_ga): the tests expect the browser's English
 		sql("DELETE FROM zzzzsys_nunext_setting WHERE zzzzsys_nunext_setting_id = 'lang_ga'");
+		pwLeakOff();
 		grHideAll();   // the Getting ready bar (0.8.1310) would move every page down – hidden for good; test getting_ready shows it
 		s.ga = await login(GA[0], GA[1]);
 		for (const [name, fn] of runOrder()) {
