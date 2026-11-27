@@ -1,5 +1,5 @@
 <section id="databases" data-doc="admin" data-level="advanced">
-	<h2 id="databases-h">Databases: MySQL, MariaDB and SQL Server</h2>
+	<h2 id="databases-h">Databases: MySQL, MariaDB, SQL Server and SQLite</h2>
 	<p class="doc-lead"><span class="badge doc-adv">Advanced</span> Which databases nuBuilder Next runs on and what differs between them.</p>
 	<p class="doc-for" data-doc="admin">For: Administrators (globeadmin, admin roles)</p>
 	<p>nuBuilder Next talks to the database through one thin PDO layer (<code>NuDB</code>) that hides the differences between the supported systems. The database type is set with <code>$nuConfigDBType</code> in <code>nuconfig.php</code>.</p>
@@ -18,6 +18,7 @@
 	<tbody>
 		<tr><td>MySQL / MariaDB</td><td><code>mysql</code> (default)</td><td><code>pdo_mysql</code></td><td><code>install/schema_mysql.sql</code>, <code>schema_mysql_forms.sql</code>, <code>notes_snippets_mysql.sql</code></td></tr>
 		<tr><td>Microsoft SQL Server</td><td><code>sqlsrv</code></td><td><code>pdo_sqlsrv</code></td><td><code>install/schema_mssql.sql</code></td></tr>
+		<tr><td>SQLite (one file)</td><td><code>sqlite</code> (<code>$nuConfigDBName</code> = the file's full path)</td><td><code>pdo_sqlite</code></td><td>the MySQL scripts, translated</td></tr>
 	</tbody>
 </table>
 <div class="doc-sub">
@@ -26,9 +27,20 @@
 		<li><strong>Your SQL</strong>: browse SQL, procedures and reports run as written, so they must be valid for the database in use. In PHP, <code>nuMSSQL()</code> tells which one it is.</li>
 		<li><strong>Update checks</strong>: before an update, column <em>types</em> are compared on MySQL / MariaDB only; on SQL Server only missing columns are found.</li>
 		<li><strong>App cloner and backups</strong>: source and target are always the same kind of database. On SQL Server the export uses collations instead of character sets, <code>INSERT</code> only, and batches separated by <code>GO</code> – run it with SQL Server Management Studio or <code>sqlcmd</code>; SQL Server Agent jobs are not copied (see <a href="#appcloner">App cloner</a>).</li>
-		<li><strong>Database tools</strong>: phpMyAdmin works with MySQL / MariaDB only (its pack is not offered on SQL Server); Adminer works with both (see <a href="#admin-tools">Admin tools and system status</a>).</li>
-		<li><strong>MySQL / MariaDB only</strong>: importing a nuBuilder Forte SQL dump (installer and <em>Set up the database</em>), <a href="#db-reset">Reset database</a> and phpMyAdmin.</li>
+		<li><strong>Database tools</strong>: phpMyAdmin works with MySQL / MariaDB only (its pack is not offered on SQL Server); Adminer works with all three (see <a href="#admin-tools">Admin tools and system status</a>).</li>
+		<li><strong>Not on SQL Server</strong>: importing a nuBuilder Forte SQL dump (installer and <em>Set up the database</em>) and phpMyAdmin; <a href="#db-reset">Reset database</a> only to a clean installation.</li>
 		<li><strong>Design mode</strong>: new tables and columns are created with abstract types (text, long text, int, decimal, date …) that are mapped to each database (<code>core/form/nuddl.php</code>).</li>
+	</ul>
+</div>
+<div class="doc-sub">
+	<h3 id="db-sqlite">SQLite</h3>
+	<p>With SQLite the whole database is one file – no database server is needed. It suits small installations, a laptop, a demo or trying nuBuilder Next out. nuBuilder Forte itself does not run on SQLite, so such a database is used by nuBuilder Next only.</p>
+	<ul>
+		<li><strong>Your SQL</strong> is written as for MySQL: nuBuilder Next translates it on the fly (functions such as <code>NOW()</code>, <code>DATE_FORMAT()</code>, <code>CONCAT()</code>, <code>GROUP_CONCAT()</code>, <code>IFNULL()</code>, <code>INSERT IGNORE</code>, <code>ON DUPLICATE KEY UPDATE</code>, <code>INTERVAL</code>, <code>SHOW TABLES</code>, <code>information_schema</code>, <code>CREATE TABLE</code> / <code>ALTER TABLE</code> with MySQL column types). Text comparisons ignore case and accents as in MySQL. Rarely used MySQL syntax may still fail – write it in plain SQL then.</li>
+		<li><strong>Keep the file outside the web folder</strong>: the installer proposes a folder next to it and warns when the file would lie inside it. The folder must be writable for the web server (SQLite writes a journal next to the file).</li>
+		<li><strong>Backups and dumps</strong>: backups hold an SQL dump in MySQL format; restoring a backup, <a href="#db-reset">Reset database</a> and importing a nuBuilder Forte dump work as on MySQL.</li>
+		<li><strong>Not on SQLite</strong>: the App cloner, phpMyAdmin (Adminer works) and the conversion to InnoDB.</li>
+		<li><strong>Many users at once</strong>: SQLite lets one request write at a time; for many users who save often, use MySQL / MariaDB.</li>
 	</ul>
 </div>
 <div class="doc-sub">
@@ -39,5 +51,5 @@
 	</ul>
 </div>
 	<p class="doc-see">See also: <a href="#install">Requirements and installation</a> · <a href="#appcloner">App cloner (copy the whole application)</a> · <a href="#innodb">Storage engine (InnoDB)</a></p>
-	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nudb.php</code></li><li><code>core/form/nuddl.php</code></li><li><code>install/schema_mysql.sql</code></li><li><code>install/schema_mssql.sql</code></li></ul></details>
+	<details class="doc-src" data-doc="admin"><summary>Relevant source files</summary><ul><li><code>core/nudb.php</code></li><li><code>core/form/nuddl.php</code></li><li><code>install/schema_mysql.sql</code></li><li><code>install/schema_mssql.sql</code></li><li><code>core/nusqlite.php</code></li></ul></details>
 </section>

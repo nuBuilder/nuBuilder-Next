@@ -70,11 +70,14 @@ final class NuSqlCheck
 	{
 		if (trim($sql) === '' || NuSelectSource::kind($sql) !== 'query') return [];
 		$db = nu_db();
-		if (!in_array($db->type, ['mysql', 'sqlsrv'], true)) return null;
+		if (!in_array($db->type, ['mysql', 'sqlsrv', 'sqlite'], true)) return null;
 		$filled = self::fill($sql);
 		$pdo = $db->pdo();
 		try {
-			if ($db->type === 'mysql') {
+			if ($db->type === 'sqlite') {
+				$st = $pdo->prepare(NuSqlite::dml(NuSqlite::tokens(NuSqlite::strings($filled))));   // SQLite compiles the statement: syntax and names
+				unset($st);
+			} elseif ($db->type === 'mysql') {
 				$st = $pdo->prepare($filled);                              // emulated prepares are off (NuDB): MySQL parses and resolves names
 				$st->closeCursor();
 				unset($st);
@@ -104,7 +107,7 @@ final class NuSqlCheck
 	{
 		$lines = max(1, substr_count($sql, "\n") + 1);
 		if (preg_match('/\bat line (\d+)\b/i', $msg, $m)) return max(1, min($lines, (int)$m[1]));
-		if (preg_match_all("/'([^'\\s]{1,80})'/", $msg, $mm)) {
+		if (preg_match_all("/['\"]([^'\"\\s]{1,80})['\"]/", $msg, $mm)) {   // MySQL names in '…', SQLite in "…"
 			foreach ($mm[1] as $name) {
 				if (preg_match('/^(where|select|having|order|group|on|field|from|join)$/i', $name)) continue;   // the clause a message names
 				foreach (array_unique([$name, substr((string)strrchr('.' . $name, '.'), 1)]) as $try) {   // db.table → table, alias.column → column

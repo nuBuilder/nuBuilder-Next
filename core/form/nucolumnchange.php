@@ -21,9 +21,9 @@ final class NuColumnChange
 	public static function info(string $table, string $column): array
 	{
 		$db = nu_db();
-		if ($db->type !== 'mysql' && $db->type !== 'sqlsrv') throw new RuntimeException(t('builder_colchg_err_db'));
+		if (!in_array($db->type, ['mysql', 'sqlsrv', 'sqlite'], true)) throw new RuntimeException(t('builder_colchg_err_db'));
 		self::names($table, $column);
-		if ($db->type === 'mysql') {
+		if ($db->type !== 'sqlsrv') {                       // SQLite: information_schema and MODIFY through NuSqlite (the table is rebuilt)
 			$c = $db->one('SELECT COLUMN_NAME AS name, DATA_TYPE AS dt, COLUMN_TYPE AS ct, IS_NULLABLE AS nul, COLUMN_DEFAULT AS def, COLUMN_KEY AS ck, EXTRA AS ex,
 				CHARACTER_MAXIMUM_LENGTH AS len, NUMERIC_PRECISION AS prec, NUMERIC_SCALE AS scale, COLUMN_COMMENT AS cm
 				FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?', [$table, $column]);
@@ -89,7 +89,7 @@ final class NuColumnChange
 		$col = NuDB::ident($info['column']);
 		$tbl = NuDB::ident($info['table']);
 		$null = $info['nullable'] ? 'NULL' : 'NOT NULL';
-		if ($db->type === 'mysql') {
+		if ($db->type !== 'sqlsrv') {
 			$def = '';
 			$d = $info['default'];
 			if ($d !== null && strtoupper((string)$d) !== 'NULL') {
@@ -109,7 +109,7 @@ final class NuColumnChange
 	private static function checks(array $info, string $type, string $length): array
 	{
 		$db = nu_db();
-		$my = $db->type === 'mysql';
+		$my = $db->type !== 'sqlsrv';
 		$c = NuDB::ident($info['column']);
 		$t = NuDB::ident($info['table']);
 		$txt = $my ? "CAST($c AS CHAR)" : "CAST($c AS NVARCHAR(4000))";

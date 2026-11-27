@@ -593,7 +593,8 @@ T.sample_ticket = async (s) => {
 		expect(await c.locator('#nuTabHolder .nuTab:visible').filter({ hasText: 'Handling' }).count() === 0, 'customer sees the Handling tab');
 		const other = sql("SELECT tkt_ticket_id FROM tkt_ticket WHERE tic_requester_id = 'tkt_oscar' ORDER BY 1 LIMIT 1");
 		await open(c, 'index.php?p=form&f=tktticket&r=' + other);
-		expect(/another customer/.test(await c.content()), 'customer opened another customer\'s ticket');
+		expect(/another customer|no longer exists/.test(await c.content()),     // refused by Before Edit, or before it by the record check (setting of new installations)
+			 'customer opened another customer\'s ticket');
 		await c.context().close();
 		// agent: dashboard on the start page
 		const a = await login('tkt_alex', pw.tkt_alex);

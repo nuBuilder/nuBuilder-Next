@@ -29,12 +29,12 @@ final class NuDB
 				if (!empty($c['trust_cert'])) $dsn .= ';TrustServerCertificate=1';
 				break;
 
-			case 'sqlite':                       // development / automated tests only
+			case 'sqlite':                       // a database file (core/nusqlite.php); ':memory:' in the unit tests
 				$dsn = 'sqlite:' . $c['name'];
 				break;
 
 			default:
-				throw new RuntimeException("Unsupported \$nuConfigDBType '{$this->type}' (use mysql or sqlsrv).");
+				throw new RuntimeException("Unsupported \$nuConfigDBType '{$this->type}' (use mysql, sqlsrv or sqlite).");
 		}
 
 		$own = (array)($c['options'] ?? []);
@@ -52,7 +52,16 @@ final class NuDB
 			$options += [PDO::ATTR_EMULATE_PREPARES => $this->emulate, nu_pdo_mysql_attr('MULTI_STATEMENTS') => false];
 		}
 
-		$this->pdo = new PDO($dsn, $c['user'] ?? null, $c['password'] ?? null, $options);
+		if ($this->type === 'sqlite') {
+			// PHP 8.4+: the driver's own class (its createFunction replaces PDO::sqliteCreateFunction, deprecated in 8.5)
+			$cls = class_exists('Pdo\\Sqlite') ? 'Pdo\\Sqlite' : 'PDO';
+			/** @var PDO $sqPdo */
+			$sqPdo = new $cls($dsn, null, null, $options);   // @phpstan-ignore class.notFound (Pdo\Sqlite exists from PHP 8.4)
+			$this->pdo = $sqPdo;
+			NuSqlite::setup($this->pdo);
+		} else {
+			$this->pdo = new PDO($dsn, $c['user'] ?? null, $c['password'] ?? null, $options);
+		}
 		self::$connected = true;                               // a connection exists (NuLanguages reads its setting only then)
 
 		if ($this->type === 'mysql' && !empty($c['charset'])) {
@@ -76,6 +85,7 @@ final class NuDB
 		$marks = NuHash::$bound && str_contains($sql, NuHash::MARK);
 		if ($marks) [$sql, $params] = NuHash::resolveMarks($sql, $params);   // bound hash variables
 		$this->noteWrite($sql);
+		if ($this->type === 'sqlite') $sql = NuSqlite::prepare($this, $sql, fn(string $q) => $this->pdo->exec($q));
 		$t = hrtime(true);
 		if ($marks && $this->emulated()) {
 			// values of hash variables bound into the SQL of the application: a server-side prepare, as before (a value may stand where
@@ -294,16 +304,29 @@ final class NuDB
 		return $this->run('DELETE FROM ' . self::word($table) . ' WHERE ' . self::word($col) . ' = ?', [$value])->rowCount();
 	}
 
+	/** SQLite: a transaction of transaction() is BEGIN IMMEDIATE (the write lock at once – a deferred one that reads first and then
+	 * writes fails at once with "database is locked" when another request wrote in between; this one waits for the busy timeout). */
+	private bool $sqTx = false;
+
+	/** Is a transaction open on this connection? */
+	public function inTx(): bool
+	{
+		return $this->sqTx || $this->pdo->inTransaction();
+	}
+
 	public function transaction(callable $fn): mixed
 	{
 		$mark = NuMemo::$writes;
-		$this->pdo->beginTransaction();
+		if ($this->type === 'sqlite') { $this->pdo->exec('BEGIN IMMEDIATE'); $this->sqTx = true; }
+		else $this->pdo->beginTransaction();
 		try {
 			$result = $fn($this);
-			$this->pdo->commit();
+			if ($this->sqTx) { $this->pdo->exec('COMMIT'); $this->sqTx = false; }
+			else $this->pdo->commit();
 			return $result;
 		} catch (Throwable $e) {
-			if ($this->pdo->inTransaction()) $this->pdo->rollBack();
+			if ($this->sqTx) { $this->sqTx = false; try { $this->pdo->exec('ROLLBACK'); } catch (Throwable $ig) { nu_ignored($ig, 'sqlite rollback'); } }
+			elseif ($this->pdo->inTransaction()) $this->pdo->rollBack();
 			if (NuMemo::$writes !== $mark) NuMemo::forget();    // something was written and is gone again: so may be what was read after it
 			throw $e;
 		}
@@ -354,6 +377,8 @@ final class NuDB
 	/** A quoted string literal of this connection (PDO::quote) – for the few places that build SQL text. */
 	public function quote(string $v): string
 	{
+		// SQLite: written as MySQL writes it – the statement is read by MySQL's string rules on the way (NuSqlite::prepare)
+		if ($this->type === 'sqlite') return "'" . str_replace(['\\', "'"], ['\\\\', "''"], $v) . "'";
 		return (string)$this->pdo->quote($v);
 	}
 
@@ -367,6 +392,7 @@ final class NuDB
 	{
 		NuDemo::check($sql);
 		$this->noteWrite($sql);
+		if ($this->type === 'sqlite') $sql = NuSqlite::prepare($this, $sql, fn(string $q) => $this->pdo->exec($q));
 		$t = hrtime(true);
 		$n = (int)$this->pdo->exec($sql);
 		self::$statements++;
@@ -387,7 +413,7 @@ final class NuDB
 		if ($this->emulated()) return $this->native(fn () => $this->readOnly($fn, $seconds));
 		static $depth = 0;
 		$mark = NuMemo::$writes;                                // a write that gets rolled back here: what was read after it is forgotten
-		if ($this->pdo->inTransaction()) {
+		if ($this->inTx()) {
 			$sp = 'nu_ro_' . (++$depth);
 			$this->pdo->exec($this->savepointSql($sp));
 			try {
@@ -424,6 +450,8 @@ final class NuDB
 				$this->pdo->beginTransaction();
 			} else {
 				$this->pdo->beginTransaction();
+				$this->pdo->exec('PRAGMA query_only = ON');            // SQLite: writes refused, as READ ONLY on MySQL
+				$restore['query_only'] = 'OFF';
 			}
 			return $fn($this);
 		} finally {
@@ -432,6 +460,7 @@ final class NuDB
 			foreach ($restore as $var => $old) {
 				try {
 					if ($var === 'timeout') $this->pdo->setAttribute(PDO::SQLSRV_ATTR_QUERY_TIMEOUT, (int)$old);
+					elseif ($var === 'query_only') $this->pdo->exec('PRAGMA query_only = OFF');
 					elseif (is_numeric($old)) $this->pdo->exec("SET SESSION $var = " . (0 + $old));
 				} catch (Throwable $ig) { nu_ignored($ig); }
 			}
@@ -509,7 +538,7 @@ final class NuDB
 				c.CHARACTER_MAXIMUM_LENGTH AS l
 				FROM INFORMATION_SCHEMA.COLUMNS c WHERE c.TABLE_NAME = ? ORDER BY c.ORDINAL_POSITION", [$table]),
 			default  => array_map(static fn($r) => ['n' => $r['name'], 't' => strtolower((string)preg_replace('/\s*\(.*$/', '', (string)$r['type'])),
-				'x' => $r['pk'] ? 'auto_increment' : '', 'l' => preg_match('/\((\d+)\)/', (string)$r['type'], $m) ? (int)$m[1] : null],
+				'x' => (int)$r['pk'] === 1 && strtolower(trim((string)$r['type'])) === 'integer' ? 'auto_increment' : '', 'l' => preg_match('/\((\d+)\)/', (string)$r['type'], $m) ? (int)$m[1] : null],
 				$this->all('PRAGMA table_info(' . self::word($table) . ')')),
 		};
 
@@ -567,9 +596,8 @@ final class NuDB
 	{
 		$p = "'$." . str_replace("'", "''", $path) . "'";
 		return match ($this->type) {
-			'mysql'  => "CASE WHEN $column IS NOT NULL AND $column <> '' AND JSON_VALID($column) THEN JSON_UNQUOTE(JSON_EXTRACT($column,$p)) END",
 			'sqlsrv' => "CASE WHEN ISJSON($column) = 1 THEN JSON_VALUE($column,$p) END",
-			default  => "json_extract($column,$p)",
+			default  => "CASE WHEN $column IS NOT NULL AND $column <> '' AND JSON_VALID($column) THEN JSON_UNQUOTE(JSON_EXTRACT($column,$p)) END",
 		};
 	}
 
@@ -603,7 +631,7 @@ final class NuDB
 	public function quoteName(string $name): string
 	{
 		$n = self::ident($name);
-		return match ($this->type) { 'sqlsrv' => "[$n]", 'mysql' => "`$n`", default => "\"$n\"" };
+		return $this->type === 'sqlsrv' ? "[$n]" : "`$n`";
 	}
 
 	/** Savepoints: one statement each. */
@@ -613,7 +641,7 @@ final class NuDB
 	/** Name of the database product for texts (AI prompts, dump headers). */
 	public function label(): string
 	{
-		return $this->type === 'sqlsrv' ? 'SQL Server' : 'MySQL / MariaDB';
+		return match ($this->type) { 'sqlsrv' => 'SQL Server', 'sqlite' => 'SQLite', default => 'MySQL / MariaDB' };
 	}
 
 	/**

@@ -86,7 +86,7 @@ jobs:
       - name: Browser tests of update, backups, export, import, cloners, reports (PHP 8.5+)
         if: matrix.php == '8.5' || matrix.php == '8.6'
         run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq mariadb-client > /dev/null
+          sudo apt-get update -qq && sudo apt-get install -y -qq mariadb-client python3-openpyxl > /dev/null
           mysql -h127.0.0.1 -uroot -proot -e "GRANT ALL ON nuinst_e2e.* TO 'nu'@'%'"
           cd nub/nunext && NODE_PATH=$(npm root -g) SITE="$GITHUB_WORKSPACE/nub/nunext" BASE=http://127.0.0.1:8099/nunext/ ADMIN_PW=ci-globeadmin-pw \
             DB="-h127.0.0.1 -unu -pnu nutest" ONLY="$(cat dev/tests/e2e/php-new.txt | tr '\n' ',')" node dev/tests/e2e.js
@@ -161,6 +161,50 @@ jobs:
           grep -E "PHP (Warning|Notice|Deprecated): .* in Unknown on line 0" srv.log | sed "s/^/::notice::PHP start-up (not our code): /" || true
           # deprecations inside third-party libraries (nuBuilder Forte's third_party/ – e.g. its TCPDF on PHP 8.5 – or vendor/) are not
           # ours to fix: shown as notices, they do not fail the job
+          grep -E "PHP Deprecated: .* in [^ ]*/(third_party|vendor)/" srv.log | sed "s/^/::notice::third-party library: /" || true
+          if grep -E "PHP (Fatal error|Parse error|Warning|Notice|Deprecated)" srv.log | grep -v " in Unknown on line 0" | grep -vE "PHP Deprecated: .* in [^ ]*/(third_party|vendor)/"; then echo "::error::PHP messages in the server log (above)"; exit 1; fi
+          echo "no PHP messages in the server log"
+      - if: failure()
+        run: cat srv.log 2>/dev/null || true
+
+  # SQLite: one database file, no service – the installation from the CLI, smoke test, self-test and the e2e tests of the areas that
+  # work differently on SQLite (dev/tests/e2e/sqlite.txt) with SQLITE=1 (the tests' mysql / mysqldump calls go to dev/tests/sqlq.php)
+  sqlite:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v5
+        with: { path: nunext }
+      - uses: shivammathur/setup-php@v2
+        with: { php-version: '8.3', extensions: 'pdo_sqlite, mbstring, zip, sodium, gd', coverage: none }
+      - run: git clone --depth 1 https://github.com/nuBuilder/nuBuilder.git nub && mv nunext nub/nunext
+      - run: |
+          mkdir -p "$GITHUB_WORKSPACE/sqdata"
+          cat > nub/nunext/nuconfig.php <<PHP
+          <?php
+          \$nuConfigDBType = "sqlite"; \$nuConfigDBName = "$GITHUB_WORKSPACE/sqdata/nutest.sqlite";
+          \$nuConfigDBGlobeadminUsername = "globeadmin"; \$nuConfigDBGlobeadminPassword = "ci-globeadmin-pw";
+          \$nuConfigSecretKey = "ci-0123456789abcdef0123456789abcdef"; \$nuConfigBaseURL = "http://127.0.0.1:8099";
+          \$nuConfigShowInstaller = false;
+          \$nuConfigDevMode = true;
+          \$nuConfigApi = true;
+          PHP
+          cd nub/nunext && php -r 'require "core/nuapp.php"; $r = NuDbState::setUp("scripts"); $s = NuDbState::check(); echo $r["imported"], " statements, state ", $s["state"], ", origin ", NuInstall::origin(), "\n"; exit($s["state"] === "ok" && NuInstall::origin() === "nunext" && !NuInstall::backupNeeded() ? 0 : 1);'
+      - run: (cd nub && php -d opcache.jit=disable -d display_errors=1 -d error_reporting=-1 -S 127.0.0.1:8099 -t . > ../srv.log 2>&1 &) && sleep 2
+      - uses: actions/setup-node@v5
+        with: { node-version: '22' }
+      - run: npm install -g playwright@1.49.1 && npx playwright install --with-deps chromium
+      - run: NODE_PATH=$(npm root -g) BASE=http://127.0.0.1:8099/nunext/ ADMIN_PW=ci-globeadmin-pw node nub/nunext/dev/tests/smoke.js
+      - name: Self-test
+        run: cd nub/nunext && php -d opcache.jit=disable -d display_errors=0 -d log_errors=1 -d error_log="$GITHUB_WORKSPACE/srv.log" -d error_reporting=-1 nucron.php selftest --sample --lang=en
+      - name: Browser tests on SQLite
+        run: |
+          cd nub/nunext
+          NODE_PATH=$(npm root -g) SQLITE=1 BASE=http://127.0.0.1:8099/nunext/ DB=nutest SITE="$PWD" ADMIN_PW=ci-globeadmin-pw ONLY=$(grep -v '^#' dev/tests/e2e/sqlite.txt | paste -sd, -) node dev/tests/e2e.js
+      - name: PHP messages in the server log
+        if: always()
+        run: |
+          [ -f srv.log ] || { echo "no server log"; exit 0; }
           grep -E "PHP Deprecated: .* in [^ ]*/(third_party|vendor)/" srv.log | sed "s/^/::notice::third-party library: /" || true
           if grep -E "PHP (Fatal error|Parse error|Warning|Notice|Deprecated)" srv.log | grep -v " in Unknown on line 0" | grep -vE "PHP Deprecated: .* in [^ ]*/(third_party|vendor)/"; then echo "::error::PHP messages in the server log (above)"; exit 1; fi
           echo "no PHP messages in the server log"

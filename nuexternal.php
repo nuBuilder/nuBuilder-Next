@@ -142,6 +142,11 @@ final class NuNextUser
 		$port = trim((string)$c['nuConfigDBPort']);
 		$host = (string)($c['nuConfigDBHost'] ?? '127.0.0.1');
 		$name = (string)($c['nuConfigDBName'] ?? '');
+		if ($type === 'sqlite') {                               // one database file: $nuConfigDBName is its path
+			$p = new PDO('sqlite:' . $name, null, null, (array)$c['nuConfigDBOptions'] + [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]);
+			$p->exec('PRAGMA busy_timeout = 15000');
+			return self::$pdo = $p;
+		}
 		if ($type === 'sqlsrv') {
 			$dsn = 'sqlsrv:Server=' . $host . ($port !== '' ? ',' . (int)$port : '') . ';Database=' . $name;
 			if (!empty($c['nuConfigDBTrustServerCertificate'])) $dsn .= ';TrustServerCertificate=1';

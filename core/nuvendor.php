@@ -168,7 +168,7 @@ final class NuVendor
 	/** Usable: MySQL database (Adminer: also SQL Server), and the tool is copied (or a URL is configured). */
 	public static function available(string $app): bool
 	{
-		if ($app === 'ADM') return in_array(nu_db()->type, ['mysql', 'sqlsrv'], true) && self::adminerFile() !== '';
+		if ($app === 'ADM') return in_array(nu_db()->type, ['mysql', 'sqlsrv', 'sqlite'], true) && self::adminerFile() !== '';
 		if (!isset(self::APPS[$app]) || nu_db()->type !== 'mysql') return false;
 		if (trim((string)nu_cfg(self::APPS[$app]['cfg'])) !== '') return true;
 		return is_file(self::dir($app) . '/' . self::APPS[$app]['entry']);

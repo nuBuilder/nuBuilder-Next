@@ -6,7 +6,7 @@
 	"author": "",
 	"url": "",
 	"api": 1,
-	"requires": { "nunext": "0.8.1364", "php": "8.1", "extensions": [], "db": ["mysql", "sqlsrv"] },
+	"requires": { "nunext": "0.8.1364", "php": "8.1", "extensions": [], "db": ["mysql", "sqlsrv", "sqlite"] },
 	"tables": ["notes"],
 	"network": false
 }

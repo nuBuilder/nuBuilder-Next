@@ -3,6 +3,46 @@
 Every version, newest first. A new section is written by `dev/release.py`; the same text is shown on the update page
 (Admin tools → Update → Change history). Installation and overview: [README.md](README.md).
 
+## 0.8.1524 – Release gate
+- Release gate: full test run (smoke, end-to-end, compatibility with nuBuilder Forte, installer wizard, OWASP ZAP) and documentation
+  brought up to date for SQLite (backups and restore, Reset database, database tools, migration, development with Claude: the SQLite
+  test mode of the browser tests).
+
+## 0.8.1523 – SQLite: tests
+- Tests: field_access puts the form's objects back as they were (the Data access page's Save changes the nuBuilder Forte access of
+  fields with a default rule; a following self-test saw one field read-only). Full browser test run on SQLite: every test passes or is
+  skipped with its reason (MySQL routines, a second MySQL database, MySQL connection settings).
+
+## 0.8.1522 – SQLite: more MySQL SQL, backups, packages
+- SQLite: more of MySQL's SQL is understood – JSON_EXTRACT answers as MySQL does (JSON text: "x" quoted, true / false),
+  hex literals (0x2f), CREATE TABLE … AS (SELECT …) with parameters, RENAME TABLE while a view names the table, information_schema
+  EVENTS; quoted values (NuDB::quote) and nuBuilder Forte's db_fetch_value() / db_update_value() work with names in backticks;
+  backups write names in backticks, so a restore of an SQLite backup gets the same tables back.
+- SQLite: yes / no columns of new tables are TINYINT(1) as on MySQL (shown as tick boxes by the New form wizard); project packages
+  carry tables and views on SQLite too (written as MySQL's CREATE TABLE, so they also go to a MySQL installation).
+- SQLite: nuexternal.php (the signed-in user for plain PHP apps) reads an SQLite database; the SQL check names the line of a syntax
+  error; plugins may name sqlite in their requirements (the example plugin does).
+- Tests: browser tests that need MySQL itself (routines, triggers, user variables, a second database, connection settings) are skipped
+  on SQLite with the reason; dev/tests/e2e/sqlite.txt = the list the CI job runs.
+
+## 0.8.1521 – SQLite as a third database
+- SQLite as a third database: the whole database in one file, no database server needed. The installer offers *SQLite (one
+  database file)* with a proposed path outside the web folder (warning when the file would lie inside it); the content step offers the
+  same as for MySQL (install scripts, nubuilder4.sql, an uploaded dump). SQL written for MySQL – your browse SQL, procedures, reports and
+  nuBuilder Next's own – is translated on the fly: MySQL's string rules ("…" strings, backslash escapes), date and text functions,
+  INSERT IGNORE, ON DUPLICATE KEY UPDATE, INTERVAL, GROUP_CONCAT (with ORDER BY / SEPARATOR / DISTINCT), JSON_ARRAYAGG, multi-table DELETE, information_schema, SHOW / DESCRIBE, CREATE / ALTER TABLE with
+  MySQL's column types; text comparisons ignore case and accents as in MySQL. Backups (SQL dump in MySQL format), restore, Reset
+  database, data export / import, design mode's new tables and columns and Adminer work on SQLite. Not on SQLite: the App cloner,
+  phpMyAdmin, the conversion to InnoDB, MySQL routines / triggers and UPDATE … JOIN. nuBuilder Forte has no SQLite – such an installation is nuBuilder Next alone.
+- Tests: a CI job installs on SQLite and runs the smoke test, the self-test and browser tests; the browser tests run on an SQLite test
+  site with SQLITE=1 (dev/tests/sqlq.php stands in for the mysql tools).
+- Documentation: Requirements and installation (SQLite), Databases (what differs on SQLite), configuration ($nuConfigDBType sqlite).
+
+## 0.8.1520 – CI browser tests on PHP 8.5 / 8.6
+- CI (PHP 8.5 / 8.6 rows): the browser tests no longer fail on two test-only problems – page.waitForFunction of the Playwright
+  version CI uses is refused by the strict Content Security Policy (the tests now poll through evaluate(), which the policy does not
+  concern), and the Excel export test needs openpyxl (installed in the step). No change of the program.
+
 ## 0.8.1519 – Release gate
 - Release gate: smoke, end-to-end, compatibility with nuBuilder Forte, installer wizard (with nuBuilder Forte on the installed
   database) and security scan. Documentation brought up to date (feature list, tutorial, open checks).

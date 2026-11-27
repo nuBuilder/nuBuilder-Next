@@ -7,7 +7,7 @@ defined('NU_ROOT') || exit;
  * through NuPluginApi ($plugin in plugin.php) – a fixed contract with a version (API_VERSION); a version is only dropped after it was
  * marked deprecated, and the update page lists plugins a new release would stop (report()).
  *
- * plugin.json: {id, name, version, description, author, url, api, requires: {nunext, php, extensions: [], db: ["mysql", "sqlsrv"]},
+ * plugin.json: {id, name, version, description, author, url, api, requires: {nunext, php, extensions: [], db: ["mysql", "sqlsrv", "sqlite"]},
  *               tables: [short names], network: bool, files: {rel: {sha256, size}}, signature}
  * The signature (Ed25519, base64) covers payload() – id, version and the hashes of every file but plugin.json. Keys: nuBuilder Next's
  * own (NuUpdate::SIGN_PUBLIC) and the trusted keys of Update → Plugins. Signed with php dev/plugin_sign.php.

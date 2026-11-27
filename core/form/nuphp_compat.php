@@ -17,9 +17,8 @@ if (!function_exists('db_fetch_value')) {
 	{
 		NuDB::ident($name);                                     // throws for anything but a plain (table.)column name
 		return match (nu_db()->type) {
-			'mysql'  => '`' . str_replace('.', '`.`', $name) . '`',
 			'sqlsrv' => '[' . str_replace('.', '].[', $name) . ']',
-			default  => '"' . str_replace('.', '"."', $name) . '"',
+			default  => '`' . str_replace('.', '`.`', $name) . '`',          // MySQL and SQLite
 		};
 	}
 

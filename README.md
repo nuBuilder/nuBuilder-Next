@@ -1,4 +1,4 @@
-# nuBuilder Next 0.8.1519 – a modern front end for nuBuilder Forte 4
+# nuBuilder Next 0.8.1524 – a modern front end for nuBuilder Forte 4
 
 **An open-source, low-code platform for building and running web-based database applications – built on nuBuilder Forte 4.**
 
@@ -15,7 +15,7 @@ documentation inside the app (user menu → *Documentation*, or F1)
 
 nuBuilder Next is a new front end for nuBuilder Forte 4. It runs on nuBuilder Forte's own tables on **MySQL / MariaDB** or
 **SQL Server**, side by side with a live nuBuilder Forte on the same database: forms, reports, procedures, users and access levels
-work in both. nuBuilder Next only adds tables of its own.
+work in both. nuBuilder Next only adds tables of its own. Without nuBuilder Forte it also runs on a single **SQLite** file.
 
 ## Highlights
 
@@ -32,8 +32,8 @@ The full list: [FEATURES.md](FEATURES.md).
 
 ## Requirements
 
-- PHP 8.1 or newer (8.2 recommended) with `pdo_mysql` or `pdo_sqlsrv`, `mbstring`, `openssl`, `zip` and `sodium`
-- MySQL / MariaDB or SQL Server – a new, empty database or an existing nuBuilder Forte 4.9 database
+- PHP 8.1 or newer (8.2 recommended) with `pdo_mysql`, `pdo_sqlsrv` or `pdo_sqlite`, `mbstring`, `openssl`, `zip` and `sodium`
+- MySQL / MariaDB, SQL Server or SQLite – a new, empty database or an existing nuBuilder Forte 4.9 database
 - Apache with `AllowOverride All`, or nginx with the rules from the documentation
 
 ## Install

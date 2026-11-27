@@ -195,6 +195,7 @@ T.select2_api = async (s) => {                           // 0.8.370: nuSetSelect
 // nuBuilder 4.9 compatibility (0.8.382, dev/tests/nub49 = the test application of the compatibility report): browse lists with table names,
 // aliases, AS, no primary key, shared column names, nu_filter_match, nuAddBrowseTitleSelect, multi-value filter; access condition (access 9)
 T.nub49_app = async (s) => {
+	if (SQLITE) { s.skip = 'its build scripts write to MySQL'; return; }
 	const db = (DB.match(/(?:^|\s)([A-Za-z0-9_]+)\s*$/) || [])[1] || 'nutest';
 	const user = (DB.match(/-u\s*(\S+)/) || [])[1] || 'nu', pass = (DB.match(/-p(\S+)/) || [])[1] || 'nu';
 	try {
@@ -257,6 +258,7 @@ T.nub49_app = async (s) => {
 
 // nuBuilder 4.9 form-page JavaScript (0.8.383, compatibility report M1, M7, M8, N1–N4): dev/tests/nub49/build_app3.php = form tjs
 T.nub49_js = async (s) => {
+	if (SQLITE) { s.skip = 'its build scripts write to MySQL'; return; }
 	const db = (DB.match(/(?:^|\s)([A-Za-z0-9_]+)\s*$/) || [])[1] || 'nutest';
 	const user = (DB.match(/-u\s*(\S+)/) || [])[1] || 'nu', pass = (DB.match(/-p(\S+)/) || [])[1] || 'nu';
 	try {
@@ -486,6 +488,7 @@ T.gap_calc_events = async (s) => {
 // B2: a copy next to a live nuBuilder does not change its database – no own tables from anonymous requests, the globeadmin's first
 // sign-in sets them up, other users wait for it; the sign-in page asks for a backup while the database is not set up yet (0.8.1008)
 T.gap_schema = async (s) => {
+	if (SQLITE) { s.skip = 'needs a second MySQL database'; return; }
 	const nubSql = SITE ? path.join(SITE, '..', 'nubuilder4.sql') : '';
 	if (!SITE || !fs.existsSync(nubSql)) { s.skip = 'SITE / nubuilder4.sql not found'; return; }
 	const DBN = 'nutest_gapb2', PORT = 8097, cfgFile = path.join(SITE, '..', '.nuconfig_gapb2.php');
@@ -1091,7 +1094,8 @@ T.forte_db2_compat = async (s) => {
 			await Promise.all([p.waitForURL(/f=sampleorder/, {timeout: 10000}), p.evaluate(() => nuForm('sampleorder', '-1', '', '', 0))]);
 			await p.waitForSelector('#ord_total_display', {state: 'attached'});
 			const fromList = await p.evaluate(() => $('#ord_total_display').val());
-			expect(fromRec === code && fromList !== code, 'hash of the opening edit form: ' + JSON.stringify({fromRec, fromList, code}));
+			expect(String(fromRec).trim() === code && fromList !== code,     // sql() trims – a code saved with a trailing space by an earlier test
+			 'hash of the opening edit form: ' + JSON.stringify({fromRec, fromList, code}));
 			sql(`UPDATE sample_order SET ord_sample_customer_id = 'e2e976none' WHERE sample_order_id = '${ord976[0]}'`);
 			await open(p, 'index.php?p=form&f=sampleorder&r=' + ord976[0]); await p.waitForSelector('#nuSaveButton');
 			const lk = await p.evaluate(() => [$('#ord_sample_customer_id').val(), $('#ord_sample_customer_idcode').val()]);
@@ -1311,7 +1315,8 @@ nuAddJavascript('window.e2eAlign = ' . json_encode(['again' => $again, 'kept' =>
 		expect(ph.again === 'refused' && String(ph.kept) === '1', 'nuCreateTableFromSelect keeps an existing table: ' + JSON.stringify(ph));
 		expect(ph.has === 'north' && ph.zero === false && ph.arr === 'v', 'nuHasProperty / nuGetProperty: ' + JSON.stringify(ph));
 		expect(JSON.stringify(ph.rows) === '[["x"],[7],[8]]' || JSON.stringify(ph.rows) === '[["x"],["7"],["8"]]', 'nuEncodeQueryRowResults: ' + JSON.stringify(ph.rows));
-		expect(String(ph.set) === '42' && ph.proc === true, '# commands / nuProcedure by id: ' + JSON.stringify(ph));
+		expect((SQLITE || String(ph.set) === '42') && ph.proc === true,     // SQLite has no user variables (@x)
+			 '# commands / nuProcedure by id: ' + JSON.stringify(ph));
 		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
 	} finally {
 		sql("DELETE FROM zzzzsys_php WHERE zzzzsys_php_id IN ('e2e_align', 'e2e_align_inc'); DROP TABLE IF EXISTS e2e_align_t");
@@ -1338,7 +1343,7 @@ T.forte_db_compat = async (s) => {
 		await p.evaluate(() => { window.e2eTz = null; nuRunPHPHidden('e2e_tz'); });
 		await p.waitForFunction(() => window.e2eTz !== null, null, {timeout: 8000});
 		const tz = await p.evaluate(() => window.e2eTz);
-		expect(String(tz[0]).replace(/^\+?(\d):/, '+0$1:') === tz[1] || tz[0] === tz[1], 'session time zone is not the application\'s offset: ' + JSON.stringify(tz));
+		expect(SQLITE || String(tz[0]).replace(/^\+?(\d):/, '+0$1:') === tz[1] || tz[0] === tz[1], 'session time zone is not the application\'s offset: ' + JSON.stringify(tz));
 		await open(p, 'index.php?p=form&f=sampleorder&r=' + ord);
 		const sf = await p.evaluate(() => { const o = nuSubformObject('sample_items'); return {first: o.rows[0][0], last: o.rows[o.rows.length - 1][0], del: o.deleted[o.deleted.length - 1]}; });
 		expect(sf.first !== '-1' && sf.last === '-1' && sf.del === 1, 'nuSubformObject: blank row without ID -1: ' + JSON.stringify(sf));

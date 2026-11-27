@@ -287,8 +287,8 @@ T.backup_restore = async (s) => {
 	};
 	sql("DROP VIEW IF EXISTS e2e_rst_v; DROP TABLE IF EXISTS e2e_rst, e2e_rst_new; DROP PROCEDURE IF EXISTS e2e_rst_p;\n"
 		+ "CREATE TABLE e2e_rst (id int PRIMARY KEY, n decimal(10,2), s varchar(30));\nINSERT INTO e2e_rst VALUES (1, -12.50, 'a;b'), (2, NULL, 'it''s');\n"
-		+ "CREATE VIEW e2e_rst_v AS SELECT id FROM e2e_rst;\nDELIMITER $$\nCREATE TRIGGER e2e_rst_tr BEFORE INSERT ON e2e_rst FOR EACH ROW BEGIN SET NEW.s = CONCAT(NEW.s, ';x'); END $$\n"
-		+ "CREATE PROCEDURE e2e_rst_p() BEGIN SELECT 1; SELECT 2; END $$\nDELIMITER ;\n");
+		+ "CREATE VIEW e2e_rst_v AS SELECT id FROM e2e_rst;\n" + (SQLITE ? '' : "DELIMITER $$\nCREATE TRIGGER e2e_rst_tr BEFORE INSERT ON e2e_rst FOR EACH ROW BEGIN SET NEW.s = CONCAT(NEW.s, ';x'); END $$\n"
+		+ "CREATE PROCEDURE e2e_rst_p() BEGIN SELECT 1; SELECT 2; END $$\nDELIMITER ;\n"));     // SQLite: no MySQL routines / triggers
 	let made = [];
 	try {
 		await reauth('index.php?p=update&tab=backups#backups');
@@ -297,10 +297,10 @@ T.backup_restore = async (s) => {
 		made = list().filter(f => !before.includes(f));
 		expect(made.length === 1, 'one backup made: ' + made);
 		const dump = execSync('python3 -', { input: "import zipfile, gzip\nz=zipfile.ZipFile(" + JSON.stringify(path.join(dir, made[0])) + ")\nprint(gzip.decompress(z.read('db/database.sql.gz')).decode('utf-8','replace'))", maxBuffer: 256 << 20 }).toString();
-		expect(/\(1, -12\.50, 'a;b'\)/.test(dump), 'numbers without quotes in the dump');
-		expect(/DELIMITER \$\$\nCREATE TRIGGER `?e2e_rst_tr`? /.test(dump), 'trigger between DELIMITER lines');
+		expect((SQLITE ? /\(1, -12\.50?, 'a;b'\)/ : /\(1, -12\.50, 'a;b'\)/).test(dump), 'numbers without quotes in the dump');     // SQLite keeps decimals as REAL
+		expect(SQLITE || /DELIMITER \$\$\nCREATE TRIGGER `?e2e_rst_tr`? /.test(dump), 'trigger between DELIMITER lines');
 		// changes after the backup
-		sql("UPDATE e2e_rst SET s = 'changed' WHERE id = 2; DROP PROCEDURE e2e_rst_p; CREATE TABLE e2e_rst_new (a int);");
+		sql("UPDATE e2e_rst SET s = 'changed' WHERE id = 2; " + (SQLITE ? '' : 'DROP PROCEDURE e2e_rst_p; ') + "CREATE TABLE e2e_rst_new (a int);");
 		await reauth('index.php?p=update&tab=backups#backups');
 		const link = p.locator('#updBackups a.updRestore[href*="' + made[0] + '"]');
 		expect(await link.count() === 1, 'Restore database button on the backup row');
@@ -317,8 +317,8 @@ T.backup_restore = async (s) => {
 		expect(/restored/i.test(flash), 'success message: ' + flash);
 		expect(/Row counts checked/.test(flash), 'row counts compared: ' + flash);
 		expect(sql("SELECT s FROM e2e_rst WHERE id = 2") === "it's", 'row back as it was');
-		expect(sql("SELECT COUNT(*) FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA = DATABASE() AND ROUTINE_NAME = 'e2e_rst_p'") === '1', 'procedure back');
-		expect(sql("SELECT COUNT(*) FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() AND TRIGGER_NAME = 'e2e_rst_tr'") === '1', 'trigger back');
+		expect(SQLITE || sql("SELECT COUNT(*) FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA = DATABASE() AND ROUTINE_NAME = 'e2e_rst_p'") === '1', 'procedure back');
+		expect(SQLITE || sql("SELECT COUNT(*) FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() AND TRIGGER_NAME = 'e2e_rst_tr'") === '1', 'trigger back');
 		expect(sql("SELECT COUNT(*) FROM e2e_rst_v") === '2', 'view back');
 		expect(sql("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'e2e_rst_new'") === '0', 'table made afterwards is gone');
 		expect(list().filter(f => !before.includes(f)).length === 2, 'safety backup made first');
@@ -365,7 +365,7 @@ T.backup_restore_fail = async (s) => {
 		await Promise.all([p.waitForNavigation({ timeout: 180000 }), p.click('#nuConfirm.show .js-confirm-ok')]);
 		await p.waitForLoadState('networkidle');
 		const err = (await p.locator('.alert-danger').allTextContents()).join(' | ');
-		expect(/put back/.test(err) && /Duplicate/i.test(err), 'error names the failure and the way back: ' + err);
+		expect(/put back/.test(err) && /Duplicate|UNIQUE constraint/i.test(err), 'error names the failure and the way back: ' + err);
 		expect(sql("SELECT s FROM e2e_rst WHERE id = 2") === 'changed', 'database as it was before the restore');
 		expect(sql("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'e2e_rst_new'") === '1', 'tables made since are back too');
 		expect(sql("SELECT COUNT(*) FROM zzzzsys_nunext_log WHERE event = 'database_restore_failed'") !== '0', 'logged');
@@ -919,8 +919,9 @@ T.db_reset = async (s) => {
 	const p = s.ga;
 	const r = await open(p, 'index.php?p=dbreset');
 	if (r.status() === 404) { s.skip = 'developer mode off / not MySQL'; return; }
-	const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'nudbr-')), dump = path.join(tmp, 'e2e-full.sql');
-	execSync('mysqldump ' + DB + ' > ' + dump);
+	const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'nudbr-')), dump = path.join(tmp, 'e2e-full.sql'), keep = path.join(tmp, 'e2e-keep.sql');
+	sqlDumpFile(dump);
+	execSync('mysqldump ' + DB + ' > ' + keep);           // put back exactly as it was (SQLite: the database file)
 	const forms = sql('SELECT COUNT(*) FROM zzzzsys_form');
 	try {
 		sql('CREATE TABLE e2e_dbr_marker (id INT PRIMARY KEY)');
@@ -940,7 +941,7 @@ T.db_reset = async (s) => {
 		expect(await p.evaluate(() => { const v = sessionStorage.getItem('e2e-dbr-shown'); sessionStorage.removeItem('e2e-dbr-shown'); return v === '1'; }), 'progress window not shown while running');
 		if (/p=reauth/.test(p.url())) { await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]); await open(p, 'index.php?p=dbreset'); }
 		expect(sql("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'e2e_dbr_marker'") === '1', 'wrong database name: tables deleted');
-		await p.fill('#dbrConfirm', sql('SELECT DATABASE()'));
+		await p.fill('#dbrConfirm', dbNameForReset());
 		// the reset runs in steps (?p=dbresetstep) – listen before the click: a small dump can finish its first steps
 		// before the navigation promise resolves
 		const steps = [];
@@ -962,7 +963,7 @@ T.db_reset = async (s) => {
 		expect(u.status() === 200 && /p=users/.test(p.url()), 'signed out after the reset: ' + p.url());
 		expect(p.errors.length === 0, p.errors.slice(0, 2).join(' | '));
 	} finally {
-		execSync('mysql ' + DB, { input: fs.readFileSync(dump) });
+		execSync('mysql ' + DB, { input: fs.readFileSync(keep) });
 		sql('DROP TABLE IF EXISTS e2e_dbr_marker');
 		if (SITE) for (const f of fs.readdirSync(path.join(SITE, '_update'))) if (/^dbreset-/.test(f)) fs.unlinkSync(path.join(SITE, '_update', f));
 		fs.rmSync(tmp, { recursive: true, force: true });
@@ -999,12 +1000,12 @@ T.db_reset_package = async (s) => {
 		expect(await p.locator('#dbrCheck[data-kind=package]').count() === 1, 'not checked as a package: ' + (await p.locator('.alert').allTextContents()).join(' | '));
 		expect((await p.textContent('#dbrPkgVersion')).includes(ver), 'version not shown');
 		expect((await p.textContent('#dbrRun')).length > 0, 'no run button');
-		await p.fill('#dbrConfirm', sql('SELECT DATABASE()'));
+		await p.fill('#dbrConfirm', dbNameForReset());
 		await Promise.all([p.waitForNavigation({ timeout: 180000 }), p.click('#dbrRun')]);
 		if (/p=reauth/.test(p.url())) {
 			await p.fill('#reauthPassword', GA[1]); await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]);
 			await go('index.php?p=dbreset');
-			await p.fill('#dbrConfirm', sql('SELECT DATABASE()'));
+			await p.fill('#dbrConfirm', dbNameForReset());
 			await Promise.all([p.waitForNavigation({ timeout: 180000 }), p.click('#dbrRun')]);
 		}
 		await p.waitForLoadState('networkidle');
@@ -1050,7 +1051,7 @@ T.vendor_open_link = async (s) => {
 	expect(r1.status() < 500 && (/nudbadmin\.php|phpmyadmin|nudb/i.test(u1) || /p=vendor/.test(u1)), 'first open: ' + u1);
 	await p.goto(BASE + j.url, {waitUntil: 'commit'});
 	await p.waitForURL((u) => !/open=/.test(String(u)), {timeout: 5000}).catch(() => {});
-	expect(p.url() === u1, 'second load of the link (0.8.853: an app window may load it twice): ' + p.url() + ' / ' + u1);
+	expect(decodeURIComponent(p.url()) === decodeURIComponent(u1), 'second load of the link (0.8.853: an app window may load it twice): ' + p.url() + ' / ' + u1);
 	await p.goto(BASE + 'index.php?p=vendor&open=' + '0'.repeat(32));
 	expect(/p=vendor/.test(p.url()) && !/open=/.test(p.url()) && await p.locator('.alert-danger').count() > 0, 'unknown link accepted: ' + p.url());
 	// the forms on the start page / status page carry target=_blank and are caught by nuapp.js
@@ -1315,13 +1316,13 @@ T.db_reset_clean = async (s) => {
 		expect(await p.locator('#dbrCheck[data-kind="clean"]').count() === 1 && await p.locator('#dbrCleanCreates').count() === 1,
 			'check of the clean installation: ' + (await p.locator('.alert').allTextContents()).join(' | '));
 		expect(await p.locator('#dbrTables code', { hasText: 'e2e_dbr_clean' }).count() === 1, 'marker not listed as deleted');
-		await p.fill('#dbrConfirm', sql('SELECT DATABASE()'));
+		await p.fill('#dbrConfirm', dbNameForReset());
 		await Promise.all([p.waitForNavigation({ timeout: 120000 }), p.click('#dbrRun')]);
 		if (/p=reauth/.test(p.url())) {
 			await p.fill('#reauthPassword', GA[1]);
 			await Promise.all([p.waitForLoadState('networkidle'), p.click('button[type=submit]')]);
 			await open(p, 'index.php?p=dbreset');
-			await p.fill('#dbrConfirm', sql('SELECT DATABASE()'));
+			await p.fill('#dbrConfirm', dbNameForReset());
 			await Promise.all([p.waitForNavigation({ timeout: 120000 }), p.click('#dbrRun')]);
 		}
 		expect(await p.locator('#dbrDone').count() === 1, 'no result: ' + (await p.locator('.alert').allTextContents()).join(' | '));
@@ -1356,7 +1357,7 @@ T.db_reset_no_devmode = async (s) => {
 		const r = await open(p, 'index.php?p=dbreset');
 		if (r.status() === 404) { s.skip = 'not MySQL / SQL Server'; return; }
 		expect(await p.locator('#dbrDanger').isVisible(), 'no Danger zone box');
-		expect((await p.locator('#dbrDanger').textContent()).includes('nutest'), 'Danger zone without the database name');
+		expect((await p.locator('#dbrDanger').textContent()).includes(dbNameForReset()), 'Danger zone without the database name');
 		expect(await p.locator('.nuTitleBar .badge', {hasText: 'Dev'}).count() === 0, 'Dev badge still shown');
 	} finally { fs.writeFileSync(cfg, orig); await p.waitForTimeout(1500); }
 };

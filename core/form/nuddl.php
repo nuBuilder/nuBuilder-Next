@@ -47,9 +47,9 @@ final class NuDDL
 		switch ($type) {
 			case 'text':
 				$n = max(1, min($driver === 'sqlsrv' ? 4000 : 16000, (int)($length !== '' ? $length : 255)));
-				return $driver === 'sqlsrv' ? "NVARCHAR($n)" : ($driver === 'mysql' ? "VARCHAR($n)" : 'TEXT');
+				return $driver === 'sqlsrv' ? "NVARCHAR($n)" : "VARCHAR($n)";      // SQLite: text affinity, the length is kept for the designer
 			case 'id':
-				return $driver === 'sqlsrv' ? 'NVARCHAR(25)' : ($driver === 'mysql' ? 'VARCHAR(25)' : 'TEXT');
+				return $driver === 'sqlsrv' ? 'NVARCHAR(25)' : 'VARCHAR(25)';
 			case 'uuid':                                   // 36 characters: new keys are UUIDs (nu_new_key)
 				return $driver === 'sqlsrv' ? 'NVARCHAR(36)' : 'VARCHAR(36)';
 			case 'longtext':
@@ -62,7 +62,7 @@ final class NuDDL
 				[$p, $s] = array_pad(array_map('intval', preg_split('/[,.]/', $length !== '' ? $length : '15,2')), 2, 2);
 				$p = max(1, min(38, $p ?: 15));
 				$s = max(0, min($p, $s));
-				return $driver === 'sqlite' ? 'REAL' : "DECIMAL($p,$s)";
+				return "DECIMAL($p,$s)";                                       // SQLite: numeric affinity
 			case 'date':
 				return 'DATE';
 			case 'datetime':
@@ -70,7 +70,7 @@ final class NuDDL
 			case 'time':
 				return $driver === 'sqlsrv' ? 'TIME(0)' : 'TIME';
 			case 'bool':
-				return $driver === 'sqlsrv' ? 'BIT' : ($driver === 'mysql' ? 'TINYINT(1)' : 'INTEGER');
+				return $driver === 'sqlsrv' ? 'BIT' : 'TINYINT(1)';                      // SQLite: integer affinity, the type kept for the designer
 		}
 		throw new InvalidArgumentException("Unknown column type '$type'");
 	}

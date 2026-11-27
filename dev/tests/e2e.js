@@ -10,7 +10,29 @@
  * include guards. Exit code 1 when a test fails. Never run it against a database with real data.
  */
 const { chromium, devices } = require('playwright');
-const { execSync } = require('child_process');
+const realExec = require('child_process').execSync;
+// SQLITE=1 (with SITE): the test installation runs on SQLite – the mysql / mysqldump commands of the tests go to dev/tests/sqlq.php,
+// which runs them through nuBuilder Next's own database layer (the tests' SQL is MySQL's, as the program's is)
+const SQLITE = !!process.env.SQLITE;      // tests that exist for MySQL / SQL Server only look at it
+const execSync = !process.env.SQLITE ? realExec : (cmd, opt) => {
+	const c = String(cmd).trim();
+	const m = c.match(/^(mysqldump|mysql)(\s+[^<>]*)?(?:\s*(>>|[<>])\s*(\S+))?\s*$/);
+	if (!m) return realExec(cmd, opt);
+	const q = (x) => "'" + String(x).replace(/'/g, "'\\''") + "'";
+	const php = 'php ' + q(path.join(__dirname, 'sqlq.php')) + ' ' + q(process.env.SITE);
+	const words = (m[2] || '').trim().match(/"[^"]*"|'[^']*'|\S+/g) || [];
+	if (m[1] === 'mysqldump') {
+		const flags = words.filter(w => /^--(no-create-info|insert-ignore|replace)$/.test(w)).concat(m[3] === '>>' ? ['--append'] : [])
+			.concat(words.filter(w => w.startsWith('--where=')).map(w => q(w.replace(/^--where="(.*)"$/s, '--where=$1'))));
+		const rest = words.filter(w => w[0] !== '-');
+		return realExec(php + ' dump ' + q(m[4]) + ' ' + flags.join(' ') + ' ' + rest.slice(1).map(q).join(' '), opt);
+	}
+	if (m[3] === '<') return realExec(php + ' restore ' + q(m[4]), opt);
+	const e = words.indexOf('-e');
+	const extra = (words.includes('-r') || words.includes('--raw') ? ' -r' : '') + (e >= 0 ? ' -e ' + q(words[e + 1].replace(/^"(.*)"$/s, '$1')) : '');
+	if (!words.some(w => w[0] !== '-' && w !== (e >= 0 ? words[e + 1] : null))) return realExec(cmd, opt);   // no database: root's tools (skipped tests)
+	return realExec(php + ' query' + extra, opt);
+};
 const fs = require('fs'), os = require('os'), path = require('path');
 
 const BASE = process.env.BASE || 'http://127.0.0.1:8099/nunext/';
@@ -35,6 +57,18 @@ async function login(user, pw, opt = {}) {
 	await Promise.all([p.waitForLoadState('networkidle'), p.click('form button[type=submit]:not([name=demo_user])')]);
 	for (let i = 0; i < 3 && await p.locator('.nuBellConfirm.show .btn-primary').count(); i++) { await p.click('.nuBellConfirm.show .btn-primary'); await p.waitForTimeout(500); }
 	return p;
+}
+// SQLite (SQLITE=1): the name Reset database asks for (the file name) and an SQL dump in MySQL's format of the whole database
+// (what a mysqldump gives on MySQL – a reset / installer upload takes SQL, not the database file)
+function dbNameForReset() {
+	if (!SQLITE) return sql('SELECT DATABASE()');
+	return execSync(`php -r 'chdir(${JSON.stringify(process.env.SITE)}); require "core/nuapp.php"; echo NuDbReset::dbName();'`).toString().trim();
+}
+function sqlDumpFile(file) {
+	if (!SQLITE) { execSync('mysqldump ' + DB + ' > ' + file); return; }
+	const gz = file + '.gz';
+	execSync(`php -r 'chdir(${JSON.stringify(process.env.SITE)}); require "core/nuapp.php"; $r = NuSqlDump::write(${JSON.stringify(gz)}, "all", false); exit($r["complete"] ? 0 : 1);'`);
+	fs.writeFileSync(file, require('zlib').gunzipSync(fs.readFileSync(gz))); fs.unlinkSync(gz);
 }
 async function open(p, url) { const r = await p.goto(BASE + url); await p.waitForLoadState('networkidle'); return r; }
 async function confirmDelete(p) {
@@ -196,6 +230,27 @@ const runOrder = () => {
 	const tablesBefore = sql('SHOW TABLES').split('\n');
 	execSync('mysqldump ' + DB + ' > ' + dump);
 	browser = await chromium.launch();
+	// page.waitForFunction polls through the page's own script engine in older Playwright versions (CI pins one) – the strict CSP
+	// (no 'unsafe-eval') refuses it there. Polled with evaluate() instead, which the CSP does not concern.
+	{
+		const origCtx = browser.newContext.bind(browser);
+		browser.newContext = async (o) => {
+			const c = await origCtx(o), origPage = c.newPage.bind(c);
+			c.newPage = async () => {
+				const pg = await origPage();
+				pg.waitForFunction = async (fn, arg, opts) => {
+					const end = Date.now() + ((opts && opts.timeout) || 30000);
+					for (;;) {
+						try { const v = await pg.evaluate(fn, arg); if (v) return pg.evaluateHandle(() => true); } catch (e) { if (!/context was destroyed|navigation/i.test(String(e))) throw e; }
+						if (Date.now() > end) throw new Error('page.waitForFunction: Timeout ' + ((opts && opts.timeout) || 30000) + 'ms exceeded.');
+						await new Promise(r => setTimeout(r, 100));
+					}
+				};
+				return pg;
+			};
+			return c;
+		};
+	}
 	// ASSETS=min (0.8.1342): every context sends the cookie nunext_assets=min – the pages load the minified scripts / style sheets of
 	// dev/minify.py although the test site runs in developer mode (run it after a release, which builds them)
 	if (process.env.ASSETS === 'min' || process.env.ASSETS === 'src') {

@@ -7,8 +7,16 @@
 	var type = $('#type'), port = $('#port');
 	function syncType() {
 		if (!type) return;
-		var ms = type.value === 'sqlsrv';
+		var ms = type.value === 'sqlsrv', sq = type.value === 'sqlite';
 		document.querySelectorAll('.insMssqlOnly').forEach(function (el) { el.hidden = !ms; });
+		// SQLite: one file instead of server, port, name, user and password
+		document.querySelectorAll('.insSqliteOnly').forEach(function (el) { el.hidden = !sq; });
+		document.querySelectorAll('.insServerOnly').forEach(function (el) {
+			el.hidden = sq;
+			el.querySelectorAll('input[required], input[data-nu-req]').forEach(function (i) { if (sq) { i.dataset.nuReq = '1'; i.required = false; } else if (i.dataset.nuReq) i.required = true; });
+		});
+		var f = $('#dbfile');
+		if (f) f.required = sq;
 	}
 	if (type) {
 		type.addEventListener('change', function () {

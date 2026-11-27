@@ -57,7 +57,7 @@ final class NuDbState
 		$out = ['state' => 'ok', 'missing' => [], 'columns' => [], 'error' => ''];
 		try {
 			$db = nu_db();
-			$have = array_map('strtolower', array_map('strval', $db->type === 'mysql'
+			$have = array_map('strtolower', array_map('strval', $db->type !== 'sqlsrv'
 				? array_column($db->all('SELECT table_name AS t FROM information_schema.tables WHERE table_schema = DATABASE()'), 't')
 				: array_column($db->all("SELECT TABLE_NAME AS t FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE IN ('BASE TABLE', 'VIEW')"), 't')));
 			$out['missing'] = array_values(array_diff(self::required($db->type), $have));
@@ -91,7 +91,7 @@ final class NuDbState
 			$out['imported'] = $up['statements'];
 			$out['upgraded'] = $up;
 		} elseif ($choice === 'upload') {
-			if ($st['state'] !== 'empty' || $db->type !== 'mysql') throw new RuntimeException(t('dbs_err_not_needed'));
+			if ($st['state'] !== 'empty' || $db->type === 'sqlsrv') throw new RuntimeException(t('dbs_err_not_needed'));
 			$ok = $dumpFile !== null && is_file($dumpFile) && filesize($dumpFile) > 0;
 			$chk = $ok ? NuInstall::checkDump(NuSqlImport::statements($dumpFile), true) : ['ok' => false, 'error' => t('ins_dump_err_none')];
 			if (!$chk['ok']) throw new RuntimeException($chk['error']);

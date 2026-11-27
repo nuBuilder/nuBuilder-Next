@@ -90,6 +90,11 @@ final class NuSysInfo
 				$rows[] = [t('si_db_name'), $name . ' · ' . (string)$db->value('SELECT @@collation_database'), ''];
 				$s = $db->one('SELECT COUNT(*) n, COALESCE(SUM(data_length + index_length), 0) b FROM information_schema.tables WHERE table_schema = DATABASE()');
 				$rows[] = [t('si_db_size'), t('si_db_size_v', self::mb((float)($s['b'] ?? 0)), (int)($s['n'] ?? 0)), ''];
+			} elseif ($db->type === 'sqlite') {
+				$file = (string)nu_cfg('nuConfigDBName');
+				$rows[] = [t('si_db_server'), 'SQLite ' . (string)$db->value('SELECT sqlite_version()'), ''];
+				$rows[] = [t('si_db_name'), nu_short_path($file), ''];
+				$rows[] = [t('si_db_size'), t('si_db_size_v', self::mb((float)(@filesize($file) ?: 0)), count(NuSqlite::tables($db))), ''];
 			} elseif ($db->type === 'sqlsrv') {
 				$v = (string)$db->value("SELECT CAST(SERVERPROPERTY('ProductVersion') AS nvarchar(50)) + ' ' + CAST(SERVERPROPERTY('Edition') AS nvarchar(100))");
 				$rows[] = [t('si_db_server'), 'SQL Server ' . $v, ''];

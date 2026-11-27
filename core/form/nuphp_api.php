@@ -392,8 +392,7 @@ if (!function_exists('nuRunQuery')) {
 		if (!preg_match('/^[A-Za-z0-9_]+$/', $table)) throw new RuntimeException("Invalid table name $table");
 		// through nuRunQuery as nuBuilder Forte: a database error becomes a Debug result and -1, the procedure goes on
 		if ($db->type === 'sqlsrv') return nuRunQuery('SELECT * INTO ' . ($temporary ? '#' : '') . "[$table] FROM ($sql) nuSrc", $params);
-		if ($db->type === 'mysql') return nuRunQuery('CREATE' . ($temporary ? ' TEMPORARY' : '') . " TABLE `$table` AS ($sql)", $params);
-		return nuRunQuery('CREATE' . ($temporary ? ' TEMP' : '') . " TABLE $table AS $sql", $params);
+		return nuRunQuery('CREATE' . ($temporary ? ' TEMPORARY' : '') . " TABLE `$table` AS ($sql)", $params);
 	}
 
 	function nuEncodeQueryRowResults(string $sql, array $params = [], array $prepend = []): string

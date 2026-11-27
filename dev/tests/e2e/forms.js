@@ -67,7 +67,7 @@ T.record_clone = async (s) => {
 			['prompts', 'zzzzsys_prompt_generator', 'zzzzsys_prompt_generator_id', '1 = 1', 'pge_prompt'],
 			['cloner', 'zzzzsys_cloner', 'zzzzsys_cloner_id', '1 = 1', 'clo_form_source'],
 			['appcloner', 'zzzzsys_app_cloner', 'zzzzsys_app_cloner_id', '1 = 1', 'cla_target_password'],
-		];
+		].filter(c => !(SQLITE && c[0] === 'appcloner'));          // the App cloner copies to MySQL / SQL Server only
 		const done = [];
 		for (const [route, t, pk, where, col] of cases) {
 			if (!tabs.includes(t)) continue;
@@ -120,7 +120,9 @@ T.form_access_dialog = async (s) => {
 		let row = await dlg();
 		expect(await p.locator('#nuFacTable tbody tr').count() >= 5 && await p.isDisabled('#nuFacSave'), 'dialog / Save before a change');
 		// 0.8.696: sortable columns – level code ascending / descending, Open = ticked first
-		const codes = () => p.$$eval('#nuFacTable tbody tr', trs => trs.map(t => t.getAttribute('data-level')));
+		// the list sorts by the level's code (an id can differ from it, e.g. a test application's level)
+		const codeOf = Object.fromEntries(sql('SELECT zzzzsys_access_id, sal_code FROM zzzzsys_access').split('\n').filter(Boolean).map(l => l.split('\t')));
+		const codes = async () => (await p.$$eval('#nuFacTable tbody tr', trs => trs.map(t => t.getAttribute('data-level')))).map(id => codeOf[id] ?? id);
 		await p.click('#nuFacTable th[data-sort=level] button'); const asc = await codes();
 		await p.click('#nuFacTable th[data-sort=level] button'); const desc = await codes();
 		expect(asc.join() === [...asc].sort((x, y) => x.localeCompare(y, undefined, { sensitivity: 'base', numeric: true })).join() && desc.join() === [...asc].reverse().join()
@@ -1105,6 +1107,9 @@ T.field_access = async (s) => {
 	const ins = (o, type, subj, mode, mask) => sql(`INSERT INTO zzzzsys_nunext_object_access (zzzzsys_nunext_object_access_id, noa_object_id, noa_form_id, noa_subject_type, noa_subject, noa_mode, noa_mask)
 		VALUES ('e2efa_${o}_${type}', 'sample_customer_${o}', '${F}', '${type}', '${subj}', '${mode}', ${mask ? `'${mask}'` : 'NULL'})`);
 	const oldJson = sql("SELECT COALESCE(sbr_json, '') FROM zzzzsys_browse WHERE zzzzsys_browse_id = 'sample_customer_b3'");
+	// the page's Save sets sob_all_access of fields with a default rule (o1, o3 …): the form's objects are put back afterwards
+	const keepObj = path.join(os.tmpdir(), 'nunext-e2e-fa-obj.sql');
+	execSync('mysqldump ' + DB + " --no-create-info --replace zzzzsys_object --where=\"sob_all_zzzzsys_form_id='" + F + "'\" > " + keepObj);
 	sql(`DELETE FROM ${T_} WHERE sample_customer_id LIKE 'e2efa%' OR cus_code IN ('E2EFA', 'NEWX'); INSERT INTO ${T_} (sample_customer_id, cus_code, cus_name, cus_email, cus_phone, cus_country, cus_credit, cus_notes)
 		VALUES ('${id}', 'E2EFA', 'Field Access', 'fa@example.com', '0791234567', 'CH', 98765.43, 'WH-MARK-7731')`);
 	ins('o9', 'default', '', 'wh'); ins('o9', 'team', 'Lead', 'edit');          // notes: withheld, team Lead edits
@@ -1163,6 +1168,7 @@ T.field_access = async (s) => {
 		sql(`DELETE FROM zzzzsys_nunext_object_access WHERE noa_form_id = '${F}'; UPDATE zzzzsys_object SET sob_all_access = '0' WHERE zzzzsys_object_id = 'sample_customer_o6';
 			DELETE FROM ${T_} WHERE sample_customer_id = '${id}' OR cus_code IN ('E2EFA', 'NEWX');
 			UPDATE zzzzsys_browse SET sbr_json = ${oldJson === '' ? 'NULL' : `'${oldJson}'`} WHERE zzzzsys_browse_id = 'sample_customer_b3'`);
+		execSync('mysql ' + DB + ' < ' + keepObj); fs.unlinkSync(keepObj);
 	}
 };
 

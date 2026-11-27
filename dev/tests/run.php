@@ -1783,6 +1783,20 @@ $enLang = require NU_ROOT . '/lang/en.php';
 $noTitle = array_filter(array_keys(NuMigrate::CHANGES), static fn($id) => !isset($enLang['upd_mig_' . substr($id, 0, 4)]));
 check('every database step has a short title (text upd_mig_<number>) for the update page', $noTitle === [], implode(', ', $noTitle));
 
+// SQLite: SQL written for MySQL – "…" is a string, backslash escapes, functions, INSERT IGNORE / ON DUPLICATE KEY, CREATE TABLE with MySQL types
+$sq = new NuDB(['type' => 'sqlite', 'name' => ':memory:']);
+check('SQLite: "…" strings and backslash escapes as in MySQL', $sq->value('SELECT "a\nb"') === "a\nb" && $sq->value("SELECT CONCAT(\"x\", 'it\\'s')") === "xit's"
+	&& $sq->value("SELECT 'a\\\\b'") === 'a\\b' && $sq->value("SELECT 'x' LIKE 'x\\_' ") === 0
+	&& $sq->value('SELECT ' . $sq->quote("a\\b'c\"d")) === "a\\b'c\"d" && NuSqlite::fromDump("INSERT INTO t VALUES ('a\\'b', 0x41)") === "INSERT INTO t VALUES ('a\\'b', X'41')");
+$sq->run('CREATE TABLE zt (id varchar(25) NOT NULL, a VARCHAR(20) NULL, n int(11) DEFAULT 0, PRIMARY KEY (id), KEY a (a)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+$sq->run("INSERT INTO zt (id, a) VALUES ('1', 'Ä')");
+$sq->run("INSERT IGNORE INTO zt (id, a) VALUES ('1', 'x')");
+$sq->run("INSERT INTO zt (id, a, n) VALUES ('1', 'y', 2) ON DUPLICATE KEY UPDATE n = VALUES(n)");
+$zc = $sq->columns('zt');
+check('SQLite: CREATE TABLE with MySQL types, INSERT IGNORE, ON DUPLICATE KEY, NOCASE + accents, DATE_FORMAT, information_schema',
+	($zc['a']['length'] ?? 0) === 20 && (int)$sq->value("SELECT n FROM zt WHERE a = 'a'") === 2 && $sq->value("SELECT DATE_FORMAT('2026-03-04', '%d.%m.%Y')") === '04.03.2026'
+	&& (int)$sq->value("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_NAME = 'zt'") === 3 && in_array('zt', NuSqlite::tables($sq), true));
+
 @unlink($cfg);
 echo ($fails ? "$fails of $n tests FAILED" : "all $n tests passed") . "\n";
 exit($fails ? 1 : 0);

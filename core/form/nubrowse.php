@@ -593,7 +593,7 @@ final class NuBrowse
 		// no ORDER BY in the browse SQL and no column sorted: MySQL keeps the table's own order, as nuBuilder Forte (LIMIT without
 		// ORDER BY) – e.g. a Before Browse table made with CREATE TABLE … SELECT … ORDER BY; SQL Server needs one for OFFSET
 		if ($order !== '') $order .= ', nu_pk';
-		elseif ($db->type !== 'mysql') $order = 'nu_pk';
+		elseif ($db->type === 'sqlsrv') $order = 'nu_pk';
 
 		$rows = [];
 		$fetched = $db->page($select . $from, $params, $order, $per, ($page - 1) * $per);
@@ -797,7 +797,7 @@ final class NuBrowse
 		$db = nu_db();
 		try {
 			if ($db->type === 'sqlsrv') $db->run("IF OBJECT_ID('$t') IS NOT NULL DROP TABLE $t");
-			elseif ($db->type === 'mysql') $db->run("DROP TABLE IF EXISTS $t");
+			else $db->run("DROP TABLE IF EXISTS $t");
 		} catch (Throwable $ig) { nu_ignored($ig); }
 	}
 }

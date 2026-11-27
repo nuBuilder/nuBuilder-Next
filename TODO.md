@@ -54,6 +54,14 @@ Older "please verify" sections (up to 0.8.677) are unchanged in `dev/TODO-archiv
 - [ ] **Webhooks** (0.8.715): tables and the outbox query.
 - [ ] **SQL builder list** (0.8.688): concatenates 'SQL:' + id with +.
 
+## SQLite
+
+- [ ] **SQLite installation on a real host** (0.8.1521) – install with *SQLite (one database file)*, file outside the web folder; sample
+  application, a few forms, a report, a backup + restore, Reset database, Adminer. Report SQL of your own forms that fails on SQLite (the
+  translation of MySQL's spellings is in core/nusqlite.php).
+- [ ] **Not on SQLite** (0.8.1521) – App cloner, phpMyAdmin, InnoDB conversion, MySQL routines / triggers / user variables, `UPDATE … JOIN`;
+  decide later whether any of these is wanted.
+
 ## Live server, e-mail and deployment
 - [ ] **One-step statements, compressed pages, minified files** (0.8.1342) – please verify on the live server: pages load as before
       (MySQL: nuBuilder Next's own statements are sent in one step; procedures / form code / custom pages unchanged – a procedure with

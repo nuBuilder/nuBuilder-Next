@@ -25,7 +25,7 @@ final class NuDbReset
 	public static function available(): bool
 	{
 		try {
-			return in_array(nu_db()->type, ['mysql', 'sqlsrv'], true);
+			return in_array(nu_db()->type, ['mysql', 'sqlsrv', 'sqlite'], true);
 		} catch (Throwable) {
 			return false;
 		}
@@ -41,13 +41,14 @@ final class NuDbReset
 	/** SQL files (dumps, packages) can be imported: MySQL / MariaDB only. */
 	public static function filesAllowed(): bool
 	{
-		return nu_db()->type === 'mysql';
+		return nu_db()->type !== 'sqlsrv';                      // SQLite reads MySQL dumps (NuSqlite::fromDump)
 	}
 
 	/** Name of the database. */
 	public static function dbName(): string
 	{
 		$db = nu_db();
+		if ($db->type === 'sqlite') return basename((string)nu_cfg('nuConfigDBName'));
 		return (string)$db->value($db->type === 'sqlsrv' ? 'SELECT DB_NAME()' : 'SELECT DATABASE()');
 	}
 

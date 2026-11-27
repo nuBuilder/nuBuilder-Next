@@ -189,15 +189,19 @@ final class NuProjectPackage
 		return $pkg;
 	}
 
-	/** One table / view: CREATE statement (MySQL), column names and – with $withData – its rows. null on SQL Server. */
+	/** One table / view: CREATE statement (MySQL's), column names and – with $withData – its rows. null on SQL Server. */
 	private static function tableExport(string $name, bool $withData): ?array
 	{
 		$db = nu_db();
-		if ($db->type !== 'mysql') return null;
+		if ($db->type === 'sqlsrv') return null;
 		$q = '`' . str_replace('`', '``', $name) . '`';
 		$isView = (string)$db->value('SELECT TABLE_TYPE FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?', [$name]) === 'VIEW';
-		$row = $db->pdo()->query(($isView ? 'SHOW CREATE VIEW ' : 'SHOW CREATE TABLE ') . $q)->fetch(PDO::FETCH_NUM);
-		$create = self::noDefiner((string)($row[1] ?? ''));
+		if ($db->type === 'sqlite') {
+			$create = NuSqlite::mysqlCreate($db, $name);         // written as MySQL's: the package also goes to a MySQL installation
+		} else {
+			$row = $db->pdo()->query(($isView ? 'SHOW CREATE VIEW ' : 'SHOW CREATE TABLE ') . $q)->fetch(PDO::FETCH_NUM);
+			$create = self::noDefiner((string)($row[1] ?? ''));
+		}
 		if ($create === '') return null;
 		$t = ['name' => $name, 'type' => $isView ? 'view' : 'table', 'create' => $create];
 		if ($withData && !$isView) {
@@ -257,7 +261,7 @@ final class NuProjectPackage
 		foreach ($pkg['tables'] ?? [] as $t) {
 			$name = (string)($t['name'] ?? '');
 			if (!preg_match('/^[A-Za-z_][A-Za-z0-9_]{0,63}$/', $name) || str_starts_with(strtolower($name), 'zzzzsys_')) continue;
-			if ($db->type !== 'mysql') { $row('table', $name, $name, 'unsupported', t('prj_imp_mysql_only')); continue; }
+			if ($db->type === 'sqlsrv') { $row('table', $name, $name, 'unsupported', t('prj_imp_mysql_only')); continue; }
 			$exists = $db->tableExists($name);
 			$n = isset($t['rows']) ? count((array)$t['rows']) : 0;
 			$note = ($t['type'] ?? '') === 'view' ? t('prj_imp_view') : ($n ? t('prj_imp_rows', $n) : (isset($t['rows_left_out']) ? t('prj_imp_rows_left', (int)$t['rows_left_out']) : t('prj_imp_structure')));
@@ -385,7 +389,7 @@ final class NuProjectPackage
 	{
 		$db = nu_db();
 		$name = (string)($t['name'] ?? '');
-		if ($db->type !== 'mysql' || ($t['type'] ?? '') === 'view' || !$db->tableExists($name)) return [];
+		if ($db->type === 'sqlsrv' || ($t['type'] ?? '') === 'view' || !$db->tableExists($name)) return [];
 		$have = array_change_key_case($db->columns($name), CASE_LOWER);
 		$out = [];
 		foreach (preg_split('/\R/', (string)($t['create'] ?? '')) ?: [] as $line) {

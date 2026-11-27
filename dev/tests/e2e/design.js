@@ -397,8 +397,11 @@ T.design_tab_unique = async (s) => {
 		}, {F, first: sql(`SELECT syt_title FROM zzzzsys_tab WHERE syt_zzzzsys_form_id = '${F}' ORDER BY syt_order LIMIT 1`)});
 		expect(r.status === 409 && !r.j.ok, 'builder API: 409 for a duplicate ' + JSON.stringify(r).slice(0, 200));
 		// a form that already has two tabs with the same name (nuBuilder Forte allows it): moving tabs still works
-		sql(`UPDATE zzzzsys_tab t1 JOIN (SELECT zzzzsys_tab_id FROM zzzzsys_tab WHERE syt_zzzzsys_form_id = '${F}' ORDER BY syt_order LIMIT 1 OFFSET 1) x USING (zzzzsys_tab_id)
-			SET t1.syt_title = (SELECT syt_title FROM (SELECT syt_title FROM zzzzsys_tab WHERE syt_zzzzsys_form_id = '${F}' ORDER BY syt_order LIMIT 1) y)`);
+		{	// plain SQL (no UPDATE … JOIN: runs on every database of the tests)
+			const second = sql(`SELECT zzzzsys_tab_id FROM zzzzsys_tab WHERE syt_zzzzsys_form_id = '${F}' ORDER BY syt_order LIMIT 1 OFFSET 1`);
+			const firstTitle = sql(`SELECT syt_title FROM zzzzsys_tab WHERE syt_zzzzsys_form_id = '${F}' ORDER BY syt_order LIMIT 1`);
+			sql(`UPDATE zzzzsys_tab SET syt_title = '${String(firstTitle).replace(/'/g, "''")}' WHERE zzzzsys_tab_id = '${second}'`);
+		}
 		const r2 = await p.evaluate(async (F) => {
 			const tabs = (await (await fetch('index.php?p=builderapi', {method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': window.nuNext.csrf},
 				body: JSON.stringify({action: 'state', form_id: F})})).json()).tabs || [];
@@ -484,6 +487,7 @@ T.new_form_view = async (s) => {                        // 0.8.721: New form on 
 		expect(await p.$eval('#nb_type', (x) => x.value) === 'browse', 'type not set to Browse');
 		expect(await p.$eval('#nbViewInfo', (x) => x.classList.contains('alert-warning') && /cannot save/.test(x.textContent)), 'read-only notice: ' + await p.textContent('#nbViewInfo'));
 		expect(await p.$eval('#nb_pk', (x) => x.value) === 'cus_country', 'key of the GROUP BY view');
+		if (SQLITE) return;                                     // SQLite's views are never updatable – the rest is about updatable ones
 		await p.evaluate(() => { const x = document.getElementById('nb_type'); x.value = 'browseedit'; x.dispatchEvent(new Event('change')); });   // step 1 is hidden now
 		await pickT('e2e_vw_dup');
 		await p.waitForFunction(() => /ord_sample_customer_id/.test(document.getElementById('nbViewInfo').textContent));
@@ -2342,7 +2346,7 @@ T.validation_rules_hash = async (s) => {
 		await p.evaluate(() => nuSetProperty('E2E_MAX', '50000'));
 		await vrType(p, 'cus_credit', '40000');
 		await Promise.all([p.waitForNavigation(), p.click('#nuSaveButton')]); await p.waitForLoadState('networkidle');
-		expect(sql("SELECT cus_credit FROM sample_customer WHERE sample_customer_id = '" + C + "'") === '40000.00', 'not saved below the hash value');
+		expect(sql("SELECT cus_credit FROM sample_customer WHERE sample_customer_id = '" + C + "'") === '40000.00' || (SQLITE && Number(sql("SELECT cus_credit FROM sample_customer WHERE sample_customer_id = '" + C + "'")) === 40000), 'not saved below the hash value');
 		// the builder: a hash variable typed into the value field (Tom Select, free text)
 		vrSet('samplecustomer', null);
 		sql("UPDATE zzzzsys_nunext_form_draft SET status = 'discarded' WHERE form_id = 'samplecustomer' AND status = 'open'");

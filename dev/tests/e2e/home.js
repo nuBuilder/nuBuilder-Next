@@ -701,7 +701,7 @@ T.pwa_install = async (s) => {
 		await p.evaluate(() => navigator.serviceWorker.ready);
 		await open(p, 'index.php?p=home');
 		const ctl = await p.evaluate(async () => { const r = await navigator.serviceWorker.getRegistration(); return [!!navigator.serviceWorker.controller, r ? r.scope : '']; });
-		expect(ctl[0] && /\/nunext\/$/.test(ctl[1]), 'worker controls the page, scope = folder: ' + ctl);
+		expect(ctl[0] && ctl[1].endsWith(new URL(BASE).pathname), 'worker controls the page, scope = folder: ' + ctl);
 		const cached = await p.evaluate(async () => { const ks = await caches.keys(); const urls = []; for (const k of ks) for (const r of await (await caches.open(k)).keys()) urls.push(r.url); return [ks, urls]; });
 		expect(cached[0].length === 1 && /^nunext-/.test(cached[0][0]), 'one cache: ' + cached[0]);
 		expect(cached[1].some(u => /assets\/css\/nuapp(\.min)?\.css\?v=/.test(u)) && cached[1].some(u => /p=pwa&a=offline/.test(u)), 'static files + offline page cached');
@@ -2335,7 +2335,7 @@ T.system_info = async (s) => {
 		return { next: sec('next'), server: sec('server'), db: sec('db'), browser: sec('browser') };
 	});
 	expect(r.next.includes(await p.evaluate(() => document.querySelector('meta[name=nu-version]')?.content || '') || '0.8.'), 'version: ' + r.next);
-	expect(/PHP\s*\n?\s*8\./.test(r.server) && /(MariaDB|MySQL) \d/.test(r.db) && /\d+ × \d+/.test(r.browser), 'sections: ' + JSON.stringify(r));
+	expect(/PHP\s*\n?\s*8\./.test(r.server) && /(MariaDB|MySQL|SQLite) \d/.test(r.db) && /\d+ × \d+/.test(r.browser), 'sections: ' + JSON.stringify(r));
 	const all = Object.values(r).join(' ');
 	expect(!/nu\b.*password|127\.0\.0\.1|DBPassword/i.test(all), 'secrets or the host shown');
 	await p.click('#nuSysInfoCopy'); await p.waitForTimeout(200);

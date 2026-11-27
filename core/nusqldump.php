@@ -22,7 +22,7 @@ final class NuSqlDump
 
 	public static function available(): bool
 	{
-		try { return in_array(nu_db()->type, ['mysql', 'sqlsrv'], true); } catch (Throwable) { return false; }
+		try { return in_array(nu_db()->type, ['mysql', 'sqlsrv', 'sqlite'], true); } catch (Throwable) { return false; }
 	}
 
 	/** Tables of a scope ('nubuilder': all zzzzsys_* tables; 'nunext': nuBuilder Next's own zzzzsys_nunext_* tables; 'all': null = everything). */
@@ -31,6 +31,10 @@ final class NuSqlDump
 		if ($scope === 'all') return null;
 		$prefix = $scope === 'nubuilder' ? 'zzzzsys_' : 'zzzzsys_nunext_';
 		$out = [];
+		if (nu_db()->type === 'sqlite') {
+			foreach (NuSqlite::tables(nu_db()) as $t) if (str_starts_with(strtolower($t), $prefix)) $out[] = $t;
+			return $out;
+		}
 		foreach (NuAppCloner::objects(nu_db()) as $o) if ($o['type'] === 'TABLE' && str_starts_with(strtolower($o['name']), $prefix)) $out[] = $o['name'];
 		return $out;
 	}
@@ -39,6 +43,7 @@ final class NuSqlDump
 	public static function estimate(string $scope, bool $withoutLogs): int
 	{
 		if (!self::available() || $scope === 'none') return 0;
+		if (nu_db()->type === 'sqlite') return (int)@filesize((string)nu_cfg('nuConfigDBName'));    // the whole file: an upper bound
 		$sum = 0;
 		$only = self::tables($scope);
 		$only = $only === null ? null : array_flip($only);
@@ -66,6 +71,7 @@ final class NuSqlDump
 		if ($gz === false) { $res['error'] = 'gzopen'; return $res; }
 		$all = $scope === 'all';
 		$parts = $all ? array_keys(NuAppCloner::PARTS) : ['sys_struct', 'sys_rows', 'app_rows'];
+		if (nu_db()->type === 'sqlite') return self::writeSqlite($gz, $file, $scope, $withoutLogs, $res);
 		try {
 			$c = new NuAppCloner(nu_db(), ['export' => true, 'parts' => $parts, 'tables' => self::tables($scope), 'insert' => 'INSERT',
 				'skip_rows' => $withoutLogs ? self::LOG_TABLES : [], 'title' => 'nuBuilder Next backup' . ($all ? '' : ($scope === 'nubuilder' ? ' (nuBuilder tables zzzzsys_*)' : ' (nuBuilder Next tables)'))]);
@@ -106,7 +112,79 @@ final class NuSqlDump
 	/** The database part can be restored here: MySQL / MariaDB (SQL Server: TODO.md – its dump uses GO batches, not tried on a server). */
 	public static function canRestore(): bool
 	{
-		try { return nu_db()->type === 'mysql'; } catch (Throwable) { return false; }
+		try { return in_array(nu_db()->type, ['mysql', 'sqlite'], true); } catch (Throwable) { return false; }
+	}
+
+	/**
+	 * SQLite: the dump in MySQL's form (backticks, strings with backslash escapes, 0x… for binary data, indexes as ALTER TABLE … ADD INDEX),
+	 * so the restore reads it as every other dump (NuInstall::checkDump, NuSqlImport with NuSqlite::fromDump).
+	 */
+	private static function writeSqlite($gz, string $file, string $scope, bool $withoutLogs, array $res): array
+	{
+		$db = nu_db();
+		$pdo = $db->pdo();
+		$skipRows = array_flip(array_map('strtolower', array_merge(NuAppCloner::SESSION_TABLES, $withoutLogs ? self::LOG_TABLES : [])));
+		$only = self::tables($scope);
+		$only = $only === null ? null : array_flip(array_map('strtolower', $only));
+		$q = static fn(string $n) => '`' . str_replace('`', '``', $n) . '`';
+		$lit = static function ($v): string {
+			if ($v === null) return 'NULL';
+			if (is_int($v) || is_float($v)) return (string)$v;
+			$v = (string)$v;
+			if (!mb_check_encoding($v, 'UTF-8') || str_contains($v, "\0")) return $v === '' ? "''" : '0x' . bin2hex($v);
+			return "'" . strtr($v, ['\\' => '\\\\', "'" => "\\'", "\n" => '\\n', "\r" => '\\r', "\x1A" => '\\Z']) . "'";
+		};
+		$counts = [];
+		try {
+			gzwrite($gz, '-- ' . ($res['title'] ?? 'nuBuilder Next backup') . ' – SQLite ' . (string)$db->value('SELECT sqlite_version()') . ' · ' . date('Y-m-d H:i:s') . "\n");
+			$pdo->exec('BEGIN');                                     // one snapshot of the whole file (WAL: writers go on)
+			try {
+				foreach ($db->all("SELECT name, sql FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite!_%' ESCAPE '!' ORDER BY name") as $t) {
+					$n = (string)$t['name'];
+					if ($only !== null && !isset($only[strtolower($n)])) continue;
+					$def = (string)preg_replace('/^CREATE\s+TABLE\s+("(?:[^"]|"")*"|`[^`]*`|\[[^\]]*\]|\S+)/i', 'CREATE TABLE ' . $q($n), NuSqlite::backticks((string)$t['sql']));
+					gzwrite($gz, "\nDROP TABLE IF EXISTS " . $q($n) . ";\n" . $def . ";\n");
+					foreach ($db->all("SELECT il.name AS n, il.`unique` AS u FROM pragma_index_list(?) il WHERE il.origin = 'c'", [$n]) as $ix) {
+						$cols = array_map(static fn($r) => $q((string)$r['name']), $db->all('SELECT name FROM pragma_index_info(?) ORDER BY seqno', [(string)$ix['n']]));
+						if (!$cols) continue;
+						$short = (string)preg_replace('/^' . preg_quote($n . '__', '/') . '/', '', (string)$ix['n']);
+						gzwrite($gz, 'ALTER TABLE ' . $q($n) . ' ADD ' . ((int)$ix['u'] ? 'UNIQUE ' : '') . 'INDEX ' . $q($short) . ' (' . implode(', ', $cols) . ");\n");
+					}
+					$res['tables']++;
+					if (isset($skipRows[strtolower($n)])) continue;
+					$st = $pdo->query('SELECT * FROM ' . $q($n));
+					$rows = 0; $batch = []; $head = '';
+					while (($row = $st->fetch(PDO::FETCH_ASSOC)) !== false) {
+						if ($head === '') $head = 'INSERT INTO ' . $q($n) . ' (' . implode(', ', array_map($q, array_keys($row))) . ") VALUES\n";
+						$batch[] = '(' . implode(', ', array_map($lit, array_values($row))) . ')';
+						$rows++;
+						if (count($batch) >= 200) { gzwrite($gz, $head . implode(",\n", $batch) . ";\n"); $batch = []; }
+					}
+					if ($batch) gzwrite($gz, $head . implode(",\n", $batch) . ";\n");
+					$counts[$n] = $rows;
+					$res['rows'] += $rows;
+				}
+				if ($scope === 'all') {
+					foreach ($db->all("SELECT name, sql FROM sqlite_master WHERE type = 'view' ORDER BY name") as $v) {
+						$body = NuSqlite::backticks((string)preg_replace('/^CREATE\s+VIEW\s+("(?:[^"]|"")*"|`[^`]*`|\S+)\s*/i', '', (string)$v['sql']));
+						gzwrite($gz, "\nDROP VIEW IF EXISTS " . $q((string)$v['name']) . ";\nCREATE VIEW " . $q((string)$v['name']) . ' ' . $body . ";\n");
+						$res['views']++;
+					}
+				}
+			} finally {
+				$pdo->exec('COMMIT');
+			}
+			$res['counts'] = $counts;
+			gzwrite($gz, "\n" . self::MARKER . ' ' . date('Y-m-d H:i:s') . "\n");
+		} catch (Throwable $e) {
+			$res['error'] = $e->getMessage();
+			gzwrite($gz, "\n-- ERROR: " . str_replace("\n", ' ', $e->getMessage()) . "\n");
+		} finally {
+			gzclose($gz);
+		}
+		$res['bytes'] = (int)@filesize($file);
+		$res['complete'] = $res['error'] === '' && self::complete($file);
+		return $res;
 	}
 
 	/** backup.json of a backup zip + whether it holds a complete dump. @return array{meta: array, sql: ?array} */
@@ -202,7 +280,7 @@ final class NuSqlDump
 		$tmp = self::extract($zip);                        // before the safety backup: the keep rule may take the SQL out of older backups
 		$out = ['safety' => '', 'dropped' => 0, 'statements' => 0, 'steps' => [], 'scope' => $scope, 'version' => (string)($meta['version'] ?? '?'), 'checked' => 0, 'mismatch' => [], 'skipped' => [], 'skipped_sql' => []];
 		$db = nu_db();
-		$dbName = (string)$db->value('SELECT DATABASE()');
+		$dbName = $db->type === 'sqlite' ? basename((string)nu_cfg('nuConfigDBName')) : (string)$db->value('SELECT DATABASE()');
 		try {
 			if (!self::complete($tmp)) throw new RuntimeException(t('rst_err_incomplete'));
 			$chk = NuInstall::checkDump(NuSqlImport::statements($tmp), true, $scope !== 'nunext');

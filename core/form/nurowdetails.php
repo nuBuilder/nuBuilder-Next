@@ -145,7 +145,7 @@ final class NuRowDetails
 		$kept = $live ? ($_SESSION[self::FOUND][$ck] ?? null) : null;
 		if (is_array($kept) && (int)($kept['t'] ?? 0) > time() - 600 && is_array($kept['f'] ?? null)) $found = $kept['f'];
 		else try {
-			if ($db->type === 'mysql') {
+			if ($db->type !== 'sqlsrv') {                               // SQLite: information_schema through NuSqlite
 				foreach ($db->all('SELECT TABLE_NAME AS t, COLUMN_NAME AS c FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA = DATABASE() AND REFERENCED_TABLE_NAME = ?', [$table]) as $r) $found[] = [(string)$r['t'],
 					(string)$r['c']];
 				foreach ($db->all('SELECT TABLE_NAME AS t, COLUMN_NAME AS c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (COLUMN_NAME = ? OR COLUMN_NAME LIKE ?)', [$pk, $like]) as $r) $found[] = [(string)$r['t'],

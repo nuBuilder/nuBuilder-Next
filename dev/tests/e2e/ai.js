@@ -545,6 +545,7 @@ T.ai_providers = async (s) => {
 // 0.8.1102: prompt generator – a picked table also lists its keys over several columns, unique keys, foreign keys in both
 // directions, checks, generated columns, triggers, a view's SELECT, and the relations nuBuilder knows (lookups, sub-forms)
 T.prompt_table_details = async (s) => {
+	if (SQLITE) { s.skip = 'MySQL catalogue: triggers, checks, generated columns'; return; }
 	const ga = s.ga;
 	const drop = () => sql('DROP VIEW IF EXISTS e2e_pd_view; DROP TABLE IF EXISTS e2e_pd_child; DROP TABLE IF EXISTS e2e_pd_parent');
 	drop();

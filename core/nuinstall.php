@@ -174,6 +174,7 @@ final class NuInstall
 				PHP_VERSION_ID < 80200 || NuSecurity::phpFixNote() !== ''],
 			['PDO MySQL / MariaDB', extension_loaded('pdo_mysql'), extension_loaded('pdo_mysql') ? 'ok' : t('ins_missing'), false],
 			['PDO MSSQL', extension_loaded('pdo_sqlsrv'), extension_loaded('pdo_sqlsrv') ? 'ok' : t('ins_optional'), false],
+			['PDO SQLite', extension_loaded('pdo_sqlite'), extension_loaded('pdo_sqlite') ? 'ok' : t('ins_optional'), false],
 			['mbstring', extension_loaded('mbstring'), extension_loaded('mbstring') ? 'ok' : t('ins_missing'), true],
 			['openssl', extension_loaded('openssl'), extension_loaded('openssl') ? 'ok' : t('ins_missing'), true],
 			['zip', class_exists('ZipArchive'), class_exists('ZipArchive') ? 'ok' : t('ins_zip_hint'), false],
@@ -186,7 +187,7 @@ final class NuInstall
 	public static function requirementsOk(): bool
 	{
 		foreach (self::requirements() as [, $ok, , $must]) if ($must && !$ok) return false;
-		return extension_loaded('pdo_mysql') || extension_loaded('pdo_sqlsrv');
+		return extension_loaded('pdo_mysql') || extension_loaded('pdo_sqlsrv') || extension_loaded('pdo_sqlite');
 	}
 
 	// ------------------------------------------------------------------ nuBuilder next door
@@ -214,6 +215,7 @@ final class NuInstall
 	/** @throws InvalidArgumentException|PDOException */
 	public static function connect(array $db, bool $withName = true): NuDB
 	{
+		if (($db['type'] ?? '') === 'sqlite') return self::connectSqlite((string)$db['name'], !empty($db['create']));
 		$type = $db['type'] === 'sqlsrv' ? 'sqlsrv' : 'mysql';
 		if (!preg_match('/^[A-Za-z0-9.\-_:\\\\\[\]]+$/', (string)$db['host'])) throw new InvalidArgumentException(t('ins_err_host'));
 		if ((string)$db['port'] !== '' && !ctype_digit((string)$db['port'])) throw new InvalidArgumentException(t('ins_err_port'));
@@ -223,8 +225,50 @@ final class NuInstall
 			'options' => $type === 'mysql' ? [PDO::ATTR_TIMEOUT => 8] : [], 'trust_cert' => !empty($db['trust'])]);
 	}
 
+	/**
+	 * SQLite: the database is one file. The path must be absolute and end in .sqlite / .sqlite3 / .db; $create makes its folder (inside
+	 * the program folder with a deny-all .htaccess). The file itself is made by the first connection.
+	 * @throws InvalidArgumentException
+	 */
+	public static function connectSqlite(string $path, bool $create): NuDB
+	{
+		if (!extension_loaded('pdo_sqlite')) throw new InvalidArgumentException(t('ins_err_sqlite_ext'));
+		$path = str_replace('\\', '/', trim($path));
+		if (!preg_match('~^(/|[A-Za-z]:/)~', $path) || str_contains($path, '/../') || !preg_match('/\.(sqlite3?|db)$/i', $path) || preg_match('/[\x00-\x1f]/', $path)) {
+			throw new InvalidArgumentException(t('ins_err_sqlite_path'));
+		}
+		$dir = dirname($path);
+		if (!is_dir($dir)) {
+			if (!$create) throw new InvalidArgumentException(t('ins_err_sqlite_dir', $dir));
+			if (!@mkdir($dir, 0770, true) && !is_dir($dir)) throw new InvalidArgumentException(t('ins_err_sqlite_dir', $dir));
+		}
+		if (str_starts_with(realpath($dir) ?: $dir, realpath(NU_ROOT) ?: NU_ROOT) && !is_file($dir . '/.htaccess')) @file_put_contents($dir . '/.htaccess', NuSecurity::DENY);
+		if (!is_writable($dir)) throw new InvalidArgumentException(t('ins_err_sqlite_dir', $dir));
+		if (is_file($path) && !is_writable($path)) throw new InvalidArgumentException(t('ins_err_sqlite_dir', $path));
+		return new NuDB(['type' => 'sqlite', 'name' => $path]);
+	}
+
+	/** A proposed place of the database file: next to the web folder when that may be written to, else a protected folder of the program. */
+	public static function sqliteDefault(): string
+	{
+		$name = (string)preg_replace('/\W+/', '', basename(NU_ROOT)) ?: 'nunext';
+		$doc = rtrim(str_replace('\\', '/', (string)($_SERVER['DOCUMENT_ROOT'] ?? '')), '/');
+		$up = $doc !== '' ? dirname($doc) : '';
+		if ($up !== '' && $up !== '.' && is_dir($up) && is_writable($up)) return $up . '/nunext-data/' . $name . '.sqlite';
+		return str_replace('\\', '/', NU_ROOT) . '/_db/' . $name . '.sqlite';
+	}
+
+	/** Can a browser fetch the file? (inside the web folder – a deny-all .htaccess helps only on Apache) */
+	public static function sqliteInWeb(string $path): bool
+	{
+		$doc = realpath((string)($_SERVER['DOCUMENT_ROOT'] ?? '')) ?: '';
+		$real = realpath(dirname($path)) ?: dirname($path);
+		return $doc !== '' && str_starts_with(str_replace('\\', '/', $real) . '/', str_replace('\\', '/', $doc) . '/');
+	}
+
 	public static function createDatabase(array $db): void
 	{
+		if (($db['type'] ?? '') === 'sqlite') { self::connectSqlite((string)$db['name'], true); return; }
 		if (!preg_match('/^[A-Za-z0-9_$\-]{1,64}$/', (string)$db['name'])) throw new RuntimeException(t('ins_err_db_name'));
 		$srv = self::connect($db, false);
 		if ($srv->type === 'mysql') $srv->exec('CREATE DATABASE IF NOT EXISTS `' . $db['name'] . '` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
@@ -234,9 +278,11 @@ final class NuInstall
 	/** 'nubuilder' (nuBuilder tables there) · 'empty' · 'other' (tables, but not nuBuilder's) */
 	public static function detect(NuDB $db): array
 	{
-		$tables = $db->type === 'mysql'
-			? array_column($db->all('SELECT table_name AS t FROM information_schema.tables WHERE table_schema = DATABASE()'), 't')
-			: array_column($db->all("SELECT TABLE_NAME AS t FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE'"), 't');
+		$tables = match ($db->type) {
+			'mysql' => array_column($db->all('SELECT table_name AS t FROM information_schema.tables WHERE table_schema = DATABASE()'), 't'),
+			'sqlite' => NuSqlite::tables($db),
+			default => array_column($db->all("SELECT TABLE_NAME AS t FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE'"), 't'),
+		};
 		$tables = array_map('strval', $tables);
 		$nu = array_values(array_filter($tables, static fn($t) => str_starts_with($t, 'zzzzsys_')));
 		$kind = !$tables ? 'empty' : (count(array_intersect(['zzzzsys_user', 'zzzzsys_access', 'zzzzsys_form'], $tables)) === 3 ? 'nubuilder' : 'other');
@@ -249,7 +295,7 @@ final class NuInstall
 	/** SQL files for an empty database, by choice: 'nubuilder' (complete nuBuilder system) or 'nunext' (nuBuilder Next's scripts). */
 	public static function schemaFiles(string $choice, string $type, ?string $nubPath): array
 	{
-		if ($choice === 'nubuilder' && $type === 'mysql' && $nubPath && is_file($nubPath . '/nubuilder4.sql')) return [$nubPath . '/nubuilder4.sql'];
+		if ($choice === 'nubuilder' && $type !== 'sqlsrv' && $nubPath && is_file($nubPath . '/nubuilder4.sql')) return [$nubPath . '/nubuilder4.sql'];
 		return $type === 'sqlsrv'
 			? [NU_ROOT . '/install/schema_mssql.sql']
 			: [NU_ROOT . '/install/schema_mysql.sql', NU_ROOT . '/install/schema_mysql_forms.sql', NU_ROOT . '/install/notes_snippets_mysql.sql'];
@@ -262,6 +308,7 @@ final class NuInstall
 		$n = 0;
 		foreach (self::splitSql((string)file_get_contents($file)) as $stmt) {
 			if ($db->type === 'mysql') $stmt = (string)preg_replace('/\bENGINE\s*=\s*MyISAM\b/i', 'ENGINE=InnoDB', $stmt);
+			if ($db->type === 'sqlite' && ($stmt = NuSqlite::fromDump($stmt)) === '') continue;      // the MySQL scripts, made fit for SQLite
 			try {
 				$db->exec($stmt);
 			} catch (PDOException $e) {
@@ -279,6 +326,7 @@ final class NuInstall
 		$n = 0;
 		foreach (self::splitSql($sql) as $stmt) {
 			if ($db->type === 'mysql') $stmt = (string)preg_replace('/\bENGINE\s*=\s*MyISAM\b/i', 'ENGINE=InnoDB', $stmt);
+			if ($db->type === 'sqlite' && ($stmt = NuSqlite::fromDump($stmt)) === '') continue;
 			try {
 				$db->exec($stmt);
 			} catch (PDOException $e) {
@@ -475,7 +523,7 @@ final class NuInstall
 	 */
 	public static function missing49(NuDB $db): array
 	{
-		if ($db->type !== 'mysql') return [];
+		if ($db->type === 'sqlsrv') return [];
 		$cols = [];
 		foreach ($db->all('SELECT TABLE_NAME AS t, COLUMN_NAME AS c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME LIKE ?', ['zzzzsys\_%']) as $r) {
 			$cols[strtolower((string)$r['t'])][strtolower((string)$r['c'])] = true;
@@ -528,7 +576,7 @@ final class NuInstall
 	public static function upgradeTo49(NuDB $db): array
 	{
 		$sum = ['tables' => 0, 'columns' => 0, 'changed' => 0];
-		if ($db->type !== 'mysql') return $sum;
+		if ($db->type === 'sqlsrv') return $sum;                   // SQLite: information_schema and the ALTERs through NuSqlite
 		$read = static function () use ($db): array {
 			$out = [];
 			foreach ($db->all('SELECT TABLE_NAME AS t, TABLE_TYPE AS k FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()') as $r) $out[(string)$r['t']] = ['_kind' => (string)$r['k']];
@@ -712,7 +760,7 @@ final class NuInstall
 		$tpl = (string)file_get_contents(NU_ROOT . '/nuconfig-sample.php');
 		$x = static fn($v) => var_export($v, true);
 		$db = $s['db'];
-		$dbBlock = '$nuConfigDBType = ' . $x($db['type']) . ";\t\t\t\t\t\t\t\t//-- mysql (MySQL, MariaDB) or sqlsrv (MSSQL)\n\n"
+		$dbBlock = '$nuConfigDBType = ' . $x($db['type']) . ";\t\t\t\t\t\t\t\t//-- mysql (MySQL, MariaDB), sqlsrv (MSSQL) or sqlite (DBName = the file)\n\n"
 			. '$nuConfigDBHost						= ' . $x((string)$db['host']) . ";\n"
 			. '$nuConfigDBPort						= ' . ((string)$db['port'] === '' ? '""' : (int)$db['port']) . ";\n"
 			. '$nuConfigDBName						= ' . $x((string)$db['name']) . ";\n"

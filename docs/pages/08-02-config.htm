@@ -8,7 +8,7 @@
 <thead><tr><th>Variable</th><th>Origin</th><th>Default</th><th>Meaning</th></tr></thead>
 <tbody>
 <tr><td><code>$nuConfigDBHost</code>, <code>$nuConfigDBPort</code>, <code>$nuConfigDBName</code>, <code>$nuConfigDBUser</code>, <code>$nuConfigDBPassword</code></td><td>Forte</td><td></td><td>The database connection – written by the installer</td></tr>
-<tr><td><code>$nuConfigDBType</code></td><td>Next</td><td>mysql</td><td><code>mysql</code> or <code>sqlsrv</code> (MSSQL)</td></tr>
+<tr><td><code>$nuConfigDBType</code></td><td>Next</td><td>mysql</td><td><code>mysql</code>, <code>sqlsrv</code> (MSSQL) or <code>sqlite</code> (one file: <code>$nuConfigDBName</code> = its full path)</td></tr>
 <tr><td><code>$nuConfigDBCharacterSet</code> / <code>$nuConfigDBCollate</code></td><td>Forte</td><td>utf8mb4 / (server default)</td><td>Character set and collation of the connection (MySQL only)</td></tr>
 <tr><td><code>$nuConfigDBOptions</code></td><td>Forte</td><td>[]</td><td>PDO options, e.g. <code>[PDO::ATTR_PERSISTENT =&gt; true]</code></td></tr>
 <tr><td><code>$nuConfigDBTrustServerCertificate</code></td><td>Next</td><td>false</td><td>SQL Server: accept a self-signed certificate (ODBC Driver 18 and later encrypt by default)</td></tr>

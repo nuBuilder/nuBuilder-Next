@@ -636,6 +636,7 @@ T.rec_page_class = async (s) => {
 
 // 0.8.1342 (review P1): own statements in one step on MySQL, code of the application with server-side prepares – a bound LIMIT works there
 T.one_step_statements = async (s) => {
+	if (SQLITE) { s.skip = 'MySQL connection setting (emulated prepares)'; return; }
 	if (!SITE) { s.skip = 'needs SITE'; return; }
 	const php = (code) => require('child_process').execFileSync('php', ['-r', 'chdir(' + JSON.stringify(SITE) + "); require 'core/nuapp.php'; " + code]).toString();
 	const out = JSON.parse(php(`$db = nu_db(); $r = ['own' => $db->emulated()];

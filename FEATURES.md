@@ -98,6 +98,8 @@ page) for how to use it.
   service (signed, with retries and a log), e-mail via SMTP or OAuth 2 (Google, Microsoft 365) with templates.
 - **Records over the API** – read, create, change and delete the records of your forms (with sub-form rows, filters, lookups)
   exactly as the form does it – rights, validation, Before / After Save; an OpenAPI description per client for Postman or Power Automate.
+- **SQLite** – the whole database in one file, no database server needed: the installer creates it, SQL written for MySQL is
+  translated on the fly, backups, restore and Reset database work as on MySQL (without nuBuilder Forte, which has no SQLite).
 - **Docker** – an image with every PHP extension (also SQL Server) and compose files: one command starts nuBuilder Next with
   MariaDB, optionally with the sample application; a newer image updates the program and keeps the data.
 - **System info** – user menu → System info…: versions of nuBuilder Next, PHP, database and browser at a glance, copied as text for support

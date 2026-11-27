@@ -117,10 +117,26 @@ final class NuSqlImport
 		return true;
 	}
 
-	/** A statement before it runs: MyISAM → InnoDB when asked. */
+	/** A statement before it runs: MyISAM → InnoDB when asked; SQLite: a statement of a MySQL dump in its form ('' = left out). */
 	private static function prepare(NuDB $db, string $stmt, bool $engines): string
 	{
+		if ($db->type === 'sqlite') return NuSqlite::fromDump($stmt);
 		return $engines && $db->type === 'mysql' ? (string)preg_replace('/\bENGINE\s*=\s*MyISAM\b/i', 'ENGINE=InnoDB', $stmt) : $stmt;
+	}
+
+	/** The dialect a dump of this database is written in: SQLite reads MySQL dumps. */
+	private static function dialectOf(NuDB $db): string
+	{
+		return $db->type === 'sqlsrv' ? 'sqlsrv' : 'mysql';
+	}
+
+	/** SQLite: statements in transactions of 2000 (one write to the file each instead of one per statement). */
+	private static function batch(NuDB $db, int $n, bool $end = false): void
+	{
+		if ($db->type !== 'sqlite') return;
+		$p = $db->pdo();
+		if ($end) { if ($p->inTransaction()) $p->commit(); return; }
+		if ($n % 2000 === 0) { if ($p->inTransaction()) $p->commit(); $p->beginTransaction(); }
 	}
 
 	public static function run(NuDB $db, string $path, ?callable $progress = null, bool $engines = false): int
@@ -132,8 +148,10 @@ final class NuSqlImport
 		// a dump changes the session (sql_mode, time zone, autocommit): put back afterwards – the request goes on with this connection
 		$saved = $db->type === 'mysql' ? $db->pdo()->query('SELECT @@SESSION.sql_mode, @@SESSION.time_zone, @@SESSION.autocommit')->fetch(PDO::FETCH_NUM) : null;
 		try {
-			foreach (self::statements($path, $db->type, $progress) as $stmt) {
+			foreach (self::statements($path, self::dialectOf($db), $progress) as $stmt) {
 				$stmt = self::prepare($db, $stmt, $engines);
+				if ($stmt === '') continue;
+				self::batch($db, $n);
 				try {
 					$db->exec($stmt);
 				} catch (PDOException $e) {
@@ -144,7 +162,9 @@ final class NuSqlImport
 				}
 				$n++;
 			}
+			self::batch($db, $n, true);
 		} finally {
+			if ($db->type === 'sqlite' && $db->pdo()->inTransaction()) { try { $db->pdo()->rollBack(); } catch (Throwable $ig) { nu_ignored($ig); } }
 			if ($saved) {
 				$p = $db->pdo();
 				try { $p->exec('SET SESSION sql_mode = ' . $p->quote((string)$saved[0]) . ', time_zone = ' . $p->quote((string)$saved[1]) . ', autocommit = '
@@ -170,10 +190,12 @@ final class NuSqlImport
 		$off = (int)($st['off'] ?? 0);
 		$st['n'] = (int)($st['n'] ?? 0);
 		$sets = array_values(array_filter((array)($st['sets'] ?? []), 'is_string'));
-		$s = new self($db->type);
+		$s = new self(self::dialectOf($db));
 		$s->delim = (string)($st['delim'] ?? ';') ?: ';';
 		$run = function (string $stmt) use ($db, $file, &$st, &$sets, $engines): void {
 			$stmt = self::prepare($db, $stmt, $engines);
+			if ($stmt === '') return;
+			self::batch($db, (int)$st['n']);
 			try {
 				$db->exec($stmt);
 			} catch (PDOException $e) {
@@ -212,6 +234,7 @@ final class NuSqlImport
 			return $done;
 		} finally {
 			fclose($h);
+			if ($db->type === 'sqlite') { try { self::batch($db, 0, true); } catch (Throwable $ig) { nu_ignored($ig); } }
 			if ($db->type === 'mysql') {
 				try { $db->exec('COMMIT'); } catch (PDOException $ig) { nu_ignored($ig); }
 				try { $db->exec('UNLOCK TABLES'); } catch (PDOException $ig) { nu_ignored($ig); }

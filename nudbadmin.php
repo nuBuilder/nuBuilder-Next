@@ -133,6 +133,7 @@ if (isset($_GET['file']) && !empty($_SERVER['HTTP_IF_MODIFIED_SINCE'])) {
 }
 
 $nuIsMs = strtolower((string)($nuConfigDBType ?? 'mysql')) === 'sqlsrv';
+$nuIsSq = strtolower((string)($nuConfigDBType ?? 'mysql')) === 'sqlite';      // one database file: Adminer's SQLite driver
 $nuPort = trim((string)($nuConfigDBPort ?? ''));
 $nuDefPort = $nuIsMs ? '1433' : '3306';
 
@@ -140,9 +141,9 @@ $nuDefPort = $nuIsMs ? '1433' : '3306';
 $nuSid = is_string($_COOKIE['nu_ADM'] ?? null) ? $_COOKIE['nu_ADM'] : '';
 if (!preg_match('/^nx[0-9a-f]{23}$/', $nuSid)) nu_adm_fail('adm_err_open');
 try {
-	$nuPdo = $nuIsMs
+	$nuPdo = $nuIsSq ? new PDO('sqlite:' . $nuConfigDBName) : ($nuIsMs
 		? new PDO('sqlsrv:Server=' . $nuConfigDBHost . ($nuPort !== '' ? ',' . $nuPort : '') . ';Database=' . $nuConfigDBName, (string)$nuConfigDBUser, (string)$nuConfigDBPassword)
-		: new PDO('mysql:host=' . $nuConfigDBHost . ';dbname=' . $nuConfigDBName . ';charset=utf8mb4' . ($nuPort !== '' ? ';port=' . $nuPort : ''), (string)$nuConfigDBUser, (string)$nuConfigDBPassword);
+		: new PDO('mysql:host=' . $nuConfigDBHost . ';dbname=' . $nuConfigDBName . ';charset=utf8mb4' . ($nuPort !== '' ? ';port=' . $nuPort : ''), (string)$nuConfigDBUser, (string)$nuConfigDBPassword));
 	$nuPdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 	$st = $nuPdo->prepare('SELECT sss_access, sss_time FROM zzzzsys_session WHERE zzzzsys_session_id = ?');
 	$st->execute([$nuSid]);
@@ -188,19 +189,19 @@ if (isset($_POST['logout'])) {
 	nu_adm_fail('adm_logged_out', 200);
 }
 
-define('NU_ADM_DRIVER', $nuIsMs ? 'mssql' : 'server');
+define('NU_ADM_DRIVER', $nuIsSq ? 'sqlite' : ($nuIsMs ? 'mssql' : 'server'));
 // host[:port] – also for SQL Server (Adminer 4 turns ":" into "," itself, Adminer 6 refuses "," and "\\"); a named instance as its host and TCP port
-$nuAdmHost = (string)$nuConfigDBHost;
+$nuAdmHost = (string)($nuConfigDBHost ?? '');
 if ($nuIsMs && str_contains($nuAdmHost, '\\')) {
 	if ($nuPort === '' && $nuInstPort === '') nu_adm_fail('adm_err_instance', 500);
 	$nuAdmHost = substr($nuAdmHost, 0, (int)strpos($nuAdmHost, '\\'));
 	if ($nuPort === '') $nuPort = $nuInstPort;
 	$nuDefPort = '';                                                     // always name the port: the instance is not the default one
 }
-define('NU_ADM_SERVER', $nuAdmHost . ($nuPort !== '' && $nuPort !== $nuDefPort ? ':' . $nuPort : ''));
-define('NU_ADM_USER', (string)$nuConfigDBUser);
+define('NU_ADM_SERVER', $nuIsSq ? '' : $nuAdmHost . ($nuPort !== '' && $nuPort !== $nuDefPort ? ':' . $nuPort : ''));
+define('NU_ADM_USER', $nuIsSq ? '' : (string)($nuConfigDBUser ?? ''));
 define('NU_ADM_DB', (string)$nuConfigDBName);
-$GLOBALS['nuAdmPassword'] = (string)$nuConfigDBPassword;
+$GLOBALS['nuAdmPassword'] = (string)($nuConfigDBPassword ?? '');
 
 // Adminer's session: own cookie, only for this file
 header('X-Content-Type-Options: nosniff');
@@ -217,7 +218,7 @@ session_set_cookie_params(['lifetime' => 0, 'path' => $nuPath, 'secure' => $nuHt
 session_start();                                          // defines SID – Adminer uses this session instead of starting its own
 
 $nuLoggedIn = isset($_SESSION['pwds'][NU_ADM_DRIVER][NU_ADM_SERVER][NU_ADM_USER]);
-$nuBase = basename(__FILE__) . '?' . (NU_ADM_DRIVER === 'server' ? 'server' : 'mssql') . '=' . rawurlencode(NU_ADM_SERVER)
+$nuBase = basename(__FILE__) . '?' . NU_ADM_DRIVER . '=' . rawurlencode(NU_ADM_SERVER)
 	. '&username=' . rawurlencode(NU_ADM_USER) . '&db=' . rawurlencode(NU_ADM_DB);
 if (isset($_GET['nu_table']) && is_string($_GET['nu_table']) && preg_match('/^[A-Za-z0-9_$]+$/', $_GET['nu_table'])) $_SESSION['nu_goto'] = $_GET['nu_table'];
 // automatic login / jump only for the plain start (nudbadmin.php or ?nu_table=…); every other request – Adminer's files (?file=),
